@@ -55,6 +55,12 @@
   #summary li { margin-bottom: 4px; }
   .due { color: var(--muted); }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .dory { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: start; }
+  .dory .mark { grid-row: span 3; width: 48px; height: 48px; border-radius: 12px; background: #5865f2; color: #fff;
+    display: grid; place-items: center; font-weight: 700; font-size: 1.3rem; }
+  .dory p { margin: 0; }
+  .dory ul { margin: 0; padding-left: 20px; color: var(--muted); }
+  .btn.discord { background: #5865f2; border-color: #5865f2; text-decoration: none; display: inline-block; }
   [hidden] { display: none !important; }
 </style>
 </head>
@@ -105,6 +111,22 @@
     <div id="summary" aria-live="polite"></div>
     <div class="row" style="margin-top:16px">
       <button type="button" id="new-btn" class="secondary">Start a new meeting</button>
+    </div>
+  </section>
+  <section class="card" id="dory" aria-labelledby="dory-h">
+    <div class="dory">
+      <span class="mark" aria-hidden="true">ส</span>
+      <h2 id="dory-h" style="margin:0">Dory, your team's assistant in Discord</h2>
+      <p>Post a receipt photo and Dory records it. Executives ask about spending and get an answer in seconds.
+        Meeting summaries from this page arrive as Dory too.</p>
+      <ul>
+        <li>Click the button, pick your Discord server, then <strong>Authorize</strong>.</li>
+        <li>Nothing to install and no code to write.</li>
+      </ul>
+    </div>
+    <div class="row" style="margin-top:14px">
+      <a class="btn discord" id="dory-add" href="__DORY_INVITE_URL__" target="_blank" rel="noopener">Add Dory to Discord</a>
+      <span class="hint" id="dory-soon" hidden>Coming soon: the Discord app is being registered.</span>
     </div>
   </section>
 </main>
@@ -496,6 +518,12 @@ els.newBtn.addEventListener("click", () => {
 window.addEventListener("beforeunload", (e) => {
   if (st.recorder && st.recorder.state === "recording") { e.preventDefault(); e.returnValue = ""; }
 });
+</script>
+<script>
+(() => {
+  const add = document.getElementById("dory-add");
+  if (!add.getAttribute("href")) { add.hidden = true; document.getElementById("dory-soon").hidden = false; }
+})();
 </script>
 </body>
 </html>

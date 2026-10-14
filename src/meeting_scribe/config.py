@@ -30,6 +30,10 @@ class Settings(BaseSettings):
 
     discord_webhook_url: str = ""
 
+    # Public Discord application id of the Dory bot. Not a secret; it only builds the
+    # "Add Dory to Discord" link on the home page. Empty hides the link.
+    dory_discord_client_id: str = ""
+
 
 @lru_cache
 def get_settings() -> Settings:
