@@ -105,8 +105,24 @@ A second package, `src/dory/`, is a Discord bot. Staff post receipt photos or PD
 channel; Gemini (Vertex AI) extracts vendor, date, totals and a category into a ledger, flags
 low-confidence or duplicate receipts, and replies in Thai. Executives ask questions in Thai
 ("how much did we spend on ingredients this week?") and get answers from ledger tool calls, plus an
-optional daily digest. Non-executives only see their own receipts. Data is kept in local SQLite for now;
-Firestore and a Cloud Run worker pool are planned, not built, and the bot is not deployed.
+optional daily digest. Non-executives only see their own receipts.
+
+- **Q&A runs on Google ADK**: an `LlmAgent` (Gemini on Vertex) with four ledger `FunctionTool`s that
+  are built per request around the asker's scope, so the model cannot widen it. At most 4 tool rounds.
+- **Storage**: `DORY_STORE=sqlite` (default, local dev) or `firestore` (collection
+  `DORY_FIRESTORE_COLLECTION`, default `dory_receipts`; no composite index needed; aggregation is done
+  in Python over the date-filtered query, which is fine at shop scale). Optionally archive the original
+  receipt files to Cloud Storage with `DORY_RECEIPT_BUCKET` (object prefix `dory-receipts/`, the
+  `gs://` URI is saved on the record).
+- **Deep tasks (executives only)**: send `งานใหญ่: <task>` or `/deep <task>`. Dory acknowledges at
+  once, exports the receipts the caller may see into a throwaway workspace and runs **Gemini CLI** headless
+  there (isolated HOME, minimal environment, file-only tools, timeout `DORY_DEEP_TASK_TIMEOUT`), then posts
+  the Thai report (attached as `report.md` when long) with seconds, tokens and the models actually used.
+  Gemini CLI is an external Node binary that `uv` does not install: set `DORY_GEMINI_CLI_PATH`, otherwise
+  deep tasks are disabled. Model pinning caveat: with Vertex, the CLI rewrites `gemini-3.5-flash` to
+  `gemini-3.8-flash`, so the default is `DORY_DEEP_TASK_MODEL=gemini-3-flash-preview`.
+
+The Cloud Run worker pool is planned, not built, and the bot is not deployed.
 
 Discord setup:
 
@@ -118,8 +134,9 @@ Discord setup:
 4. Mark executives with `DORY_EXEC_USER_IDS` or a Discord role named in `DORY_EXEC_ROLE_NAMES`
    (default `ผู้บริหาร,Executive`).
 
-Other keys: `DORY_DIGEST_TIME`, `DORY_DB_PATH`, `DORY_GCP_PROJECT`, `DORY_GEMINI_LOCATION`,
-`DORY_GEMINI_MODEL`, `DORY_TZ` (see `.env.example`). All Dory variables carry the `DORY_` prefix so they
+Other keys: `DORY_DIGEST_TIME`, `DORY_STORE`, `DORY_DB_PATH`, `DORY_FIRESTORE_COLLECTION`,
+`DORY_RECEIPT_BUCKET`, `DORY_GEMINI_CLI_PATH`, `DORY_DEEP_TASK_TIMEOUT`, `DORY_DEEP_TASK_MODEL`,
+`DORY_GCP_PROJECT`, `DORY_GEMINI_LOCATION`, `DORY_GEMINI_MODEL`, `DORY_TZ` (see `.env.example`). All Dory variables carry the `DORY_` prefix so they
 never collide with Meeting Scribe's.
 
 ```bash
@@ -127,6 +144,8 @@ uv run python -m dory                                   # run the bot (needs ADC
 uv run python scripts/dory_seed_demo.py ./data/demo.db  # seed a demo ledger
 DORY_DB_PATH=./data/demo.db uv run python -m dory.cli ask "สรุปค่าใช้จ่ายสัปดาห์นี้" --as-exec
 uv run python -m dory.cli extract receipt.png           # run extraction on a local file
+DORY_GEMINI_CLI_PATH=/path/to/gemini DORY_DB_PATH=./data/demo.db \
+  uv run python -m dory.cli deep "วิเคราะห์ค่าใช้จ่ายเดือนนี้ แล้วเขียนรายงาน" --as-exec
 uv run pytest -m live -q                                 # one real Vertex call (skipped by default)
 ```
 
