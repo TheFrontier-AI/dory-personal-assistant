@@ -44,8 +44,8 @@ Gemini (`gemini-3.5-flash`, transcribe + diarize) → Firestore. On Stop: `/fini
 ## Dory (`src/dory/`) — second package
 
 Discord bot "ดอรี่": receipt photos to an expense ledger, Thai executive Q&A. Env vars are all
-`DORY_*` (see `.env.example`). `DORY_STORE=sqlite` (default) or `firestore`. The Cloud Run worker pool
-is still **not built** and Dory is **not deployed**. Bot-facing replies and prompts are Thai.
+`DORY_*` (see `.env.example`). `DORY_STORE=sqlite` (default) or `firestore`. Deployment is prepared but **not run**: `Dockerfile.dory`, `cloudbuild.dory.yaml`, `scripts/deploy_dory.sh`
+(dry-run by default, `--apply` to execute; README "Deploying Dory"). Never use `--apply` without human approval. Bot-facing replies and prompts are Thai.
 
 | File | Role |
 | --- | --- |
