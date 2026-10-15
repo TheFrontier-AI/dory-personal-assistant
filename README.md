@@ -119,6 +119,15 @@ opens the private one-time link (valid 15 minutes) to manage the server in the h
 Google. Executives are the owner, members with Administrator or Manage Server, members with a role in the
 server's executive role names (default `ผู้บริหาร`, `Executive`) and `DORY_EXEC_USER_IDS`.
 
+- **Channel modes** (`/โหมด` or `/mode`, or the hub's "โหมดของแต่ละห้อง"): per channel, `🔇 off` (ignore the
+  channel), `👂 listen` (receipts get an emoji reaction only; an @mention gets 👂), `🙋 call` (default:
+  answers when @mentioned or called by name, `ดอรี่` and misspellings but not `สลิป`; for 3 minutes
+  afterwards a cheap gate model, `DORY_GATE_MODEL`, decides whether each message is meant for Dory, then a
+  short sign-off), `🎧 join` (call, plus Dory may chime in on questions after the channel is quiet for 30 s,
+  at most 3 times per hour per channel) and `💬 chat` (answers every message; the `คุยกับน้องดอรี่` channel
+  and ask channels). Only server managers or executives may change a mode. `@Dory เงียบก่อน` makes the
+  channel `listen` for an hour; `@Dory คุยได้แล้ว` ends it. The old "any channel named dory answers
+  everything" rule is gone.
 - **Q&A runs on Google ADK**: an `LlmAgent` (Gemini on Vertex) with four ledger `FunctionTool`s that
   are built per request around the asker's scope, so the model cannot widen it. At most 4 tool rounds.
 - **Storage**: `DORY_STORE=sqlite` (default, local dev) or `firestore` (collection
