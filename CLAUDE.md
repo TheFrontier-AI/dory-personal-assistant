@@ -37,13 +37,13 @@ Gemini (`gemini-3.5-flash`, transcribe + diarize) → Firestore. On Stop: `/fini
 | `pipeline.py` | `process_chunk`, `finalize` (idempotent, per-process lock) |
 | `app.py` | FastAPI routes; health check is `/health` (Cloud Run reserves `/healthz`) |
 | `static/index.html` | Recorder UI, live transcript, summary |
-| `hub.py` / `static/hub.html` | Dory command center: `/hub` (Thai) + `/api/hub/{me,settings,activity,ask}`. Google ID token as Bearer, verified against `HUB_GOOGLE_CLIENT_ID`, email must be in `HUB_ADMIN_EMAILS`; empty config = 503. No server secret. |
+| `hub.py` / `static/hub.html` | Dory command center, multi-guild: `/hub` (Thai) + `/api/hub/{me,guilds,link}` and `/api/hub/guilds/{id}/{settings,activity,ask}`. Google ID token as Bearer, verified against `HUB_GOOGLE_CLIENT_ID` (empty = 503); any verified account signs in, guild routes need the email in that guild's `admin_emails` (else 403); `HUB_ADMIN_EMAILS` = optional super admins (all guilds + meeting activity). `POST /api/hub/link` redeems a `/ตั้งค่า` code in a Firestore transaction. No server secret, no Discord secret or token in the web service. |
 | `scripts/deploy.sh` | Idempotent Cloud Run deploy + IAM + Secret Manager + Pub/Sub push subscription |
 | `scripts/resummarize_dry_run.py` | Re-run the summarizer on a stored meeting and print before/after. Read-only, but calls Vertex AI. |
 
 ## Dory (`src/dory/`) — second package
 
-Discord bot "ดอรี่": receipt photos to an expense ledger, Thai executive Q&A. Env vars are all
+Discord bot "ดอรี่" (display name Dory), **multi-tenant**: tenant key = Discord guild id; any server adds it via the public invite and gets an isolated ledger and settings with no setup. Receipt photos to an expense ledger, Thai executive Q&A. Env vars are all
 `DORY_*` (see `.env.example`). `DORY_STORE=sqlite` (default) or `firestore`. Deployment is prepared but **not run**: `Dockerfile.dory`, `cloudbuild.dory.yaml`, `scripts/deploy_dory.sh`
 (dry-run by default, `--apply` to execute; README "Deploying Dory"). Never use `--apply` without human approval. Bot-facing replies and prompts are Thai.
 
@@ -51,16 +51,16 @@ Discord bot "ดอรี่": receipt photos to an expense ledger, Thai executi
 | --- | --- |
 | `config.py` | `Settings` (pydantic-settings, `DORY_` prefix, `.env`) |
 | `models.py` | `Receipt`, `ReceiptExtraction`, categories |
-| `store.py` | `Store` protocol, `SQLiteStore`, `make_store` (`DORY_STORE`) |
-| `firestore_store.py` | `FirestoreStore`: doc id = sha256, transactional int id counter in `<collection>_meta`, ISO `effective_date` range query server-side, everything else in Python (no composite index; shop scale only) |
-| `archive.py` | Optional GCS archive of original receipts (`DORY_RECEIPT_BUCKET`, prefix `dory-receipts/`), best effort |
+| `store.py` | `Store` protocol (reads take `guild_id` first; dedupe is per guild), `SQLiteStore` (old DBs rebuilt with `guild_id`, rows = guild 0, UNIQUE(guild_id, sha256)), `make_store` (`DORY_STORE`) |
+| `firestore_store.py` | `FirestoreStore`: doc id = `{guild_id}_{sha256}`, transactional int id counter in `<collection>_meta`, every query starts with `guild_id ==` server-side, date range and the rest in Python (no composite index; shop scale only) |
+| `archive.py` | Optional GCS archive of original receipts (`DORY_RECEIPT_BUCKET`, objects `dory-receipts/{guild_id}/{sha256}.ext`), best effort |
 | `llm.py` | Vertex Gemini client + retry on transient errors |
 | `extract.py` | Receipt extraction, dedupe, ingest, corrections |
-| `qa.py` | Expense Q&A as a Google ADK `LlmAgent` + `InMemoryRunner`; `build_tools(LedgerTools)` makes per-request FunctionTools bound to the caller (`forced_submitter_id`), `ask`/`ask_async` return `Answer`; max 4 tool rounds |
-| `deep_task.py` | Executive "งานใหญ่:" / `/deep` tasks: caller-scoped CSV export + TASK.md in a temp dir, Gemini CLI headless with isolated HOME and a pinned model, collects `report.md`, always deletes the temp dir |
+| `qa.py` | Expense Q&A as a Google ADK `LlmAgent` + `InMemoryRunner`; `build_tools(LedgerTools)` makes per-request FunctionTools bound to the guild (`guild_id`) and the caller (`forced_submitter_id`), neither is in a tool schema, `ask`/`ask_async` return `Answer`; max 4 tool rounds |
+| `deep_task.py` | Executive "งานใหญ่:" / `/deep` tasks: guild- and caller-scoped CSV export + TASK.md in a temp dir, Gemini CLI headless with isolated HOME and a pinned model, collects `report.md`, always deletes the temp dir |
 | `digest.py` | Daily digest text |
-| `team_settings.py` | Hub-managed Firestore doc `dory_teams/default` (feature toggles, channel ids, digest time); the bot reads it cached 60 s, fail-open, only with `DORY_STORE=firestore` |
-| `bot.py` / `__main__.py` | Discord client / `python -m dory` |
+| `guild_settings.py` | Firestore `dory_guilds/{guild_id}` (features, receipt/ask/digest channels, digest time, `exec_role_names`, `admin_emails`, bot-synced name/icon/`channels`/`installed_at`/`active`) and one-time `dory_link_codes/{code}`; `GuildStore`, in-memory `MemoryGuildStore` (local dev, tests), `BotGuildSettings` (60 s cache per guild, fail-open) |
+| `bot.py` / `__main__.py` | Discord client / `python -m dory`. Join/remove/channel events sync the guild doc; intake = receipt channels, channels named `ใบเสร็จ`/`receipt`, or @mention + file; executives = owner, Administrator/Manage Server, exec role names, `DORY_EXEC_USER_IDS`; per-guild digest; global slash commands `/ตั้งค่า` + `/setup` (ephemeral hub link) |
 | `cli.py` | `python -m dory.cli extract|ask|deep|digest` for offline testing |
 | `scripts/dory_seed_demo.py` | Seed a demo SQLite ledger |
 
@@ -71,9 +71,10 @@ Vertex, real Firestore (throwaway `dory_receipts_test_<random>` collection, dele
 
 Dory env vars beyond the basics: `DORY_STORE`, `DORY_FIRESTORE_COLLECTION`, `DORY_RECEIPT_BUCKET`
 (empty = no archive), `DORY_GEMINI_CLI_PATH` (empty = deep tasks disabled), `DORY_DEEP_TASK_TIMEOUT`
-(600), `DORY_DEEP_TASK_MODEL` (`gemini-3-flash-preview`), `DORY_TEAM_COLLECTION` (`dory_teams`),
-`DORY_TEAM_ID` (`default`). Hub (web service) env: `HUB_GOOGLE_CLIENT_ID`, `HUB_ADMIN_EMAILS`,
-`DORY_DISCORD_CLIENT_ID`; setup in README "Dory command center".
+(600), `DORY_DEEP_TASK_MODEL` (`gemini-3-flash-preview`), `DORY_GUILD_COLLECTION` (`dory_guilds`),
+`DORY_HUB_URL` (Cloud Run URL; target of `/ตั้งค่า` links). Hub (web service) env: `HUB_GOOGLE_CLIENT_ID`
+(required), `HUB_ADMIN_EMAILS` (optional super admins), `DORY_DISCORD_CLIENT_ID`, `DORY_GUILD_COLLECTION`;
+setup in README "Dory command center". Meetings are not per guild yet (hub shows them to super admins only).
 
 **Gemini CLI is an external Node binary, not installed by uv** (tested 0.64.0). Never run it in a directory
 with untrusted `.gemini/` or `.env`; `deep_task.py` uses an empty temp workspace and an isolated

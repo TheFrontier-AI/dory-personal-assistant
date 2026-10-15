@@ -8,9 +8,9 @@
 # Reads from the local environment (never from .env, never echoed): DORY_DISCORD_TOKEN.
 # Optional pass-through: DORY_RECEIPT_CHANNEL_IDS, DORY_ASK_CHANNEL_IDS, DORY_EXEC_ROLE_NAMES,
 # DORY_EXEC_USER_IDS, DORY_DIGEST_TIME, DORY_DIGEST_CHANNEL_ID, DORY_RECEIPT_BUCKET,
-# DORY_FIRESTORE_COLLECTION, DORY_TEAM_COLLECTION, DORY_TEAM_ID, DORY_GEMINI_MODEL,
+# DORY_FIRESTORE_COLLECTION, DORY_GUILD_COLLECTION, DORY_HUB_URL, DORY_GEMINI_MODEL,
 # DORY_DEEP_TASK_TIMEOUT, DORY_DEEP_TASK_MODEL. For --configure-hub: HUB_GOOGLE_CLIENT_ID,
-# HUB_ADMIN_EMAILS, DORY_DISCORD_CLIENT_ID.
+# DORY_DISCORD_CLIENT_ID, DORY_GUILD_COLLECTION and (optional super admins) HUB_ADMIN_EMAILS.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -56,7 +56,7 @@ gc() { gcloud --project "$PROJECT" "$@"; }
 configure_hub() {
   echo "==> Hub settings on existing service $HUB_SERVICE (update only; max-instances untouched)"
   local pairs=("DORY_STORE=firestore") missing=()
-  for k in HUB_GOOGLE_CLIENT_ID HUB_ADMIN_EMAILS DORY_DISCORD_CLIENT_ID; do
+  for k in HUB_GOOGLE_CLIENT_ID HUB_ADMIN_EMAILS DORY_DISCORD_CLIENT_ID DORY_GUILD_COLLECTION; do
     if [ -n "${!k:-}" ]; then pairs+=("$k=${!k}"); else missing+=("$k"); fi
   done
   [ ${#missing[@]} -eq 0 ] || echo "    not set locally, skipped: ${missing[*]}"
@@ -131,7 +131,7 @@ ENV_PAIRS=("DORY_STORE=firestore" "DORY_GCP_PROJECT=$PROJECT"
            "DORY_GEMINI_LOCATION=${DORY_GEMINI_LOCATION:-global}" "DORY_TZ=Asia/Bangkok")
 for k in DORY_RECEIPT_CHANNEL_IDS DORY_ASK_CHANNEL_IDS DORY_EXEC_ROLE_NAMES DORY_EXEC_USER_IDS \
          DORY_DIGEST_TIME DORY_DIGEST_CHANNEL_ID DORY_RECEIPT_BUCKET DORY_FIRESTORE_COLLECTION \
-         DORY_TEAM_COLLECTION DORY_TEAM_ID DORY_GEMINI_MODEL DORY_DEEP_TASK_TIMEOUT \
+         DORY_GUILD_COLLECTION DORY_HUB_URL DORY_GEMINI_MODEL DORY_DEEP_TASK_TIMEOUT \
          DORY_DEEP_TASK_MODEL; do
   [ -z "${!k:-}" ] || ENV_PAIRS+=("$k=${!k}")
 done
