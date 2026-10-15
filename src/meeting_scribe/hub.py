@@ -105,6 +105,19 @@ def get_dory_runtime() -> tuple[Any, Any]:
     return _dory_runtime()
 
 
+def get_memory_store() -> Any:
+    """The bot's memory store (same DORY_STORE settings). Overridden in tests."""
+    return _memory_store()
+
+
+@lru_cache
+def _memory_store() -> Any:
+    from dory.memory_store import make_memory_store
+
+    s, store = get_dory_runtime()
+    return make_memory_store(s, store)
+
+
 @dataclass
 class GuildAccess:
     guild_id: int
@@ -216,6 +229,21 @@ async def hub_link(
 @router.get("/api/hub/guilds/{guild_id}/settings")
 async def hub_get_settings(access: GuildAccess = Depends(guild_admin)) -> GuildSettings:
     return access.settings
+
+
+@router.get("/api/hub/guilds/{guild_id}/memory-status")
+async def hub_memory_status(
+    access: GuildAccess = Depends(guild_admin),
+    memory: Any = Depends(get_memory_store),
+    runtime: tuple[Any, Any] = Depends(get_dory_runtime),
+) -> dict:
+    """History-import progress for the memory card: channels, messages, historical images."""
+    from dory.memory_import import import_progress
+
+    s, _store = runtime
+    cap = getattr(s, "memory_import_images_per_day", 300)
+    today = datetime.now(UTC).astimezone(getattr(s, "zone", UTC)).date().isoformat()
+    return await run_in_threadpool(import_progress, memory, access.guild_id, cap, today)
 
 
 @router.put("/api/hub/guilds/{guild_id}/settings")
