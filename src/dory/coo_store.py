@@ -23,6 +23,7 @@ PREFS = "dory_notif_prefs"  # per (guild, user) briefing / alert preferences
 ASKS = "dory_asks"  # messages that mention a member and ask for something
 ALERTS = "dory_doc_alerts"  # important documents and who they concern
 DELIVERIES = "dory_deliveries"  # files Dory forwarded for people (audit log)
+PROFILES = "dory_profiles"  # per (guild, user) personal preferences (dory.profiles)
 
 
 class DocStore(Protocol):
