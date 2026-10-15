@@ -1,0 +1,12 @@
+# Builds Dockerfile.dory (Cloud Build's --tag only supports a file named "Dockerfile").
+# Used by scripts/deploy_dory.sh: gcloud builds submit --config cloudbuild.dory.yaml
+#   --substitutions _IMAGE=<region>-docker.pkg.dev/<project>/<repo>/dory-bot:<tag> .
+steps:
+  - name: gcr.io/cloud-builders/docker
+    args: ["build", "-f", "Dockerfile.dory", "-t", "${_IMAGE}", "."]
+images:
+  - "${_IMAGE}"
+substitutions:
+  _IMAGE: ""
+options:
+  logging: CLOUD_LOGGING_ONLY
