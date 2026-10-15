@@ -12,6 +12,7 @@ from conftest import ALICE, GUILD, OTHER_GUILD, FixedClockSettings
 from dory import bot as botmod
 from dory.bot import SecretaryBot
 from dory.guild_settings import GuildSettingsUpdate, MemoryGuildStore
+from dory.i18n import t
 
 ME = SimpleNamespace(id=999, mention="<@999>")
 OWNER, ADMIN, MANAGER, STAFF, BOSS = 1, 2, 3, 4, 5
@@ -183,7 +184,15 @@ async def test_answer_asks_with_the_message_guild(bot, world, monkeypatch):
     del bot._answer  # use the real one
     m = Msg(world.b, world.b.text_channels[1], member(world.b, STAFF), "ยอดเท่าไร", mention=True)
     await bot._answer(m, world.b, m.author)
-    assert seen == [{"guild_id": OTHER_GUILD, "is_exec": False, "user_id": STAFF, "history": ""}]
+    assert seen == [
+        {
+            "guild_id": OTHER_GUILD,
+            "is_exec": False,
+            "user_id": STAFF,
+            "history": "",
+            "language": "th",
+        }
+    ]
     assert m.replies == ["ok"]
 
 
@@ -200,7 +209,7 @@ async def test_deep_task_runs_on_the_asking_guild(bot, world, monkeypatch):
     del bot._answer
     await bot._answer(msg, world.b, msg.author)  # the owner is an executive
     await asyncio.gather(*bot._deep_tasks)
-    assert seen == [{"guild_id": OTHER_GUILD}]
+    assert seen == [{"guild_id": OTHER_GUILD, "lang": "th"}]
 
 
 async def _append(lst, v):
@@ -332,7 +341,7 @@ async def test_setup_command_gives_an_ephemeral_one_time_link(bot, world):
 async def test_setup_command_refused_for_regular_members(bot, world):
     it = Interaction(world.a, member(world.a, STAFF, roles=["Executive"]))
     await bot.handle_setup(it)
-    assert it.sent == [(botmod.SETUP_DENIED_MESSAGE, True)]
+    assert it.sent == [(t("setup_denied", "th"), True)]
     assert bot.guilds_store.client.collection("dory_link_codes").docs == {}
     dm = Interaction(None, SimpleNamespace(id=1))
     await bot.handle_setup(dm)
@@ -349,7 +358,18 @@ async def test_setup_command_allows_the_owner_and_admins(bot, world):
 def test_slash_commands_are_registered_with_thai_name_and_english_alias(bot):
     bot._register_commands()
     cmds = {c.name: c for c in bot.tree.get_commands()}
-    assert set(cmds) == {"ตั้งค่า", "setup", "เข้าประชุม", "join", "ออกประชุม", "leave", "โหมด", "mode"}
+    assert set(cmds) == {
+        "ตั้งค่า",
+        "setup",
+        "เข้าประชุม",
+        "join",
+        "ออกประชุม",
+        "leave",
+        "โหมด",
+        "mode",
+        "ภาษา",
+        "language",
+    }
     assert all(c.guild_only for c in cmds.values())
 
 
@@ -405,8 +425,6 @@ async def test_digest_sends_that_guilds_numbers_once_per_day(bot, world, seeded)
 async def test_bare_mention_uses_previous_message_or_greets(bot, world, monkeypatch):
     from datetime import UTC, datetime, timedelta
 
-    from dory.bot import GREETING_MESSAGE
-
     seen = []
     monkeypatch.setattr(
         "dory.bot.ask",
@@ -439,7 +457,7 @@ async def test_bare_mention_uses_previous_message_or_greets(bot, world, monkeypa
     stale = Chan([msg(None, "เก่ามาก", now - timedelta(minutes=10))])
     lonely = msg(stale, "<@999>", now)
     await bot._answer(lonely, world.a, author)
-    assert lonely.replies == [GREETING_MESSAGE]
+    assert lonely.replies == [t("greeting", "th")]
 
 
 async def test_reply_to_a_dory_message_is_answered(bot, world):
