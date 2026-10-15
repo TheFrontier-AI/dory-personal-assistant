@@ -69,8 +69,11 @@ def _get_or_404(meeting_id: str) -> Meeting:
 
 # Bot permissions: View Channels, Send Messages, Embed Links, Attach Files,
 # Read Message History, Add Reactions, Manage Channels (creates #คุยกับน้องดอรี่ on join),
-# Connect (joins voice meetings to listen).
-DORY_PERMISSIONS = 1166416
+# Connect (joins voice meetings to listen), Create Events and Manage Events (schedules and edits
+# Discord Scheduled Events for meetings).
+CREATE_EVENTS = 1 << 44
+MANAGE_EVENTS = 1 << 33
+DORY_PERMISSIONS = 1166416 | CREATE_EVENTS | MANAGE_EVENTS
 
 
 def dory_invite_url(client_id: str) -> str:
