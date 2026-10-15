@@ -40,6 +40,11 @@ class Settings(BaseSettings):
     # Cheap model for the "is this addressed to Dory?" yes/no gates (see dory.gate).
     gate_model: str = "gemini-3.5-flash-lite"
     low_confidence: float = 0.7
+    # Spoken replies in voice meetings (see dory.speech). The TTS call reuses the bot's Vertex
+    # client, so it runs in `gemini_location` (global; the Gemini TTS models work there).
+    voice_reply: bool = True
+    tts_model: str = "gemini-2.5-flash-tts"
+    tts_voice: str = "Puck"  # male voice, matches the persona (ends with ครับ)
     # Per-guild settings document `{guild_collection}/{guild_id}` (see dory.guild_settings).
     guild_collection: str = "dory_guilds"
     # Where `/ตั้งค่า` links point: the web service that serves /hub.

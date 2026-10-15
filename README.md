@@ -163,6 +163,12 @@ Needs the **Connect** permission, the voice-states intent (non-privileged), `lib
 `Dockerfile.dory`) and `discord-ext-voice-recv` + `davey` (Discord's DAVE end-to-end encryption; see
 `src/dory/meeting.py`). Toggle: hub feature `voice_meetings`.
 
+**Spoken replies.** When called by name in a voice meeting, Dory also says a 1-2 sentence version of
+the answer out loud (Gemini TTS `DORY_TTS_MODEL`, default `gemini-2.5-flash-tts`, voice `DORY_TTS_VOICE`,
+default `Puck`); the full answer still goes to the chat. While Dory is speaking and for 1.5 s after,
+wake words are ignored so its own voice coming back through someone's speakers cannot re-trigger it.
+Turn it off with `DORY_VOICE_REPLY=false`.
+
 Discord setup (once, by the operator):
 
 1. Create an application and bot at the Discord Developer Portal (name it **Dory**); copy the bot token.
