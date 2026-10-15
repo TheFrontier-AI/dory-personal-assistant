@@ -113,7 +113,7 @@ def test_index_renders_dory_invite_link(env, client):
     r = client.get("/")
     assert (
         "https://discord.com/oauth2/authorize?client_id=123456789012345678"
-        "&scope=bot+applications.commands&permissions=117824"
+        "&scope=bot+applications.commands&permissions=1166416"
     ) in r.text
     assert "__DORY_INVITE_URL__" not in r.text
 

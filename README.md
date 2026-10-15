@@ -148,7 +148,7 @@ Discord setup (once, by the operator):
 
 1. Create an application and bot at the Discord Developer Portal (name it **Dory**); copy the bot token.
 2. Enable the **Message Content** and **Server Members** privileged intents. The public invite link
-   (`dory_invite_url`: scopes `bot` + `applications.commands`, permissions 117824) is built from
+   (`dory_invite_url`: scopes `bot` + `applications.commands`, permissions 1166416) is built from
    `DORY_DISCORD_CLIENT_ID` and shown on the home page and in the hub.
 3. Put `DORY_DISCORD_TOKEN` in `.env`. The slash commands are registered globally at startup (Discord can
    take up to an hour to show new global commands).
