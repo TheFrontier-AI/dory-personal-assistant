@@ -34,6 +34,14 @@ class Settings(BaseSettings):
     # "Add Dory to Discord" link on the home page. Empty hides the link.
     dory_discord_client_id: str = ""
 
+    # Dory hub (/hub). Both empty = every /api/hub call fails closed.
+    # OAuth 2.0 Web client id (public, not a secret) used to verify Google ID tokens.
+    hub_google_client_id: str = ""
+    hub_admin_emails: str = ""  # comma-separated Google accounts allowed into the hub
+    # Firestore doc `{dory_team_collection}/{dory_team_id}` holds the team's Dory settings.
+    dory_team_collection: str = "dory_teams"
+    dory_team_id: str = "default"
+
 
 @lru_cache
 def get_settings() -> Settings:
