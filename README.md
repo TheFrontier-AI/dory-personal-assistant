@@ -149,6 +149,29 @@ DORY_GEMINI_CLI_PATH=/path/to/gemini DORY_DB_PATH=./data/demo.db \
 uv run pytest -m live -q                                 # one real Vertex call (skipped by default)
 ```
 
+## Dory command center (`/hub`)
+
+A Thai web page in the same app and Cloud Run service. Admins sign in with Google, see connected
+channels, the latest receipts and meetings, ask Dory expense questions as an executive, and
+switch Dory's features (receipts, Q&A, daily digest, deep tasks) and channel ids on and off.
+Settings live in one Firestore document, `dory_teams/default`; the bot re-reads it every
+~60 s when `DORY_STORE=firestore` (SQLite/local dev: everything on). Hub channel ids are added to
+`DORY_RECEIPT_CHANNEL_IDS` / `DORY_ASK_CHANNEL_IDS`; the hub's digest channel and time override
+the env values when saved. Missing document or a read error means every feature stays on.
+
+Auth needs no server secret: the page uses Google Identity Services, the API verifies the Google
+ID token against `HUB_GOOGLE_CLIENT_ID` and allows only emails in `HUB_ADMIN_EMAILS`. With either
+empty every `/api/hub/*` call returns 503.
+
+One manual setup step: in Google Cloud Console (APIs & Services, Credentials) create an
+**OAuth 2.0 Client ID** of type *Web application*. Authorized JavaScript origins: the Cloud Run URL
+and `http://localhost:8080`. No redirect URI or client secret is needed. Then set
+`HUB_GOOGLE_CLIENT_ID` (the public client id) and `HUB_ADMIN_EMAILS` (comma-separated). Optional:
+`DORY_DISCORD_CLIENT_ID` for the Add-to-Discord button. `DORY_TEAM_COLLECTION` /
+`DORY_TEAM_ID` (defaults `dory_teams` / `default`) must match between the web service and the bot.
+The web service reads the same `DORY_STORE` settings as the
+bot, so set `DORY_STORE=firestore` there to see the real ledger. Deep tasks are Discord-only.
+
 ## Limitations
 
 - Desktop Chrome/Edge only; tab-audio capture is not available on mobile or Firefox/Safari.

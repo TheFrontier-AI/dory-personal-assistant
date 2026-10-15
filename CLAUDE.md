@@ -37,6 +37,7 @@ Gemini (`gemini-3.5-flash`, transcribe + diarize) → Firestore. On Stop: `/fini
 | `pipeline.py` | `process_chunk`, `finalize` (idempotent, per-process lock) |
 | `app.py` | FastAPI routes; health check is `/health` (Cloud Run reserves `/healthz`) |
 | `static/index.html` | Recorder UI, live transcript, summary |
+| `hub.py` / `static/hub.html` | Dory command center: `/hub` (Thai) + `/api/hub/{me,settings,activity,ask}`. Google ID token as Bearer, verified against `HUB_GOOGLE_CLIENT_ID`, email must be in `HUB_ADMIN_EMAILS`; empty config = 503. No server secret. |
 | `scripts/deploy.sh` | Idempotent Cloud Run deploy + IAM + Secret Manager + Pub/Sub push subscription |
 | `scripts/resummarize_dry_run.py` | Re-run the summarizer on a stored meeting and print before/after. Read-only, but calls Vertex AI. |
 
@@ -58,6 +59,7 @@ is still **not built** and Dory is **not deployed**. Bot-facing replies and prom
 | `qa.py` | Expense Q&A as a Google ADK `LlmAgent` + `InMemoryRunner`; `build_tools(LedgerTools)` makes per-request FunctionTools bound to the caller (`forced_submitter_id`), `ask`/`ask_async` return `Answer`; max 4 tool rounds |
 | `deep_task.py` | Executive "งานใหญ่:" / `/deep` tasks: caller-scoped CSV export + TASK.md in a temp dir, Gemini CLI headless with isolated HOME and a pinned model, collects `report.md`, always deletes the temp dir |
 | `digest.py` | Daily digest text |
+| `team_settings.py` | Hub-managed Firestore doc `dory_teams/default` (feature toggles, channel ids, digest time); the bot reads it cached 60 s, fail-open, only with `DORY_STORE=firestore` |
 | `bot.py` / `__main__.py` | Discord client / `python -m dory` |
 | `cli.py` | `python -m dory.cli extract|ask|deep|digest` for offline testing |
 | `scripts/dory_seed_demo.py` | Seed a demo SQLite ledger |
@@ -69,7 +71,9 @@ Vertex, real Firestore (throwaway `dory_receipts_test_<random>` collection, dele
 
 Dory env vars beyond the basics: `DORY_STORE`, `DORY_FIRESTORE_COLLECTION`, `DORY_RECEIPT_BUCKET`
 (empty = no archive), `DORY_GEMINI_CLI_PATH` (empty = deep tasks disabled), `DORY_DEEP_TASK_TIMEOUT`
-(600), `DORY_DEEP_TASK_MODEL` (`gemini-3-flash-preview`).
+(600), `DORY_DEEP_TASK_MODEL` (`gemini-3-flash-preview`), `DORY_TEAM_COLLECTION` (`dory_teams`),
+`DORY_TEAM_ID` (`default`). Hub (web service) env: `HUB_GOOGLE_CLIENT_ID`, `HUB_ADMIN_EMAILS`,
+`DORY_DISCORD_CLIENT_ID`; setup in README "Dory command center".
 
 **Gemini CLI is an external Node binary, not installed by uv** (tested 0.64.0). Never run it in a directory
 with untrusted `.gemini/` or `.env`; `deep_task.py` uses an empty temp workspace and an isolated
