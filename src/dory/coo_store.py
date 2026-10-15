@@ -19,6 +19,10 @@ from typing import Any, Protocol
 TASKS = "dory_tasks"
 DISCLOSURES = "dory_disclosures"
 STATE = "dory_coo_state"
+PREFS = "dory_notif_prefs"  # per (guild, user) briefing / alert preferences
+ASKS = "dory_asks"  # messages that mention a member and ask for something
+ALERTS = "dory_doc_alerts"  # important documents and who they concern
+DELIVERIES = "dory_deliveries"  # files Dory forwarded for people (audit log)
 
 
 class DocStore(Protocol):
