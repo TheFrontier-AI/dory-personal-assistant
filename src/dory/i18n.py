@@ -501,7 +501,23 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "someone told Dory to leave",
     },
     "end_empty": {"th": "ทุกคนออกจากห้องแล้ว", "en": "everyone left the channel"},
-    "end_timeout": {"th": "ประชุมครบ 3 ชั่วโมง", "en": "the meeting reached 3 hours"},
+    "end_timeout": {"th": "ประชุมครบ 6 ชั่วโมง", "en": "the meeting reached 6 hours"},
+    "meet_rejoined": {
+        "th": "ดอรี่กลับเข้ามาจดประชุมต่อแล้วครับ (หลุดไปครู่หนึ่ง)",
+        "en": "Dory is back and taking notes again (it dropped out for a moment).",
+    },
+    "meet_reconnected": {
+        "th": "ดอรี่หลุดไปครู่หนึ่ง แต่กลับเข้าห้องและจดประชุมต่อแล้วครับ",
+        "en": "Dory dropped out for a moment but is back in the room and still taking notes.",
+    },
+    "meet_reconnect_failed": {
+        "th": "ดอรี่ต่อเข้าห้องเสียงกลับไม่ได้ครับ ขอปิดการประชุมและสรุปให้ตอนนี้",
+        "en": "Dory could not reconnect to the voice channel, so it is ending the meeting now.",
+    },
+    "meet_max_warning": {
+        "th": "ประชุมใกล้ครบ 6 ชั่วโมงแล้ว ดอรี่จะออกและสรุปในอีก 10 นาทีครับ",
+        "en": "The meeting hits the 6-hour limit in 10 minutes; Dory will then leave and summarize.",
+    },
     "end_disconnected": {"th": "ดอรี่หลุดจากห้องเสียง", "en": "Dory was disconnected"},
     "end_shutdown": {"th": "ดอรี่กำลังปิดระบบ", "en": "Dory is shutting down"},
     # ---------------------------------------------------------------- digest
