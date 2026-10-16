@@ -30,6 +30,7 @@ PRIVATE_CHATS = "dory_private_chats"  # per (guild, user) private Dory channel (
 PROFILES = "dory_profiles"  # per (guild, user) personal preferences (dory.profiles)
 COMPANY = "dory_company"  # per guild playbook, key "playbook" (dory.company_brain)
 CONTESTS = "dory_contests"  # competitions / hackathons / grants, key = contest id (dory.contests)
+QUOTES = "dory_quotes"  # quotations, key = base number QT-YYYY-NNNN + counters (dory.quotation)
 IDEAS = "dory_ideas"  # idea / project documents, key `{owner_id}_{slug}` (dory.ideas)
 
 
