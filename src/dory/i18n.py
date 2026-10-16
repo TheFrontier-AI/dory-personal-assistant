@@ -871,6 +871,14 @@ CATALOG: dict[str, dict[str, str]] = {
         "th": "สวัสดีครับ มีนัดประชุมใหม่ในเซิร์ฟเวอร์ {guild} จาก {by}\n📅 {title}\n🕑 {when}\n🔗 {link}",
         "en": "Hi! You are invited to a meeting on {guild} by {by}\n📅 {title}\n🕑 {when}\n🔗 {link}",
     },
+    "place_offer_dm": {
+        "th": "ดอรี่เห็นว่าคุณพิมพ์ที่อยู่ “{name}” ไว้ในห้องแชต: {address}\nให้ดอรี่จำไว้เป็นที่ส่วนตัวของคุณไหมคะ (เห็นได้คนเดียว แชร์ให้ใครทีหลังได้ ลืมได้ทุกเมื่อ) ตอบ “จำไว้” หรือ “ไม่ต้อง” ได้เลยค่ะ ดอรี่จะถามแค่ครั้งนี้ครั้งเดียว",
+        "en": "Dory noticed you wrote the address “{name}” in a channel: {address}\nShall Dory remember it as your own private place (only you can see it; you can share it later and I can forget it any time)? Just reply “remember it” or “no thanks”. I will only ask this once.",
+    },
+    "place_event_dm": {
+        "th": "📍 {where}\n🗺️ {maps}",
+        "en": "📍 {where}\n🗺️ {maps}",
+    },
     "sched_cancelled_dm": {
         "th": "การประชุม “{title}” ถูกยกเลิกแล้วครับ",
         "en": "The meeting “{title}” has been cancelled.",
