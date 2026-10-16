@@ -903,6 +903,22 @@ CATALOG: dict[str, dict[str, str]] = {
         "th": "สวัสดีค่ะ มีนัดประชุมใหม่ในเซิร์ฟเวอร์ {guild} จาก {by}\n📅 {title}\n🕑 {when}\n🔗 {link}",
         "en": "Hi! You are invited to a meeting on {guild} by {by}\n📅 {title}\n🕑 {when}\n🔗 {link}",
     },
+    "flight_delay_dm": {
+        "th": "✈️ เที่ยวบิน {flight} ({date}) ล่าช้าประมาณ {minutes} นาทีค่ะ เวลาออกใหม่ประมาณ {time}",
+        "en": "✈️ Flight {flight} ({date}) is delayed by about {minutes} minutes. New departure about {time}.",
+    },
+    "flight_gate_dm": {
+        "th": "✈️ เที่ยวบิน {flight} ({date}) เปลี่ยนประตูขึ้นเครื่องเป็น {gate} ค่ะ",
+        "en": "✈️ Flight {flight} ({date}) now boards at gate {gate}.",
+    },
+    "flight_cancelled_dm": {
+        "th": "✈️ เที่ยวบิน {flight} ({date}) ถูกยกเลิกค่ะ รบกวนติดต่อสายการบินด่วน",
+        "en": "✈️ Flight {flight} ({date}) has been cancelled. Please contact the airline.",
+    },
+    "flight_landed_dm": {
+        "th": "✈️ เที่ยวบิน {flight} ({date}) ลงจอดแล้วค่ะ",
+        "en": "✈️ Flight {flight} ({date}) has landed.",
+    },
     "place_offer_dm": {
         "th": "ดอรี่เห็นว่าคุณพิมพ์ที่อยู่ “{name}” ไว้ในห้องแชต: {address}\nให้ดอรี่จำไว้เป็นที่ส่วนตัวของคุณไหมคะ (เห็นได้คนเดียว แชร์ให้ใครทีหลังได้ ลืมได้ทุกเมื่อ) ตอบ “จำไว้” หรือ “ไม่ต้อง” ได้เลยค่ะ ดอรี่จะถามแค่ครั้งนี้ครั้งเดียว",
         "en": "Dory noticed you wrote the address “{name}” in a channel: {address}\nShall Dory remember it as your own private place (only you can see it; you can share it later and I can forget it any time)? Just reply “remember it” or “no thanks”. I will only ask this once.",
