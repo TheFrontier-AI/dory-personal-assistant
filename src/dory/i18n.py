@@ -1289,4 +1289,9 @@ CATALOG: dict[str, dict[str, str]] = {
         "th": "ผลแบบสอบถามส่งทาง DM แล้วค่ะ",
         "en": "I sent the results to you by DM.",
     },
+    # ---------------------------------------------------------------- wiki (dory.wiki_bot)
+    "wiki_post_footer": {
+        "th": "อัปเดตล่าสุด {date} · เขียนโดย {who} · ดอรี่",
+        "en": "Last updated {date} · written by {who} · via Dory",
+    },
 }
