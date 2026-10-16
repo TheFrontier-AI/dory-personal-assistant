@@ -24,6 +24,7 @@ ASKS = "dory_asks"  # messages that mention a member and ask for something
 ALERTS = "dory_doc_alerts"  # important documents and who they concern
 DELIVERIES = "dory_deliveries"  # files Dory forwarded for people (audit log)
 MINUTES = "dory_meeting_minutes"  # summary text of each finished voice meeting (minutes.py)
+APPROVALS = "dory_approvals"  # approval requests (dory.approvals)
 PROFILES = "dory_profiles"  # per (guild, user) personal preferences (dory.profiles)
 
 
