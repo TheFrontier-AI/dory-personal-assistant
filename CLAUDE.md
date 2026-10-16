@@ -56,7 +56,7 @@ Discord bot "ดอรี่" (display name Dory), **multi-tenant**: tenant key 
 | `archive.py` | Optional GCS archive of original receipts (`DORY_RECEIPT_BUCKET`, objects `dory-receipts/{guild_id}/{sha256}.ext`), best effort |
 | `llm.py` | Vertex Gemini client + retry on transient errors |
 | `extract.py` | Receipt extraction, dedupe, ingest, corrections |
-| `qa.py` Expense Q&A as a Google ADK `LlmAgent` + `InMemoryRunner`; `build_tools(LedgerTools)` makes per-request FunctionTools bound to the guild (`guild_id`) and the caller (`forced_submitter_id`), neither is in a tool schema, `ask`/`ask_async` return `Answer` (with token counts and per-tool ms); max 4 tool rounds. Addressed messages with attachments pass `files: list[FileInput]` (multimodal parts, limits in `select_files`) + `FileActions` (bot-bound `record_receipt` / `start_deep_task` tools; `Answer.receipts` lets the bot link the reply message) `MemoryTools`: `chat_days`, `chat_messages`, hybrid `chat_search` (keyword + meaning, RRF). System prompt = `stable_prompt` (cacheable) + `volatile_prompt` |
+| `qa.py` | Expense Q&A as a Google ADK `LlmAgent` + `InMemoryRunner`; `build_tools(LedgerTools)` makes per-request FunctionTools bound to the guild (`guild_id`) and the caller (`forced_submitter_id`), neither is in a tool schema, `ask`/`ask_async` return `Answer` (with token counts and per-tool ms); max 4 tool rounds. Addressed messages with attachments pass `files: list[FileInput]` (multimodal parts, limits in `select_files`) + `FileActions` (bot-bound `record_receipt` / `start_deep_task` tools; `Answer.receipts` lets the bot link the reply message). `MemoryTools`: `chat_days`, `chat_messages`, hybrid `chat_search` (keyword + meaning, RRF). System prompt = `stable_prompt` (cacheable) + `volatile_prompt` |
 | `deep_task.py` | Executive "งานใหญ่:" / `/deep` tasks: guild- and caller-scoped CSV export + TASK.md in a temp dir, Gemini CLI headless with isolated HOME and a pinned model, collects `report.md`, always deletes the temp dir |
 | `digest.py` | Daily digest text (`lang`) |
 | `i18n.py` | Reply language: `resolve_lang` (auto = Thai chars -> th, else en), `resolve_language` (channel override -> guild default), `parse_language_command`, the `CATALOG` of fixed strings and `t()` |
@@ -71,7 +71,7 @@ Discord bot "ดอรี่" (display name Dory), **multi-tenant**: tenant key 
 | `embed.py` | `VertexEmbedder` (`DORY_EMBED_*`, retry), `NullEmbedder` (kill switch), packed float32 vectors, cosine via `math.sumprod` |
 | `memory_index.py` | `IndexedMemoryStore`: per-guild cache of summaries + vectors (64 MB LRU, one load query); every memory write goes through it, so it assumes **one bot process** |
 | `recent.py` | `RecentMessages`: last messages per channel from gateway events (short-term context), primed by one Discord read, reset on reconnect; also assumes one bot process |
-| `cli.py` | `python -m dory.cli extract|ask|deep|digest` for offline testing |
+| `cli.py` | `python -m dory.cli extract\|ask\|deep\|digest` for offline testing |
 | `scripts/dory_seed_demo.py` | Seed a demo SQLite ledger |
 
 Dory tests live in `tests/dory/` (a scripted ADK `BaseLlm` and a fake Firestore; the `store` fixture runs
