@@ -113,7 +113,7 @@ def test_index_renders_dory_invite_link(env, client):
     r = client.get("/")
     from meeting_scribe.app import CREATE_EVENTS, MANAGE_EVENTS, DORY_PERMISSIONS
 
-    assert DORY_PERMISSIONS == 1166416 | (1 << 44) | (1 << 33)
+    assert DORY_PERMISSIONS == 1166416 | (1 << 44) | (1 << 33) | (1 << 49)
     assert DORY_PERMISSIONS & CREATE_EVENTS and DORY_PERMISSIONS & MANAGE_EVENTS
     assert (
         "https://discord.com/oauth2/authorize?client_id=123456789012345678"
