@@ -92,6 +92,35 @@ def t(key: str, lang: str = "th", **fmt) -> str:
 
 
 CATALOG: dict[str, dict[str, str]] = {
+    # ---------------------------------------------------------------- company learning
+    "co_btn_ok": {"th": "อนุมัติ", "en": "Approve"},
+    "co_btn_no": {"th": "ไม่อนุมัติ", "en": "Decline"},
+    "co_kind_rule": {"th": "กฎของบริษัท", "en": "company rule"},
+    "co_kind_persona": {"th": "แนวทางบุคลิก/น้ำเสียง", "en": "tone / persona note"},
+    "co_kind_glossary": {"th": "ศัพท์เฉพาะ", "en": "glossary term"},
+    "co_kind_sop": {"th": "ขั้นตอนงาน", "en": "procedure"},
+    "co_kind_faq": {"th": "คำถามที่พบบ่อย", "en": "FAQ"},
+    "co_kind_about": {"th": "ข้อมูลบริษัท", "en": "company info"},
+    "co_kind_industry": {"th": "ประเภทธุรกิจ", "en": "kind of business"},
+    "co_suggest_dm": {
+        "th": "{name} เสนอให้ดอรี่จำเรื่องนี้ไว้ในบริษัท ({kind}) ค่ะ\n“{text}”{detail}{link}\nอนุมัติไหมคะ",
+        "en": '{name} suggests Dory remembers this for the company ({kind}).\n"{text}"{detail}{link}\nApprove?',
+    },
+    "co_approved": {"th": "อนุมัติแล้วค่ะ ดอรี่จำไว้แล้ว", "en": "Approved. Dory has learned it."},
+    "co_declined": {"th": "ไม่อนุมัติค่ะ", "en": "Declined."},
+    "co_handled": {"th": "รายการนี้ถูกจัดการไปแล้วค่ะ", "en": "This one was already handled."},
+    "co_not_admin": {
+        "th": "เฉพาะผู้ดูแลเท่านั้นที่อนุมัติได้ค่ะ",
+        "en": "Only admins can approve this.",
+    },
+    "co_result_dm_ok": {
+        "th": "{who} อนุมัติแล้วค่ะ ดอรี่จำไว้แล้ว: “{text}”",
+        "en": '{who} approved it. Dory has learned: "{text}"',
+    },
+    "co_result_dm_no": {
+        "th": "{who} ยังไม่อนุมัติเรื่องนี้ค่ะ: “{text}”",
+        "en": '{who} did not approve this one: "{text}"',
+    },
     # ---------------------------------------------------------------- bot: general
     "qa_off": {
         "th": "ตอนนี้ปิดการถามตอบอยู่ค่ะ เปิดได้ที่หน้าศูนย์บัญชาการของดอรี่",
