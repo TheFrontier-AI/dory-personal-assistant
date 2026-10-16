@@ -28,6 +28,7 @@ AVAILABILITY = "dory_availability"  # per (guild, user) work hours and busy bloc
 APPROVALS = "dory_approvals"  # approval requests (dory.approvals)
 PRIVATE_CHATS = "dory_private_chats"  # per (guild, user) private Dory channel (private_chat)
 PROFILES = "dory_profiles"  # per (guild, user) personal preferences (dory.profiles)
+IDEAS = "dory_ideas"  # idea / project documents, key `{owner_id}_{slug}` (dory.ideas)
 
 
 class DocStore(Protocol):
