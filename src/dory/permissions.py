@@ -14,7 +14,7 @@ from .i18n import t
 # Keep equal to meeting_scribe.app.DORY_PERMISSIONS (a test checks it): View Channels, Send
 # Messages, Embed Links, Attach Files, Read Message History, Add Reactions, Manage Channels,
 # Connect, Create Events and Manage Events.
-DORY_PERMISSIONS = 1166416 | (1 << 44) | (1 << 33)
+DORY_PERMISSIONS = 1166416 | (1 << 44) | (1 << 33) | (1 << 49)  # + Send Polls
 
 # Voice helpers ("Dory · 2"...) only listen and speak: View Channel, Connect, Speak, Use Voice
 # Activity.
@@ -32,6 +32,7 @@ LABELS = {
     "speak": "Speak",
     "manage_events": "Manage Events",
     "create_events": "Create Events",
+    "send_polls": "Send Polls",
 }
 
 
