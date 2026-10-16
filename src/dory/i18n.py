@@ -101,6 +101,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "th": "ตอนนี้ปิดงานใหญ่อยู่ค่ะ เปิดได้ที่หน้าศูนย์บัญชาการของดอรี่",
         "en": "Big tasks are switched off right now. You can turn them on in Dory's command center.",
     },
+    "unlicensed": {
+        "th": "เซิร์ฟเวอร์นี้ยังไม่ได้เปิดใช้ดอรี่ค่ะ ให้ผู้ดูแลสมัครที่ {url}",
+        "en": "Dory is not activated on this server yet. An admin can subscribe at {url}",
+    },
     "dm": {
         "th": "ดอรี่แยกข้อมูลของแต่ละเซิร์ฟเวอร์ค่ะ รบกวนแท็ก {mention} ถามในห้องแชตของเซิร์ฟเวอร์ที่ต้องการนะคะ",
         "en": "Dory keeps each server's data separate. Please tag {mention} in the chat channel of "
