@@ -26,6 +26,7 @@ DELIVERIES = "dory_deliveries"  # files Dory forwarded for people (audit log)
 MINUTES = "dory_meeting_minutes"  # summary text of each finished voice meeting (minutes.py)
 AVAILABILITY = "dory_availability"  # per (guild, user) work hours and busy blocks (freetime.py)
 APPROVALS = "dory_approvals"  # approval requests (dory.approvals)
+PRIVATE_CHATS = "dory_private_chats"  # per (guild, user) private Dory channel (private_chat)
 PROFILES = "dory_profiles"  # per (guild, user) personal preferences (dory.profiles)
 
 
