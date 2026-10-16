@@ -734,6 +734,40 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "I'm listening in to take notes. Let me know if you'd prefer I didn't.",
     },
     "meet_dismiss_ack": {"th": "ได้ค่ะ", "en": "Okay!"},
+    # Visible state of the meeting (one short line in the meeting's text chat on every change)
+    "voice_state_join": {
+        "th": "👂 ดอรี่เข้ามาฟังและจดประชุมแล้วค่ะ เรียกชื่อ “ดอรี่” เมื่อต้องการนะคะ",
+        "en": "👂 Dory joined to listen and take notes. Say “Dory” when you need me.",
+    },
+    "voice_state_engaged_name": {
+        "th": "💬 ดอรี่กำลังคุยกับคุณ{name}อยู่ค่ะ",
+        "en": "💬 Dory is talking with {name}.",
+    },
+    "voice_state_engaged": {
+        "th": "💬 ดอรี่กำลังคุยอยู่ค่ะ",
+        "en": "💬 Dory is in the conversation.",
+    },
+    "voice_state_listening": {
+        "th": "👂 ดอรี่กลับไปฟังอย่างเดียวแล้วค่ะ",
+        "en": "👂 Dory is back to listening only.",
+    },
+    "voice_answer_echo": {"th": "💬 **ดอรี่:** {text}", "en": "💬 **Dory:** {text}"},
+    "voice_tool_failed": {
+        "th": "⚠️ ดอรี่ตรวจสอบให้ไม่ได้ค่ะ: {tool} ขัดข้อง ({reason})",
+        "en": "⚠️ Dory could not check that: {tool} failed ({reason})",
+    },
+    "voice_tool_failed_say": {
+        "th": "ขออภัยค่ะ ตรวจสอบให้ไม่ได้ตอนนี้ เครื่องมือค้นข้อมูลขัดข้องค่ะ",
+        "en": "Sorry, I can't check that right now. The lookup tool is not working.",
+    },
+    "ack_longer_1": {
+        "th": "ขออภัยค่ะ รอบนี้นานกว่าปกตินะคะ ยังหาอยู่ค่ะ",
+        "en": "Sorry, this is taking longer than usual. Still on it.",
+    },
+    "ack_longer_2": {
+        "th": "ช้ากว่าปกติหน่อยนะคะ ขอบคุณที่รอค่ะ ยังทำอยู่ค่ะ",
+        "en": "It's taking longer than usual, thanks for waiting. Still working.",
+    },
     "meet_not_recording": {
         "th": "งั้นดอรี่ไม่จดนะคะ มีอะไรเรียกได้เลยค่ะ",
         "en": "Then I won't take notes. Just call me if you need anything.",
