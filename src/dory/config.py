@@ -166,6 +166,10 @@ class Settings(BaseSettings):
     media_minutes_per_day: int = 120
     # Documents (dory.docs): pages of PDF/office/text files read into memory per guild/day.
     doc_pages_per_day: int = 500
+    # Promo post kits (dory.promo): image model for the AI scene (location `global`) and AI scenes
+    # per guild/day; 0 = AI scenes off (kits use the original photo).
+    promo_image_model: str = "gemini-nano-banana-2.1"
+    promo_kits_per_day: int = 20
     # Per-guild settings document `{guild_collection}/{guild_id}` (see dory.guild_settings).
     guild_collection: str = "dory_guilds"
     # PDF documents (dory.pdf_report): regular TTF/OTF with Thai glyphs; empty = search known paths.
