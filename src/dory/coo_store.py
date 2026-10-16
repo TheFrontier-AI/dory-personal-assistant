@@ -29,6 +29,7 @@ APPROVALS = "dory_approvals"  # approval requests (dory.approvals)
 PRIVATE_CHATS = "dory_private_chats"  # per (guild, user) private Dory channel (private_chat)
 PROFILES = "dory_profiles"  # per (guild, user) personal preferences (dory.profiles)
 COMPANY = "dory_company"  # per guild playbook, key "playbook" (dory.company_brain)
+CONTESTS = "dory_contests"  # competitions / hackathons / grants, key = contest id (dory.contests)
 IDEAS = "dory_ideas"  # idea / project documents, key `{owner_id}_{slug}` (dory.ideas)
 
 
