@@ -9,14 +9,14 @@ from array import array
 from types import SimpleNamespace
 
 import pytest
-from conftest import ALICE, FakeClient, FixedClockSettings, mk
+from conftest import ALICE, FakeClient, FixedClockSettings, ThaiGuildStore, mk
 from google.genai import types
 from test_meeting import SPEECH_PCM, FakeGuild, FakeVC, FakeVoiceChannel, make_member
 
 from dory import live_voice as lvm
 from dory import meeting as mt
 from dory.bot import SecretaryBot
-from dory.guild_settings import GuildSettingsUpdate, MemoryGuildStore
+from dory.guild_settings import GuildSettingsUpdate
 from dory.i18n import t
 from dory.live_voice import (
     FRAME_BYTES,
@@ -288,7 +288,7 @@ def lv(monkeypatch, tmp_path):
         ),
         store,
         FakeClient([]),
-        guilds=MemoryGuildStore(),
+        guilds=ThaiGuildStore(),
     )
     monkeypatch.setattr(SecretaryBot, "user", property(lambda s: ME))
     monkeypatch.setattr(lvm, "SEND_INTERVAL_S", 0.01)
@@ -701,7 +701,9 @@ async def test_room_scope_is_the_channels_every_human_can_read(lv):
 
 
 async def test_qa_feature_off_means_no_tools_in_the_config_and_a_refusal(lv):
-    lv.bot.guilds_store.save_settings(1000, GuildSettingsUpdate(features=dict(qa=False)), "x")
+    lv.bot.guilds_store.save_settings(
+        1000, GuildSettingsUpdate(features=dict(qa=False), default_language="th"), "x"
+    )
     await asyncio.to_thread(lv.bot.team.current, 1000)
     s, live = await lv.join(5)
     names = [d.name for d in lv.connect.configs[0].tools[0].function_declarations]

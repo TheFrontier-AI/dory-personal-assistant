@@ -8,11 +8,11 @@ from zoneinfo import ZoneInfo
 
 import discord
 import pytest
-from conftest import ALICE, GUILD, OTHER_GUILD, FixedClockSettings
+from conftest import ALICE, GUILD, OTHER_GUILD, FixedClockSettings, ThaiGuildStore
 
 from dory import bot as botmod
 from dory.bot import SecretaryBot
-from dory.guild_settings import GuildSettingsUpdate, MemoryGuildStore
+from dory.guild_settings import GuildSettingsUpdate
 from dory.i18n import t
 
 ME = SimpleNamespace(id=999, mention="<@999>")
@@ -104,7 +104,7 @@ def world(monkeypatch):
 @pytest.fixture
 def bot(world, seeded):
     b = SecretaryBot(
-        FixedClockSettings(exec_user_ids={BOSS}), seeded, None, guilds=MemoryGuildStore()
+        FixedClockSettings(exec_user_ids={BOSS}), seeded, None, guilds=ThaiGuildStore()
     )
     b.calls = []
     b._choose = lambda xs: xs[0]
