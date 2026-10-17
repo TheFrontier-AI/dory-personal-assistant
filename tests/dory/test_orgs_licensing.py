@@ -13,7 +13,7 @@ from fake_firestore import FakeFirestore
 from test_bot_multitenant import STAFF, member
 from test_modes import TMsg, bot, send, world  # noqa: F401  (fixtures)
 
-from dory.connectors.slack import message_id_of, verify_signature
+from dory.connectors.slack import verify_signature
 from dory.coo_store import FirestoreDocStore, SQLiteDocStore
 from dory.guild_settings import MemoryGuildStore
 from dory.i18n import t
@@ -505,7 +505,13 @@ def test_slack_signature_verification():
     assert not verify_signature(secret, body, ts, sig.replace("v0=", "v1="), now=now)
 
 
-def test_slack_message_id_from_ts():
-    assert message_id_of("1700000000.000200") == 1700000000000200
-    assert message_id_of("1700000000") == 1700000000000000
+def test_slack_message_id_includes_channel():
+    from dory.orgs import NAMESPACE_BASE, message_namespaced_id
+
+    a = message_namespaced_id("slack", "T1", "C1", "1700000000.000200")
+    assert a == message_namespaced_id("slack", "T1", "C1", "1700000000.000200")
+    assert a >= NAMESPACE_BASE
+    # the same ts in another channel / workspace must not overwrite this record
+    assert a != message_namespaced_id("slack", "T1", "C2", "1700000000.000200")
+    assert a != message_namespaced_id("slack", "T2", "C1", "1700000000.000200")
     assert timedelta(0) == timedelta(0)
