@@ -254,9 +254,11 @@ def build_chat_tools(actions: ChatActions, calls: list[tuple[str, dict]]) -> lis
                 focus_remove (a topic they care about), role_note (their job, e.g. "ดูแลบัญชี"),
                 style_add / style_remove (a short instruction such as "no emoji"), delivery
                 (value dm = send my briefings, reminders and notices by DM instead of my private
-                Dory channel; channel = back to the channel).
+                Dory channel; channel = back to the channel), tone (value cheerful / friendly /
+                professional / concise / calm: how Dory talks to them in THEIR private channel
+                and DMs only; in a shared room the room's tone wins).
             value: the text (or short / normal / detailed, th / en). Empty clears nickname,
-                reply_length, language or role_note.
+                reply_length, language, tone or role_note.
         """
         return logged(
             "remember_my_preference",
