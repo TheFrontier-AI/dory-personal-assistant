@@ -1374,6 +1374,30 @@ CATALOG: dict[str, dict[str, str]] = {
         "th": "เฉพาะแอดมินหรือผู้บริหารที่ตั้งค่าคำบรรยายของทุกประชุมได้ค่ะ",
         "en": "Only admins and executives can change the captions default for every meeting.",
     },
+    "voice_talk_listen": {
+        "th": "🔇 ฟังและจดอย่างเดียว (ดอรี่จะไม่พูด ถามได้ทางข้อความ)",
+        "en": "🔇 Listening only: Dory will not speak; ask in text",
+    },
+    "voice_talk_may": {
+        "th": "🔊 ดอรี่พูดได้เมื่อถูกเรียก",
+        "en": "🔊 Dory may talk when called",
+    },
+    "voice_talk_denied": {
+        "th": "เฉพาะผู้จัดประชุมหรือผู้บริหารที่สลับโหมดเสียงของประชุมนี้ได้ค่ะ",
+        "en": "Only the person who started this meeting or an executive can change Dory's voice here.",
+    },
+    "voice_talk_default_listen": {
+        "th": "ได้ค่ะ ประชุมครั้งต่อไปดอรี่จะฟังและจดอย่างเดียว ไม่พูด (สั่ง “ดอรี่ พูดได้” เฉพาะรอบได้)",
+        "en": "Done: in meetings from now on Dory listens and takes notes only (say “Dory, you may talk” in one meeting to change it).",
+    },
+    "voice_talk_default_may": {
+        "th": "ได้ค่ะ ประชุมครั้งต่อไปดอรี่พูดได้เมื่อถูกเรียก",
+        "en": "Done: in meetings from now on Dory may talk when called.",
+    },
+    "voice_talk_default_denied": {
+        "th": "เฉพาะแอดมินหรือผู้บริหารที่ตั้งค่าเสียงของดอรี่ในทุกประชุมได้ค่ะ",
+        "en": "Only admins and executives can change Dory's voice default for every meeting.",
+    },
     "meet_rejoined": {
         "th": "ดอรี่กลับเข้ามาจดประชุมต่อแล้วค่ะ (หลุดไปครู่หนึ่ง)",
         "en": "Dory is back and taking notes again (it dropped out for a moment).",
