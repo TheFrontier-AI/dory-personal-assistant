@@ -32,6 +32,7 @@ COMPANY = "dory_company"  # per guild playbook, key "playbook" (dory.company_bra
 CONTESTS = "dory_contests"  # competitions / hackathons / grants, key = contest id (dory.contests)
 QUOTES = "dory_quotes"  # quotations, key = base number QT-YYYY-NNNN + counters (dory.quotation)
 IDEAS = "dory_ideas"  # idea / project documents, key `{owner_id}_{slug}` (dory.ideas)
+IDEA_IMAGES = "dory_idea_images"  # concept images (base64 JPEG) of an idea, key `{idea key}_{sha}`
 
 
 class DocStore(Protocol):
