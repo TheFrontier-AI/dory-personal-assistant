@@ -1071,12 +1071,12 @@ CATALOG: dict[str, dict[str, str]] = {
     "cmd_language": _bi("ดูหรือตั้งภาษาที่ดอรี่ตอบในห้องนี้", "View or set Dory's language here"),
     "cmd_language_arg": _bi("ภาษาใหม่ (ไม่เลือก = ดูภาษาปัจจุบัน)", "New language (empty = view)"),
     "cmd_voice": _bi(
-        "เสียงของดอรี่ในประชุมนี้: ฟังอย่างเดียว หรือพูดได้",
-        "Dory's voice in this meeting: listen only or may talk",
+        "เสียงดอรี่ในประชุมนี้: ฟังอย่างเดียว/พูดได้",
+        "Dory's voice here: listen only / may talk",
     ),
     "cmd_voice_arg": _bi("โหมด", "Mode"),
     "cmd_quiet": _bi(
-        "ให้ดอรี่เงียบจนกว่าจะเรียกชื่ออีกครั้ง", "Dory goes quiet until her name is called again"
+        "ให้ดอรี่เงียบจนกว่าจะเรียกชื่อ", "Dory goes quiet until called by name"
     ),
     "cmd_quiet_done": _bi(
         "เงียบแล้วค่ะ เรียกชื่อดอรี่เมื่อต้องการ", "Quiet now. Call my name when you need me."
