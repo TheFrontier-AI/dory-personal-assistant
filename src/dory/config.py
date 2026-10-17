@@ -115,9 +115,10 @@ class Settings(BaseSettings):
     # Engaged by the name alone (no question): back to listening after this long unless someone
     # addresses Dory (DORY_ENGAGED_BARE_TIMEOUT_SECONDS).
     engaged_bare_timeout_seconds: float = 12.0
-    # "Be quiet" / "เงียบก่อน": Dory says nothing and does not wake on a bare name for this long
-    # (her name with words clears it) (DORY_HUSH_HOLD_SECONDS).
-    hush_hold_seconds: float = 90.0
+    # "Be quiet" / "เงียบก่อน": Dory says nothing and does not wake on a bare name until someone
+    # says her name with words again, like a person would. 0 = no timer (default); a positive value
+    # ends the silence after that many seconds instead (DORY_HUSH_HOLD_SECONDS).
+    hush_hold_seconds: float = 0.0
     # Every listening <-> engaged change (and the join) is shown as one short line in the meeting's
     # text chat; a flip back within 15 s edits the previous line instead of posting a new one.
     voice_state_posts: bool = True
