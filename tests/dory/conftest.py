@@ -9,6 +9,7 @@ from google.genai import types
 
 from dory.config import Settings
 from dory.embed import normalize
+from dory.guild_settings import MemoryGuildStore
 from dory.models import Receipt
 from dory.store import SQLiteStore
 
@@ -180,3 +181,15 @@ def _license_off(monkeypatch):
 def _filler_cache_in_tmp(tmp_path, monkeypatch):
     """Voice clips of reusable "one moment" lines are cached on disk: never in the repo."""
     monkeypatch.setenv("DORY_FILLER_CACHE_DIR", str(tmp_path / "fillers"))
+
+
+class ThaiGuildStore(MemoryGuildStore):
+    """Guild settings of servers that chose Thai as their main language. Dory defaults to
+    English, so tests of Thai wording build their bot with this store (an unchosen server runs on
+    `auto`); a guild that has a document of its own keeps it."""
+
+    def get(self, guild_id):
+        g = super().get(guild_id)
+        if g.language_chosen:
+            return g
+        return g.model_copy(update={"default_language": "th", "language_chosen": True})
