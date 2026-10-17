@@ -1070,6 +1070,20 @@ CATALOG: dict[str, dict[str, str]] = {
     "cmd_mode_arg": _bi("โหมดใหม่ (ไม่เลือก = ดูโหมดปัจจุบัน)", "New mode (empty = view)"),
     "cmd_language": _bi("ดูหรือตั้งภาษาที่ดอรี่ตอบในห้องนี้", "View or set Dory's language here"),
     "cmd_language_arg": _bi("ภาษาใหม่ (ไม่เลือก = ดูภาษาปัจจุบัน)", "New language (empty = view)"),
+    "cmd_voice": _bi(
+        "เสียงของดอรี่ในประชุมนี้: ฟังอย่างเดียว หรือพูดได้",
+        "Dory's voice in this meeting: listen only or may talk",
+    ),
+    "cmd_voice_arg": _bi("โหมด", "Mode"),
+    "cmd_quiet": _bi(
+        "ให้ดอรี่เงียบจนกว่าจะเรียกชื่ออีกครั้ง", "Dory goes quiet until her name is called again"
+    ),
+    "cmd_quiet_done": _bi(
+        "เงียบแล้วค่ะ เรียกชื่อดอรี่เมื่อต้องการ", "Quiet now. Call my name when you need me."
+    ),
+    "cmd_no_meeting": _bi(
+        "ตอนนี้ไม่มีประชุมที่ดอรี่อยู่ในห้องนี้", "There is no meeting with Dory here right now."
+    ),
     "cmd_join": _bi("ให้ดอรี่เข้าห้องเสียงเพื่อจดบันทึกประชุม", "Dory joins your voice channel"),
     "cmd_leave": _bi("ให้ดอรี่ออกจากห้องเสียงและสรุปการประชุม", "Dory leaves and summarizes"),
     "cmd_summary": _bi("สรุปสิ่งที่คุยกันในห้อง", "Summarize what was discussed"),
