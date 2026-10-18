@@ -1107,6 +1107,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "Dory's voice here: listen only / may talk",
     ),
     "cmd_voice_arg": _bi("โหมด", "Mode"),
+    "cmd_voice_listen": _bi("🔇 ฟังอย่างเดียว", "Listen only"),
+    "cmd_voice_may": _bi("🔊 พูดได้", "May talk"),
+    "cmd_captions_default_on": _bi("เปิดทุกประชุม", "On"),
+    "cmd_captions_default_off": _bi("ปิด (ค่าเริ่มต้น)", "Off (default)"),
     "cmd_quiet": _bi("ให้ดอรี่เงียบจนกว่าจะเรียกชื่อ", "Dory goes quiet until called by name"),
     "cmd_quiet_done": _bi(
         "เงียบแล้วค่ะ เรียกชื่อดอรี่เมื่อต้องการ", "Quiet now. Call my name when you need me."
