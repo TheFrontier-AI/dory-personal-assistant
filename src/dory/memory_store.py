@@ -28,7 +28,7 @@ from zoneinfo import ZoneInfo
 
 from pydantic import BaseModel, Field
 
-KINDS = ("chat", "voice", "dory", "dm")
+KINDS = ("chat", "voice", "dory", "dm", "huddle")
 MAX_DAYS = 400  # safety cap on a date range
 MAX_ROWS = 5000  # safety cap on rows one read returns
 
@@ -45,7 +45,7 @@ class MemoryMessage(BaseModel):
     text: str = ""
     jump_url: str = ""
     edited_at: datetime | None = None
-    kind: str = "chat"  # chat | voice | dory | dm
+    kind: str = "chat"  # chat | voice | dory | dm | huddle
     visibility: str = "normal"  # normal | private (a DM note only its author may see)
 
     @property
