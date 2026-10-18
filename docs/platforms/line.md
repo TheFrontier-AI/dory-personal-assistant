@@ -181,3 +181,28 @@ LINE user ids are per provider; link from the LINE Official Account that belongs
 - A LINE group sees the bot's answers quoting the asker. Members who only use LINE for PC have no
   user id in the webhook; their messages are remembered anonymously.
 - Edit events (`messageEdited`) exist only in group chats, not 1:1 chats with an Official Account.
+
+## Cloud Run (one service, one port)
+
+`python -m dory.platforms` serves LINE and WhatsApp on a single HTTP port when `PORT` is set
+(Cloud Run sets it) or `DORY_PLATFORMS_PORT` is above 0. Without either, LINE keeps
+`DORY_LINE_HOST:DORY_LINE_PORT` (8091) and WhatsApp `DORY_WHATSAPP_HOST:DORY_WHATSAPP_PORT`
+(8092), as before. The combined server listens on `0.0.0.0:PORT`, starts before the slower
+platform startups, and serves:
+
+- `GET /health` -> `200 {"ok": true, "platforms": [...]}` (a webhook path whose platform is not
+  ready yet answers 503, so the sender retries)
+- `POST /line/webhook` (LINE; signature checked)
+- `GET|POST /whatsapp/webhook` (WhatsApp; verify token and signature checked)
+
+In this mode a platform that fails to start is logged and dropped from `/health`; the others and
+the port stay up. Slack (Socket Mode) and Telegram (polling) need no inbound URL.
+
+Deploy with `scripts/deploy_platforms.sh` (dry run by default, `--apply` to build and deploy the
+`dory-platforms` service in asia-southeast1: one always-on instance, unauthenticated because every
+webhook verifies its own signature). It reads the secrets from Secret Manager (`dory-platforms-*`,
+`dory-google-oauth-secret`, `dory-token-key`), which must exist beforehand. Webhook URLs, with the
+service URL from the deploy output:
+
+- LINE: `https://<service-url>/line/webhook`
+- WhatsApp: `https://<service-url>/whatsapp/webhook`
