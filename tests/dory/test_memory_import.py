@@ -15,7 +15,7 @@ from test_modes import STAFF, TMsg, bot, set_mode, world
 
 from dory import bot as botmod
 from dory.extract import IngestResult
-from dory.guild_settings import FOREVER_DAYS, GuildSettingsUpdate
+from dory.guild_settings import GuildSettingsUpdate
 from dory.image_memory import ImageNote, format_note, image_mime
 from dory.memory_import import import_progress
 from dory.models import Receipt
