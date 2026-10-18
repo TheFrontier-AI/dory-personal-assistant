@@ -31,8 +31,9 @@ Run it: `uv run python -m dory.platforms` (it starts every platform that has its
   Edited messages (group `messageEdited` events, newest edit wins) update memory; an unsent message
   is deleted from memory. When Dory joins a group or someone adds it as a friend it posts a short
   Thai + English notice: what is remembered, for how many days, how to make it forget (unsend) and how
-  to stop it (remove Dory from the group). A tenant that still has the global memory retention gets
-  **7 days** on the first join/follow after a start; an admin can change it in the hub.
+  to stop it (remove Dory from the group). A tenant that still has the global memory retention (keep
+  forever) and was never saved in the hub gets **7 days** on the first join/follow after a start; an
+  admin can change it in the hub, and a hub choice (keep forever included) is never overridden.
 
 Not in phase 1 (Discord-only for now): scheduling and meetings, PDF reports and email, deliver-file,
 executive-assistant tools, broadcasts, polls, voice, deep tasks, audio and video, image descriptions
