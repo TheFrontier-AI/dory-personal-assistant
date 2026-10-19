@@ -1,6 +1,7 @@
 # Dory workflow monitor: design
 
-Date: 2026-10-18. Status: design approved in conversation, awaiting spec review.
+Date: 2026-10-18. Status: approved; phases 0-2 implemented on 2026-10-19 (plan:
+`docs/superpowers/plans/2026-10-18-dory-workflow-monitor-phase0-2.md`, rulings R1-R17 at its end).
 Scope: a real-time monitoring view in `/center` for the work Dory and the web app run in the background.
 
 ## 1. Problem and goal
