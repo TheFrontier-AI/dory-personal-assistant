@@ -61,11 +61,29 @@ https://tokenfactory.nebius.com/project/api-keys) and:
   project listeners, translations, people dossiers, JSON extractions) goes to the same model with
   reasoning off (`chat_template_kwargs.enable_thinking=false`, short JSON answers) and JSON-schema
   outputs mapped to Token Factory's `response_format` with every property required;
-- audio, images, embeddings, live voice and Google-grounded web search stay on Gemini (Vertex AI),
-  because Token Factory's text models cannot do them.
+- every call that carries images (receipt photos into the ledger, documents sent as images, image
+  memory, Gantt-plan imports, a photo in a chat message) goes to **NVIDIA Nemotron 3.5 Super VL**
+  (`DORY_NEMOTRON_VISION_MODEL`), images inlined as data URLs; a chat turn with a photo also uses it
+  as the agent's brain;
+- memory embeddings (meaning-based search over the team memory) use the open **Qwen3-Embedding-8B**
+  on Token Factory (`DORY_NEBIUS_EMBED_MODEL`, 256 Matryoshka dimensions), since Token Factory
+  serves no NVIDIA embedding model;
+- audio (voice meetings, voice clips), PDF bytes in a chat message, text-to-speech, live voice,
+  image generation and Google-grounded web search stay on Gemini (Vertex AI): Token Factory has no
+  open model for them today.
 
-Without the key everything runs on Gemini as before. `DORY_NEMOTRON_MODEL` picks another Token Factory
-model id. `scripts/dory_nemotron_probe.py` is the live probe that measured the models (billed).
+Without the key everything runs on Gemini as before. `scripts/dory_nemotron_probe.py` (model choice)
+and `scripts/dory_tool_calls_probe.py` (tool calling with the full bot) are the live probes that
+measured the models (billed).
+
+| Work | Model | Where |
+| --- | --- | --- |
+| Chat and voice answers (ADK agent, ~140 tools) | nvidia/nemotron-3-super-120b-a12b, reasoning on | Nebius Token Factory |
+| Chat answers when the message has a photo | nvidia/Nemotron-3.5-Super-VL | Nebius Token Factory |
+| Gates, summaries, listeners, extractions (text) | nvidia/nemotron-3-super-120b-a12b, reasoning off | Nebius Token Factory |
+| Receipts, documents as images, image memory | nvidia/Nemotron-3.5-Super-VL | Nebius Token Factory |
+| Memory embeddings | Qwen/Qwen3-Embedding-8B @ 256 | Nebius Token Factory |
+| Audio, PDF bytes, TTS, live voice, image generation, grounded search | Gemini | Vertex AI |
 
 ## Local development
 

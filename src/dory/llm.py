@@ -1,5 +1,6 @@
 from __future__ import annotations
 
+import base64
 import copy
 import logging
 import time
@@ -36,21 +37,26 @@ def make_client(s: Settings):
     )
     if not s.nebius_api_key:
         return client
-    return RoutedClient(client, Nemotron(s.nemotron_model, s.nebius_base_url, s.nebius_api_key))
+    route = Nemotron(
+        s.nemotron_model, s.nebius_base_url, s.nebius_api_key, vision_model=s.nemotron_vision_model
+    )
+    return RoutedClient(client, route)
 
 
-def make_agent_model(s: Settings):
+def make_agent_model(s: Settings, *, vision: bool = False):
     """The ADK model for `qa.build_agent`: Nemotron on Token Factory through ADK's LiteLlm adapter
-    when the key is set, else None (the caller builds its Gemini model). Reasoning stays ON here:
-    with the full bot's ~140 tool declarations the model narrated actions instead of calling
-    tools when it was off ("I'll set a reminder", no call; scripts/dory_tool_calls_probe.py, 25 Oct
-    2026). The text-only route below keeps it off (short JSON answers, no tools)."""
+    when the key is set, else None (the caller builds its Gemini model). `vision`: the message
+    carries images, so the vision model (same tools, same price) is the brain for this turn.
+    Reasoning stays ON here: with the full bot's ~140 tool declarations the model narrated actions
+    instead of calling tools when it was off ("I'll set a reminder", no call;
+    scripts/dory_tool_calls_probe.py, 25 Oct 2026). The text route below keeps it off (short JSON
+    answers, no tools; the vision model returned nothing at all for a JSON schema with it on)."""
     if not s.nebius_api_key:
         return None
     from google.adk.models.lite_llm import LiteLlm  # heavy import, only when used
 
     return LiteLlm(
-        model=f"openai/{s.nemotron_model}",
+        model=f"openai/{s.nemotron_vision_model if vision else s.nemotron_model}",
         api_base=s.nebius_base_url,
         api_key=s.nebius_api_key,
         timeout=REQUEST_TIMEOUT_MS / 1000,
@@ -88,12 +94,32 @@ class TextResponse:
 
 
 def _part_text(p) -> str | None:
-    """The text of a str / Part, or None when it carries anything a text model cannot take."""
+    """The text of a str / Part, or None when it carries anything else."""
     if isinstance(p, str):
         return p
     if isinstance(p, types.Part) and p.text is not None:
         extras = (p.inline_data, p.file_data, p.function_call, p.function_response)
         return p.text if all(x is None for x in extras) else None
+    return None
+
+
+def _part_item(p) -> dict | None:
+    """One OpenAI content item for a str / Part: text, or an inline image as a data URL. None for
+    anything a Token Factory chat model cannot take (audio, video, PDF bytes, file URIs, calls)."""
+    text = _part_text(p)
+    if text is not None:
+        return {"type": "text", "text": text}
+    blob = getattr(p, "inline_data", None)
+    if (
+        isinstance(p, types.Part)
+        and blob is not None
+        and blob.data
+        and (blob.mime_type or "").startswith("image/")
+        and p.text is None
+        and p.file_data is None
+    ):
+        b64 = base64.b64encode(blob.data).decode()
+        return {"type": "image_url", "image_url": {"url": f"data:{blob.mime_type};base64,{b64}"}}
     return None
 
 
@@ -109,30 +135,43 @@ def _text_of(x) -> str | None:
     return None if any(t is None for t in texts) else "\n".join(texts)
 
 
+def _content(items: list[dict]):
+    """Message content: a plain string when every item is text, else the list of items."""
+    if all(i["type"] == "text" for i in items):
+        return "\n".join(i["text"] for i in items)
+    return list(items)  # a copy: the caller clears its buffer afterwards
+
+
 def _messages(contents) -> list[dict] | None:
-    """OpenAI chat messages for genai `contents`, or None when something in them is not text."""
+    """OpenAI chat messages for genai `contents` (text and inline images), or None when something
+    in them is neither."""
     msgs: list[dict] = []
-    pending: list[str] = []
+    pending: list[dict] = []
 
     def flush() -> None:
         if pending:
-            msgs.append({"role": "user", "content": "\n".join(pending)})
+            msgs.append({"role": "user", "content": _content(pending)})
             pending.clear()
 
     for item in contents if isinstance(contents, list) else [contents]:
         if isinstance(item, types.Content):
-            text = _text_of(item)
-            if text is None:
+            parts = [_part_item(p) for p in item.parts or []]
+            if not parts or any(p is None for p in parts):
                 return None
             flush()
-            msgs.append({"role": "assistant" if item.role == "model" else "user", "content": text})
+            role = "assistant" if item.role == "model" else "user"
+            msgs.append({"role": role, "content": _content(parts)})
         else:
-            text = _part_text(item)
-            if text is None:
+            part = _part_item(item)
+            if part is None:
                 return None
-            pending.append(text)
+            pending.append(part)
     flush()
     return msgs or None
+
+
+def _has_image(msgs: list[dict]) -> bool:
+    return any(isinstance(m["content"], list) for m in msgs)
 
 
 def _strict(node):
@@ -165,18 +204,35 @@ def _response_format(schema) -> dict:
 
 @dataclass
 class Nemotron:
-    """Text-only `generate` calls on NVIDIA Nemotron via Nebius Token Factory (OpenAI-compatible).
-    `accepts` decides per call; `complete` maps GenerateContentConfig to a chat completion."""
+    """`generate` calls on NVIDIA Nemotron via Nebius Token Factory (OpenAI-compatible): text on
+    `model`, text + images on `vision_model` (empty = images stay on Gemini). `accepts` decides
+    per call; `complete` maps GenerateContentConfig to a chat completion; `embeddings` is the
+    `/embeddings` endpoint for dory.embed."""
 
     model: str
     base_url: str
     api_key: str = field(repr=False)
     http: httpx.Client | None = None  # tests pass a client with a MockTransport
+    vision_model: str = ""
 
     def __post_init__(self) -> None:
         if self.http is None:
             self.http = httpx.Client(base_url=self.base_url, timeout=REQUEST_TIMEOUT_MS / 1000)
-        logger.info("text calls and the chat agent run on %s via Nebius Token Factory", self.model)
+        logger.info(
+            "text calls and the chat agent run on %s via Nebius Token Factory (images: %s)",
+            self.model,
+            self.vision_model or "Gemini",
+        )
+
+    def _post(self, path: str, body: dict) -> dict:
+        auth = {"Authorization": f"Bearer {self.api_key}"}
+        r = self.http.post(path, json=body, headers=auth)
+        if r.status_code != 200:
+            detail = {
+                "error": {"code": r.status_code, "message": r.text[:300], "status": "TOKEN_FACTORY"}
+            }
+            raise errors.APIError(r.status_code, detail, r)
+        return r.json()
 
     def accepts(self, model: str, contents, config) -> bool:
         model = model or ""
@@ -191,10 +247,19 @@ class Nemotron:
             return False
         if config is not None and _text_of(config.system_instruction) is None:
             return False
-        return _messages(contents) is not None
+        msgs = _messages(contents)
+        return msgs is not None and (bool(self.vision_model) or not _has_image(msgs))
+
+    def embeddings(self, model: str, texts: list[str], dim: int) -> list[list[float]]:
+        """One vector per text from `/embeddings` (`dimensions` = Matryoshka truncation)."""
+        data = self._post("embeddings", {"model": model, "input": texts, "dimensions": dim})
+        rows = sorted(data.get("data") or [], key=lambda e: e.get("index", 0))
+        return [e["embedding"] for e in rows]
 
     def complete(self, contents, config) -> TextResponse:
-        body: dict[str, Any] = {"model": self.model, "messages": _messages(contents), **NO_THINK}
+        msgs = _messages(contents)
+        model = self.vision_model if _has_image(msgs) else self.model
+        body: dict[str, Any] = {"model": model, "messages": msgs, **NO_THINK}
         schema = None
         if config is not None:
             system = _text_of(config.system_instruction)
@@ -211,14 +276,7 @@ class Nemotron:
             if config.response_mime_type == "application/json":
                 schema = config.response_schema
                 body["response_format"] = _response_format(schema)
-        auth = {"Authorization": f"Bearer {self.api_key}"}
-        r = self.http.post("chat/completions", json=body, headers=auth)
-        if r.status_code != 200:
-            detail = {
-                "error": {"code": r.status_code, "message": r.text[:300], "status": "TOKEN_FACTORY"}
-            }
-            raise errors.APIError(r.status_code, detail, r)
-        data = r.json()
+        data = self._post("chat/completions", body)
         choice = data["choices"][0]
         text = choice["message"].get("content") or ""
         parsed = None
@@ -276,8 +334,8 @@ def with_retry(fn, delays=None):
 
 def generate(client, model: str, contents, config, delays=RETRY_DELAYS):
     """generate_content with retry on transient errors (429/5xx). A client from `make_client` that
-    carries a Nemotron route sends text-only calls there; audio, images, tools and the speech /
-    image / embedding model ids stay on Gemini."""
+    carries a Nemotron route sends text and text + image calls there; audio, PDF bytes, tools and
+    the speech / image-generation / embedding model ids stay on Gemini."""
     route = getattr(client, "nemotron", None)
     if route is not None and route.accepts(model, contents, config):
         return with_retry(lambda: route.complete(contents, config), delays)

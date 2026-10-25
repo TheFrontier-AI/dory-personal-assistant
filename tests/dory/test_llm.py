@@ -86,9 +86,9 @@ class _Yes(BaseModel):
     answer: bool
 
 
-def _nemotron(handler) -> llm.Nemotron:
+def _nemotron(handler, vision="nvidia/x-vl") -> llm.Nemotron:
     http = httpx.Client(base_url=TF, transport=httpx.MockTransport(handler))
-    return llm.Nemotron("nvidia/x", TF, "k", http=http)
+    return llm.Nemotron("nvidia/x", TF, "k", http=http, vision_model=vision)
 
 
 def _reply(content, status=200):
@@ -101,9 +101,9 @@ def _reply(content, status=200):
     return httpx.Response(status, json=body)
 
 
-def _routed(handler, inner_script=()):
+def _routed(handler, inner_script=(), vision="nvidia/x-vl"):
     inner = SimpleNamespace(models=Models(inner_script))
-    return llm.RoutedClient(inner, _nemotron(handler)), inner
+    return llm.RoutedClient(inner, _nemotron(handler, vision)), inner
 
 
 def test_without_a_nebius_key_the_client_is_the_plain_vertex_client():
@@ -180,12 +180,17 @@ def test_chat_history_contents_become_user_and_assistant_turns():
     [
         ("gemini-2.5-flash-tts", "hi", None),  # speech
         ("gemini-embedding-001", "hi", None),  # embeddings
-        ("gemini-nano-banana-2.1", "hi", None),  # images
+        ("gemini-nano-banana-2.1", "hi", None),  # image generation
         (
             "gemini-3.5-flash",
-            [types.Part.from_bytes(data=b"x", mime_type="image/png"), types.Part(text="what")],
+            [types.Part.from_bytes(data=b"%PDF", mime_type="application/pdf"), "read"],
             None,
-        ),  # an image part
+        ),  # PDF bytes
+        (
+            "gemini-3.5-flash",
+            [types.Part.from_bytes(data=b"fLaC", mime_type="audio/flac"), "transcribe"],
+            None,
+        ),  # audio
         (
             "gemini-3.5-flash",
             "hi",
@@ -197,6 +202,38 @@ def test_non_text_work_stays_on_gemini(model, contents, config):
     ok = SimpleNamespace(text="gemini")
     client, inner = _routed(lambda r: _reply("nemotron"), [ok])
     assert llm.generate(client, model, contents, config) is ok
+    assert inner.models.calls == 1
+
+
+def test_images_go_to_the_vision_model_as_data_urls():
+    seen = []
+    client, inner = _routed(lambda r: (seen.append(r), _reply('{"total": 246.1}'))[1])
+    parts = [types.Part.from_bytes(data=b"\x89PNG", mime_type="image/png"), "read the receipt"]
+    cfg = types.GenerateContentConfig(response_mime_type="application/json", response_schema=_Yes)
+    resp = llm.generate(client, "gemini-3.5-flash", parts, cfg)
+    body = json.loads(seen[0].content)
+    assert (
+        body["model"] == "nvidia/x-vl"
+        and body["chat_template_kwargs"] == llm.NO_THINK["chat_template_kwargs"]
+    )
+    assert body["messages"] == [
+        {
+            "role": "user",
+            "content": [
+                {"type": "image_url", "image_url": {"url": "data:image/png;base64,iVBORw=="}},
+                {"type": "text", "text": "read the receipt"},
+            ],
+        }
+    ]
+    assert body["response_format"]["type"] == "json_schema" and resp.text == '{"total": 246.1}'
+    assert inner.models.calls == 0
+
+
+def test_without_a_vision_model_images_stay_on_gemini():
+    ok = SimpleNamespace(text="gemini")
+    client, inner = _routed(lambda r: _reply("nemotron"), [ok], vision="")
+    parts = [types.Part.from_bytes(data=b"\x89PNG", mime_type="image/png"), "what is this"]
+    assert llm.generate(client, "gemini-3.5-flash", parts, None) is ok
     assert inner.models.calls == 1
 
 
@@ -230,6 +267,21 @@ def test_agent_brain_is_nemotron_super_when_the_key_is_set():
     gemini_agent = build_agent(Settings(_env_file=None, nebius_api_key=""), [], scoped=False)
     assert type(gemini_agent.model).__name__ == "Gemini"
     assert "Tool rule:" not in gemini_agent.instruction(None)
+
+
+def test_the_vision_model_is_the_brain_for_a_turn_with_images_and_gemini_for_pdfs():
+    from dory.qa import attachment_kind, build_agent
+
+    s = Settings(_env_file=None, nebius_api_key="k")
+    assert build_agent(s, [], scoped=False, attachments="images").model.model == (
+        "openai/nvidia/Nemotron-3.5-Super-VL"
+    )
+    assert type(build_agent(s, [], scoped=False, attachments="other").model).__name__ == "Gemini"
+    png = types.Part.from_bytes(data=b"\x89PNG", mime_type="image/png")
+    pdf = types.Part.from_bytes(data=b"%PDF", mime_type="application/pdf")
+    assert attachment_kind([types.Part(text="label"), png]) == "images"
+    assert attachment_kind([png, pdf]) == "other"
+    assert attachment_kind([types.Part(text="only text")]) == ""
 
 
 def test_json_schemas_mark_every_property_required_so_nemotron_fills_them():

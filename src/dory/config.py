@@ -62,11 +62,17 @@ class Settings(BaseSettings):
     gate_model: str = "gemini-3.5-flash-lite"
     # NVIDIA Nemotron on Nebius Token Factory (README "NVIDIA Nemotron on Nebius Token Factory"):
     # with the key set, the chat agent and every text-only `llm.generate` call run on
-    # `nemotron_model`; audio, images, embeddings, live voice and grounded search stay on Gemini.
-    # Empty key = Gemini only (tests, and any deployment without Token Factory).
+    # `nemotron_model`, calls with images (receipts, documents as images, image memory, plan
+    # imports, photos in chat) on `nemotron_vision_model`, and memory embeddings on
+    # `nebius_embed_model` (open Qwen3; Token Factory serves no NVIDIA embedding model). Audio,
+    # PDFs sent as bytes, TTS, live voice, image generation and grounded web search stay on
+    # Gemini: Token Factory has no open model for them. Empty key = Gemini only (tests, and any
+    # deployment without Token Factory).
     nebius_api_key: str = Field(default="", repr=False)  # secret: never logged
     nebius_base_url: str = "https://api.tokenfactory.nebius.com/v1/"
     nemotron_model: str = "nvidia/nemotron-3-super-120b-a12b"
+    nemotron_vision_model: str = "nvidia/Nemotron-3.5-Super-VL"
+    nebius_embed_model: str = "Qwen/Qwen3-Embedding-8B"  # empty = embeddings stay on Gemini
     low_confidence: float = 0.7
     # Spoken replies in voice meetings (see dory.speech). The TTS call reuses the bot's Vertex
     # client, so it runs in `gemini_location` (global; the Gemini TTS models work there).
