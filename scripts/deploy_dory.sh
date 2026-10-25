@@ -6,6 +6,7 @@
 #   --rotate-token  add a new Secret Manager version even if one exists
 #   --configure-hub ONLY update env vars on the existing meeting-scribe service (hub settings)
 # Reads from the local environment (never from .env, never echoed): DORY_DISCORD_TOKEN.
+# DORY_HUB_URL comes from the environment, else .env (the custom domain), so a redeploy keeps it.
 # Optional pass-through: DORY_RECEIPT_CHANNEL_IDS, DORY_ASK_CHANNEL_IDS, DORY_EXEC_ROLE_NAMES,
 # DORY_EXEC_USER_IDS, DORY_DIGEST_TIME, DORY_DIGEST_CHANNEL_ID, DORY_RECEIPT_BUCKET,
 # DORY_FIRESTORE_COLLECTION, DORY_GUILD_COLLECTION, DORY_HUB_URL, DORY_GEMINI_MODEL,
@@ -160,9 +161,11 @@ run gcloud builds submit . --project "$PROJECT" --region "$REGION" \
 
 echo "==> Deploying Cloud Run worker pool $POOL (1 fixed instance)"
 ENV_PAIRS=("DORY_STORE=firestore" "DORY_GCP_PROJECT=$PROJECT"
-           "DORY_GEMINI_LOCATION=${DORY_GEMINI_LOCATION:-global}" "DORY_TZ=Asia/Bangkok")
+           "DORY_GEMINI_LOCATION=${DORY_GEMINI_LOCATION:-global}" "DORY_TZ=Asia/Bangkok"
+           "DORY_RECEIPT_BUCKET=$BUCKET")
+DORY_HUB_URL="${DORY_HUB_URL:-$(sed -n 's/^DORY_HUB_URL=//p' .env 2>/dev/null | head -n1 | tr -d '\r"' | tr -d "'")}"
 for k in DORY_RECEIPT_CHANNEL_IDS DORY_ASK_CHANNEL_IDS DORY_EXEC_ROLE_NAMES DORY_EXEC_USER_IDS \
-         DORY_DIGEST_TIME DORY_DIGEST_CHANNEL_ID DORY_RECEIPT_BUCKET DORY_FIRESTORE_COLLECTION \
+         DORY_DIGEST_TIME DORY_DIGEST_CHANNEL_ID DORY_FIRESTORE_COLLECTION \
          DORY_GUILD_COLLECTION DORY_HUB_URL DORY_GEMINI_MODEL DORY_DEEP_TASK_TIMEOUT \
          DORY_DEEP_TASK_MODEL; do
   [ -z "${!k:-}" ] || ENV_PAIRS+=("$k=${!k}")

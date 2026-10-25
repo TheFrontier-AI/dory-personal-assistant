@@ -6,7 +6,7 @@
 # (optional, Meeting Scribe's Discord post), DORY_NEBIUS_API_KEY (Nemotron on Token Factory),
 # DORY_SESSION_SECRET (generated when absent). A Secret Manager version is added only when the
 # secret has none yet. Optional env passed to the service: HUB_GOOGLE_CLIENT_ID, HUB_ADMIN_EMAILS,
-# DORY_DISCORD_CLIENT_ID, DORY_HUB_URL (defaults to the service URL).
+# DORY_DISCORD_CLIENT_ID, DORY_HUB_URL (environment, else .env, else the service URL).
 # No Vertex AI: the models run on Nebius Token Factory (README "NVIDIA Nemotron on Nebius Token
 # Factory"); enable aiplatform.googleapis.com by hand if a project is meant to use Gemini too.
 set -euo pipefail
@@ -108,12 +108,13 @@ SECRETS_JOINED="$(IFS=,; echo "${SECRET_REFS[*]}")"
 # On re-runs the service already reports its canonical URL.
 URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)' 2>/dev/null || true)"
 URL="${URL:-https://$SERVICE-$PROJECT_NUMBER.$REGION.run.app}"
+HUB_URL="$(from_env_file DORY_HUB_URL)"; HUB_URL="${HUB_URL:-$URL}"   # the custom domain once mapped
 
 echo "==> Deploying Cloud Run service $SERVICE"
 ENV_PAIRS=("USE_PUBSUB=true" "PUBSUB_VERIFY_AUDIENCE=$URL/pubsub/finalize" "PUSHER_SA_EMAIL=$PUSHER_SA"
            "GCP_PROJECT=$PROJECT" "AUDIO_BUCKET=$BUCKET" "DORY_STORE=firestore"
            "DORY_GCP_PROJECT=$PROJECT" "DORY_RECEIPT_BUCKET=$FILES_BUCKET"
-           "DORY_HUB_URL=${DORY_HUB_URL:-$URL}")
+           "DORY_HUB_URL=$HUB_URL")
 for k in HUB_GOOGLE_CLIENT_ID HUB_ADMIN_EMAILS DORY_DISCORD_CLIENT_ID; do
   [ -z "${!k:-}" ] || ENV_PAIRS+=("$k=${!k}")
 done
@@ -129,7 +130,7 @@ if [ "$ACTUAL_URL" != "$URL" ]; then
   echo "    URL differs from the expected one; updating the OIDC audience to $ACTUAL_URL"
   URL="$ACTUAL_URL"
   gcloud run services update "$SERVICE" --region "$REGION" \
-    --update-env-vars "^|^PUBSUB_VERIFY_AUDIENCE=$URL/pubsub/finalize|DORY_HUB_URL=${DORY_HUB_URL:-$URL}"
+    --update-env-vars "^|^PUBSUB_VERIFY_AUDIENCE=$URL/pubsub/finalize|DORY_HUB_URL=$HUB_URL"
 fi
 
 echo "==> Pub/Sub push subscription"
