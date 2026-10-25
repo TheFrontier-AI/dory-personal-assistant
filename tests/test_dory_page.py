@@ -229,16 +229,19 @@ def test_unconfigured_invite_is_hidden_not_labelled_with_an_env_var():
 def test_every_page_shares_one_language_key_and_syncs_it_with_the_account():
     """One choice follows the person: same localStorage key on every page, and after sign-in the
     language saved with the account wins (or the local choice is saved to the account)."""
-    for name in ("dory.html", "start.html", "hub.html", "center.html"):
+    for name in ("dory.html", "start.html", "hub.html", "center.html", "pm.html"):
         html = (PAGE.parent / name).read_text("utf-8")
         assert 'LANG_KEY = "dory-language"' in html, name
-    for name, put in (
-        ("start.html", 'api("/me/language", { method: "PUT"'),
-        ("hub.html", 'api("/api/hub/me/language", { method: "PUT"'),
-        ("center.html", 'api("/api/center/me/language", { method: "PUT"'),
+        assert "navigator.language" not in html, name
+    for name, put, sync in (
+        ("start.html", 'api("/me/language", { method: "PUT"', "syncLang(me.language)"),
+        ("hub.html", 'api("/api/hub/me/language", { method: "PUT"', "syncLang(me.language)"),
+        ("center.html", 'api("/api/center/me/language", { method: "PUT"', "syncLang(me.language)"),
+        ("pm.html", 'api("/api/center/me/language", { method: "PUT"', "syncLang(user.language)"),
     ):
         html = (PAGE.parent / name).read_text("utf-8")
-        assert put in html and "syncLang(me.language)" in html, name
+        assert put in html and sync in html, name
+    assert "pm_lang" not in (PAGE.parent / "pm.html").read_text("utf-8")
 
 
 def test_every_signed_in_page_keeps_one_dory_session():
