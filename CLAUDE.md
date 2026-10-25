@@ -255,8 +255,10 @@ build order: `docs/superpowers/specs/2026-10-18-dory-workspace-parity-design.md`
   Provisioning identity: `infra-provisioner@dory-personal-assistant.iam.gserviceaccount.com`
   (`roles/owner`, key `.gcp/dory-personal-assistant-6b63c7a4213d.json`, gitignored, never print it);
   gcloud profile `CLOUDSDK_CONFIG=~/.config/gcloud-dory` + `CLOUDSDK_PYTHON=.venv/bin/python`.
-  Not done yet: `HUB_GOOGLE_CLIENT_ID` on the service (web sign-in off, `/api/center/me` -> 503), a
-  custom domain, Discord OAuth secret for "Sign in with Discord".
+  Google sign-in: `HUB_GOOGLE_CLIENT_ID` = the Web client
+  `941598007773-13q6hpt4ljbsq4j0nmam52jcab193o92.apps.googleusercontent.com` created in this project on
+  25 Oct 2026 (origins: both run.app URLs + localhost:8080). Not done yet: a custom domain, the Discord
+  OAuth secret for "Sign in with Discord" (`dory-discord-client-secret`), Google Calendar connector.
 - **Rename 25 Oct 2026: the product, package, env prefix, store names and scripts are now Dory
   (`dory`, `DORY_*`, `dory_*`), but everything deployed before that date still carries the old
   name `dory`.** What is LIVE today (do not recreate, do not assume it was renamed):
