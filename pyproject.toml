@@ -47,6 +47,7 @@ dev = [
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
     "pytest-playwright==0.10.0",
+    "ruff>=0.17.1",
 ]
 
 [tool.pytest.ini_options]
@@ -60,6 +61,8 @@ addopts = "-m 'not live and not e2e'"
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Agent skills installed by a skills CLI (skills-lock.json); vendored, not project code.
+extend-exclude = [".agents", ".codex", ".windsurf", ".github/skills"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]

@@ -312,3 +312,9 @@ style. State what you verified and what you could not. Work on a feature branch 
 redeploy with `scripts/deploy.sh` only after a human approves, then smoke `/health`.
 
 - `dm_guild.py`: which company a DM is about (sticky pick, confirm-to-switch, reply tags, /บริษัท). `private_chat.py` + `private_chat_bot.py`: a private Salid channel per member; `deliver_to_person` / `dm.send_dm` route proactive messages there (DM fallback, profile `delivery=dm` opt-out).
+
+## Python environment
+- This project uses uv with a local ./.venv (Python 3.12). Never use a global or another project's environment.
+- Run everything through uv: `uv run pytest`, `uv run ruff check .`, `uv run python ...`.
+- Add dependencies with `uv add <pkg>` (or `uv add --dev <pkg>`). Never use `pip install`.
+- If a test fails because of a missing system library, report it. Don't work around it in code.
