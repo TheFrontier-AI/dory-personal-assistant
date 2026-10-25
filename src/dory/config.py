@@ -246,6 +246,9 @@ class Settings(BaseSettings):
     video_max_jobs: int = 1
     video_hero_model: str = ""
     video_music_model: str = ""
+    # Workflow monitor (dory.monitor_bot, platforms.runtime): change-log events flushed once per
+    # tick and the 30 s heartbeat of the bot and the platform bridges. Off = nothing is written.
+    monitor_enabled: bool = False
     # Per-guild settings document `{guild_collection}/{guild_id}` (see dory.guild_settings).
     guild_collection: str = "dory_guilds"
     # PDF documents (dory.pdf_report): regular TTF/OTF with Thai glyphs; empty = search known paths.

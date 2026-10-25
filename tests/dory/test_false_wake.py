@@ -168,7 +168,7 @@ def test_prompt_choice_follows_the_reply_language_and_keeps_both_scripts():
         assert "ดอรี่" in p and "name_called" in p
     # no priming of the name any more
     assert "ถ้าได้ยินคำนี้ให้เขียนว่า ดอรี่" not in th and "สะกดว่า ดอรี่" not in th
-    assert "slide" in en and "NOT the name" in en
+    assert "story" in en and "NOT the name" in en
     assert "If you hear" not in en and "something like the name" not in en
     # a second-tier reply language keeps its prefix on the Thai prompt
     assert mt.transcribe_prompt("ja").endswith(mt.TRANSCRIBE_PROMPT)
