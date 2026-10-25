@@ -32,6 +32,8 @@ dependencies = [
     "uharfbuzz>=0.56.3",
     "uvicorn>=0.54.0",
     "xlrd>=2.0.2",
+    "litellm>=1.106.4",
+    "mcp>=2.3.0",
 ]
 
 [build-system]
@@ -43,18 +45,26 @@ module-name = ["meeting_scribe", "dory"]
 
 [dependency-groups]
 dev = [
+    "axe-playwright-python==0.1.8",
     "pytest>=9.1.1",
     "pytest-asyncio>=1.4.0",
+    "pytest-playwright==0.10.0",
+    "ruff>=0.17.1",
 ]
 
 [tool.pytest.ini_options]
 asyncio_mode = "auto"
-markers = ["live: hits real Vertex Gemini (deselected by default; run with -m live)"]
-addopts = "-m 'not live'"
+markers = [
+    "live: hits real Vertex Gemini (deselected by default; run with -m live)",
+    "e2e: Playwright browser tests against /center?mock=1 (deselected by default; run with -m e2e)",
+]
+addopts = "-m 'not live and not e2e'"
 
 [tool.ruff]
 line-length = 100
 target-version = "py312"
+# Agent skills installed by a skills CLI (skills-lock.json); vendored, not project code.
+extend-exclude = [".agents", ".codex", ".windsurf", ".github/skills"]
 
 [tool.ruff.lint]
 select = ["E", "F", "W", "I", "UP", "B", "SIM"]

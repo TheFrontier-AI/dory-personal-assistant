@@ -43,7 +43,7 @@ _FUZZY_RE = re.compile(
 
 def find_call(text: str) -> tuple[int, int] | None:
     """(start, end) of Dory's name in a spoken transcript, else None. The usual spellings always
-    count; the risky mishearings (สนิท, สิริ, Siri...) only when used as an address."""
+    count; the risky mishearings (ดอลลี่, ทอรี่, Dolly...) only when used as an address."""
     text = text or ""
     m = _WAKE_RE.search(text)
     if m is not None:

@@ -46,6 +46,25 @@ Diagrams (open in a browser): [architecture map](docs/diagrams/architecture.html
 - **IAM**: a runtime service account with least-privilege roles, and a separate pusher service account
   whose OIDC token the app verifies on `/pubsub/finalize`.
 
+## NVIDIA Nemotron on Nebius Token Factory
+
+Dory's brain is **NVIDIA Nemotron 3 Super** (`nvidia/nemotron-3-super-120b-a12b`, an open-weight
+hybrid Mamba-Transformer MoE) served by **Nebius Token Factory** (OpenAI-compatible API,
+`https://api.tokenfactory.nebius.com/v1/`). Set `DORY_NEBIUS_API_KEY` (an API key from
+https://tokenfactory.nebius.com/project/api-keys) and:
+
+- every chat and voice answer (`dory.qa`, the Google ADK agent with its ~100 tools) runs on Nemotron
+  through ADK's `LiteLlm` adapter, reasoning switched off (`chat_template_kwargs.enable_thinking=false`)
+  because tool calls and Thai answers were as accurate and 3x faster that way in our probe;
+- every text-only model call (`dory.llm.generate`: the yes/no gates, memory day summaries, task and
+  project listeners, translations, people dossiers, JSON extractions) goes to the same model, with
+  JSON-schema outputs mapped to Token Factory's `response_format`;
+- audio, images, embeddings, live voice and Google-grounded web search stay on Gemini (Vertex AI),
+  because Token Factory's text models cannot do them.
+
+Without the key everything runs on Gemini as before. `DORY_NEMOTRON_MODEL` picks another Token Factory
+model id. `scripts/dory_nemotron_probe.py` is the live probe that measured the models (billed).
+
 ## Local development
 
 Requirements: Python 3.12+, [uv](https://docs.astral.sh/uv/), ffmpeg, and Application Default
