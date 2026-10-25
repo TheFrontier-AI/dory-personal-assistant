@@ -272,7 +272,9 @@ const S = /*I18N-START*/{
   sec_overview:["ภาพรวม","Overview"], sec_tasks:["งาน","Tasks"], sec_milestones:["เหตุการณ์สำคัญ","Milestones"], sec_risks:["ความเสี่ยงและปัญหา","Risks & Issues"], sec_links:["ไฟล์และลิงก์","Files & Links"],
   sec_h1:["ชื่อการแข่งขันและกำหนดส่งอย่างเป็นทางการ","Competition name & official deadline"], sec_h2:["กติกา คุณสมบัติ และเกณฑ์ตัดสิน","Rules, eligibility & judging criteria"], sec_h3:["ทีมและบทบาท","Team members & roles"], sec_h4:["ต้นแบบ เดโม และสไลด์นำเสนอ","Prototype, demo & pitch deck"], sec_h5:["รายการตรวจสอบและการยืนยันการส่ง","Submission checklist & confirmation"], sec_h6:["งบประมาณ ค่าเดินทาง และผลการแข่งขัน (การเงิน)","Budget, travel costs & results (finance)"]
 }/*I18N-END*/;
-let lang = (() => { try { const s = localStorage.getItem("pm_lang"); if (s === "en" || s === "th") return s; } catch { /* ignore */ } return (navigator.language || "en").toLowerCase().startsWith("th") ? "th" : "en"; })();
+let lang = "en"; // English by default; a saved choice wins (the browser language is not consulted)
+const LANG_KEY = "dory-language"; // one key for every Dory page (landing, start, hub, center, pm)
+try { const s = localStorage.getItem(LANG_KEY); if (s === "en" || s === "th") lang = s; } catch { /* ignore */ }
 const t = (k, vars) => { const e = S[k]; let s = e ? e[lang === "th" ? 0 : 1] : k; for (const [a, b] of Object.entries(vars || {})) s = s.replaceAll("{" + a + "}", b); return s; };
 
 /* ---------- DOM helpers ---------- */
@@ -451,7 +453,19 @@ function applyStatic() {
   $("lang").setAttribute("aria-label", lang === "th" ? "Switch to English" : "เปลี่ยนเป็นภาษาไทย");
   $("login-lang").textContent = lang === "th" ? "English" : "ภาษาไทย";
 }
-function setLang(l) { lang = l; try { localStorage.setItem("pm_lang", l); } catch { /* ignore */ } applyStatic(); if (!$("login").hidden) renderGoogleButton(); else { renderNav(); route(); } }
+function setLang(l) {
+  lang = l; try { localStorage.setItem(LANG_KEY, l); } catch { /* ignore */ }
+  applyStatic(); if (!$("login").hidden) renderGoogleButton(); else { renderNav(); route(); }
+  // signed in: remember the choice with the account, so every device and every Dory page opens in it
+  if (token && !DEMO) api("/api/center/me/language", { method: "PUT", body: JSON.stringify({ language: l }) }).catch(() => {});
+}
+// After sign-in, before the first render: the language saved with the account wins; with none saved yet, the local choice is saved.
+function syncLang(saved) {
+  if (DEMO) return;
+  if (saved === "th" || saved === "en") { lang = saved; try { localStorage.setItem(LANG_KEY, saved); } catch { /* ignore */ } }
+  else { let local = null; try { local = localStorage.getItem(LANG_KEY); } catch { /* ignore */ }
+    if (local === "th" || local === "en") api("/api/center/me/language", { method: "PUT", body: JSON.stringify({ language: lang }) }).catch(() => {}); }
+}
 function parseHash() {
   const m = location.hash.match(/^#\/(\w+)(?:\/([^/?]+))?/);
   const page = m && PAGES.some((p) => p[0] === m[1]) ? m[1] : "home";
@@ -480,15 +494,15 @@ function route() {
 }
 async function loadOrgData() {
   settings = await api(PM("/settings")).catch((e) => { if (e instanceof AuthError) throw e; return null; });
-  /* the company language is the default UI language (a language picked on this page wins) */
-  try { if (!localStorage.getItem("pm_lang") && settings && (settings.language === "th" || settings.language === "en") && settings.language !== lang) { lang = settings.language; if (typeof applyStatic === "function") applyStatic(); } } catch { /* ignore */ }
+  /* the company language is the default UI language when neither this browser nor the account has a choice */
+  try { if (!localStorage.getItem(LANG_KEY) && settings && (settings.language === "th" || settings.language === "en") && settings.language !== lang) { lang = settings.language; if (typeof applyStatic === "function") applyStatic(); } } catch { /* ignore */ }
   const em = (user.email || "").toLowerCase();
   const m = members().find((x) => (x.email || "").toLowerCase() === em);
   myPerson = m ? toPerson(m) : { email: user.email, discord_user_id: null, name: (user.email || "").split("@")[0] };
 }
 async function start() {
   try {
-    user = await api("/api/center/me"); user.orgs = arr(user, "orgs");
+    user = await api("/api/center/me"); user.orgs = arr(user, "orgs"); syncLang(user.language);
     if (!user.orgs.find((o) => o.id === orgId)) orgId = user.orgs.length ? user.orgs[0].id : null;
     show("app"); applyStatic();
     if (orgId) await loadOrgData();
