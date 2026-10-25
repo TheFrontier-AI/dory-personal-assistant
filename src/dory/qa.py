@@ -38,7 +38,7 @@ from .gmaps import MAPS_PROMPT
 from .guild_settings import effective_retention_days
 from .i18n import EXTRA, base_lang, lang_name, reply_language_line, resolve_lang, t
 from .ideas import IDEAS_PROMPT
-from .llm import REQUEST_TIMEOUT_MS
+from .llm import REQUEST_TIMEOUT_MS, make_agent_model
 from .markets import MARKETS_PROMPT
 from .media import parse_message_ref
 from .memory_access import Visibility, hidden_but_askable, is_dm_scope, message_visible
@@ -2256,6 +2256,7 @@ def build_agent(
     return LlmAgent(
         name="dory_qa",
         model=model
+        or make_agent_model(settings)  # Nemotron on Token Factory when DORY_NEBIUS_API_KEY is set
         or Gemini(
             model=settings.gemini_model,
             client_kwargs={"location": settings.gemini_location},

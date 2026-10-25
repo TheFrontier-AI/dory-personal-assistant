@@ -60,6 +60,13 @@ class Settings(BaseSettings):
     answer_timeout_seconds: float = 120.0
     # Cheap model for the "is this addressed to Dory?" yes/no gates (see dory.gate).
     gate_model: str = "gemini-3.5-flash-lite"
+    # NVIDIA Nemotron on Nebius Token Factory (README "NVIDIA Nemotron on Nebius Token Factory"):
+    # with the key set, the chat agent and every text-only `llm.generate` call run on
+    # `nemotron_model`; audio, images, embeddings, live voice and grounded search stay on Gemini.
+    # Empty key = Gemini only (tests, and any deployment without Token Factory).
+    nebius_api_key: str = Field(default="", repr=False)  # secret: never logged
+    nebius_base_url: str = "https://api.tokenfactory.nebius.com/v1/"
+    nemotron_model: str = "nvidia/nemotron-3-super-120b-a12b"
     low_confidence: float = 0.7
     # Spoken replies in voice meetings (see dory.speech). The TTS call reuses the bot's Vertex
     # client, so it runs in `gemini_location` (global; the Gemini TTS models work there).

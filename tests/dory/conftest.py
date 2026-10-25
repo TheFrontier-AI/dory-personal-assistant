@@ -126,7 +126,9 @@ class FixedClockSettings(Settings):
 
 @pytest.fixture
 def settings():
-    return FixedClockSettings(exec_user_ids={EXEC_ID})
+    # nebius_api_key="" keeps the suite on the (mocked) Gemini path even when the developer's
+    # .env carries a Token Factory key.
+    return FixedClockSettings(exec_user_ids={EXEC_ID}, nebius_api_key="")
 
 
 @pytest.fixture(params=["sqlite", "firestore"])

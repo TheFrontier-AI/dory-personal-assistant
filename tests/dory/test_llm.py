@@ -1,9 +1,12 @@
-"""dory.llm: request timeout and retry behaviour (offline)."""
+"""dory.llm: request timeout and retry behaviour, and the Nemotron route (offline)."""
 
+import json
 from types import SimpleNamespace
 
 import httpx
 import pytest
+from google.genai import errors, types
+from pydantic import BaseModel
 
 from dory import llm
 from dory.config import Settings
@@ -73,3 +76,176 @@ def test_meeting_transcription_uses_the_regional_client():
         SimpleNamespace(s=s.model_copy(update={"transcribe_location": ""}), llm=shared)
     )
     assert same.stt_client is shared
+
+
+# ---------------------------------------------------------------- Nemotron on Nebius Token Factory
+TF = "https://tf.example/v1/"
+
+
+class _Yes(BaseModel):
+    answer: bool
+
+
+def _nemotron(handler) -> llm.Nemotron:
+    http = httpx.Client(base_url=TF, transport=httpx.MockTransport(handler))
+    return llm.Nemotron("nvidia/x", TF, "k", http=http)
+
+
+def _reply(content, status=200):
+    body = {
+        "choices": [
+            {"message": {"role": "assistant", "content": content}, "finish_reason": "stop"}
+        ],
+        "usage": {"prompt_tokens": 7, "completion_tokens": 3, "total_tokens": 10},
+    }
+    return httpx.Response(status, json=body)
+
+
+def _routed(handler, inner_script=()):
+    inner = SimpleNamespace(models=Models(inner_script))
+    return llm.RoutedClient(inner, _nemotron(handler)), inner
+
+
+def test_without_a_nebius_key_the_client_is_the_plain_vertex_client():
+    client = llm.make_client(Settings(_env_file=None, gcp_project="p", nebius_api_key=""))
+    assert not hasattr(client, "nemotron")
+    assert client._api_client._http_options.timeout == llm.REQUEST_TIMEOUT_MS
+
+
+def test_the_routed_client_keeps_the_vertex_client_for_everything_else():
+    s = Settings(_env_file=None, gcp_project="p", nebius_api_key="sekret-123")
+    client = llm.make_client(s)
+    assert client.nemotron.model == "nvidia/nemotron-3-super-120b-a12b"
+    assert client._api_client._http_options.timeout == llm.REQUEST_TIMEOUT_MS  # delegated
+    assert "sekret-123" not in repr(client.nemotron) and "sekret-123" not in repr(s)  # never logged
+
+
+def test_text_only_calls_go_to_nemotron_with_schema_and_reasoning_off():
+    seen = []
+
+    def handler(req):
+        seen.append(req)
+        return _reply('{"answer": true}')
+
+    client, inner = _routed(handler)
+    cfg = types.GenerateContentConfig(
+        temperature=0,
+        max_output_tokens=50,
+        response_mime_type="application/json",
+        response_schema=_Yes,
+        system_instruction="Answer JSON.",
+    )
+    resp = llm.generate(client, "gemini-3.5-flash-lite", "is this for Dory?", cfg)
+    req = seen[0]
+    body = json.loads(req.content)
+    assert req.url.path == "/v1/chat/completions" and req.headers["authorization"] == "Bearer k"
+    assert body["model"] == "nvidia/x" and body["chat_template_kwargs"] == {
+        "enable_thinking": False
+    }
+    assert body["messages"] == [
+        {"role": "system", "content": "Answer JSON."},
+        {"role": "user", "content": "is this for Dory?"},
+    ]
+    assert body["temperature"] == 0 and body["max_tokens"] == 50
+    assert body["response_format"]["type"] == "json_schema"
+    assert body["response_format"]["json_schema"]["name"] == "_Yes"
+    assert (
+        body["response_format"]["json_schema"]["schema"]["properties"]["answer"]["type"]
+        == "boolean"
+    )
+    assert resp.text == '{"answer": true}' and resp.parsed.answer is True
+    assert resp.candidates[0].content.parts[0].text == resp.text
+    assert resp.usage_metadata.total_token_count == 10
+    assert inner.models.calls == 0
+
+
+def test_chat_history_contents_become_user_and_assistant_turns():
+    seen = []
+    client, _ = _routed(lambda r: (seen.append(r), _reply("ok"))[1])
+    contents = [
+        types.Content(role="user", parts=[types.Part(text="a")]),
+        types.Content(role="model", parts=[types.Part(text="b")]),
+        "c",
+    ]
+    assert llm.generate(client, "gemini-3.5-flash", contents, None).text == "ok"
+    assert json.loads(seen[0].content)["messages"] == [
+        {"role": "user", "content": "a"},
+        {"role": "assistant", "content": "b"},
+        {"role": "user", "content": "c"},
+    ]
+
+
+@pytest.mark.parametrize(
+    ("model", "contents", "config"),
+    [
+        ("gemini-2.5-flash-tts", "hi", None),  # speech
+        ("gemini-embedding-001", "hi", None),  # embeddings
+        ("gemini-nano-banana-2.1", "hi", None),  # images
+        (
+            "gemini-3.5-flash",
+            [types.Part.from_bytes(data=b"x", mime_type="image/png"), types.Part(text="what")],
+            None,
+        ),  # an image part
+        (
+            "gemini-3.5-flash",
+            "hi",
+            types.GenerateContentConfig(tools=[types.Tool(google_search=types.GoogleSearch())]),
+        ),  # grounded search
+    ],
+)
+def test_non_text_work_stays_on_gemini(model, contents, config):
+    ok = SimpleNamespace(text="gemini")
+    client, inner = _routed(lambda r: _reply("nemotron"), [ok])
+    assert llm.generate(client, model, contents, config) is ok
+    assert inner.models.calls == 1
+
+
+def test_nemotron_transient_errors_are_retried(monkeypatch):
+    monkeypatch.setattr(llm.time, "sleep", lambda _s: None)
+    replies = [httpx.Response(503, text="busy"), _reply("ok")]
+    client, _ = _routed(lambda r: replies.pop(0))
+    assert llm.generate(client, "gemini-3.5-flash", "hi", None).text == "ok"
+    assert not replies
+
+
+def test_nemotron_client_errors_raise_api_errors_without_retry():
+    calls = []
+    client, _ = _routed(lambda r: (calls.append(r), httpx.Response(400, text="bad"))[1])
+    with pytest.raises(errors.APIError) as e:
+        llm.generate(client, "gemini-3.5-flash", "hi", None)
+    assert e.value.code == 400 and len(calls) == 1
+
+
+def test_agent_brain_is_nemotron_super_when_the_key_is_set():
+    from dory.qa import build_agent
+
+    agent = build_agent(Settings(_env_file=None, nebius_api_key="k"), [], scoped=False)
+    m = agent.model
+    assert type(m).__name__ == "LiteLlm"
+    assert m.model == "openai/nvidia/nemotron-3-super-120b-a12b"
+    args = m._additional_args
+    assert args["api_base"] == "https://api.tokenfactory.nebius.com/v1/" and args["api_key"] == "k"
+    assert args["extra_body"] == llm.NO_THINK and args["drop_params"] is True
+    gemini = build_agent(Settings(_env_file=None, nebius_api_key=""), [], scoped=False).model
+    assert type(gemini).__name__ == "Gemini"
+
+
+def test_json_schemas_mark_every_property_required_so_nemotron_fills_them():
+    """Live, 25 Oct 2026: with pydantic's schema as is (optional fields not required) Nemotron
+    answered the memory day summary with `{}`; with every property required it filled it."""
+
+    class Item(BaseModel):
+        what: str
+        who: str = ""
+
+    class Doc(BaseModel):
+        overview: str = ""
+        items: list[Item] = []
+
+    sch = llm._response_format(Doc)["json_schema"]["schema"]
+    assert sch["required"] == ["overview", "items"]
+    assert sch["$defs"]["Item"]["required"] == ["what", "who"]
+    raw = {"type": "object", "properties": {"a": {"type": "string"}}}
+    assert llm._response_format(raw)["json_schema"]["schema"]["required"] == ["a"]
+    assert "required" not in raw  # the caller's dict is not mutated
+    assert llm._response_format(list[Item]) == {"type": "json_object"}
