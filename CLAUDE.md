@@ -255,10 +255,13 @@ build order: `docs/superpowers/specs/2026-10-18-dory-workspace-parity-design.md`
   Provisioning identity: `infra-provisioner@dory-personal-assistant.iam.gserviceaccount.com`
   (`roles/owner`, key `.gcp/dory-personal-assistant-6b63c7a4213d.json`, gitignored, never print it);
   gcloud profile `CLOUDSDK_CONFIG=~/.config/gcloud-dory` + `CLOUDSDK_PYTHON=.venv/bin/python`.
-  Google sign-in: `HUB_GOOGLE_CLIENT_ID` = the Web client
-  `941598007773-13q6hpt4ljbsq4j0nmam52jcab193o92.apps.googleusercontent.com` created in this project on
-  25 Oct 2026 (origins: both run.app URLs + localhost:8080; the custom domain must be added there too or the
-  Google button refuses that origin). Custom domain **https://dory.frontier-tech.app** (Cloud Run domain
+  Google sign-in: `HUB_GOOGLE_CLIENT_ID` = the Web client "Dory app"
+  `941598007773-8egle57b2r15rr6ufjbb7uoclejuqjif.apps.googleusercontent.com` (created 25 Oct 2026 18:06 UTC,
+  on the service since revision 00006; the first client `...193o92` never worked: its origins had been typed
+  under "Authorized redirect URIs"). The Google button only checks "Authorized JavaScript origins": they must
+  list `https://dory.frontier-tech.app`, the run.app URL and `http://localhost:8080`, or Google answers
+  "no registered origin" / `invalid_client`. The matching client secret is in the owner's `.env` as
+  `GOOGLE_OAUTH_CLIENT_SECRET` (only the Calendar connector reads it; not wired yet). Custom domain **https://dory.frontier-tech.app** (Cloud Run domain
   mapping created 25 Oct 2026 17:35 UTC, GoDaddy CNAME `dory` → `ghs.googlehosted.com`, certificate issued
   about ten minutes later); since 25 Oct 2026 17:48 UTC `DORY_HUB_URL` points at it on the service and on
   the `dory-bot` pool (which also got `DORY_RECEIPT_BUCKET=dory-personal-assistant-files`), and both deploy
