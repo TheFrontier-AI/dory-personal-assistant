@@ -1,5 +1,5 @@
 """Which chat platforms would start, and do their tokens work? Read-only: Slack auth.test and
-LINE get-bot-info. Reads SALID_* from the environment / .env; prints no secrets.
+LINE get-bot-info. Reads DORY_* from the environment / .env; prints no secrets.
 
     uv run python scripts/platforms_smoke.py
 """
@@ -7,7 +7,7 @@ LINE get-bot-info. Reads SALID_* from the environment / .env; prints no secrets.
 import asyncio
 import sys
 
-from salid.platforms.smoke import main
+from dory.platforms.smoke import main
 
 if __name__ == "__main__":
     sys.exit(asyncio.run(main()))

@@ -104,32 +104,32 @@ def test_index_and_healthz(client):
     assert client.get("/healthz").json() == {"status": "ok"}
     r = client.get("/recorder")
     assert r.status_code == 200 and "Meeting Scribe" in r.text
-    assert 'id="salid-add" href=""' in r.text  # no client id configured: link hidden by the page
+    assert 'id="dory-add" href=""' in r.text  # no client id configured: link hidden by the page
     home = client.get("/")
-    assert home.status_code == 200 and 'id="i18n-data"' in home.text  # Salid landing page
-    assert client.get("/salid", follow_redirects=False).headers["location"] == "/"
+    assert home.status_code == 200 and 'id="i18n-data"' in home.text  # Dory landing page
+    assert client.get("/dory", follow_redirects=False).headers["location"] == "/"
 
 
-def test_index_renders_salid_invite_link(env, client):
-    env.setenv("SALID_DISCORD_CLIENT_ID", "123456789012345678")
+def test_index_renders_dory_invite_link(env, client):
+    env.setenv("DORY_DISCORD_CLIENT_ID", "123456789012345678")
     get_settings.cache_clear()
     r = client.get("/recorder")
-    from meeting_scribe.app import CREATE_EVENTS, MANAGE_EVENTS, SALID_PERMISSIONS
+    from meeting_scribe.app import CREATE_EVENTS, DORY_PERMISSIONS, MANAGE_EVENTS
 
-    assert SALID_PERMISSIONS == 1166416 | (1 << 44) | (1 << 33) | (1 << 49)
-    assert SALID_PERMISSIONS & CREATE_EVENTS and SALID_PERMISSIONS & MANAGE_EVENTS
+    assert DORY_PERMISSIONS == 1166416 | (1 << 44) | (1 << 33) | (1 << 49)
+    assert DORY_PERMISSIONS & CREATE_EVENTS and DORY_PERMISSIONS & MANAGE_EVENTS
     assert (
         "https://discord.com/oauth2/authorize?client_id=123456789012345678"
-        f"&scope=bot+applications.commands&permissions={SALID_PERMISSIONS}"
+        f"&scope=bot+applications.commands&permissions={DORY_PERMISSIONS}"
     ) in r.text
-    assert "__SALID_INVITE_URL__" not in r.text
+    assert "__DORY_INVITE_URL__" not in r.text
 
 
-def test_salid_invite_url_rejects_non_numeric_ids():
-    from meeting_scribe.app import salid_invite_url
+def test_dory_invite_url_rejects_non_numeric_ids():
+    from meeting_scribe.app import dory_invite_url
 
-    assert salid_invite_url("") == ""
-    assert salid_invite_url('1"><script>') == ""
+    assert dory_invite_url("") == ""
+    assert dory_invite_url('1"><script>') == ""
 
 
 def test_create_and_get(client):
@@ -415,7 +415,7 @@ def test_pages_are_gzipped_for_browsers_that_accept_it(client):
 
 def test_pages_and_static_files_are_revalidated_never_stale(client):
     """After a deploy every page shows the new version at once (no stale browser copy)."""
-    for path in ("/", "/center", "/start", "/hub", "/static/salid/theme.css"):
+    for path in ("/", "/center", "/start", "/hub", "/static/dory/theme.css"):
         r = client.get(path)
         assert r.status_code == 200, path
         assert r.headers.get("cache-control") in ("no-cache", "no-store"), path

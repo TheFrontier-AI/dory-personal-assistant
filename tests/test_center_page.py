@@ -35,7 +35,7 @@ def test_mock_mode_guarded_by_query_param():
     src = html()
     assert 'get("mock") === "1"' in src
     assert "if (MOCK)" in src
-    assert "localStorage.setItem(LANG_KEY" in src  # one key shared by every Salid page
+    assert "localStorage.setItem(LANG_KEY" in src  # one key shared by every Dory page
     assert not re.search(r"localStorage[^;\n]*token", src, re.I)
 
 
@@ -67,7 +67,7 @@ def test_new_i18n_keys_in_both_languages():
 
 
 def test_every_feature_flag_has_a_thai_label():
-    from salid.guild_settings import FEATURES
+    from dory.guild_settings import FEATURES
 
     body = re.search(r"const FEAT_TH = \{(.*?)\};", html()).group(1)
     labels = dict(re.findall(r'(\w+): "([^"]+)"', body))

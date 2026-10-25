@@ -31,20 +31,20 @@ class Settings(BaseSettings):
 
     discord_webhook_url: str = ""
 
-    # Public Discord application id of the Salid bot. Not a secret; it only builds the
-    # "Add Salid to Discord" link on the home page. Empty hides the link.
-    salid_discord_client_id: str = ""
+    # Public Discord application id of the Dory bot. Not a secret; it only builds the
+    # "Add Dory to Discord" link on the home page. Empty hides the link.
+    dory_discord_client_id: str = ""
 
-    # Salid hub (/hub). Empty client id = every /api/hub call fails closed.
+    # Dory hub (/hub). Empty client id = every /api/hub call fails closed.
     # OAuth 2.0 Web client id (public, not a secret) used to verify Google ID tokens. Any
     # verified Google account may sign in; it only sees guilds it administers.
     hub_google_client_id: str = ""
     # Optional "super admins" (comma-separated Google accounts) who see every guild.
     hub_admin_emails: str = ""
     # Firestore collection with one settings doc per Discord guild (shared with the bot).
-    salid_guild_collection: str = "salid_guilds"
+    dory_guild_collection: str = "dory_guilds"
 
-    # Command center connectors (`salid.connectors`); each is disabled unless its credentials are
+    # Command center connectors (`dory.connectors`); each is disabled unless its credentials are
     # set. Secrets: never logged or returned by the API.
     slack_client_id: str = ""
     slack_client_secret: str = ""
@@ -52,18 +52,18 @@ class Settings(BaseSettings):
     clickup_client_id: str = ""
     clickup_client_secret: str = ""
     # "Verify my Discord account" on /center (OAuth2 `identify`); empty = only bot codes verify
-    salid_discord_client_secret: str = ""
-    # Salid web sessions (30 days) issued in exchange for a Google sign-in; empty = Google ID
+    dory_discord_client_secret: str = ""
+    # Dory web sessions (30 days) issued in exchange for a Google sign-in; empty = Google ID
     # tokens only (they expire after one hour, so people are signed out all the time).
-    salid_session_secret: str = ""
-    salid_session_days: int = 30
+    dory_session_secret: str = ""
+    dory_session_days: int = 30
 
-    # Google Calendar + Meet per member (`salid.google_oauth`). All four must be set or the feature is
+    # Google Calendar + Meet per member (`dory.google_oauth`). All four must be set or the feature is
     # off (routes answer 503). Secrets: never logged or returned by the API.
     google_oauth_client_id: str = ""
     google_oauth_client_secret: str = Field(default="", repr=False)
     google_oauth_redirect_uri: str = ""
-    salid_token_key: str = Field(default="", repr=False)  # Fernet key for stored refresh tokens
+    dory_token_key: str = Field(default="", repr=False)  # Fernet key for stored refresh tokens
     legal_contact_email: str = "info@frontier-tech.ai"  # shown on /privacy and /terms
 
 

@@ -6,11 +6,11 @@ Move items between sections as work progresses.
 ## To do
 
 ### Before submission (by 2026-10-17)
-- [ ] Re-authorize Salid on the team server with the new permissions (1166416)
+- [ ] Re-authorize Dory on the team server with the new permissions (1166416)
 - [ ] Create the Google OAuth Client ID for hub sign-in and list the allowed admin emails
-- [ ] Test the bot against real Firestore (`SALID_STORE=firestore`)
+- [ ] Test the bot against real Firestore (`DORY_STORE=firestore`)
 - [ ] Deploy the web service (`meeting-scribe`, adds `/hub`) to Cloud Run
-- [ ] Deploy the bot as the Cloud Run worker pool `salid-bot` (`scripts/deploy_salid.sh --apply`)
+- [ ] Deploy the bot as the Cloud Run worker pool `dory-bot` (`scripts/deploy_dory.sh --apply`)
 - [ ] Scan the full git history for secrets, then make the repository public (the rules require a public repo)
 - [ ] Update the architecture diagram (multi-tenant, voice, channel modes)
 
@@ -24,7 +24,7 @@ Move items between sections as work progresses.
 - [ ] Channel modes for voice meetings (today voice answers only when called by name)
 - [ ] Keep snoozes and the join-mode budget across restarts
 - [ ] Google Search grounding for up-to-date answers
-- [ ] Data deletion (per receipt, and when Salid leaves a server), privacy policy page, retention period
+- [ ] Data deletion (per receipt, and when Dory leaves a server), privacy policy page, retention period
 - [ ] Follow-up and commitment tracking
 - [ ] LINE integration
 

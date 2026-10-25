@@ -1,15 +1,15 @@
 #!/usr/bin/env bash
-# Deploy `python -m salid.platforms` (LINE / WhatsApp webhooks + Slack / Telegram) as the Cloud Run
-# SERVICE salid-platforms, on the salid-bot image (cloudbuild.salid.yaml).
+# Deploy `python -m dory.platforms` (LINE / WhatsApp webhooks + Slack / Telegram) as the Cloud Run
+# SERVICE dory-platforms, on the dory-bot image (cloudbuild.dory.yaml).
 # Usage: scripts/deploy_platforms.sh [--dry-run|--apply]
 #   (default)  --dry-run: echo the mutating commands only (nothing is built or changed)
 #   --apply    build a new image tag and deploy
 # Secrets are NEVER passed here: create them first in Secret Manager (names below) and this script
 # only references them with --update-secrets. Plain env is read from the local environment:
-#   SALID_WHATSAPP_PHONE_NUMBER_ID, GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_REDIRECT_URI and the
-#   optional pass-through SALID_GEMINI_MODEL, SALID_GEMINI_LOCATION, SALID_GUILD_COLLECTION,
-#   SALID_FIRESTORE_COLLECTION, SALID_HUB_URL, SALID_SLACK_EXEC_USER_IDS, SALID_LINE_EXEC_USER_IDS,
-#   SALID_TELEGRAM_EXEC_USER_IDS, SALID_WHATSAPP_EXEC_NUMBERS, SALID_LINE_ORG_LINKING, SALID_RECEIPT_BUCKET.
+#   DORY_WHATSAPP_PHONE_NUMBER_ID, GOOGLE_OAUTH_CLIENT_ID, GOOGLE_OAUTH_REDIRECT_URI and the
+#   optional pass-through DORY_GEMINI_MODEL, DORY_GEMINI_LOCATION, DORY_GUILD_COLLECTION,
+#   DORY_FIRESTORE_COLLECTION, DORY_HUB_URL, DORY_SLACK_EXEC_USER_IDS, DORY_LINE_EXEC_USER_IDS,
+#   DORY_TELEGRAM_EXEC_USER_IDS, DORY_WHATSAPP_EXEC_NUMBERS, DORY_LINE_ORG_LINKING, DORY_RECEIPT_BUCKET.
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
@@ -28,11 +28,11 @@ done
 
 PROJECT="${GCP_PROJECT:-meeting-scribe-hackathon}"
 REGION="${GCP_REGION:-asia-southeast1}"
-SERVICE="salid-platforms"
-SA="salid-bot@$PROJECT.iam.gserviceaccount.com"
+SERVICE="dory-platforms"
+SA="dory-bot@$PROJECT.iam.gserviceaccount.com"
 AR_REPO="cloud-run-source-deploy"
 IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)}"
-IMAGE="$REGION-docker.pkg.dev/$PROJECT/$AR_REPO/salid-bot:$IMAGE_TAG"
+IMAGE="$REGION-docker.pkg.dev/$PROJECT/$AR_REPO/dory-bot:$IMAGE_TAG"
 
 if $APPLY; then echo "MODE: APPLY (changes will be made in project $PROJECT)"
 else echo "MODE: DRY-RUN (nothing is changed; pass --apply to execute)"; fi
@@ -42,32 +42,32 @@ run() {
   if $APPLY; then "$@"; fi
 }
 
-echo "==> Building image $IMAGE (Cloud Build, Dockerfile.salid)"
+echo "==> Building image $IMAGE (Cloud Build, Dockerfile.dory)"
 run gcloud builds submit . --project "$PROJECT" --region "$REGION" \
-  --config cloudbuild.salid.yaml --substitutions "_IMAGE=$IMAGE"
+  --config cloudbuild.dory.yaml --substitutions "_IMAGE=$IMAGE"
 
 # Non-secret env. '|' is the pair delimiter because values may contain commas.
-ENV_PAIRS=("SALID_STORE=firestore" "SALID_GCP_PROJECT=$PROJECT"
-           "SALID_GEMINI_LOCATION=${SALID_GEMINI_LOCATION:-global}" "SALID_TZ=Asia/Bangkok")
-for k in SALID_WHATSAPP_PHONE_NUMBER_ID GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_REDIRECT_URI \
-         SALID_GEMINI_MODEL SALID_GUILD_COLLECTION SALID_FIRESTORE_COLLECTION SALID_HUB_URL \
-         SALID_SLACK_EXEC_USER_IDS SALID_LINE_EXEC_USER_IDS SALID_TELEGRAM_EXEC_USER_IDS \
-         SALID_WHATSAPP_EXEC_NUMBERS SALID_LINE_ORG_LINKING SALID_RECEIPT_BUCKET; do
+ENV_PAIRS=("DORY_STORE=firestore" "DORY_GCP_PROJECT=$PROJECT"
+           "DORY_GEMINI_LOCATION=${DORY_GEMINI_LOCATION:-global}" "DORY_TZ=Asia/Bangkok")
+for k in DORY_WHATSAPP_PHONE_NUMBER_ID GOOGLE_OAUTH_CLIENT_ID GOOGLE_OAUTH_REDIRECT_URI \
+         DORY_GEMINI_MODEL DORY_GUILD_COLLECTION DORY_FIRESTORE_COLLECTION DORY_HUB_URL \
+         DORY_SLACK_EXEC_USER_IDS DORY_LINE_EXEC_USER_IDS DORY_TELEGRAM_EXEC_USER_IDS \
+         DORY_WHATSAPP_EXEC_NUMBERS DORY_LINE_ORG_LINKING DORY_RECEIPT_BUCKET; do
   [ -z "${!k:-}" ] || ENV_PAIRS+=("$k=${!k}")
 done
 ENV_JOINED="$(IFS='|'; echo "${ENV_PAIRS[*]}")"
 
 SECRET_PAIRS=(
-  "SALID_SLACK_BOT_TOKEN=salid-platforms-slack-bot-token:latest"
-  "SALID_SLACK_APP_TOKEN=salid-platforms-slack-app-token:latest"
-  "SALID_LINE_CHANNEL_SECRET=salid-platforms-line-channel-secret:latest"
-  "SALID_LINE_CHANNEL_ACCESS_TOKEN=salid-platforms-line-channel-access-token:latest"
-  "SALID_TELEGRAM_BOT_TOKEN=salid-platforms-telegram-bot-token:latest"
-  "SALID_WHATSAPP_ACCESS_TOKEN=salid-platforms-whatsapp-access-token:latest"
-  "SALID_WHATSAPP_APP_SECRET=salid-platforms-whatsapp-app-secret:latest"
-  "SALID_WHATSAPP_VERIFY_TOKEN=salid-platforms-whatsapp-verify-token:latest"
-  "GOOGLE_OAUTH_CLIENT_SECRET=salid-google-oauth-secret:latest"
-  "SALID_TOKEN_KEY=salid-token-key:latest"
+  "DORY_SLACK_BOT_TOKEN=dory-platforms-slack-bot-token:latest"
+  "DORY_SLACK_APP_TOKEN=dory-platforms-slack-app-token:latest"
+  "DORY_LINE_CHANNEL_SECRET=dory-platforms-line-channel-secret:latest"
+  "DORY_LINE_CHANNEL_ACCESS_TOKEN=dory-platforms-line-channel-access-token:latest"
+  "DORY_TELEGRAM_BOT_TOKEN=dory-platforms-telegram-bot-token:latest"
+  "DORY_WHATSAPP_ACCESS_TOKEN=dory-platforms-whatsapp-access-token:latest"
+  "DORY_WHATSAPP_APP_SECRET=dory-platforms-whatsapp-app-secret:latest"
+  "DORY_WHATSAPP_VERIFY_TOKEN=dory-platforms-whatsapp-verify-token:latest"
+  "GOOGLE_OAUTH_CLIENT_SECRET=dory-google-oauth-secret:latest"
+  "DORY_TOKEN_KEY=dory-token-key:latest"
 )
 SECRETS_JOINED="$(IFS=','; echo "${SECRET_PAIRS[*]}")"
 
@@ -77,7 +77,7 @@ SECRETS_JOINED="$(IFS=','; echo "${SECRET_PAIRS[*]}")"
 echo "==> Deploying Cloud Run service $SERVICE"
 run gcloud run deploy "$SERVICE" --project "$PROJECT" --region "$REGION" \
   --image "$IMAGE" --service-account "$SA" \
-  --command python --args=-m,salid.platforms \
+  --command python --args=-m,dory.platforms \
   --min-instances 1 --max-instances 1 --no-cpu-throttling --memory 1Gi \
   --allow-unauthenticated \
   --update-env-vars "^|^$ENV_JOINED" --update-secrets "$SECRETS_JOINED" --quiet

@@ -14,7 +14,7 @@ body:
     id: scope
     attributes:
       label: Scope
-      description: Files / modules this will touch (e.g. src/salid/live_voice.py). Others check this before starting.
+      description: Files / modules this will touch (e.g. src/dory/live_voice.py). Others check this before starting.
     validations:
       required: true
   - type: textarea

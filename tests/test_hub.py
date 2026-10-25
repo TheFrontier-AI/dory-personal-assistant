@@ -7,13 +7,13 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
+from dory import guild_settings as gs
+from dory.guild_settings import GuildSettingsUpdate, MemoryGuildStore
+from dory.models import Receipt
+from dory.store import SQLiteStore
 from meeting_scribe import hub, pipeline
 from meeting_scribe.app import app
 from meeting_scribe.config import get_settings
-from salid import guild_settings as gs
-from salid.guild_settings import GuildSettingsUpdate, MemoryGuildStore
-from salid.models import Receipt
-from salid.store import SQLiteStore
 
 CLIENT_ID = "123-abc.apps.googleusercontent.com"
 A, B = 1000, 2000  # two guilds
@@ -42,7 +42,7 @@ def env(monkeypatch):
     monkeypatch.setenv("STORE", "memory")
     monkeypatch.setenv("HUB_GOOGLE_CLIENT_ID", CLIENT_ID)
     monkeypatch.setenv("HUB_ADMIN_EMAILS", "root@example.com")
-    monkeypatch.setenv("SALID_DISCORD_CLIENT_ID", "123456789012345678")
+    monkeypatch.setenv("DORY_DISCORD_CLIENT_ID", "123456789012345678")
     get_settings.cache_clear()
     pipeline.get_store.cache_clear()
     yield monkeypatch
@@ -81,7 +81,7 @@ def client(env, seen, tmp_path):
     guilds.redeem_link_code(guilds.create_link_code(B, 2, "v"), "other@example.com")
     app.dependency_overrides[hub.google_token_verifier] = verifier
     app.dependency_overrides[hub.get_guild_store] = lambda: guilds
-    app.dependency_overrides[hub.get_salid_runtime] = lambda: (object(), sqlite)
+    app.dependency_overrides[hub.get_dory_runtime] = lambda: (object(), sqlite)
     c = TestClient(app)
     c.sqlite, c.guilds = sqlite, guilds
     return c
@@ -170,7 +170,7 @@ def test_me_returns_email_invite_and_super_flag(client, env):
     assert me["email"] == "boss@example.com" and me["is_super"] is False
     assert "client_id=123456789012345678" in me["invite_url"]
     assert client.get("/api/hub/me", headers=SUPER).json()["is_super"] is True
-    env.setenv("SALID_DISCORD_CLIENT_ID", "")
+    env.setenv("DORY_DISCORD_CLIENT_ID", "")
     get_settings.cache_clear()
     assert client.get("/api/hub/me", headers=AUTH).json()["invite_url"] is None
 
@@ -236,7 +236,7 @@ def test_expired_unknown_and_malformed_codes_are_rejected(client, monkeypatch):
 )
 def test_a_guild_admin_cannot_touch_another_guild(client, monkeypatch, method, path, body):
     asked = []
-    monkeypatch.setattr("salid.qa.ask", lambda *a, **k: asked.append(1))
+    monkeypatch.setattr("dory.qa.ask", lambda *a, **k: asked.append(1))
     url = f"/api/hub/guilds/{B}/{path}"
     for who in (AUTH, STRANGER):
         assert (
@@ -331,7 +331,7 @@ def test_settings_defaults_round_trip_and_layout(client):
     assert put["updated_by"] == "boss@example.com" and put["updated_at"]
     got = client.get(f"/api/hub/guilds/{A}/settings", headers=AUTH).json()
     assert got == put and got["features"]["digest"] is False and got["features"]["qa"] is True
-    doc = client.guilds.client.collection("salid_guilds").docs[str(A)]
+    doc = client.guilds.client.collection("dory_guilds").docs[str(A)]
     assert doc["receipt_channel_ids"] == [str(A + 1)] and doc["exec_role_names"][0] == "หัวหน้า"
     assert client.guilds.get(B).updated_at == ""  # the other guild is untouched
 
@@ -511,14 +511,14 @@ def test_meetings_are_only_shown_to_super_admins(client):
 
 
 def test_activity_survives_a_broken_receipt_store(client):
-    app.dependency_overrides[hub.get_salid_runtime] = lambda: (object(), object())
+    app.dependency_overrides[hub.get_dory_runtime] = lambda: (object(), object())
     pipeline.get_store().create("Only meeting")
     items = client.get(f"/api/hub/guilds/{A}/activity", headers=SUPER).json()
     assert [i["kind"] for i in items] == ["meeting"]
 
 
 # ------------------------------------------------------------------ ask
-def test_ask_runs_salid_qa_as_executive_of_that_guild_only(client, monkeypatch):
+def test_ask_runs_dory_qa_as_executive_of_that_guild_only(client, monkeypatch):
     add_receipt(client, A, "Makro")
     add_receipt(client, B, "SecretBarTab")
     calls = []
@@ -528,7 +528,7 @@ def test_ask_runs_salid_qa_as_executive_of_that_guild_only(client, monkeypatch):
         vendors = [r.vendor for r in store.recent(guild_id, 50)]  # what Q&A could read
         return type("A", (), {"text": ",".join(vendors)})()
 
-    monkeypatch.setattr("salid.qa.ask", fake_ask)
+    monkeypatch.setattr("dory.qa.ask", fake_ask)
     r = client.post(f"/api/hub/guilds/{A}/ask", json={"question": " เดือนนี้ใช้เท่าไร "}, headers=AUTH)
     assert r.json() == {"answer": "Makro"} and calls == [("เดือนนี้ใช้เท่าไร", A, True)]
     r = client.post(f"/api/hub/guilds/{B}/ask", json={"question": "x"}, headers=OTHER)
@@ -544,7 +544,7 @@ def test_ask_failure_is_a_502_without_details(client, monkeypatch):
     def boom(*a, **k):
         raise RuntimeError("secret internals")
 
-    monkeypatch.setattr("salid.qa.ask", boom)
+    monkeypatch.setattr("dory.qa.ask", boom)
     r = client.post(f"/api/hub/guilds/{A}/ask", json={"question": "x"}, headers=AUTH)
     assert r.status_code == 502 and "secret" not in r.text
 
@@ -584,7 +584,7 @@ def test_hub_saves_tones_per_channel_and_the_server_note(client):
     put = client.put(url, json=body, headers=AUTH).json()
     assert put["default_tone"] == "professional" and put["tone_note"] == body["tone_note"]
     assert client.get(url, headers=AUTH).json()["channel_tones"] == body["channel_tones"]
-    doc = client.guilds.client.collection("salid_guilds").docs[str(A)]
+    doc = client.guilds.client.collection("dory_guilds").docs[str(A)]
     assert doc["channel_tones"] == body["channel_tones"] and doc["default_tone"] == "professional"
     body["channel_tones"] = {str(A + 1): "concise"}  # a removed channel really goes away
     client.put(url, json=body, headers=AUTH)
@@ -664,7 +664,7 @@ def test_hub_form_round_trips_keep_forever_retention(tmp_path):
     select = re.search(r'<select id="mem-days">(.*?)</select>', html, re.S).group(1)
     options = re.findall(r'<option value="([^"]+)"', select)
     assert options[0] == "0"  # "Keep forever" is offered first
-    fns = html[html.index("function fillRetention(") : html.index("// Channels Salid cannot read")]
+    fns = html[html.index("function fillRetention(") : html.index("// Channels Dory cannot read")]
     probe = tmp_path / "retention.js"
     probe.write_text(
         f"const opts = {json.dumps(options)}.map((value) => ({{ value }}));\n"
@@ -693,7 +693,7 @@ def test_hub_form_round_trips_keep_forever_retention(tmp_path):
 
 
 def test_hub_memory_status_shows_import_progress(client):
-    from salid.memory_store import ChannelState, GuildMemoryState, SQLiteMemoryStore
+    from dory.memory_store import ChannelState, GuildMemoryState, SQLiteMemoryStore
 
     mem = SQLiteMemoryStore(":memory:")
     mem.put_channel_state(ChannelState(guild_id=A, channel_id=1, complete=True, messages=8421))
@@ -701,7 +701,7 @@ def test_hub_memory_status_shows_import_progress(client):
     today = datetime.now(UTC).date().isoformat()
     mem.put_guild_state(GuildMemoryState(guild_id=A, day=today, images_done=120, channels_total=15))
     app.dependency_overrides[hub.get_memory_store] = lambda: mem
-    app.dependency_overrides[hub.get_salid_runtime] = lambda: (SimpleNamespace(), client.sqlite)
+    app.dependency_overrides[hub.get_dory_runtime] = lambda: (SimpleNamespace(), client.sqlite)
     url = f"/api/hub/guilds/{A}/memory-status"
     got = client.get(url, headers=AUTH).json()
     assert got["channels_done"] == 1 and got["channels_total"] == 15 and got["messages"] == 8431
@@ -710,7 +710,7 @@ def test_hub_memory_status_shows_import_progress(client):
     assert client.get(f"/api/hub/guilds/{B}/memory-status", headers=AUTH).status_code == 403
 
 
-# ------------------------------------------------------------------ channels Salid cannot see
+# ------------------------------------------------------------------ channels Dory cannot see
 def test_settings_expose_channel_visibility_for_the_hidden_channels_card(client):
     client.guilds.upsert_guild(
         A,
@@ -734,7 +734,7 @@ def test_hub_page_has_the_hidden_channels_card():
     from importlib.resources import files
 
     html = (files("meeting_scribe") / "static" / "hub.html").read_text(encoding="utf-8")
-    assert 'id="hidden-channels"' in html and "ห้องที่สลิดยังมองไม่เห็น" in html
+    assert 'id="hidden-channels"' in html and "ห้องที่ดอรี่ยังมองไม่เห็น" in html
     assert "Read Message History" in html and "renderHidden" in html
 
 
@@ -806,7 +806,7 @@ def test_hub_page_lists_every_guild_feature_flag():
     import re
     from pathlib import Path
 
-    from salid.guild_settings import FEATURES
+    from dory.guild_settings import FEATURES
 
     html = (Path(__file__).parent.parent / "src/meeting_scribe/static/hub.html").read_text()
     ids = set(re.findall(r'\{ id: "(\w+)"', html))
@@ -821,7 +821,7 @@ def test_saved_feature_flags_win_over_the_page_defaults():
     import re
     from pathlib import Path
 
-    from salid.guild_settings import FEATURES, Features
+    from dory.guild_settings import FEATURES, Features
 
     html = (Path(__file__).parent.parent / "src/meeting_scribe/static/hub.html").read_text()
     off = {f for f in FEATURES if not getattr(Features(), f)}  # default-off flags (video_ads)
@@ -839,8 +839,8 @@ def test_saved_feature_flags_win_over_the_page_defaults():
 
 
 def test_hub_me_shares_the_saved_language_with_the_center(client, env):
-    from salid.coo_store import SQLiteDocStore
-    from salid.orgs import OrgStore
+    from dory.coo_store import SQLiteDocStore
+    from dory.orgs import OrgStore
 
     prefs = OrgStore(SQLiteDocStore(":memory:"))
     app.dependency_overrides[hub.get_prefs] = lambda: prefs
@@ -877,7 +877,7 @@ def test_session_tokens_keep_people_signed_in_for_thirty_days(client, env):
 
     # not configured: Google tokens only
     assert client.post("/api/hub/session", headers=AUTH).status_code == 503
-    env.setenv("SALID_SESSION_SECRET", "top-secret")
+    env.setenv("DORY_SESSION_SECRET", "top-secret")
     get_settings.cache_clear()
     try:
         r = client.post("/api/hub/session", headers=AUTH)
@@ -907,17 +907,17 @@ def test_session_tokens_keep_people_signed_in_for_thirty_days(client, env):
             == 401
         )
     finally:
-        env.delenv("SALID_SESSION_SECRET", raising=False)
+        env.delenv("DORY_SESSION_SECRET", raising=False)
         get_settings.cache_clear()
 
 
 def test_google_sign_in_records_the_persons_real_name_once(client, env):
-    from salid.coo_store import SQLiteDocStore
-    from salid.orgs import OrgStore
+    from dory.coo_store import SQLiteDocStore
+    from dory.orgs import OrgStore
 
     prefs = OrgStore(SQLiteDocStore(":memory:"))
     app.dependency_overrides[hub.get_prefs] = lambda: prefs
-    env.setenv("SALID_SESSION_SECRET", "top-secret")
+    env.setenv("DORY_SESSION_SECRET", "top-secret")
     get_settings.cache_clear()
     try:
         assert client.post("/api/hub/session", headers=AUTH).status_code == 200
@@ -929,15 +929,15 @@ def test_google_sign_in_records_the_persons_real_name_once(client, env):
         assert (p.first_name, p.name) == ("P.", "Boss")
     finally:
         app.dependency_overrides.pop(hub.get_prefs, None)
-        env.delenv("SALID_SESSION_SECRET", raising=False)
+        env.delenv("DORY_SESSION_SECRET", raising=False)
         get_settings.cache_clear()
 
 
 def test_company_language_change_is_announced_on_the_server(client):
     """Changing the company language in the hub queues a notice for the bot (`announce`
     action): in the new language first, then the old one. Same value again: nothing."""
-    from salid.actions import ActionQueue
-    from salid.coo_store import SQLiteDocStore
+    from dory.actions import ActionQueue
+    from dory.coo_store import SQLiteDocStore
 
     docs = SQLiteDocStore(":memory:")
     app.dependency_overrides[hub.get_doc_store] = lambda: docs
