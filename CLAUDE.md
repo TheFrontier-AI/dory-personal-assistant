@@ -42,7 +42,7 @@ Gemini (`gemini-3.5-flash`, transcribe + diarize) → Firestore. On Stop: `/fini
 | Web sessions (`hub.py` `issue_session` / `verify_session`, `POST /api/hub/session`) | A Google ID token lives one hour, so after the first sign-in every page (`/start`, `/hub`, `/center`) exchanges it for a Dory session `ss1.<payload>.<hmac>` (HMAC-SHA256 with `DORY_SESSION_SECRET` = Secret Manager `dory-session-secret`, 30 days) kept in localStorage `dory_session`; `require_user` accepts both. "Sign in with Discord" (`center.py` `/api/center/auth/discord/{start,callback}`, scope `identify email`, verified email required, lands on `/<next>#session=<token>`) issues the same session and verifies the person's Discord identity. Pages show the Discord button when `__DISCORD_LOGIN__` is "1" (client id + secret + session secret set). |
 | `hub.py` / `static/hub.html` | Dory command center, multi-guild: `/hub` (Thai) + `/api/hub/{me,guilds,link}` and `/api/hub/guilds/{id}/{settings,activity,ask}`. Google ID token as Bearer, verified against `HUB_GOOGLE_CLIENT_ID` (empty = 503); any verified account signs in, guild routes need the email in that guild's `admin_emails` (else 403); `HUB_ADMIN_EMAILS` = optional super admins (all guilds + meeting activity). `POST /api/hub/link` redeems a `/ตั้งค่า` code in a Firestore transaction. No server secret, no Discord secret or token in the web service. |
 | `monitor_api.py` | Workflow monitor API (design: `docs/superpowers/specs/2026-10-18-dory-workflow-monitor-design.md` section 4), flag `MONITOR_ENABLED` (default off: every route 404, even before sign-in). `/api/center/orgs/{org_id}/monitor/`: `summary` (`{counts, by_kind, attention, failed_24h, done_today, heartbeat, now, seq}`; `heartbeat` = `relevant_heartbeats`: `bot` only with a connected Discord workspace, `platforms` only with Slack/LINE/Telegram/WhatsApp, each `{state, tick_at}`, a web-only org gets `{}` and never `bot_offline`), `items` (`{items, next_cursor}`, newest first; filters `kind`/`status` (repeated or comma lists), `attention`, `owner`, `workspace`, `from`/`to` = Bangkok days inclusive, `priority` accepted (no effect until phase 3), `q`; `ids=kind:id,...` <= `IDS_MAX` 50 (else 422) refetches through the finders, unknown and invisible keys left out; `limit` 1-100), `items/{kind}/{id}` (item + `events` + `controls`; unknown or invisible = 404), `changes?since=` (`{seq, floor, now, events, reset}`, one log read, `ETag: "<seq>"`, 304 on `If-None-Match`, `TokenBucket` `LIMITER` 1 per 2 s per person, burst 3, 429 + `Retry-After`). Org routes: `member_ctx` (403), `license_ok` (402 for everyone, super admins included), `viewer_for` + `monitor.visible` / `controls` decide everything server-side; responses never carry `audience` (`item_view` drops it, adds `mine`). `/api/center/admin/monitor/` (`super_user`, read-only, no licence gate): `summary` (`{orgs: [{id, name, counts, attention, seq}], heartbeats` with queue sizes, `unlinked: [{key, seq, last_at}]` = `guild:<id>` logs, `now}`) and `items` (same filters across orgs, rows carry `org_id`). Items come from `dory.monitor_sources` (registry: `register(kind, source, finder)`, `collect` (a raising source is logged by error type and skipped; all active + the newest `HISTORY_MAX` = 500 finished per kind), `find`, `discord_workspaces`); `items_for` = collect -> `_seen` (drops items of another org, then `apply_attention` with the bot heartbeat and `get_deep_timeout`, then `visible`) -> newest first. All store work in `run_in_threadpool`. |
-| `scripts/deploy.sh` | Idempotent Cloud Run deploy + IAM + Secret Manager + Pub/Sub push subscription |
+| `scripts/deploy.sh` | Idempotent Cloud Run deploy of the web service + IAM + Secret Manager + Pub/Sub push subscription. Since 25 Oct 2026 it also creates what a FRESH project lacks (Firestore native DB, `<project>-audio` and `<project>-files` buckets, the topic) and the Dory secrets (`dory-nebius-api-key` from env / `.env`, `dory-session-secret` generated); the Discord webhook secret is optional; a Secret Manager version is added only when a secret has none. No `aiplatform` API or role: models run on Token Factory. Run gcloud with `GCP_PROJECT=<project>`; for `dory-personal-assistant` use the provisioner profile `CLOUDSDK_CONFIG=~/.config/gcloud-dory` and `CLOUDSDK_PYTHON=.venv/bin/python` (gcloud's own Python 3.14 lacks `grpc`, so `run worker-pools` does not load without it) |
 | `scripts/resummarize_dry_run.py` | Re-run the summarizer on a stored meeting and print before/after. Read-only, but calls Vertex AI. |
 
 ## Dory (`src/dory/`) — second package
@@ -239,6 +239,24 @@ build order: `docs/superpowers/specs/2026-10-18-dory-workspace-parity-design.md`
 - Secret Manager secret `discord-webhook-url`
 - Deployed URL: `gcloud run services describe meeting-scribe --region asia-southeast1 --format='value(status.url)'`
   (keep it private: there is no auth on the app)
+- **Dory's own project `dory-personal-assistant` (number 941598007773), deployed 25 Oct 2026 evening
+  from branch `rename/dory` (image tag `e881902`)** for the Nebius x NVIDIA hackathon: Cloud Run
+  service `meeting-scribe` (web + command center) at
+  **https://meeting-scribe-941598007773.asia-southeast1.run.app** (alias
+  `https://meeting-scribe-lfux5up3dq-as.a.run.app`), worker pool `dory-bot` (1 instance, the Discord
+  app **Dory**, id 1563801157745377320, in the test server "The Frontier Company Limited"
+  1561374853263663175), Firestore native `(default)` in asia-southeast1 with the `dory_*`
+  collections, buckets `dory-personal-assistant-audio` / `dory-personal-assistant-files`, topic
+  `meeting-finalize` + push subscription, service accounts `meeting-scribe-run`,
+  `meeting-scribe-pusher`, `dory-bot`, secrets `dory-discord-token`, `dory-nebius-api-key`,
+  `dory-session-secret` (`discord-webhook-url` exists but is empty). **No Vertex AI API** in this
+  project by the owner's decision: text, images and embeddings run on Nebius Token Factory; voice,
+  audio, TTS, PDF bytes in chat, image generation and grounded search are unavailable there.
+  Provisioning identity: `infra-provisioner@dory-personal-assistant.iam.gserviceaccount.com`
+  (`roles/owner`, key `.gcp/dory-personal-assistant-6b63c7a4213d.json`, gitignored, never print it);
+  gcloud profile `CLOUDSDK_CONFIG=~/.config/gcloud-dory` + `CLOUDSDK_PYTHON=.venv/bin/python`.
+  Not done yet: `HUB_GOOGLE_CLIENT_ID` on the service (web sign-in off, `/api/center/me` -> 503), a
+  custom domain, Discord OAuth secret for "Sign in with Discord".
 - **Rename 25 Oct 2026: the product, package, env prefix, store names and scripts are now Dory
   (`dory`, `DORY_*`, `dory_*`), but everything deployed before that date still carries the old
   name `dory`.** What is LIVE today (do not recreate, do not assume it was renamed):
@@ -271,8 +289,9 @@ build order: `docs/superpowers/specs/2026-10-18-dory-workspace-parity-design.md`
 - `gcloud run deploy --source .` uploads the directory; `.gcloudignore` includes `.gitignore` (so `.env`
   is excluded) and drops `.claude/`. Confirm before deploying. Plain `gcloud run deploy meeting-scribe
   --source . --region asia-southeast1` keeps the existing env vars and secrets (no new secret version).
-- `scripts/deploy.sh` pushes the webhook from `.env` into Secret Manager as a **new version**. Run it
-  only intentionally.
+- `scripts/deploy.sh` and `scripts/deploy_dory.sh` add a Secret Manager version only when a secret
+  has none (`--rotate-token` for the Discord token); values come from the environment or `.env`
+  via stdin and are never echoed. Run them only intentionally.
 - **Never set `USE_PUBSUB=true` locally**: it routes finalize to the production push endpoint.
   Local runs use `STORE=memory` and the default `USE_PUBSUB=false`.
 - Re-transcribing chunks costs Vertex quota. 3–4 chunks is fine; ask before a whole meeting.

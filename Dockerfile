@@ -1,4 +1,5 @@
-FROM python:3.12-slim
+# 3.12 = the Python uv.lock was resolved for and the local venv and tests run on.
+FROM python:3.12-slim-bookworm
 
 RUN apt-get update \
     && apt-get install -y --no-install-recommends ffmpeg \
