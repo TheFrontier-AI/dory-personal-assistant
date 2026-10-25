@@ -263,8 +263,12 @@ build order: `docs/superpowers/specs/2026-10-18-dory-workspace-parity-design.md`
   about ten minutes later); since 25 Oct 2026 17:48 UTC `DORY_HUB_URL` points at it on the service and on
   the `dory-bot` pool (which also got `DORY_RECEIPT_BUCKET=dory-personal-assistant-files`), and both deploy
   scripts read `DORY_HUB_URL` from `.env` when it is not exported, so a redeploy keeps it. The run.app URLs
-  still answer. Not done yet: the Discord OAuth secret for "Sign in with Discord"
-  (`dory-discord-client-secret`), Google Calendar connector.
+  still answer. "Sign in with Discord": Secret Manager `dory-discord-client-secret` (version 1 from the owner's
+  `.env`, 25 Oct 2026 18:05 UTC) is mounted as `DORY_DISCORD_CLIENT_SECRET` on the service (revision 00005), so
+  `/center` and `/start` show the Discord button; the Dory app (1563801157745377320) needs the redirects
+  `https://dory.frontier-tech.app/api/center/auth/discord/callback` and `.../api/center/identity/discord/callback`
+  in its Developer Portal (the API's `PATCH /applications/@me` ignores `redirect_uris`). Not done yet: Google
+  Calendar connector.
 - **Rename 25 Oct 2026: the product, package, env prefix, store names and scripts are now Dory
   (`dory`, `DORY_*`, `dory_*`), but everything deployed before that date in the OLD project
   `meeting-scribe-hackathon` still carries the old name Salid.** What is LIVE there (do not recreate, do
