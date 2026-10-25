@@ -14,13 +14,13 @@ sys.path.insert(0, str(Path(__file__).parent / "dory"))
 
 from fake_firestore import FakeFirestore  # noqa: E402
 
-from meeting_scribe import center, hub, pm_api  # noqa: E402
-from meeting_scribe.app import app  # noqa: E402
-from meeting_scribe.config import get_settings  # noqa: E402
 from dory.coo_store import FirestoreDocStore, SQLiteDocStore  # noqa: E402
 from dory.guild_settings import MemoryGuildStore  # noqa: E402
 from dory.orgs import Member, OrgStore, Workspace  # noqa: E402
 from dory.tasks import Task, TaskRepo  # noqa: E402
+from meeting_scribe import center, hub, pm_api  # noqa: E402
+from meeting_scribe.app import app  # noqa: E402
+from meeting_scribe.config import get_settings  # noqa: E402
 
 CLIENT_ID = "123-abc.apps.googleusercontent.com"
 GUILD = 1000

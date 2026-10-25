@@ -216,9 +216,7 @@ class CooMixin:
             is_admin=bool(getattr(perms, "administrator", False)),
             top_role_position=getattr(getattr(m, "top_role", None), "position", 0) or 0,
         )
-        return self._position_rank(
-            guild, m, base
-        )  # a position lifts the rank (dory.positions_bot)
+        return self._position_rank(guild, m, base)  # a position lifts the rank (dory.positions_bot)
 
     def _ranks(self, guild) -> dict[int, int]:
         """Member id -> rank of every human member, cached for a minute."""

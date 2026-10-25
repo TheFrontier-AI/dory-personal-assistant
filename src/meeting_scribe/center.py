@@ -41,8 +41,6 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from meeting_scribe import hub
-from meeting_scribe.config import get_settings
 from dory.change_outbox import ChangeOutbox, record_org_edit
 from dory.connectors import (
     COMING_SOON,
@@ -103,6 +101,8 @@ from dory.orgs import (
 )
 from dory.people_directory import Observed, PeopleBook, Person, Seen
 from dory.sharing import SHARED_DOCS_CHANNEL, SHARED_DOCS_NAME, WEB_DOCS_CHANNEL
+from meeting_scribe import hub
+from meeting_scribe.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -694,9 +694,7 @@ LOGIN_NEXT = ("center", "start", "hub")
 
 def discord_login_enabled() -> bool:
     s = get_settings()
-    return bool(
-        s.dory_discord_client_id and s.dory_discord_client_secret and s.dory_session_secret
-    )
+    return bool(s.dory_discord_client_id and s.dory_discord_client_secret and s.dory_session_secret)
 
 
 def discord_login_redirect() -> str:

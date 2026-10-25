@@ -121,9 +121,7 @@ class Settings(BaseSettings):
     engaged_timeout_seconds: float = 300.0  # once called she stays in the exchange until told it is over; 5 min of silence toward her ends it (owner, 2026-10-18)
     # Engaged by the name alone (no question): back to listening after this long unless someone
     # addresses Dory (DORY_ENGAGED_BARE_TIMEOUT_SECONDS).
-    engaged_bare_timeout_seconds: float = (
-        300.0  # "Dory?" … thinking for minutes is fine, she waits
-    )
+    engaged_bare_timeout_seconds: float = 300.0  # "Dory?" … thinking for minutes is fine, she waits
     # "Be quiet" / "เงียบก่อน" (anyone): Dory says nothing and does not wake on a bare name until
     # someone says her name with words again, like a person would. No timer.
     # Every listening <-> engaged change (and the join) is shown as one short line in the meeting's

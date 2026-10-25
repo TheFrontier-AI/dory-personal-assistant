@@ -15,7 +15,6 @@ from test_coordinator import BOSS, OWNER_ID, PEER, world
 from test_modes import bot  # noqa: F401  (fixture)
 from test_positions_bot import give, link, names, rig, wire
 
-from meeting_scribe import center
 from dory import change_outbox as co
 from dory.change_outbox import (
     ChangeOutbox,
@@ -30,6 +29,7 @@ from dory.change_outbox_bot import ChangeButton
 from dory.coo_store import FirestoreDocStore, SQLiteDocStore
 from dory.i18n import t
 from dory.orgs import Member, Org, OrgStore, Position, Workspace
+from meeting_scribe import center
 
 T0 = datetime(2026, 10, 18, 9, 0, tzinfo=UTC)
 

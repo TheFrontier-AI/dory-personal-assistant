@@ -531,9 +531,7 @@ def test_deck_fixed_strings_follow_the_reply_language(settings, seeded):
         language="auto",
     )
     cover = Presentation(io.BytesIO(a.files[0][1])).slides[0]
-    assert "Made with Dory" in " ".join(
-        s.text_frame.text for s in cover.shapes if s.has_text_frame
-    )
+    assert "Made with Dory" in " ".join(s.text_frame.text for s in cover.shapes if s.has_text_frame)
 
 
 def test_no_deck_tool_without_deck_and_prompt_only_with_it(settings, seeded):

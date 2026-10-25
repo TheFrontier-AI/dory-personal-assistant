@@ -8,12 +8,12 @@ import pytest
 from cryptography.fernet import Fernet
 from fastapi.testclient import TestClient
 
-from meeting_scribe import center, hub
-from meeting_scribe.app import app
-from meeting_scribe.config import get_settings
 from dory.coo_store import SQLiteDocStore
 from dory.google_oauth import CALENDAR_SCOPES, STATE_KIND, TOKENS_KIND, GoogleConfig, GoogleOAuth
 from dory.orgs import License, Member, OrgStore
+from meeting_scribe import center, hub
+from meeting_scribe.app import app
+from meeting_scribe.config import get_settings
 
 CLIENT_ID = "123-abc.apps.googleusercontent.com"
 KEY = Fernet.generate_key().decode()

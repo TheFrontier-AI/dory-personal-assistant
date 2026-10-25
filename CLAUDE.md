@@ -211,13 +211,24 @@ build order: `docs/superpowers/specs/2026-10-18-dory-workspace-parity-design.md`
 - Secret Manager secret `discord-webhook-url`
 - Deployed URL: `gcloud run services describe meeting-scribe --region asia-southeast1 --format='value(status.url)'`
   (keep it private: there is no auth on the app)
-- Custom domain **https://dory.frontier-tech.app** (Cloud Run domain mapping created 17 Oct 2026; GoDaddy
-  CNAME `dory` → `ghs.googlehosted.com`; domain verified by the gcloud account). Env set on the service
-  on 17 Oct 2026: `DORY_STORE=firestore`, `HUB_GOOGLE_CLIENT_ID` (public OAuth web client, origins =
-  both run.app URLs + the custom domain + `http://localhost:8080`), `DORY_HUB_URL=https://dory.frontier-tech.app`.
-  `DORY_DISCORD_CLIENT_ID=1560235651545309284` set 17 Oct 2026 (invite buttons live); `DORY_DISCORD_CLIENT_SECRET` from Secret Manager `dory-discord-client-secret` (pasted in chat on 17 Oct: rotate after the hackathon). The bot user is already a
-  member of guild `TheFrontier` (1548606556583501945), linked to org `org_aef43a633f` (The Frontier Company Limited) by
-  `scripts/dory_link_guild.py` on 17 Oct 2026. The bot IS deployed since 17 Oct 2026 19:12 UTC: Cloud Run worker pool `dory-bot` (1 instance, `scripts/deploy_dory.sh --apply`, secret `dory-discord-token`, `DORY_HUB_URL=https://dory.frontier-tech.app`); stop with `gcloud run worker-pools update dory-bot --region asia-southeast1 --instances 0`.
+- **Rename 25 Oct 2026: the product, package, env prefix, store names and scripts are now Dory
+  (`dory`, `DORY_*`, `dory_*`), but everything deployed before that date still carries the old
+  name `dory`.** What is LIVE today (do not recreate, do not assume it was renamed):
+  custom domain **https://dory.frontier-tech.app** (Cloud Run domain mapping created 17 Oct 2026; GoDaddy
+  CNAME `dory` → `ghs.googlehosted.com`; domain verified by the gcloud account), env on the
+  `meeting-scribe` service set 17 Oct 2026 with the OLD prefix (`DORY_STORE=firestore`,
+  `DORY_HUB_URL=https://dory.frontier-tech.app`, `DORY_DISCORD_CLIENT_ID=1560235651545309284`,
+  `DORY_DISCORD_CLIENT_SECRET` from Secret Manager `dory-discord-client-secret`; `HUB_GOOGLE_CLIENT_ID`
+  = public OAuth web client, origins = both run.app URLs + the custom domain + `http://localhost:8080`),
+  Cloud Run worker pool `dory-bot` (1 instance since 17 Oct 2026 19:12 UTC, secret `dory-discord-token`;
+  stop with `gcloud run worker-pools update dory-bot --region asia-southeast1 --instances 0`), Secret
+  Manager `dory-session-secret`, bucket `gs://dory-personal-assistant-dory`, Firestore collections
+  `dory_*` holding the real company's data. The bot user is a member of guild `TheFrontier`
+  (1548606556583501945), linked to org `org_aef43a633f` (The Frontier Company Limited) on 17 Oct 2026.
+  The renamed code reads `DORY_*` env and `dory_*` collections, and `scripts/deploy_dory.sh` /
+  `scripts/deploy_platforms.sh` create NEW resources (`dory-bot`, `dory-platforms`, `dory-*` secrets):
+  deploying it is a fresh install next to the old one, not an upgrade; the `dory_*` data is not
+  migrated unless somebody writes that script. A `dory.frontier-tech.app` domain does not exist yet.
 - `.gcloudignore` exists (includes `.gitignore`, drops `.claude/`, `.git/`, `tests/`), so a source deploy no
   longer relies on `.gitignore` alone.
 

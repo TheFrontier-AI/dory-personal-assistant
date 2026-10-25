@@ -11,6 +11,7 @@ from types import SimpleNamespace
 import pytest
 from conftest import GUILD, FakeClient, json_resp
 from test_bot_multitenant import member
+from test_dory_files import wire
 from test_memory_import import (
     FakeAtt,
     HChan,
@@ -24,7 +25,6 @@ from test_memory_import import (
     settle,
 )
 from test_modes import STAFF, TMsg, bot, set_mode, world
-from test_dory_files import wire
 
 from dory import docs, media, media_bot
 from dory.media import Seg, Transcript

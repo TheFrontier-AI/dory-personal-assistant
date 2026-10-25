@@ -5,11 +5,11 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from dory.coo_store import SQLiteDocStore
+from dory.orgs import OrgStore
 from meeting_scribe import center, hub
 from meeting_scribe.app import app
 from meeting_scribe.config import get_settings
-from dory.coo_store import SQLiteDocStore
-from dory.orgs import OrgStore
 
 
 @pytest.fixture

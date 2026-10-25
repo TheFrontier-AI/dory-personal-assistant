@@ -330,7 +330,7 @@ _NAME_TO_CODE.update({"thai": "th", "english": "en", "ไทย": "th", "อั�
 _LANG_ALT = "|".join(sorted((re.escape(n) for n in _NAME_TO_CODE), key=len, reverse=True))
 _POLITE = r"(?:ครับ|ค่ะ|คะ|นะ|หน่อย|ด้วย|เลย|please|pls)?"
 _TAIL = rf"(?:\s*{_POLITE})*[\s.!?]*$"
-_NAME = r"(?:@?\S*dory\S*|ดอรี่|สะลิด|ซาลิด)"
+_NAME = r"(?:@?\S*dory\S*|ดอรี่|ดอรี|โดรี่|ดอลี่)"
 _HEAD = rf"^\s*(?:@\S+\s+|(?:hey\s+|hi\s+)?{_NAME}[\s,:]+)?"
 _PERSONAL_SET = [
     re.compile(

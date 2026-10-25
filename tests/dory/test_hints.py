@@ -46,9 +46,7 @@ def test_the_catalog_has_every_hint_key_and_the_translations_cover_them():
     import json
 
     for lang in EXTRA:
-        strings = json.loads((ROOT / f"src/dory/locales/{lang}.json").read_text("utf-8"))[
-            "strings"
-        ]
+        strings = json.loads((ROOT / f"src/dory/locales/{lang}.json").read_text("utf-8"))["strings"]
         missing = [k for k in HI.STRINGS if k not in strings]
         assert not missing, (lang, missing)
 

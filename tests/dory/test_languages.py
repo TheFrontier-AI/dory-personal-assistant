@@ -380,9 +380,7 @@ def test_missing_font_falls_back_to_english_with_a_note(monkeypatch):
     assert pdf_report.font_note("en") == "" and pdf_report.font_note("vi") == ""
     pdf = pdf_report._Pdf(pdf_report.FontSet(None, None, False), "Dory", "ja", datetime.now(UTC))
     assert pdf.lang == "en"  # the fixed labels switch to English
-    pdf_th = pdf_report._Pdf(
-        pdf_report.FontSet(None, None, False), "Dory", "th", datetime.now(UTC)
-    )
+    pdf_th = pdf_report._Pdf(pdf_report.FontSet(None, None, False), "Dory", "th", datetime.now(UTC))
     assert pdf_th.lang == "th"
     assert t("docs_font_missing", "en", language="Japanese").startswith("Fonts for Japanese")
 

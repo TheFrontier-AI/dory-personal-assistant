@@ -229,7 +229,7 @@ def parse_wake(text: str) -> str | None:
 
 # ---- hush: "be quiet" / "เงียบก่อน": silent listening until the name is called again
 _HUSH_LEAD_RE = re.compile(
-    r"^(?:[\s,.!?~ๆ]|ดอรี่|dory|ซาลิด|hey|เฮ้ย|เฮ้|โอเค|ok(?:ay)?|เออ|งั้น|ครับผม|ครับ|ค่ะ|คะ|นะ"
+    r"^(?:[\s,.!?~ๆ]|ดอรี่|ดอรี|โดรี่|dory|dori|hey|เฮ้ย|เฮ้|โอเค|ok(?:ay)?|เออ|งั้น|ครับผม|ครับ|ค่ะ|คะ|นะ"
     r"|please|ช่วย|ขอ|ก็)+",
     re.I,
 )

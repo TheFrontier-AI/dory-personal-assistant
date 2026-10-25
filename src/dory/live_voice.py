@@ -105,7 +105,7 @@ def intentional_barge_in(settings: Any) -> bool:
 # Said to Dory while she talks = "stop now". Short, explicit phrases (or her name) only, so a noisy
 # room, a side conversation or a cough never cuts her off mid-sentence.
 _STOP = re.compile(
-    r"(?:ดอรี่|dory|ซาลิด)"
+    r"(?:ดอรี่|ดอรี|โดรี่|ดอลี่|dory|dori)"
     r"|หยุด|พอ\s*(?:แล้ว|ก่อน|ละ)|เดี๋ยว\s*(?:ก่อน|ๆ|เดี๋ยว)|ขอ\s*(?:แทรก|พูด|ขัด)|เงียบ|ฟังก่อน"
     r"|รอ\s*ก่อน"
     r"|\b(?:stop|wait|hold on|hang on|enough|be quiet|quiet please|excuse me|sorry to interrupt)\b",
@@ -818,7 +818,7 @@ def build_instruction(
         "ไม่สั่งสอน ไม่ชวนคุยเอง ไม่อ่านกฎหรือนโยบายให้ใคร\n"
         "กติกาการพูด:\n"
         "- คุณอยู่ในห้องประชุม คำพูดส่วนใหญ่เป็นการคุยกันระหว่างคน ไม่ใช่คุยกับคุณ ให้พูดเฉพาะเมื่อมีคนคุยกับคุณ "
-        "ซึ่งขึ้นต้นด้วยการเรียกชื่อ “ดอรี่” (Dory, สะลิด, สลิต, ซาลิด) ถ้าแค่พูดถึงคุณในบุคคลที่สาม "
+        "ซึ่งขึ้นต้นด้วยการเรียกชื่อ “ดอรี่” (Dory, ดอรี, โดรี่, ดอลี่) ถ้าแค่พูดถึงคุณในบุคคลที่สาม "
         "(เช่น “ให้ดอรี่จดไว้”, “ดอรี่จดแล้ว”) ไม่ใช่การเรียก ให้ตัดสินจากความหมายแล้วเงียบ\n"
         "- ระบบจะบอกสถานะเป็นข้อความในวงเล็บ (กำลังฟัง / กำลังคุย / ถูกบอกให้เงียบ) ตอนกำลังฟังห้ามพูด "
         "เมื่อมีคนเรียกคุณพร้อมคำขอหรือทักทาย ให้ตอบสั้น ๆ ทันที (ทักกลับ) ถ้าเขาเรียกแค่ชื่อ ให้ตอบคำเดียวสั้น ๆ "
@@ -833,7 +833,7 @@ def build_instruction(
         f"(ไม่ต้องเรียกชื่อ) ระบบจะปิดบทสนทนาเองเมื่อไม่มีใครคุยกับคุณ {engaged_minutes(settings)} นาที "
         "ห้ามแทรกเพราะรู้คำตอบ แม้เรื่องที่คุยจะเกี่ยวกับทีมหรืออดีต\n"
         "- เมื่อถูกบอกให้เงียบ ให้เงียบจนกว่าจะมีคนเรียกชื่อคุณอีกครั้ง\n"
-        "- คำที่เสียงคล้ายชื่อคุณแต่อยู่กลางประโยคและไม่ใช่การเรียกคุณ (เช่น “สนิท” ใน “เขาสนิทกันมาก”, “สลิป”, “สิริ”) "
+        "- คำที่เสียงคล้ายชื่อคุณแต่อยู่กลางประโยคและไม่ใช่การเรียกคุณ (เช่น “ดอลลี่” ใน “ตุ๊กตาดอลลี่”, “โดราเอมอน”, “ทอรี่”) "
         "ไม่ใช่การเรียกชื่อ ให้เงียบ\n"
         "- ตอบสั้น 1-3 ประโยค เป็นธรรมชาติเหมือนคุยกันจริง ไม่อ่านเป็นรายการยาว ๆ\n"
         f"- {voice_line(tone, 'th')}\n"
@@ -2167,9 +2167,7 @@ class LiveVoice:
                 if not recent:
                     ok, reason = False, "no name heard (strict policy)"
             if ok:
-                logger.info(
-                    "live: ask_dory accepted: speech heard, engaging %s", stats_line(stats)
-                )
+                logger.info("live: ask_dory accepted: speech heard, engaging %s", stats_line(stats))
                 self.bot.meetings._set_engaged(self.session, True)
                 return True
             logger.info("live: ask_dory refused: %s %s", reason, stats_line(stats))

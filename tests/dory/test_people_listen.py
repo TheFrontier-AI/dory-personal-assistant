@@ -275,7 +275,7 @@ def test_the_script_drops_bot_dossiers_and_bot_contacts(docs):
 
     mod, repo = _script(), P.PeopleRepo(docs)
     ev = P.Evidence(day="2026-10-14", channel_id=10, message_id=1)
-    repo.put(GUILD, P.Dossier(user_id=500, name="ซาลิด bot"))
+    repo.put(GUILD, P.Dossier(user_id=500, name="ดอรี่ bot"))
     mali = P.Dossier(user_id=1, name="Mali")
     mali.contacts = [
         P.Contact(who="ดอรี่", evidence=[ev]),
