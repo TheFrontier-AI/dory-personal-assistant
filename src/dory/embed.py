@@ -87,11 +87,44 @@ class VertexEmbedder:
         return out
 
 
+QUERY_INSTRUCT = "Instruct: Retrieve the team chat notes that answer the question\nQuery: "
+
+
+class TokenFactoryEmbedder:
+    """`/embeddings` on Nebius Token Factory through the route a `llm.RoutedClient` carries (the
+    open Qwen3-Embedding-8B by default; Matryoshka truncation to `dim`). Queries get the
+    instruction prefix the Qwen3 embedding models are trained with; documents go as they are."""
+
+    def __init__(self, route, model: str, dim: int, batch: int = 32):
+        self.route, self.model, self.dim, self.batch = route, model, dim, max(1, batch)
+        self.model_id = f"{model}@{dim}"
+
+    def embed(self, texts: list[str], task: str) -> list[array]:
+        TASKS[task]  # the same two tasks as Vertex; anything else is a programming error
+        texts = [QUERY_INSTRUCT + t for t in texts] if task == "query" else list(texts)
+        out: list[array] = []
+        for i in range(0, len(texts), self.batch):
+            part = texts[i : i + self.batch]
+            delays = () if task == "query" else None  # a query fails fast (keywords take over)
+            got = llm.with_retry(
+                lambda p=part: self.route.embeddings(self.model, p, self.dim), delays
+            )
+            if len(got) != len(part):
+                raise ValueError(f"expected {len(part)} embeddings, got {len(got)}")
+            out += [normalize(v) for v in got]
+        return out
+
+
 def make_embedder(settings, client) -> Embedder:
     """The configured embedder; `NullEmbedder` when `DORY_EMBED_MODEL` is empty or there is no
-    client (tests, offline runs). `DORY_EMBED_LOCATION` gets its own client when it differs."""
+    client (tests, offline runs). A client with the Token Factory route and a
+    `DORY_NEBIUS_EMBED_MODEL` embeds there; else Vertex, where `DORY_EMBED_LOCATION` gets its own
+    client when it differs."""
     if not settings.embed_model or client is None:
         return NullEmbedder()
+    route = getattr(client, "nemotron", None)
+    if route is not None and getattr(settings, "nebius_embed_model", ""):
+        return TokenFactoryEmbedder(route, settings.nebius_embed_model, settings.embed_dim)
     loc = settings.embed_location
     if loc and loc != settings.gemini_location:
         from google import genai

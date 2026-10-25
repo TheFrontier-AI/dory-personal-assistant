@@ -1059,6 +1059,17 @@ def file_parts(files: list[FileInput]) -> tuple[list[types.Part], list[FileInput
     return parts, bad
 
 
+def attachment_kind(parts: list[types.Part]) -> str:
+    """ "" for text only, "images" when every binary part is an image, "other" when any part is
+    something else (PDF bytes): decides which model may read the turn (see build_agent)."""
+    kinds = {
+        (p.inline_data.mime_type or "").split("/")[0] for p in parts if p.inline_data is not None
+    }
+    if not kinds:
+        return ""
+    return "images" if kinds == {"image"} else "other"
+
+
 def skipped_note(skipped: list[FileInput]) -> str:
     return "\n".join(f"[file skipped: {f.filename}, {f.skip}]" for f in skipped)
 
@@ -2176,6 +2187,7 @@ def build_agent(
     memory: bool = False,
     interjection: bool = False,
     files: bool = False,
+    attachments: str = "",  # "" | "images" | "other" (PDF bytes): picks the Nemotron brain
     web: bool = False,
     secretary: bool = False,
     chat: bool = False,
@@ -2207,7 +2219,13 @@ def build_agent(
 ) -> LlmAgent:
     """One ADK LlmAgent per request. `model` is injectable so tests stay offline."""
     _ensure_vertex_env(settings)
-    brain = model or make_agent_model(settings)  # Nemotron on Token Factory when the key is set
+    # Nemotron on Token Factory when the key is set: the vision model when the message carries
+    # images; Gemini for this turn when it carries anything Token Factory cannot read (PDF bytes).
+    brain = (
+        model
+        if attachments == "other"
+        else model or make_agent_model(settings, vision=attachments == "images")
+    )
     prompt = system_prompt(
         settings,
         scoped=scoped,
@@ -2438,6 +2456,7 @@ async def ask_async(
         memory=memory is not None,
         interjection=interjection,
         files=bool(usable or skipped),
+        attachments=attachment_kind(f_parts),
         web=web_client is not None,
         secretary=bool(secretary_tools),
         chat=bool(chat_tools),
