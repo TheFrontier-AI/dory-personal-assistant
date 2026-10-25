@@ -41,7 +41,10 @@ def make_client(s: Settings):
 
 def make_agent_model(s: Settings):
     """The ADK model for `qa.build_agent`: Nemotron on Token Factory through ADK's LiteLlm adapter
-    when the key is set, else None (the caller builds its Gemini model)."""
+    when the key is set, else None (the caller builds its Gemini model). Reasoning stays ON here:
+    with the full bot's ~140 tool declarations the model narrated actions instead of calling
+    tools when it was off ("I'll set a reminder", no call; scripts/dory_tool_calls_probe.py, 25 Oct
+    2026). The text-only route below keeps it off (short JSON answers, no tools)."""
     if not s.nebius_api_key:
         return None
     from google.adk.models.lite_llm import LiteLlm  # heavy import, only when used
@@ -52,7 +55,6 @@ def make_agent_model(s: Settings):
         api_key=s.nebius_api_key,
         timeout=REQUEST_TIMEOUT_MS / 1000,
         drop_params=True,
-        extra_body=NO_THINK,
     )
 
 
