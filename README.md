@@ -53,12 +53,14 @@ hybrid Mamba-Transformer MoE) served by **Nebius Token Factory** (OpenAI-compati
 `https://api.tokenfactory.nebius.com/v1/`). Set `DORY_NEBIUS_API_KEY` (an API key from
 https://tokenfactory.nebius.com/project/api-keys) and:
 
-- every chat and voice answer (`dory.qa`, the Google ADK agent with its ~100 tools) runs on Nemotron
-  through ADK's `LiteLlm` adapter, reasoning switched off (`chat_template_kwargs.enable_thinking=false`)
-  because tool calls and Thai answers were as accurate and 3x faster that way in our probe;
+- every chat and voice answer (`dory.qa`, the Google ADK agent with its ~140 tool declarations) runs
+  on Nemotron through ADK's `LiteLlm` adapter with reasoning ON plus a one-paragraph tool rule in the
+  prompt: with reasoning off, or without the rule, the model narrated actions ("I'll set a reminder")
+  instead of calling the tool once it saw the full tool list (measured live, 25 Oct 2026);
 - every text-only model call (`dory.llm.generate`: the yes/no gates, memory day summaries, task and
-  project listeners, translations, people dossiers, JSON extractions) goes to the same model, with
-  JSON-schema outputs mapped to Token Factory's `response_format`;
+  project listeners, translations, people dossiers, JSON extractions) goes to the same model with
+  reasoning off (`chat_template_kwargs.enable_thinking=false`, short JSON answers) and JSON-schema
+  outputs mapped to Token Factory's `response_format` with every property required;
 - audio, images, embeddings, live voice and Google-grounded web search stay on Gemini (Vertex AI),
   because Token Factory's text models cannot do them.
 

@@ -225,9 +225,11 @@ def test_agent_brain_is_nemotron_super_when_the_key_is_set():
     assert m.model == "openai/nvidia/nemotron-3-super-120b-a12b"
     args = m._additional_args
     assert args["api_base"] == "https://api.tokenfactory.nebius.com/v1/" and args["api_key"] == "k"
-    assert args["extra_body"] == llm.NO_THINK and args["drop_params"] is True
-    gemini = build_agent(Settings(_env_file=None, nebius_api_key=""), [], scoped=False).model
-    assert type(gemini).__name__ == "Gemini"
+    assert "extra_body" not in args and args["drop_params"] is True  # reasoning stays on
+    assert "Tool rule:" in agent.instruction(None)  # the rule that makes it call tools
+    gemini_agent = build_agent(Settings(_env_file=None, nebius_api_key=""), [], scoped=False)
+    assert type(gemini_agent.model).__name__ == "Gemini"
+    assert "Tool rule:" not in gemini_agent.instruction(None)
 
 
 def test_json_schemas_mark_every_property_required_so_nemotron_fills_them():
