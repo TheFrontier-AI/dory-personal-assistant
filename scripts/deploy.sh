@@ -4,9 +4,12 @@
 # project needs. Usage: GCP_PROJECT=<project> scripts/deploy.sh   (gcloud logged in as an owner).
 # Secrets come from the environment, else from .env, and are never echoed: DISCORD_WEBHOOK_URL
 # (optional, Meeting Scribe's Discord post), DORY_NEBIUS_API_KEY (Nemotron on Token Factory),
-# DORY_SESSION_SECRET (generated when absent). A Secret Manager version is added only when the
+# DORY_SESSION_SECRET (generated when absent), DORY_DISCORD_CLIENT_SECRET (optional, Sign in with
+# Discord; secret dory-discord-client-secret). A Secret Manager version is added only when the
 # secret has none yet. Optional env passed to the service: HUB_GOOGLE_CLIENT_ID, HUB_ADMIN_EMAILS,
-# DORY_DISCORD_CLIENT_ID, DORY_HUB_URL (environment, else .env, else the service URL).
+# DORY_DISCORD_CLIENT_ID, DORY_HUB_URL (environment, else .env, else the service URL). Env vars and
+# secrets are UPDATED, never replaced: anything else already on the service is kept (remove a stale
+# one by hand with `gcloud run services update --remove-env-vars`).
 # No Vertex AI: the models run on Nebius Token Factory (README "NVIDIA Nemotron on Nebius Token
 # Factory"); enable aiplatform.googleapis.com by hand if a project is meant to use Gemini too.
 set -euo pipefail
@@ -102,6 +105,7 @@ ensure_secret() {  # secret name, env var, "required" | "optional": add a versio
 ensure_secret "$SECRET" DISCORD_WEBHOOK_URL optional
 ensure_secret dory-nebius-api-key DORY_NEBIUS_API_KEY required
 ensure_secret dory-session-secret DORY_SESSION_SECRET required
+ensure_secret dory-discord-client-secret DORY_DISCORD_CLIENT_SECRET optional  # Sign in with Discord
 SECRETS_JOINED="$(IFS=,; echo "${SECRET_REFS[*]}")"
 
 # Expected Cloud Run URL, so the OIDC audience can be set in the same deploy.
@@ -116,13 +120,14 @@ ENV_PAIRS=("USE_PUBSUB=true" "PUBSUB_VERIFY_AUDIENCE=$URL/pubsub/finalize" "PUSH
            "DORY_GCP_PROJECT=$PROJECT" "DORY_RECEIPT_BUCKET=$FILES_BUCKET"
            "DORY_HUB_URL=$HUB_URL")
 for k in HUB_GOOGLE_CLIENT_ID HUB_ADMIN_EMAILS DORY_DISCORD_CLIENT_ID; do
-  [ -z "${!k:-}" ] || ENV_PAIRS+=("$k=${!k}")
+  v="$(from_env_file "$k")"; [ -z "$v" ] || ENV_PAIRS+=("$k=$v")   # environment, else .env
 done
 ENV_JOINED="$(IFS='|'; echo "${ENV_PAIRS[*]}")"   # '|' delimiter: HUB_ADMIN_EMAILS has commas
+# --update-*, not --set-*: values set on the service by hand (and not passed here) survive a redeploy
 gcloud run deploy "$SERVICE" --quiet --source . --region "$REGION" \
   --service-account "$RUN_SA" \
-  --set-env-vars "^|^$ENV_JOINED" \
-  --set-secrets "$SECRETS_JOINED" \
+  --update-env-vars "^|^$ENV_JOINED" \
+  --update-secrets "$SECRETS_JOINED" \
   --allow-unauthenticated --timeout 900 --memory 1Gi --cpu 1 --concurrency 20 --max-instances 1
 
 ACTUAL_URL="$(gcloud run services describe "$SERVICE" --region "$REGION" --format='value(status.url)')"
