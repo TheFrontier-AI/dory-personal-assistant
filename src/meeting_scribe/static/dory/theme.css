@@ -1,0 +1,228 @@
+/* Dory design system "Lantern Deep": one theme for every page (/, /start, /hub, /center, /pm, /recorder).
+   Surface (light) is the default; [data-theme="deep"] scopes the dark sea used by the homepage hero and
+   the voice-call stage. Never follows the system light/dark setting: every judge sees the same page.
+   Dory's light is her attention: the glow tokens mark "Dory is working", always next to a text label.
+   Contrast ratios in the comments were calculated with the WCAG formula. */
+
+:root {
+  /* ---------- primitives ---------- */
+  --ocean-950: #050B1F; --ocean-900: #0A1530; --ocean-800: #102044; --ocean-700: #1A2F5C;
+  --ocean-500: #5A72A6; --ocean-400: #6F8CC4; --ocean-300: #A3B7DD; --ocean-50: #EAF2FF;
+  --glow-300: #5FF2E0; --glow-700: #0B7A72;
+  --plankton-300: #B9B4F2; --plankton-600: #4A4FBF; --plankton-800: #2B2F7A;
+  --lantern-300: #FFC46B;
+  --sand-0: #FFFFFF; --sand-50: #FAF9F6; --sand-100: #F3F1EC; --sand-150: #F0EDE6; --sand-200: #E6E3DC;
+  --ink-900: #1B1F3B; --ink-600: #5B6078; --ink-500: #686D84; --ink-400: #7C86A3;
+
+  /* ---------- type, space, shape, motion ---------- */
+  --font: "IBM Plex Sans Thai", "Noto Sans Thai", "Segoe UI", Tahoma, sans-serif;
+  --font-display: "Anuphan", var(--font);
+  --mono: "IBM Plex Mono", ui-monospace, SFMono-Regular, Menlo, monospace;
+  --space-1: 4px; --space-2: 8px; --space-3: 12px; --space-4: 16px; --space-5: 20px; --space-6: 24px;
+  --space-8: 32px; --space-10: 40px; --space-12: 48px; --space-16: 64px; --space-20: 80px; --space-24: 96px; --space-32: 128px;
+  --radius-xs: 6px; --radius-sm: 10px; --radius: 12px; --radius-lg: 16px; --radius-xl: 24px; --radius-pill: 999px;
+  --dur-instant: 80ms; --dur-fast: 160ms; --dur-base: 240ms; --dur-slow: 400ms; --dur-gentle: 600ms; --dur-ambient: 1600ms;
+  --ease: cubic-bezier(.22, .8, .3, 1); --ease-out-soft: var(--ease);
+  --ease-in-out: cubic-bezier(.65, 0, .35, 1); --ease-buoy: cubic-bezier(.34, 1.25, .64, 1); --ease-exit: cubic-bezier(.4, 0, 1, 1);
+}
+
+/* ---------- semantic tokens: Surface (light); [data-theme="surface"] is a light island inside a deep page ---------- */
+:root, [data-theme="surface"] {
+  --color-bg: var(--sand-50); --color-bg-raised: var(--sand-0); --color-bg-sunken: var(--sand-100);
+  --color-text: var(--ink-900);          /* 15.3:1 on bg */
+  --color-text-muted: var(--ink-600);    /* 5.9:1 */
+  --color-text-subtle: var(--ink-500);   /* 4.9:1 (replaces #8A8FA6, 3.0:1) */
+  --color-border: var(--sand-200);       /* dividers only: 1.3:1, decorative */
+  --color-border-control: var(--ink-400);/* inputs and controls: 3.4:1 */
+  --color-action: var(--plankton-800); --color-action-hover: #22265F; --color-on-action: #FFFFFF; /* 11.7:1 */
+  --color-link: var(--plankton-600); --color-focus: var(--plankton-600); /* 6.3:1 */
+  --color-glow: var(--glow-700);
+  --color-glow-ring: 0 0 0 1px rgba(11, 122, 114, .35), 0 0 20px rgba(11, 122, 114, .25);
+  --bubble-user-bg: var(--ocean-700); --bubble-user-text: #FFFFFF; /* 13.1:1 */
+  --shadow: 0 10px 30px rgba(43, 47, 122, .08), 0 1px 2px rgba(43, 47, 122, .06);
+  --shadow-lg: 0 24px 60px rgba(43, 47, 122, .14), 0 2px 6px rgba(43, 47, 122, .08);
+  --shadow-3: 0 32px 80px rgba(43, 47, 122, .22);
+}
+
+/* ---------- semantic tokens: Deep (dark), a scope, never a media query ---------- */
+[data-theme="deep"] {
+  --color-bg: var(--ocean-950); --color-bg-raised: var(--ocean-800); --color-bg-sunken: var(--ocean-900);
+  --color-text: var(--ocean-50);         /* 17.4:1 on abyss */
+  --color-text-muted: var(--ocean-300);  /* 9.7:1 */
+  --color-text-subtle: var(--ocean-400); /* 5.8:1 on abyss, 4.7:1 on deep; not on trench */
+  --color-border: rgba(163, 183, 221, .18);
+  --color-border-control: var(--ocean-500); /* 4.1:1 */
+  --color-action: var(--lantern-300); --color-action-hover: #FFD48F; --color-on-action: var(--ocean-950); /* 12.4:1 */
+  --color-link: var(--glow-300); --color-focus: var(--glow-300); /* 14.2:1 */
+  --color-glow: var(--glow-300);
+  --color-glow-ring: 0 0 0 1px rgba(95, 242, 224, .35), 0 0 24px rgba(95, 242, 224, .35);
+  --shadow: 0 0 0 1px rgba(163, 183, 221, .14), 0 8px 24px rgba(0, 0, 0, .35);
+  --shadow-lg: 0 0 0 1px rgba(163, 183, 221, .2), 0 16px 48px rgba(0, 0, 0, .45);
+  --shadow-3: 0 32px 80px rgba(0, 0, 0, .6);
+  color-scheme: dark;
+}
+
+/* ---------- legacy names, kept so every page keeps working; re-declared per scope so they follow it ---------- */
+:root, [data-theme] {
+  --bg: var(--color-bg); --bg-2: var(--color-bg-sunken); --card: var(--color-bg-raised); --surface: rgba(255, 255, 255, .72);
+  --ink: var(--color-text); --muted: var(--color-text-muted); --faint: var(--color-text-subtle);
+  --line: var(--color-border); --line-soft: var(--sand-150);
+  --indigo: var(--plankton-800); --indigo-2: var(--plankton-600); --lavender: var(--plankton-300); --sky: #BFD6F6; --gold: #D9C28A;
+  --navy: var(--ink-900);
+  --accent: var(--plankton-600); --link: var(--color-link); --on-accent: #FFFFFF; --accent-ink: #FFFFFF;
+  --nav-active: #EEEDFB; --chip: #EEEDFB;
+  --bubble-me: var(--bubble-user-bg); --bubble-bot: #F1F0FA;
+  --ok-bg: #E3F4EA; --ok-ink: #0B6B45; --ok: #0B6B45;
+  --warn-bg: #FFF3DA; --warn-ink: #8A5A00;
+  --err-bg: #FDE7E4; --err-ink: #A12315; --danger: #A12315;
+  --soon-bg: var(--sand-150);
+}
+[data-theme="deep"] { --surface: rgba(16, 32, 68, .72); --line-soft: rgba(163, 183, 221, .1); }
+[data-theme="surface"] { color-scheme: light; background: var(--color-bg); color: var(--color-text); }
+
+/* ---------- base ---------- */
+* { box-sizing: border-box; }
+html { -webkit-text-size-adjust: 100%; }
+body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.6; font-family: var(--font);
+  -webkit-font-smoothing: antialiased; overflow-x: hidden; }
+[data-theme="deep"] { background: var(--color-bg); color: var(--color-text); }
+a { color: var(--link); }
+a:hover { color: var(--indigo); }
+[data-theme="deep"] a:hover { color: var(--ocean-50); }
+[hidden] { display: none !important; }
+h1, h2, h3, h4, p { margin: 0; }
+h1 { font-size: clamp(28px, 4vw, 40px); line-height: 1.2; letter-spacing: -.01em; }
+h2 { font-size: clamp(22px, 3vw, 28px); line-height: 1.3; letter-spacing: -.01em; }
+h3 { font-size: 17px; line-height: 1.4; }
+:lang(th) h1, :lang(th) h2 { line-height: 1.35; letter-spacing: 0; } /* stacked Thai vowels and tone marks clip below this */
+button, input, select, textarea { font: inherit; color: inherit; }
+button { cursor: pointer; }
+:focus-visible { outline: 3px solid var(--color-focus); outline-offset: 3px; border-radius: 8px; }
+.sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+.mono { font-family: var(--mono); }
+.muted { color: var(--muted); }
+.faint { color: var(--faint); }
+
+/* ---------- header / brand ---------- */
+.wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
+.nav { position: sticky; top: 0; z-index: 20; background: rgba(250, 249, 246, .86);
+  backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
+.nav .wrap { display: flex; align-items: center; gap: 16px; min-height: 64px; }
+.logo { display: flex; align-items: center; gap: 10px; color: var(--indigo); text-decoration: none; font-weight: 700; font-size: 18px; }
+/* The brand mark is Dory herself (static/dory/dory-mark.svg); the letter inside stays for screen
+   readers and is hidden visually. */
+.mark, .logo .mark { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: transparent; font-weight: 700;
+  font-size: 15px; flex: none; overflow: hidden; background: var(--ocean-800) url("/static/dory/dory-mark.svg") center / cover no-repeat;
+  box-shadow: 0 4px 12px rgba(26, 47, 92, .25); }
+.grow { flex: 1 1 auto; }
+.langsw { display: flex; border: 1px solid var(--line); border-radius: 99px; padding: 2px; background: var(--card); }
+.langsw button { border: 0; background: none; padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.langsw button[aria-pressed="true"] { background: var(--indigo); color: #fff; }
+[data-theme="deep"] .langsw button[aria-pressed="true"] { background: var(--ocean-50); color: var(--ocean-950); }
+
+/* ---------- buttons ---------- */
+.btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border-radius: var(--radius);
+  font-weight: 600; font-size: 15px; line-height: 1.2; text-decoration: none; border: 1px solid transparent; background: #fff; color: var(--indigo);
+  min-height: 44px;
+  transition: transform .15s var(--ease), box-shadow .15s var(--ease), background .15s, border-color .15s; }
+.btn.primary { background: var(--color-action); color: var(--color-on-action); box-shadow: 0 6px 18px rgba(43, 47, 122, .25); }
+.btn.primary:hover { background: var(--color-action-hover); color: var(--color-on-action); transform: translateY(-1px); box-shadow: 0 10px 24px rgba(43, 47, 122, .3); }
+.btn.primary:active { transform: translateY(0); box-shadow: 0 3px 10px rgba(43, 47, 122, .25); }
+/* on dark a thin ring and a neutral shadow: the only glow on the page is Dory's lantern */
+[data-theme="deep"] .btn.primary, [data-theme="deep"] .btn.primary:hover, [data-theme="deep"] .btn.primary:active { box-shadow: 0 0 0 1px rgba(255, 196, 107, .45), 0 8px 24px rgba(0, 0, 0, .35); }
+.btn.secondary { background: #fff; color: var(--ink); border-color: var(--ink); }
+.btn.secondary:hover { background: var(--ink); color: #fff; }
+.btn.ghost { color: var(--indigo); border-color: var(--line); background: #fff; }
+.btn.ghost:hover { border-color: var(--lavender); background: #FBFAFF; color: var(--indigo); }
+[data-theme="deep"] .btn.ghost, [data-theme="deep"] .btn.secondary { background: transparent; color: var(--color-text); border-color: var(--color-border-control); }
+[data-theme="deep"] .btn.ghost:hover, [data-theme="deep"] .btn.secondary:hover { background: rgba(234, 242, 255, .08); color: var(--color-text); border-color: var(--ocean-300); }
+.btn.danger { background: #fff; color: var(--err-ink); border-color: #F1C4BE; }
+.btn.danger:hover { background: var(--err-bg); }
+.btn.small { padding: 8px 14px; font-size: 14px; border-radius: 10px; min-height: 36px; }
+.btn[disabled], .btn[aria-disabled="true"] { background: #E3E2EE; color: var(--ink-500); border-color: transparent; box-shadow: none; cursor: not-allowed; transform: none; }
+[data-theme="deep"] .btn[disabled], [data-theme="deep"] .btn[aria-disabled="true"] { background: rgba(234, 242, 255, .08); color: var(--ocean-400); border-color: transparent; }
+.btn[aria-busy="true"] { cursor: progress; }
+
+/* ---------- surfaces ---------- */
+.card { background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg); padding: 24px; box-shadow: var(--shadow); }
+.card.flat { box-shadow: none; }
+.panel-soft { background: linear-gradient(180deg, #FFFFFF, #F6F4FF); border: 1px solid var(--line); border-radius: var(--radius-lg); }
+hr, .or { border: 0; height: 1px; background: var(--line); margin: 8px 0; }
+
+/* ---------- forms ---------- */
+label { font-weight: 600; font-size: 14px; }
+.hint { font-weight: 400; color: var(--muted); font-size: 13px; }
+input[type="text"], input[type="email"], input[type="url"], input[type="search"], input[type="number"], input[type="time"],
+input[type="date"], input[type="password"], select, textarea {
+  width: 100%; padding: 10px 12px; border: 1px solid var(--color-border-control); border-radius: 10px; background: var(--card); color: var(--ink);
+  transition: border-color .15s, box-shadow .15s; }
+input:hover, select:hover, textarea:hover { border-color: var(--ink-600); }
+input:focus, select:focus, textarea:focus { outline: none; border-color: var(--color-focus); box-shadow: 0 0 0 3px rgba(74, 79, 191, .25); }
+input[aria-invalid="true"], select[aria-invalid="true"], textarea[aria-invalid="true"] { border-color: var(--danger); }
+input::placeholder, textarea::placeholder { color: var(--faint); }
+
+/* ---------- status ---------- */
+.notice { padding: 12px 14px; border-radius: 10px; background: var(--warn-bg); color: var(--warn-ink); font-size: 14px; }
+.notice.ok { background: var(--ok-bg); color: var(--ok-ink); }
+.notice.error, .notice.err { background: var(--err-bg); color: var(--err-ink); }
+.badge, .chip, .pill { display: inline-flex; align-items: center; gap: 6px; padding: 3px 10px; border-radius: 99px; font-size: 12px; font-weight: 600;
+  background: var(--chip); color: var(--indigo); }
+.badge.ok { background: var(--ok-bg); color: var(--ok-ink); }
+.badge.warn { background: var(--warn-bg); color: var(--warn-ink); }
+.badge.err { background: var(--err-bg); color: var(--err-ink); }
+.badge.soon { background: var(--soon-bg); color: var(--muted); }
+
+/* ---------- tables ---------- */
+table { border-collapse: collapse; width: 100%; font-size: 14px; }
+th { text-align: left; font-weight: 600; color: var(--muted); font-size: 12px; letter-spacing: .04em; text-transform: uppercase; padding: 10px 12px; border-bottom: 1px solid var(--line); }
+td { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); vertical-align: top; }
+
+/* ---------- footer ---------- */
+.site-footer { border-top: 1px solid var(--line); padding: 24px 0; color: var(--faint); font-size: 13px; }
+.site-footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; }
+.site-footer a { color: var(--muted); text-decoration: none; }
+.site-footer a:hover { color: var(--indigo); }
+
+/* ---------- Dory's lantern: the one status light (always paired with a text label) ---------- */
+@keyframes dory-lantern { 0%, 100% { opacity: .55; } 50% { opacity: 1; } }
+@keyframes dory-ripple { from { transform: scale(.6); opacity: .5; } to { transform: scale(1.6); opacity: 0; } }
+.lantern { position: relative; }
+.lantern::before { content: ""; position: absolute; inset: -5px; border-radius: inherit; box-shadow: var(--color-glow-ring); opacity: 0;
+  transition: opacity var(--dur-gentle) var(--ease); pointer-events: none; }
+.lantern.on::before { opacity: 1; }
+.lantern.pulse::before { opacity: 1; animation: dory-lantern var(--dur-ambient) var(--ease-in-out) infinite; }
+
+/* ---------- the rigged fish (inline SVG, see static/dory/dory.svg); CSS variables drive it ---------- */
+.dory-fish .df-eyes { transform-box: fill-box; transform-origin: center; transition: transform var(--dur-gentle) var(--ease); }
+.dory-fish .df-eye { transform-box: fill-box; transform-origin: center; }
+.dory-fish .df-pupil { transform: translate(var(--look-x, 0px), var(--look-y, 0px)); transition: transform var(--dur-fast) var(--ease); }
+.dory-fish .df-mouth { transform-box: fill-box; transform-origin: 50% 0; transform: scaleY(calc(.85 + var(--mouth, 0) * .5)); }
+.dory-fish .df-bars rect { transform-box: fill-box; transform-origin: center; transform: scaleY(calc(.55 + var(--mouth, 0) * .9)); }
+.dory-fish .df-lights { opacity: calc(.6 + var(--glow, 0) * .4); transition: opacity var(--dur-gentle) var(--ease); }
+.dory-fish .df-tail, .dory-fish .df-dorsal { transform-box: fill-box; }
+.dory-fish .df-tail { transform-origin: 100% 50%; }
+.dory-fish .df-dorsal { transform-origin: 80% 100%; }
+.fish-blink .df-eye { animation: dory-blink 120ms var(--ease-in-out); }
+@keyframes dory-blink { 50% { transform: scaleY(.1); } }
+@keyframes dory-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
+.fish-alive .df-tail { animation: dory-sway 3s var(--ease-in-out) infinite; }
+.fish-alive .df-dorsal { animation: dory-sway 3.4s var(--ease-in-out) infinite reverse; }
+.fish-happy .df-eye { transform: scaleY(.82); }
+.fish-curious .df-brow { transform: translateY(-3px); }
+.fish-sorry .df-brow { transform: rotate(6deg); transform-box: fill-box; transform-origin: center; }
+.motion-off .fish-alive .df-tail, .motion-off .fish-alive .df-dorsal { animation: none; }
+
+@media (prefers-reduced-motion: reduce) {
+  *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
+}
+
+/* Windows contrast themes drop glows and fills: keep every boundary and the focus ring. */
+@media (forced-colors: active) {
+  .btn, .card, .chip, .pill, .badge, .notice, input, select, textarea { border: 1px solid CanvasText; }
+  :focus-visible { outline-color: Highlight; }
+  .lantern::before { display: none; }
+}
+
+/* The floating "talk to Dory" button on /center is Dory's face too (overrides the page's #fab). */
+body #fab { background: var(--ocean-800) url("/static/dory/dory-mark.svg") center / cover no-repeat; color: transparent;
+  box-shadow: 0 10px 24px rgba(26, 47, 92, .3); border: 3px solid #fff; }

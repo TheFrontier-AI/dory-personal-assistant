@@ -1,15 +1,15 @@
 # Google Calendar and Meet
 
-Each member can connect their own Google Calendar to Salid. Salid then creates, moves and cancels
+Each member can connect their own Google Calendar to Dory. Dory then creates, moves and cancels
 events in **that member's primary calendar**, invites attendees by email (Google sends the
-invitation) and asks Google for a **Meet link**. Salid never uses a shared service account for
+invitation) and asks Google for a **Meet link**. Dory never uses a shared service account for
 this: the event belongs to whoever asked.
 
 Google login on the web (Firebase) only proves who a member is. Calendar needs its own consent,
 given once per member with the **Connect Google Calendar** button in the command center.
 
-Code: `salid/google_oauth.py` (consent flow, encrypted token store), `scheduling.GoogleCalendar`
-(Calendar API v3 backend, free/busy), `salid/google_tools.py` (agent tools, not wired into a bot
+Code: `dory/google_oauth.py` (consent flow, encrypted token store), `scheduling.GoogleCalendar`
+(Calendar API v3 backend, free/busy), `dory/google_tools.py` (agent tools, not wired into a bot
 yet), routes at the end of `meeting_scribe/center.py`.
 
 ## Google Cloud console (once)
@@ -21,12 +21,12 @@ yet), routes at the end of `meeting_scribe/center.py`.
      `https://www.googleapis.com/auth/calendar.events.owned` (events the member owns) and
      `https://www.googleapis.com/auth/calendar.events.freebusy` (availability). Both are
      **sensitive**: Google requires app verification before the general public can consent; see
-     below. Salid asks for both and refuses (and revokes) a grant that lacks either.
+     below. Dory asks for both and refuses (and revokes) a grant that lacks either.
    - While the app is in *Testing* only the listed **test users** (up to 100) can connect, and their
      refresh tokens expire after 7 days. Add every pilot member's Google account under
      *Test users*. Publish to *In production* and finish verification for real customers.
 3. **Credentials** > Create credentials > OAuth client ID > type **Web application**:
-   - Authorized redirect URI: `https://salid.frontier-tech.app/api/center/connectors/google/callback`
+   - Authorized redirect URI: `https://dory.frontier-tech.app/api/center/connectors/google/callback`
      (add `http://localhost:8080/api/center/connectors/google/callback` for local work).
    - Copy the client id and secret.
 4. Generate the token key (once, keep it in Secret Manager): 
@@ -42,29 +42,29 @@ not offered).
 | `GOOGLE_OAUTH_CLIENT_ID` | Web client id from step 3 |
 | `GOOGLE_OAUTH_CLIENT_SECRET` | its secret (Secret Manager; never logged) |
 | `GOOGLE_OAUTH_REDIRECT_URI` | exactly the redirect URI registered above |
-| `SALID_TOKEN_KEY` | Fernet key that encrypts the stored refresh tokens. **Losing or rotating it disconnects everybody** (they press Connect again). |
+| `DORY_TOKEN_KEY` | Fernet key that encrypts the stored refresh tokens. **Losing or rotating it disconnects everybody** (they press Connect again). |
 
 ## What is stored, and what is not
 
-- Only the **refresh token**, Fernet-encrypted, in the DocStore kind `salid_google_tokens`, key
+- Only the **refresh token**, Fernet-encrypted, in the DocStore kind `dory_google_tokens`, key
   `{org_id}:{email}`. The org and email are also inside the ciphertext, so a copied record cannot be
   replayed for another member. Access tokens live in process memory until shortly before they
   expire. Nothing secret is logged or put into an error message (errors carry the HTTP status only).
-- `invalid_grant` (the member revoked Salid in their Google account, or the Testing-mode 7 days
+- `invalid_grant` (the member revoked Dory in their Google account, or the Testing-mode 7 days
   passed) deletes the record: the member has to connect again, and the tools say so.
 - The consent `state` is random, stored server-side with (org, member email, PKCE verifier, expiry
   10 minutes) and single use. PKCE (S256) is used as well as the client secret.
-- After consent Salid asks Google who consented (userinfo) and refuses, and revokes the grant, if it
+- After consent Dory asks Google who consented (userinfo) and refuses, and revokes the grant, if it
   is not the member's own email, or if either calendar scope was not granted. A grant with no
   refresh token is revoked too.
 - Members can disconnect from the web (`DELETE`), which revokes at Google and deletes the record.
 
 ## Behaviour
 
-- Event: summary, description, start/end in `SALID_TZ`, attendees by email,
+- Event: summary, description, start/end in `DORY_TZ`, attendees by email,
   `conferenceData.createRequest` (`hangoutsMeet`, fresh `requestId`) with `conferenceDataVersion=1`,
-  `sendUpdates=all` on create, move and cancel. Salid marks each event it creates with private extended
-  properties `salid=1`, `salid_org=<org id>` and `salid_owner=<member email>`, and only cancels or
+  `sendUpdates=all` on create, move and cancel. Dory marks each event it creates with private extended
+  properties `dory=1`, `dory_org=<org id>` and `dory_owner=<member email>`, and only cancels or
   moves an event when all three match the asker (so the same Google email in two orgs cannot touch
   the other org's events). A 401 evicts the cached access token, refreshes once and retries once; a
   403 is never retried; `invalid_grant` deletes the record (`not_connected`).
@@ -92,7 +92,7 @@ not offered).
 
 ## In chat (Slack/LINE/Telegram/WhatsApp)
 
-The platforms process (`python -m salid.platforms`) gives the same two tools (`schedule_google_meeting`,
+The platforms process (`python -m dory.platforms`) gives the same two tools (`schedule_google_meeting`,
 `cancel_google_meeting`) to the model, with the same draft -> confirm rule.
 
 - **Who gets them.** Only a sender who is a VERIFIED member of the org that owns the tenant
@@ -104,8 +104,8 @@ The platforms process (`python -m salid.platforms`) gives the same two tools (`s
   thread) and by a LATER message (the message id is the request id). Organisation owners/admins and
   platform executives may invite outside guests by full email.
 - **Setup.** Set the same four variables as the web service in the platforms process:
-  `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI`, `SALID_TOKEN_KEY`
+  `GOOGLE_OAUTH_CLIENT_ID`, `GOOGLE_OAUTH_CLIENT_SECRET`, `GOOGLE_OAUTH_REDIRECT_URI`, `DORY_TOKEN_KEY`
   (the same key, or stored refresh tokens cannot be decrypted). If any is missing the feature is off.
   Tokens are read from the DocStore of the org store, so the platforms process must use the SAME store
-  as the web (`SALID_STORE=firestore`, same project); with SQLite it will not see tokens connected on the web.
-- Logs carry no email, title or attendees. Code: `src/salid/platforms/calendar_glue.py`.
+  as the web (`DORY_STORE=firestore`, same project); with SQLite it will not see tokens connected on the web.
+- Logs carry no email, title or attendees. Code: `src/dory/platforms/calendar_glue.py`.

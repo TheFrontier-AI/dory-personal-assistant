@@ -14,7 +14,7 @@ docs/diagrams/*.visual-check.*
 # local test ledgers
 data/*.db
 # local Thai PDF/chart font for macOS dev (see CLAUDE.md); not committed
-src/salid/fonts/Sarabun-*.ttf
+src/dory/fonts/Sarabun-*.ttf
 
 # local IDE / agent tooling (not project source)
 .claude/

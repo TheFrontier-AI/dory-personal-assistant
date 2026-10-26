@@ -6,6 +6,7 @@ import json
 import logging
 import mimetypes
 import os
+from html import escape
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
@@ -26,7 +27,7 @@ logging.getLogger("httpx").setLevel(
 logger = logging.getLogger(__name__)
 
 INDEX_HTML = Path(__file__).parent / "static" / "index.html"
-SALID_HTML = Path(__file__).parent / "static" / "salid.html"
+DORY_HTML = Path(__file__).parent / "static" / "dory.html"
 START_HTML = Path(__file__).parent / "static" / "start.html"
 MAX_CHUNK_BYTES = 32 * 1024 * 1024  # Cloud Run's HTTP/1 request limit
 
@@ -71,7 +72,7 @@ app.include_router(legal.router)
 # Older system mime tables lack webp/webm, which browsers then refuse to render.
 mimetypes.add_type("image/webp", ".webp")
 mimetypes.add_type("video/webm", ".webm")
-app.mount("/static/salid", StaticFiles(directory=SALID_HTML.parent / "salid"), name="salid-assets")
+app.mount("/static/dory", StaticFiles(directory=DORY_HTML.parent / "dory"), name="dory-assets")
 
 
 class CreateMeeting(BaseModel):
@@ -113,32 +114,44 @@ def _get_or_404(meeting_id: str) -> Meeting:
 
 
 # Bot permissions: View Channels, Send Messages, Embed Links, Attach Files,
-# Read Message History, Add Reactions, Manage Channels (creates #คุยกับน้องสลิด on join),
+# Read Message History, Add Reactions, Manage Channels (creates #คุยกับน้องดอรี่ on join),
 # Connect (joins voice meetings to listen), Create Events and Manage Events (schedules and edits
 # Discord Scheduled Events for meetings).
 CREATE_EVENTS = 1 << 44
 MANAGE_EVENTS = 1 << 33
 SEND_POLLS = 1 << 49
-SALID_PERMISSIONS = 1166416 | CREATE_EVENTS | MANAGE_EVENTS | SEND_POLLS
+DORY_PERMISSIONS = 1166416 | CREATE_EVENTS | MANAGE_EVENTS | SEND_POLLS
 
 
-def salid_invite_url(client_id: str) -> str:
+def dory_invite_url(client_id: str) -> str:
     """Discord's standard "add bot to server" link; empty when no client id is configured."""
     if not client_id.isdigit():
         return ""
     return (
         "https://discord.com/oauth2/authorize?client_id="
-        f"{client_id}&scope=bot+applications.commands&permissions={SALID_PERMISSIONS}"
+        f"{client_id}&scope=bot+applications.commands&permissions={DORY_PERMISSIONS}"
     )
 
 
-# Site map: "/" is Salid's public landing page (the home of salid.frontier-tech.app), "/recorder"
+# Site map: "/" is Dory's public landing page (the home of dory.frontier-tech.app), "/recorder"
 # the Meeting Scribe recorder, "/hub" and "/center" the signed-in consoles.
 @app.get("/", include_in_schema=False)
 def index() -> HTMLResponse:
-    """Salid's public landing page (bilingual, no auth, no API calls)."""
-    url = salid_invite_url(get_settings().salid_discord_client_id)
-    return HTMLResponse(SALID_HTML.read_text(encoding="utf-8").replace("__SALID_INVITE_URL__", url))
+    """Dory's public landing page (bilingual, no auth, no API calls)."""
+    url = dory_invite_url(get_settings().dory_discord_client_id)
+    html = DORY_HTML.read_text(encoding="utf-8").replace("__DORY_INVITE_URL__", url)
+    return HTMLResponse(html.replace("__DORY_MODELS__", dory_models()))
+
+
+def dory_models() -> str:
+    """Which AI runs Dory, for the landing page's trust section: model ids only, never a key."""
+    from dory.config import Settings as DorySettings
+
+    d = DorySettings.from_env()
+    # brain_model / fast_model replace nemotron_model in the GLM config: read whichever this build has
+    text = [getattr(d, k, "") for k in ("brain_model", "fast_model", "nemotron_model")]
+    names = (*text, d.nemotron_vision_model) if d.nebius_api_key else ()
+    return escape(", ".join(dict.fromkeys(n for n in names or (d.gemini_model,) if n)))
 
 
 @app.get("/start", include_in_schema=False)
@@ -148,11 +161,11 @@ def start_page() -> HTMLResponse:
     client_id = get_settings().hub_google_client_id
     if not hub.CLIENT_ID_RE.match(client_id):
         client_id = ""
-    url = salid_invite_url(get_settings().salid_discord_client_id)
+    url = dory_invite_url(get_settings().dory_discord_client_id)
     html = (
         START_HTML.read_text(encoding="utf-8")
         .replace("__HUB_GOOGLE_CLIENT_ID__", client_id)
-        .replace("__SALID_INVITE_URL__", url)
+        .replace("__DORY_INVITE_URL__", url)
         .replace("__DISCORD_LOGIN__", "1" if center.discord_login_enabled() else "")
     )
     return HTMLResponse(
@@ -160,15 +173,15 @@ def start_page() -> HTMLResponse:
     )
 
 
-@app.get("/salid", include_in_schema=False)
-def salid_redirect() -> RedirectResponse:
+@app.get("/dory", include_in_schema=False)
+def dory_redirect() -> RedirectResponse:
     return RedirectResponse("/", status_code=301)  # the landing page's first address
 
 
 @app.get("/recorder", include_in_schema=False)
 def recorder() -> HTMLResponse:
-    url = salid_invite_url(get_settings().salid_discord_client_id)
-    return HTMLResponse(INDEX_HTML.read_text(encoding="utf-8").replace("__SALID_INVITE_URL__", url))
+    url = dory_invite_url(get_settings().dory_discord_client_id)
+    return HTMLResponse(INDEX_HTML.read_text(encoding="utf-8").replace("__DORY_INVITE_URL__", url))
 
 
 @app.get("/health")  # Cloud Run's frontend reserves /healthz, so deployed checks must use /health

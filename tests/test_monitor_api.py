@@ -12,20 +12,20 @@ from zoneinfo import ZoneInfo
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).parent / "salid"))
+sys.path.insert(0, str(Path(__file__).parent / "dory"))
 
 from fake_firestore import FakeFirestore  # noqa: E402
 
+from dory import jobs, monitor, monitor_sources  # noqa: E402
+from dory.actions import ActionQueue  # noqa: E402
+from dory.change_outbox import KIND as OUTBOX  # noqa: E402
+from dory.change_outbox import Change, Target, org_guild  # noqa: E402
+from dory.coo_store import FirestoreDocStore, SQLiteDocStore  # noqa: E402
+from dory.monitor import Audience, MonitorItem, Step  # noqa: E402
+from dory.orgs import License, Member, OrgStore, Workspace  # noqa: E402
 from meeting_scribe import center, hub, monitor_api  # noqa: E402
 from meeting_scribe.app import app  # noqa: E402
 from meeting_scribe.config import get_settings  # noqa: E402
-from salid import jobs, monitor, monitor_sources  # noqa: E402
-from salid.actions import ActionQueue  # noqa: E402
-from salid.change_outbox import KIND as OUTBOX  # noqa: E402
-from salid.change_outbox import Change, Target, org_guild  # noqa: E402
-from salid.coo_store import FirestoreDocStore, SQLiteDocStore  # noqa: E402
-from salid.monitor import Audience, MonitorItem, Step  # noqa: E402
-from salid.orgs import License, Member, OrgStore, Workspace  # noqa: E402
 
 CLIENT_ID = "123-abc.apps.googleusercontent.com"
 GUILD = 1000
@@ -119,7 +119,7 @@ def w(docs, monkeypatch):
     monkeypatch.setattr(monitor_sources, "wall_clock", lambda: NOW)
     monkeypatch.setattr(monitor_api, "LIMITER", monitor_api.TokenBucket())
     runtime = (SimpleNamespace(deep_task_timeout=600), None)
-    monkeypatch.setattr(hub, "get_salid_runtime", lambda: runtime)
+    monkeypatch.setattr(hub, "get_dory_runtime", lambda: runtime)
     w = World()
     w.docs = docs
     w.orgs = OrgStore(docs)
@@ -325,16 +325,16 @@ def test_attention_uses_the_bot_heartbeat_and_deep_timeout(w, monkeypatch):
     assert get(w, "boss", "/summary").json()["heartbeat"]["bot"]["state"] == "offline"
 
 
-def test_deep_timeout_reads_the_salid_settings_and_falls_back(monkeypatch):
+def test_deep_timeout_reads_the_dory_settings_and_falls_back(monkeypatch):
     monkeypatch.setattr(
-        hub, "get_salid_runtime", lambda: (SimpleNamespace(deep_task_timeout=900), 0)
+        hub, "get_dory_runtime", lambda: (SimpleNamespace(deep_task_timeout=900), 0)
     )
     assert monitor_api.get_deep_timeout() == 900
 
     def broken():
         raise RuntimeError("no store")
 
-    monkeypatch.setattr(hub, "get_salid_runtime", broken)
+    monkeypatch.setattr(hub, "get_dory_runtime", broken)
     assert monitor_api.get_deep_timeout() == 600
 
 
@@ -348,7 +348,7 @@ def test_a_failing_source_is_skipped_and_logged_without_its_text(w, monkeypatch,
         raise RuntimeError(SENTINEL)
 
     monkeypatch.setitem(monitor_sources.SOURCES, "research", (broken, broken_finder))
-    with caplog.at_level(logging.WARNING, logger="salid.monitor_sources"):
+    with caplog.at_level(logging.WARNING, logger="dory.monitor_sources"):
         assert ids_of(get(w, "boss", "/items")) == ["j1"]
         assert get(w, "boss", "/items/research/r1").status_code == 404
     assert "RuntimeError" in caplog.text and SENTINEL not in caplog.text
@@ -757,7 +757,7 @@ def test_running_video_is_stuck_after_10_min(w, monkeypatch):
 
 def test_a_dm_requested_video_job_is_private_to_its_requester(w, monkeypatch):
     """Spec 4.1: owners see everything except DM-scope items. A job asked for in a DM (or a
-    private Salid channel) shows to its requester only, without a link; a server job is
+    private Dory channel) shows to its requester only, without a link; a server job is
     unchanged."""
     real_video_source(monkeypatch)
     dm = put_video(w, "v_dm", dm=True)
@@ -824,7 +824,7 @@ def test_web_enqueue_and_member_edit_emit_to_the_org_log(w, monkeypatch):
 
 # ------------------------------------------------------------------ deep tasks and research
 def put_job(w, key, kind="deep_task", seconds_ago=60, *, requester=7, dm=False, **extra):
-    """A `salid_jobs` record as the bot writes it (Bangkok times)."""
+    """A `dory_jobs` record as the bot writes it (Bangkok times)."""
     at = (NOW - timedelta(seconds=seconds_ago)).astimezone(BKK).isoformat(timespec="seconds")
     rec = {"job_id": key, "kind": kind, "guild_id": GUILD, "channel_id": 55,
            "requester_id": requester, "dm": dm, "state": "running", "created_at": at,
@@ -905,5 +905,5 @@ def test_job_stuck_thresholds(w, monkeypatch):
         "restarted",
     )
     runtime = (SimpleNamespace(deep_task_timeout=900), None)
-    monkeypatch.setattr(hub, "get_salid_runtime", lambda: runtime)
+    monkeypatch.setattr(hub, "get_dory_runtime", lambda: runtime)
     assert reasons()["d_slow"] == ""  # 721 s < 900 + 120 s

@@ -39,7 +39,7 @@ def test_mock_mode_guarded_by_query_param():
     src = html()
     assert 'get("mock") === "1"' in src
     assert "if (MOCK)" in src
-    assert "localStorage.setItem(LANG_KEY" in src  # one key shared by every Salid page
+    assert "localStorage.setItem(LANG_KEY" in src  # one key shared by every Dory page
     assert not re.search(r"localStorage[^;\n]*token", src, re.I)
 
 
@@ -150,7 +150,7 @@ def test_route_focuses_content_on_a_new_page_or_when_focus_was_inside():
     assert "if (moved) c.focus(" not in s
 
 
-# salid.monitor.Step.state
+# dory.monitor.Step.state
 STEP_STATES = ("pending", "running", "done", "failed", "cancelled", "skipped")
 
 
@@ -167,9 +167,103 @@ def test_monitor_every_step_state_has_a_label_and_an_icon():
 
 
 def test_every_feature_flag_has_a_thai_label():
-    from salid.guild_settings import FEATURES
+    from dory.guild_settings import FEATURES
 
     body = re.search(r"const FEAT_TH = \{(.*?)\};", html()).group(1)
     labels = dict(re.findall(r'(\w+): "([^"]+)"', body))
     missing = [f for f in FEATURES if not re.search(r"[฀-๿]", labels.get(f, ""))]
     assert not missing, missing
+
+
+# ---------- chat (Lantern Deep): the panel and the #/chat page share one widget ----------
+CHAT_KEYS = [
+    "n_chat",
+    "dory_name",
+    "you",
+    "chat_hi",
+    "chat_intro",
+    "chat_trust",
+    "chat_try",
+    "chip_missed",
+    "chip_tasks",
+    "chip_spend",
+    "chip_upload",
+    "thinking_s",
+    "thinking_sr",
+    "still_working",
+    "long_wait",
+    "stop_wait",
+    "stopped",
+    "ask_again",
+    "chat_err",
+    "copy_q",
+    "copy_fail",
+    "offline_p",
+    "send_hint",
+    "drop_files",
+    "search_hist",
+    "jump_day",
+    "yesterday",
+    "no_match",
+    "files_sent",
+    "history",
+]
+
+
+def chat_widget() -> str:
+    return between("function chatWidget(hist, prefix, opts = {}) {", "\nconst chatData = ")
+
+
+def test_chat_is_a_page_and_still_the_panel():
+    s = html()
+    assert '["chat", "n_chat", "✦"]' in s and "VIEWS.chat = async" in s
+    assert "the chat is the panel now" not in s  # #/chat no longer bounces to the overview
+    assert '$("fab").hidden = id === "chat"' in s  # one composer at a time
+    assert 'if (cur !== "chat") route();' in s  # an answer never rebuilds the page under the reader
+
+
+def test_chat_strings_exist_in_both_languages():
+    th, en = html().split("\nen: {", 1)
+    for k in CHAT_KEYS:
+        assert f"{k}:" in th and f"{k}:" in en, k
+
+
+def test_chat_states_are_announced_once_and_stop_waiting_is_honest():
+    w = chat_widget()
+    assert '"aria-relevant": "additions"' in w and 'role: "status"' in w
+    assert (
+        '"msg bot wait", "aria-hidden": "true"' in w
+    )  # the counter is visual; the status region speaks
+    assert "AbortController" in w and "busy.abort()" in w and 'ev.key === "Escape" && busy' in w
+    assert (
+        "Dory may still finish" in html()
+    )  # the browser stops waiting; the server may still answer
+    assert (
+        'class: "msg cnote"' in w and ".msg.cnote" in html()
+    )  # never the docs page's sticky .note
+    assert "!ev.isComposing && !coarse" in w  # Thai IME and touch keyboards never send by accident
+
+
+def test_the_fish_in_center_is_the_master_drawing():
+    master = (PAGE.parent / "dory" / "dory.svg").read_text("utf-8")
+    body = re.sub(
+        r">\s+<",
+        "><",
+        master[master.index('<g class="dory-fish">') : master.rindex("</svg>")].strip(),
+    )
+    s = html()
+    assert body in s, "FISH_SVG drifted from static/dory/dory.svg"
+    defs = re.search(r'<svg id="dory-defs"[^>]*>', s).group(0)
+    assert "position:absolute" in defs and "display:none" not in defs  # hidden defs would not paint
+    assert '"data-theme": "deep"' in s  # the voice-call stage is the deep sea
+
+
+def test_no_cat_assets_left_in_the_command_center():
+    for name in ("center.html", "dory/theme.css"):
+        src = (PAGE.parent / name).read_text("utf-8")
+        assert (
+            "cat-avatar" not in src and "dory-profile.webp" not in src and "cat-hero" not in src
+        ), name
+    assert (
+        '<div class="mark" aria-hidden="true">S</div>' not in html()
+    )  # the letter was the old name's

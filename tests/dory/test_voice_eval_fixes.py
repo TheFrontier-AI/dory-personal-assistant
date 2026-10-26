@@ -1,0 +1,98 @@
+# ruff: noqa: F811, F401
+"""Fixes found by the live voice evaluation (tests/dory/live_eval): wake-word variants the speech
+model produces, the spoken answer to a bare name, the Live force cue and the Live prompt rules."""
+
+import asyncio
+import time
+
+import pytest
+from test_live_voice import lv, until  # noqa: F401  (fixtures / helpers)
+from test_meeting import env, segment, start
+
+from dory import meeting as mt
+from dory.config import Settings
+from dory.live_voice import build_instruction
+from dory.meeting import parse_wake
+from dory.naming import find_call
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["เฮ้ โดลลี่", "เฮ้ โทลี่ วันนี้วันอะไร", "หวัดดีครับ ดอลลี่", "เฮ้ Dolly", "สวัสดีค่ะ ทอรี่", "hey dolly"],
+)
+def test_misheard_dolly_after_a_greeting_is_a_call(text):
+    assert find_call(text) is not None
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["ตุ๊กตาดอลลี่ของน้องหาย", "ซอรี่นะ ขอโทษที", "โดลลี่ เป็นชื่อแมว", "ดูทอรี่เรื่องนี้ยัง", "เฮ้ย ไปกินข้าวกัน",
+     "เมื่อวานกินข้าวที่ไหน"],
+)  # fmt: skip
+def test_chatter_is_not_a_call(text):
+    assert parse_wake(text) is None
+
+
+async def test_bare_name_gets_a_spoken_yes_when_voice_replies_are_on(env, monkeypatch):
+    env.bot.s.voice_reply = True
+    s = await start(env)
+    said = []
+
+    async def fake_say(self_, sess, text):
+        said.append(text)
+
+    monkeypatch.setattr(type(env.mgr), "_say_text", fake_say)
+    monkeypatch.setattr(mt, "transcribe_pcm", lambda c, m, pcm: "ครับ ดอรี่")
+    await env.mgr.handle_segment(s, segment(10))
+    await asyncio.sleep(0.05)
+    assert said == ["ค่ะ? ว่ามาได้เลยค่ะ"]
+    await env.mgr.end((1000, 77), "shutdown")
+
+
+async def test_live_cue_waits_while_a_tool_answer_is_pending(lv):
+    s, live = await lv.join(5)
+    lv.bot.s.live_force_reply_seconds = 0.05
+    sent = []
+
+    async def send_client_content(turns=None, turn_complete=True):
+        sent.append(turns)
+
+    live.send_client_content = send_client_content
+    s.live._awaiting_answer = True  # ask_dory is running: the real answer comes next
+    s.live.ensure_reply(time.monotonic())
+    await asyncio.sleep(0.2)
+    assert sent == []
+    await lv.mgr.end((1000, 77))
+
+
+def test_force_cue_defaults_follow_the_voice_design():
+    # docs/voice_behaviour.md: force a turn 2 s after an ASR name, 1 s after a name in the Live
+    # transcript; the mouth gate holds the model's own early audio up to 4 s meanwhile
+    s = Settings()
+    assert s.live_force_reply_seconds == 2.0 and s.live_name_reply_seconds == 1.0
+    assert s.live_call_grace_seconds == 4.0
+
+
+def test_live_prompt_keeps_quiet_for_chatter_and_lookalike_words():
+    th = build_instruction(Settings(), "th")
+    assert "คำพูดส่วนใหญ่เป็นการคุยกันระหว่างคน ไม่ใช่คุยกับคุณ" in th  # chatter: the model judges
+    assert "“ดอลลี่” ใน “ตุ๊กตาดอลลี่”" in th
+
+
+async def test_live_cue_carries_the_transcript_of_what_was_said(lv):
+    s, live = await lv.join(5)
+    lv.bot.s.live_force_reply_seconds = 0.05
+    sent = []
+
+    async def send_client_content(turns=None, turn_complete=True):
+        sent.append(turns.parts[0].text)
+
+    live.send_client_content = send_client_content
+    s.live.ensure_reply(time.monotonic(), "ดอรี่ วันนี้วันอะไร")
+    await until(lambda: sent)
+    assert "เรียกชื่อ" in sent[0] and "ดอรี่ วันนี้วันอะไร" in sent[0]
+    await lv.mgr.end((1000, 77))
+
+
+def test_live_prompt_pins_the_date_answer_to_the_given_date():
+    assert "ตอบจากวันที่นี้เท่านั้น" in build_instruction(Settings(), "th")

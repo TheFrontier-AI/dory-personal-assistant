@@ -1,0 +1,4425 @@
+from __future__ import annotations
+
+import asyncio
+import contextlib
+import io
+import logging
+import random
+import re
+import threading
+import time
+from collections import deque
+from dataclasses import dataclass, field
+from datetime import UTC, date, datetime, timedelta
+from functools import partial
+from types import SimpleNamespace
+
+import discord
+from discord import app_commands
+
+from . import audience as aud
+from . import data_studio, gate
+from . import dm as dm_module
+from .ack import Ack, ack_flavor, ack_text
+from .actions_bot import ActionsMixin
+from .approvals_bot import ApprovalButton, ApprovalMixin
+from .archive import make_archive
+from .audience_bot import AudienceMixin
+from .bizfin_bot import BizfinMixin
+from .briefing_bot import BriefingMixin
+from .briefings import DocInfo, split_names
+from .broadcast_bot import BroadcastMixin
+from .captions import captions_tools, parse_captions_default_command
+from .catchup_bot import CatchupMixin
+from .change_outbox_bot import ChangeButton, ChangeOutboxMixin
+from .channel_access import (
+    access_flags,
+    hidden_channels,
+    hidden_channels_messages,
+    public_channel_ids,
+)
+from .chat_tools import ChatActions
+from .company_brain_bot import CompanyMixin, PlaybookButton
+from .concept_bot import ConceptMixin
+from .config import Settings
+from .contests_bot import ContestsMixin
+from .coo import CooMixin, DisclosureButton
+from .coo_store import make_doc_store
+from .data_bot import DataMixin
+from .deep_task import (
+    REPORT_NAME,
+    DeepCancelled,
+    DeepHandle,
+    DeepTaskError,
+    parse_deep_trigger,
+    reply_parts,
+    run_deep_task,
+)
+from .deliver import DeliverMixin
+from .digest import build_daily_digest
+from .dm import closed_dm_message, dm_refusal, send_dm
+from .dm_guild import SWITCH_COMMANDS, CompanyButton, DMGuildMixin, SwitchButton
+from .docs import doc_kind
+from .email_out import make_sender
+from .embed import make_embedder
+from .extract import (
+    apply_correction,
+    apply_void_command,
+    guess_mime,
+    ingest_attachment,
+    parse_void_command,
+)
+from .fillers import FillerPool, FillerWriter, RecentLines, within
+from .freetime_bot import FreetimeMixin
+from .gate import GateLine, is_join_candidate
+from .guild_settings import (
+    MAX_RETENTION_DAYS,
+    MIN_RETENTION_DAYS,
+    BotGuildSettings,
+    GuildStore,
+    effective_retention_days,
+    make_guild_store,
+    valid_retention_days,
+)
+from .hints import with_hint
+from .hints_bot import HintsMixin
+from .i18n import (
+    LANGS,
+    LANGUAGE_LABELS,
+    base_lang,
+    locale_lang,
+    parse_language_command,
+    parse_server_language_command,
+    resolve_lang,
+    t,
+    t_days,
+)
+from .ideas_bot import IdeasMixin
+from .ideas_pdf import markdown_pdf
+from .image_memory import (
+    MAX_IMAGE_BYTES,
+    MAX_IMAGES_PER_MESSAGE,
+    ImageNote,
+    describe_image,
+    format_note,
+    image_mime,
+    receipt_note,
+)
+from .imagegen_bot import ImageMixin
+from .jobs import new_id as new_job_id
+from .jobs_bot import JobsMixin
+from .language_ask import LanguageAskMixin, LanguageSelect
+from .licensing import Licensing, make_licensing
+from .longtext import needs_attachment, split_sections, summary_of
+from .maps_bot import MapsMixin
+from .markets_bot import MarketsMixin
+from .media import media_candidates
+from .media_bot import MediaMixin
+from .meeting import (
+    MeetingManager,
+    parse_meeting_command,
+    parse_voice_talk_command,
+    parse_voice_talk_default_command,
+)
+from .meeting_doc_bot import MeetingDocMixin
+from .memory import (
+    MemoryScheduler,
+    MemoryService,
+    build_message,
+    describe_attachment,
+    message_text,
+    synthetic_id,
+)
+from .memory_access import ChannelAccess, allowed_channel_ids
+from .memory_import import MemoryImporter, Target, import_progress
+from .memory_index import IndexedMemoryStore
+from .memory_store import MemoryStore, SQLiteMemoryStore, make_memory_store
+from .memory_summary import render_summary
+from .mentions import (
+    allowed_mentions_for,
+    defang_raw_mentions,
+    match_members,
+    resolve_mentions,
+    tag_candidates,
+    wants_everyone,
+)
+from .message_control import AnswerLog, is_thanks, parse_cancel_task, parse_delete_message
+from .modes import (
+    CHAT_CHANNEL_NAME,  # noqa: F401  (re-exported)
+    MODES,
+    chat_channel_name,
+    is_chat_channel_name,
+    mode_choice_name,
+    mode_help,
+    mode_label,
+    parse_snooze_command,
+)
+from .monitor_bot import MonitorMixin
+from .naming import command_text, mentions_name
+from .nodue_bot import NoDeadlineMixin
+from .pdf_report import find_fonts, font_note
+from .people_bot import PeopleMixin
+from .permissions import (
+    channel_missing,
+    guild_missing,
+    permission_message,
+)
+from .places_bot import PlacesMixin
+from .polls_bot import PollsMixin
+from .positions_bot import PositionsMixin
+from .private_chat import PRIVATE_COMMANDS
+from .private_chat_bot import PrivateChatMixin
+from .profiles import ProfileMixin, effective_language, profile_block
+from .projects_bot import ProjectsMixin
+from .promo_bot import PromoMixin
+from .qa import FileActions, FileInput, MemoryTools, ask, file_mime, is_no_reply, select_files
+from .quotation_bot import QuotationMixin
+from .receipt_forward import LEARN_DAYS, forward_receipt, learned_channels
+from .recent import RecentMessages
+from .reminders_bot import ReminderMixin
+from .scheduling import DiscordCalendar, MeetingService
+from .search_bot import SearchMixin
+from .secretary import SecretaryContext, SecretaryState
+from .secretary_store import SecretaryStore, make_secretary_store, new_id
+from .sharing import make_sharing
+from .sharing import set_default as set_sharing_default
+from .store import Store
+from .summary import (
+    PERIODS,
+    is_summarize_request,
+    message_summary_question,
+    summary_question,
+)
+from .task_handshake_bot import TaskButton, TaskHandshakeMixin
+from .tone import RESET as TONE_RESET
+from .tone import TONES
+from .tone import label as tone_label
+from .tone_bot import TONE_COMMANDS, ToneMixin
+from .translate_bot import TranslateMixin
+from .travel_bot import TravelMixin
+from .videoad_bot import VideoAdMixin
+from .voice_pool import VoicePool
+from .votes_bot import VoteButton, VoteOfferButton, VotesMixin
+from .wiki_bot import WikiMixin
+
+logger = logging.getLogger(__name__)
+ATTACH_LIMIT = 15 * 1024 * 1024
+SYNC_MIN_INTERVAL_S = 30.0  # channel-list writes per guild are batched to one per interval
+MAX_SYNCED_CHANNELS = 500
+READ_REACTION = "👀"
+GREETING_KEYS = ("greeting", "greeting_2", "greeting_3")
+DM_PER_GUILD_PER_HOUR = 20  # private messages the DM tool may send per guild per hour
+RECEIPT_COUNTS_TTL_S = 600.0  # cache of "receipts per channel, last 30 days" (learned channels)
+# CHAT_CHANNEL_NAME (dory.modes) is created on join (needs Manage Channels); its mode "chat" is
+# saved by channel id. Channel names never decide behaviour.
+# A bare @mention right after the same person's message is treated as a question about it.
+FOLLOWUP_WINDOW_SECONDS = 120
+# After Dory answers in a channel, messages there need no @mention for this long (a gate decides
+# whether each one is meant for Dory). Silence for this long ends the conversation.
+CONVERSATION_SECONDS = 180
+SIGNOFF_MIN_REPLIES = 2  # fewer replies: only a 👋 reaction on Dory's last reply
+GATE_HISTORY = 10  # channel lines the in-window gate reads
+JOIN_HISTORY = 15  # channel lines the join-mode batch gate reads
+QUIET_SECONDS = 30  # join mode: a channel must be this quiet before the batch gate runs
+MAX_INTERJECTIONS_PER_HOUR = 3  # join mode: unprompted answers per channel, rolling hour
+MAX_JOIN_CANDIDATES = 5
+INTERJECT_SAME_USER_COOLDOWN = 600  # join mode: no second unprompted answer to one person
+SNOOZE_SECONDS = 3600
+TICK_SECONDS = 5.0
+SCHEDULER_TICK_SECONDS = 15.0  # how often meeting reminders are checked
+MEMORY_TICK_SECONDS = 30.0  # how often the memory scheduler looks for due summary updates
+MEMORY_QUEUE_MAX = 20000
+IMPORT_PAGE_SLEEP_S = 1.0  # pause between history pages (discord.py also rate-limits)
+IMPORT_DEBOUNCE_S = 5.0  # access events within this window are folded into one import run
+IMPORT_RESUME_S = 600.0  # a run stopped by the guild cap is resumed this much later
+IMAGE_NOTES_KEPT = 500  # recent messages whose image notes are merged in memory
+VIEWERS_TTL_S = 60.0  # cache of "who can read channel X" used for memory access
+MODE_COMMANDS = ("โหมด", "mode")
+MEMORY_COMMANDS = ("ความจำ", "memory")
+LANGUAGE_COMMANDS = ("ภาษา", "language")
+# Chat context handed to the model: this person's and Dory's recent messages in the channel.
+# Conversation context for an answer: the whole room (everyone, not only the asker), so Dory
+# follows group chat like a person reading back the channel.
+HISTORY_MESSAGES = 30
+HISTORY_SECONDS = 3 * 3600
+HISTORY_CHARS = 8000  # oldest lines are dropped first
+HISTORY_LINE_CHARS = 500
+CHANNELS_COMMANDS = ("ห้อง", "channels")
+SETUP_COMMANDS = ("ตั้งค่า", "setup")  # Thai name plus an English alias
+LINK_ACCOUNT_COMMANDS = ("ลิงก์บัญชี", "linkaccount")  # any member: prove "I am this Discord user"
+JOIN_COMMANDS = ("เข้าประชุม", "join-meeting")
+LEAVE_COMMANDS = ("ออกประชุม", "leave-meeting")
+CANCEL_COMMANDS = ("ยกเลิก", "cancel")
+SUMMARY_COMMANDS = ("สรุป", "summary")
+MENU_SUMMARIZE = "Summarize with Dory"  # context menu; Thai name via DoryTranslator
+MENU_TRANSLATE = "Translate with Dory"  # context menu; Thai name via DoryTranslator
+
+
+def chunks(text: str, n: int = 1900):
+    """Messages of at most `n` characters, cut between sections / paragraphs, never in the middle
+    of one that fits (see dory.longtext)."""
+    yield from split_sections(text, n)
+
+
+def own_receipt(is_receipt_post, receipts_on: bool) -> bool:
+    """True when the receipt pipeline will read this post's images (no second reading)."""
+    return bool(is_receipt_post) and receipts_on
+
+
+def has_receipt_file(message) -> bool:
+    return any(guess_mime(a.filename, a.content_type) for a in message.attachments)
+
+
+def can_manage_guild(member) -> bool:
+    """Owner, Administrator or Manage Server: may link the hub and counts as an executive."""
+    perms = member.guild_permissions
+    return member.guild.owner_id == member.id or perms.administrator or perms.manage_guild
+
+
+def mentions_bot(message: discord.Message, me: discord.ClientUser | None) -> bool:
+    """True for an @mention of the bot user or of its integration role. Discord's autocomplete
+    often picks the role, which has the same name as the bot."""
+    if me is None:
+        return False
+    if me in message.mentions:
+        return True
+    roles = getattr(message, "role_mentions", ())
+    return any(getattr(getattr(r, "tags", None), "bot_id", None) == me.id for r in roles)
+
+
+def mentions_other(message: discord.Message, me: discord.ClientUser | None) -> bool:
+    """True when the message @mentions a user or role other than Dory (it talks to someone else)."""
+    if any(u != me for u in message.mentions):
+        return True
+    roles = getattr(message, "role_mentions", ())
+    return any(
+        getattr(getattr(r, "tags", None), "bot_id", None) != getattr(me, "id", None) for r in roles
+    )
+
+
+class DoryTranslator(app_commands.Translator):
+    """Localizes the message context menu name (everything else is bilingual in its text)."""
+
+    async def translate(self, string, locale, context):
+        if str(string) == MENU_SUMMARIZE and str(locale.value).startswith("th"):
+            return t("menu_summarize", "th")
+        if str(string) == MENU_TRANSLATE and str(locale.value).startswith("th"):
+            return t("menu_translate", "th")
+        return None
+
+
+@dataclass
+class _Convo:
+    """A running conversation with Dory in one channel (call/join modes)."""
+
+    channel: object
+    last: float  # clock time of Dory's latest answer
+    replies: int = 0
+    last_reply: object = None  # Dory's latest message, for the 👋 reaction
+
+
+@dataclass
+class _Pending:
+    """Join mode: candidate messages waiting for the channel to go quiet."""
+
+    channel: object
+    guild: object
+    last_activity: float
+    candidates: list = field(default_factory=list)
+
+
+@dataclass
+class _DeepJob:
+    task: asyncio.Task
+    handle: DeepHandle
+    starter_id: int
+    job_id: str = ""  # its `dory_jobs` record (dory.jobs_bot)
+
+
+class _LicensedTree(app_commands.CommandTree):
+    """Slash commands stay quiet in unlicensed guilds, except the `/ตั้งค่า` link flow."""
+
+    async def interaction_check(self, interaction: discord.Interaction) -> bool:
+        bot, guild = interaction.client, interaction.guild
+        licensing = getattr(bot, "licensing", None)
+        name = getattr(interaction.command, "name", "")
+        if guild is None or licensing is None or name in SETUP_COMMANDS + LINK_ACCOUNT_COMMANDS:
+            return True
+        if await asyncio.to_thread(licensing.is_licensed, guild.id):
+            return True
+        with contextlib.suppress(discord.HTTPException):
+            try:
+                lang = resolve_lang(bot.team.current(guild.id).language_setting)
+            except Exception:
+                lang = "en"
+            await interaction.response.send_message(
+                t("unlicensed", lang, url=licensing.url), ephemeral=True
+            )
+        return False
+
+
+MAX_SYNCED_EVENTS = 50
+
+
+def guild_events(guild) -> list[dict]:
+    """Upcoming Discord scheduled events as plain dicts (name, start/end ISO, where), newest
+    first by start; the web shows them as the company calendar."""
+    out = []
+    for ev in list(getattr(guild, "scheduled_events", ()) or ())[:MAX_SYNCED_EVENTS]:
+        start = getattr(ev, "start_time", None)
+        if start is None:
+            continue
+        end = getattr(ev, "end_time", None)
+        ch = getattr(ev, "channel", None)
+        out.append(
+            {
+                "id": str(getattr(ev, "id", "")),
+                "name": str(getattr(ev, "name", "") or "")[:120],
+                "start": start.isoformat(timespec="seconds"),
+                "end": end.isoformat(timespec="seconds") if end else "",
+                "where": str(getattr(ch, "name", "") or getattr(ev, "location", "") or "")[:80],
+                "description": str(getattr(ev, "description", "") or "")[:200],
+                "url": str(getattr(ev, "url", "") or ""),
+            }
+        )
+    return sorted(out, key=lambda e: e["start"])
+
+
+class SecretaryBot(
+    LanguageAskMixin,
+    TranslateMixin,
+    FreetimeMixin,
+    PollsMixin,
+    VotesMixin,
+    CatchupMixin,
+    WikiMixin,
+    ApprovalMixin,
+    DMGuildMixin,
+    PeopleMixin,  # before PrivateChatMixin: chains on_member_remove (dory.people_bot)
+    PositionsMixin,  # positions <-> Discord roles <-> the center (dory.positions_bot)
+    ChangeOutboxMixin,  # central changes sent, acknowledged, resent (dory.change_outbox_bot)
+    PrivateChatMixin,
+    BroadcastMixin,
+    PlacesMixin,
+    MapsMixin,
+    SearchMixin,
+    TravelMixin,
+    MarketsMixin,
+    ReminderMixin,
+    ProjectsMixin,
+    TaskHandshakeMixin,
+    NoDeadlineMixin,
+    ToneMixin,
+    IdeasMixin,
+    QuotationMixin,
+    MeetingDocMixin,
+    CompanyMixin,
+    ContestsMixin,
+    BizfinMixin,
+    CooMixin,
+    MonitorMixin,  # change-log emitter + heartbeat in their own loop (dory.monitor_bot)
+    JobsMixin,  # deep task + deep research records, restart sweep (dory.jobs_bot)
+    ActionsMixin,
+    BriefingMixin,
+    HintsMixin,
+    AudienceMixin,
+    ProfileMixin,
+    DeliverMixin,
+    ImageMixin,
+    VideoAdMixin,
+    PromoMixin,
+    ConceptMixin,
+    DataMixin,
+    MediaMixin,
+    discord.Client,
+):
+    def __init__(
+        self,
+        settings: Settings,
+        store: Store,
+        llm,
+        guilds: GuildStore | None = None,
+        clock=time.monotonic,
+        memory: MemoryStore | None = None,
+        secretary_store: SecretaryStore | None = None,
+        licensing: Licensing | None = None,
+    ) -> None:
+        intents = discord.Intents(
+            guilds=True,
+            messages=True,
+            message_content=True,
+            members=True,
+            dm_messages=True,
+            voice_states=True,
+            guild_scheduled_events=True,
+            reactions=True,  # a reaction answers a pending ask (dory.briefing_bot)
+        )
+        super().__init__(intents=intents)
+        self.s, self.store, self.llm = settings, store, llm
+        # Per-guild settings document (Firestore, or in memory for local dev).
+        self.guilds_store = guilds or make_guild_store(settings)
+        self.team = BotGuildSettings(self.guilds_store)
+        # License gate (dory.licensing): an unlicensed guild gets no features at all
+        self.licensing = licensing or make_licensing(settings, store, self.guilds_store)
+        self.team.license_gate = self.licensing.is_licensed
+        # ShareLinks between the workspaces of one org (dory.sharing); wiki_search / find_place
+        self.sharing = make_sharing(self.licensing.orgs, self.guilds_store)
+        set_sharing_default(self.sharing)
+        self.archive = make_archive(settings)
+        self.tree = _LicensedTree(self)
+        self._clock = clock  # injectable so conversation timers are testable without sleeping
+        self._convos: dict[int, _Convo] = {}  # channel -> running conversation
+        self._pending: dict[int, _Pending] = {}  # join mode: channel -> candidates
+        self._interjections: dict[int, deque[float]] = {}  # join mode budget, per channel
+        self._interjected_at: dict[tuple[int, int], float] = {}  # (channel, user) -> last time
+        self._snoozed: dict[int, float] = {}  # channel -> snooze end (in memory only)
+        self._tick_task: asyncio.Task | None = None
+        self._digest_task: asyncio.Task | None = None
+        self._digest_sent: dict[int, date] = {}
+        self._agent_msgs: set[int] = set()  # messages whose files went to the agent
+        self._chat_perm_missing: set[int] = (
+            set()
+        )  # guilds where the chat channel needs a permission
+        self._perm_noted: dict[tuple[int, str], float] = {}  # (guild, what) -> last notice time
+        self._choose = random.choice  # variants of fixed lines (greeting, acknowledgement)
+        self.fillers = FillerWriter(  # model-written "one moment" lines + their generic-line pool
+            llm, settings, FillerPool(make_doc_store(settings, store), settings)
+        )
+        self.recent_acks = RecentLines()  # the last lines said per channel, so they do not repeat
+        self._sleep = asyncio.sleep  # injectable: the "still working" timer needs no real wait
+        self._recent_authors: dict[int, list[str]] = {}  # message id -> people in recent chat
+        self._dm_sent: dict[int, list[float]] = {}  # guild id -> times of DM-tool messages
+        self._reacted: dict[int, None] = {}  # messages that already got the read reaction
+        self._intaken: dict[int, None] = {}  # recent message ids the receipt pipeline has read
+        # guild -> (cached at, {channel id: receipts in the last 30 days}); see receipt_forward
+        self._receipt_counts: dict[int, tuple[float, dict[int, int]]] = {}
+        self._deep_tasks: set[asyncio.Task] = set()  # strong refs so tasks are not GC'd
+        self._deep_jobs: dict[int, _DeepJob] = {}  # guild -> the running deep task
+        self._answers = AnswerLog(clock)  # chunk ids of Dory's answers, ~24 h
+        self._sync_last: dict[int, float] = {}
+        self._sync_pending: dict[int, asyncio.Task] = {}
+        self.voice_pool = VoicePool(
+            self, list(getattr(settings, "voice_tokens", []) or []), on_leave=self._helper_left
+        )
+        self.meetings = MeetingManager(self)
+        # Secretary: scheduled meetings, PDFs, email (see dory.secretary / scheduling / email_out)
+        self.secretary_store = secretary_store or make_secretary_store(settings, store)
+        self.secretary_state = SecretaryState()
+        self.email_sender = make_sender(settings)
+        self.scheduler = MeetingService(
+            self.secretary_store,
+            DiscordCalendar(),
+            settings,
+            self.team,
+            self.meetings,
+            self.get_guild,
+        )
+        self._sched_last = float("-inf")
+        # Organisational memory: raw log + day summaries (see dory.memory).
+        self.embedder = make_embedder(settings, llm)  # NullEmbedder without a client (tests)
+        # The index serves summary reads from memory; every memory write must go through it.
+        self.memory_store = IndexedMemoryStore(
+            memory or self._default_memory_store(settings, store), self.embedder
+        )
+        self.memory = MemoryService(
+            self.memory_store,
+            settings,
+            MemoryScheduler(
+                self.memory_store,
+                settings,
+                llm,
+                now=settings.now,
+                lang_of=lambda gid: resolve_lang(self.team.current(gid).language_setting),
+                retention_of=self.team.fresh_memory_retention_days,
+                channel_name_of=self._channel_name,
+                enabled=lambda gid: self.team.enabled(gid, "memory"),
+                embedder=self.embedder,
+            ),
+        )
+        self._memory_queue: asyncio.Queue | None = None
+        self._memory_worker: asyncio.Task | None = None
+        self._memory_last = float("-inf")
+        self._import_task: asyncio.Task | None = None
+        self._import_requested = False
+        self._import_debounce: asyncio.Task | None = None
+        self._import_resume_at: float | None = None
+        self._memory_cfg_seen: dict[int, tuple[bool, int]] = {}  # guild -> (memory on, retention)
+        self._bg_tasks: set[asyncio.Task] = set()
+        self._image_sem = asyncio.Semaphore(2)  # at most two images described at once
+        self._image_notes: dict[int, dict[int, str]] = {}  # message id -> attachment idx -> note
+        self.image_stats = {"described": 0, "failed": 0, "skipped": 0}  # cost visibility
+        self._init_media()
+        self.importer = MemoryImporter(
+            self.memory_store,
+            settings,
+            self.memory,
+            llm,
+            build_record=self._import_record,
+            retention_of=self.team.memory_retention_days,
+            lang_of=lambda gid: resolve_lang(self.team.current(gid).language_setting),
+            channel_name_of=self._channel_name,
+            now=settings.now,
+            page_sleep=IMPORT_PAGE_SLEEP_S,
+        )
+        self._seen_mode: dict[int, str] = {}  # channel -> last mode seen (off -> on notice)
+        # Short-term context: recent messages per channel from gateway events (see dory.recent).
+        self.recent = RecentMessages(per_channel=HISTORY_MESSAGES + 10, max_age_s=HISTORY_SECONDS)
+        self._recent_swept = float("-inf")
+        self._viewers: dict[tuple[int, int], tuple[float, frozenset[int]]] = {}  # (guild, channel)
+        self._coo_init()  # tasks, disclosures, follow-ups, reports (dory.coo)
+        self._monitor_init()  # workflow monitor emitter + heartbeat (dory.monitor_bot)
+        self._init_actions()  # web -> Discord actions (dory.actions); needs self.docs
+        self._polls_init()  # polls and DM forms (dory.polls_bot)
+        self._votes_init()  # meeting votes with button ballots (dory.votes_bot)
+        self._briefing_init()  # briefs, pending asks, document alerts (dory.briefing_bot)
+        self._profile_init()  # personal preferences (dory.profiles)
+        self._translate_init()  # translation + auto-translate (dory.translate_bot)
+        self._freetime_init()  # find a time everyone is free (dory.freetime)
+        self._wiki_init()  # company knowledge base (dory.wiki_bot)
+        self._approval_init()  # approval requests (dory.approvals_bot)
+        self._places_init()  # remembered places (dory.places_bot)
+        self._dm_guild_init()  # which company a DM is about (dory.dm_guild)
+        self._pc_init()  # a private Dory channel per person (dory.private_chat)
+        dm_module.ROUTER = self._private_route
+        dm_module.SENT_HOOK = self._dm_sent_hook  # every Dory DM is tagged with its company
+        self._search_init()  # search_everything / web_search / deep_research (dory.search_bot)
+        self._init_promo()  # promo kit daily cap in the DocStore, after self.docs
+        self._init_concept()  # concept_image + price_check cap in the DocStore, after self.docs
+        self._init_images()  # create_image daily caps in the DocStore, after self.docs
+        self._init_video_ads()  # create_video_ad jobs, after self.docs (dory.videoad_bot)
+        self._travel_init()  # currency + flights (dory.travel_bot)
+        self._markets_init()  # stock / gold / news tools and alerts (dory.markets_bot)
+        self._reminders_init()  # personal reminders, once and recurring (dory.reminders_bot)
+        self._projects_init()  # PM dashboard projects (dory.projects_bot)
+        self._handshake_init()  # task cards the assignee confirms (dory.task_handshake_bot)
+        self._ideas_init()  # idea / project documents (dory.ideas_bot)
+        self._quotation_init()  # quotations (dory.quotation_bot)
+        self._company_init()  # company playbook + domain packs (dory.company_brain_bot)
+        self._contests_init()  # hackathons / grants / tenders (dory.contests_bot)
+        self._bizfin_init()  # finance calculators, benchmark, security (dory.bizfin_bot)
+        self._people_init()  # who does what, whom to ask, handover (dory.people_bot)
+        self._positions_init()  # positions <-> Discord roles <-> the center (dory.positions_bot)
+        self._change_outbox_init()  # central change notices + acks (dory.change_outbox_bot)
+        self._jobs_init()  # deep task + research records, after self.docs (dory.jobs_bot)
+
+    @staticmethod
+    def _default_memory_store(settings: Settings, store) -> MemoryStore:
+        if settings.store == "firestore":
+            return make_memory_store(settings, store)
+        return SQLiteMemoryStore(getattr(store, "path", None) or ":memory:", settings.zone)
+
+    def _channel_name(self, guild_id: int, channel_id: int) -> str:
+        if channel_id < 0:  # a member's DM notes (dory.memory_access.dm_scope)
+            return "DM"
+        guild = next((g for g in self.guilds if g.id == guild_id), None)
+        channel = guild.get_channel(channel_id) if guild else None
+        return getattr(channel, "name", None) or str(channel_id)
+
+    async def setup_hook(self):
+        self.voice_pool.start()  # voice helpers log in in the background
+        self._register_commands()
+        self.add_dynamic_items(DisclosureButton)  # approve/decline buttons survive restarts
+        self.add_dynamic_items(ChangeButton)  # "Got it" on central-change notices
+        self.add_dynamic_items(ApprovalButton)  # same for approval requests
+        self.add_dynamic_items(PlaybookButton)  # company-playbook suggestions for admins
+        self.add_dynamic_items(VoteButton, VoteOfferButton)  # vote ballots + offers
+        self.add_dynamic_items(TaskButton)  # task cards: accept / edit / not mine
+        self.add_dynamic_items(SwitchButton)
+        self.add_dynamic_items(CompanyButton)  # the "which company?" DM buttons
+        self.add_dynamic_items(LanguageSelect)  # the main-language menu (dory.language_ask)
+        await self.tree.set_translator(DoryTranslator())
+        try:
+            await self.tree.sync()  # global commands; Discord may take a while to show them
+        except discord.HTTPException:
+            logger.exception("could not sync slash commands")
+        self._digest_task = asyncio.create_task(self._digest_loop())
+        self._tick_task = asyncio.create_task(self._tick_loop())
+        self._monitor_start(TICK_SECONDS)  # own loop: a slow tick never delays the heartbeat
+
+    async def on_ready(self):
+        logger.info("logged in as %s in %d guilds", self.user, len(self.guilds))
+        self.recent.reset()
+        for guild in self.guilds:
+            await self._sync_guild(guild)
+            self._pc_backfill_start(guild)  # a private channel for every member, paced
+        await self._ask_unanswered_languages()  # servers that never chose a main language
+        self._start_import()
+        self._spawn(self._reconcile_channel_names())  # channel names follow the company language
+        await self.meetings.resume_all()  # rejoin meetings a restart cut off
+        self.meetings.scan_all()  # people already in voice channels: join by importance
+        await self._sweep_video_jobs()  # video ads a restart cut off: failed, requester told
+        await self._sweep_jobs()  # deep tasks / research a restart cut off: restarted
+
+    async def on_resumed(self):
+        self.recent.reset()  # a gateway outage may have dropped events
+        self._start_import()
+
+    # ------------------------------------------------------------- guild lifecycle
+    @staticmethod
+    def _guild_snapshot(guild: discord.Guild) -> dict:
+        return {
+            "name": guild.name,
+            "icon_url": guild.icon.url if guild.icon else "",
+            "channels": [
+                {
+                    "id": str(c.id),
+                    "name": c.name,
+                    "visible": flags[0],
+                    "readable_history": flags[1],
+                }
+                for c in guild.text_channels
+                for flags in [access_flags(c, getattr(guild, "me", None))]
+            ][:MAX_SYNCED_CHANNELS],
+            "public_channel_ids": public_channel_ids(guild),
+            "events": guild_events(guild),
+        }
+
+    async def _sync_guild(self, guild: discord.Guild, *, installed: bool = False) -> None:
+        """Write the guild's name, icon and text channels (hub-managed fields are untouched)."""
+        self._sync_last[guild.id] = time.monotonic()
+        try:
+            await asyncio.to_thread(
+                self.guilds_store.upsert_guild,
+                guild.id,
+                active=True,
+                installed=installed,
+                **self._guild_snapshot(guild),
+            )
+        except Exception:
+            logger.exception("could not sync guild %s", guild.id)
+
+    def _request_sync(self, guild: discord.Guild) -> None:
+        """Throttled resync for channel events: at most one write per interval, always ending
+        with the latest state (a burst of changes schedules one trailing sync)."""
+        if guild.id in self._sync_pending:
+            return
+        wait = max(0.0, SYNC_MIN_INTERVAL_S - (time.monotonic() - self._sync_last.get(guild.id, 0)))
+
+        async def later():
+            try:
+                await asyncio.sleep(wait)
+                self._sync_pending.pop(guild.id, None)
+                await self._sync_guild(guild)
+            finally:
+                self._sync_pending.pop(guild.id, None)
+
+        self._sync_pending[guild.id] = asyncio.create_task(later())
+
+    async def on_guild_join(self, guild: discord.Guild):
+        logger.info("joined guild %s", guild.id)
+        await asyncio.to_thread(self.team.current, guild.id)
+        self._pc_backfill_start(guild)
+        lang = resolve_lang(self.team.current(guild.id).language_setting)
+        chat = await self._ensure_chat_channel(guild, lang)
+        if chat is not None:  # a reused channel must answer everything, whatever its name
+            try:
+                await asyncio.to_thread(self.team.set_channel_mode, guild.id, chat.id, "chat")
+            except Exception:
+                logger.exception("could not save chat mode for guild %s", guild.id)
+        await self._sync_guild(guild, installed=True)
+        target = chat or guild.system_channel
+        if target is None or not target.permissions_for(guild.me).send_messages:
+            target = next(
+                (c for c in guild.text_channels if c.permissions_for(guild.me).send_messages), None
+            )
+        if target is not None:
+            where = chat.mention if chat else f"#{chat_channel_name(lang)}"
+            with contextlib.suppress(discord.HTTPException):
+                await target.send(
+                    with_hint(
+                        t_days(
+                            "welcome",
+                            lang,
+                            self.team.retention_shown(guild.id),
+                            mention=self.user.mention,
+                            chat=where,
+                        ),
+                        "welcome_help",
+                        lang=lang,
+                    )
+                )
+                if guild.id in self._chat_perm_missing:  # say exactly what is missing, once
+                    self._chat_perm_missing.discard(guild.id)
+                    await target.send(
+                        permission_message(["manage_channels"], lang, self.application_id)
+                    )
+                # a server that has not chosen yet is asked for its main language, once
+                await self._post_language_question(guild, target)
+
+    async def _ensure_chat_channel(self, guild: discord.Guild, lang: str = "en"):
+        """The guild's Dory chat channel: an existing one with its name, else a new one."""
+        existing = next((c for c in guild.text_channels if is_chat_channel_name(c.name)), None)
+        if existing is not None:
+            return existing
+        if guild_missing(guild, ("manage_channels",)):
+            logger.info("no Manage Channels in guild %s: chat channel not created", guild.id)
+            self._chat_perm_missing.add(guild.id)
+            return None
+        try:
+            return await guild.create_text_channel(
+                chat_channel_name(lang), topic=t("chat_topic", lang), reason="Dory chat channel"
+            )
+        except discord.HTTPException:
+            logger.warning("could not create chat channel in guild %s", guild.id, exc_info=True)
+            if guild_missing(guild, ("manage_channels",)):
+                self._chat_perm_missing.add(guild.id)
+            return None
+
+    async def on_guild_remove(self, guild: discord.Guild):
+        # Only marks the guild inactive; like the ledger, its memory is kept until retention
+        # expires it. `self.memory.delete_guild(guild_id)` wipes it at once if ever wanted.
+        logger.info("removed from guild %s", guild.id)
+        try:
+            await asyncio.to_thread(self.guilds_store.set_active, guild.id, False)
+        except Exception:
+            logger.exception("could not mark guild %s inactive", guild.id)
+
+    async def on_guild_channel_create(self, channel):
+        self._request_sync(channel.guild)
+        self._request_import()
+
+    async def on_guild_channel_update(self, before, after):
+        if before.name != after.name:
+            self._request_sync(after.guild)
+        category_moved = getattr(before, "category", None) is not getattr(after, "category", None)
+        if before.overwrites != after.overwrites or category_moved:
+            # permissions changed: maybe newly readable, and the cached readers are stale
+            gid = after.guild.id
+            self._invalidate_viewers(gid, getattr(after, "id", None))  # None: the whole guild
+            for child in getattr(after, "channels", None) or ():  # a category's overwrites
+                self._invalidate_viewers(gid, child.id)  # reach its synced children
+            if before.overwrites != after.overwrites:
+                self._request_sync(after.guild)
+                self._request_import()
+
+    async def on_member_update(self, before, after):
+        if before.roles != after.roles:  # anyone's roles: who can read what may have changed
+            self._invalidate_viewers(after.guild.id)
+        if self.user is not None and after.id == self.user.id and before.roles != after.roles:
+            self._request_sync(after.guild)  # the owner changed Dory's roles
+            self._request_import()
+        await self._positions_on_member_update(before, after)
+
+    async def on_guild_role_update(self, before, after):
+        if before.permissions != after.permissions:
+            self._invalidate_viewers(after.guild.id)
+        me = getattr(after.guild, "me", None)
+        if me is not None and after in me.roles and before.permissions != after.permissions:
+            self._request_sync(after.guild)
+            self._request_import()
+        await self._positions_on_role_update(before, after)
+
+    async def on_guild_role_delete(self, role):
+        self._invalidate_viewers(role.guild.id)
+        await self._positions_on_role_delete(role)
+
+    async def on_member_join(self, member):
+        self._invalidate_viewers(member.guild.id)
+        await super().on_member_join(member)
+
+    async def on_member_remove(self, member):
+        self._invalidate_viewers(member.guild.id)
+        await super().on_member_remove(member)
+
+    async def on_guild_channel_delete(self, channel):
+        self._invalidate_viewers(channel.guild.id, channel.id)
+        self._request_sync(channel.guild)
+
+    # ------------------------------------------------------------- permissions
+    def is_exec_member(self, member: discord.Member) -> bool:
+        """Executives: env user ids, the guild owner, Administrator / Manage Server, or a role named
+        in the guild's exec_role_names. Everyone else only sees their own receipts."""
+        if member.id in self.s.exec_user_ids or can_manage_guild(member):
+            return True
+        names = self.team.exec_role_names(member.guild.id, self.s.exec_role_names)
+        return bool(names & {r.name for r in member.roles}) or self._position_is_exec(member)
+
+    # ------------------------------------------------------------- routing
+    async def _licensed(self, guild_id: int) -> bool:
+        if not self.licensing.enforce:
+            return True
+        return await asyncio.to_thread(self.licensing.is_licensed, guild_id)
+
+    async def _unlicensed_notice(self, message: discord.Message) -> None:
+        """Unlicensed guild: nothing is read or stored; when addressed, one short line per day."""
+        try:
+            if not (mentions_bot(message, self.user) or self._starts_with_name(message)):
+                return
+            gid = message.guild.id
+            day = self.s.today().isoformat()
+            if await asyncio.to_thread(self.licensing.claim_notice, gid, day):
+                await message.reply(
+                    t("unlicensed", self._lang(message), url=self.licensing.url),
+                    mention_author=False,
+                )
+        except Exception:
+            logger.warning("could not send the license notice", exc_info=True)
+
+    async def on_message(self, message: discord.Message):
+        self.recent.add(message)
+        own = message.author == self.user
+        if message.guild is not None and not await self._licensed(message.guild.id):
+            if not own and not getattr(message.author, "bot", False):
+                await self._unlicensed_notice(message)
+            return  # unlicensed: no ingestion, no answers
+        logged = False
+        if message.guild is not None and (own or not getattr(message.author, "bot", False)):
+            logged = await self._memory_record(message, own)
+        if own or getattr(message.author, "bot", False):
+            return
+        try:
+            if message.guild is None:
+                await self._direct_message(message)
+                return
+            gid = message.guild.id
+            owner = await self._pc_owner(gid, message.channel.id)
+            if owner is not None:  # somebody's private Dory channel: theirs alone, like a DM
+                if message.author.id == owner:
+                    await self._personal_message(message, message.guild, message.author)
+                return
+            await asyncio.to_thread(self.team.current, gid)  # refresh the cache off the loop
+            mode = self._mode(message.channel, gid)
+            receipts_on = self.team.enabled(gid, "receipts")
+            if receipts_on and await self._maybe_correction(message):
+                return
+            if mode == "off":
+                return
+            await self._autotranslate_maybe(message)  # per-channel auto-translate, off by default
+            if await self.meetings.on_chat_text(message):  # "ไม่ต้องจด" answering the notes question
+                return
+            await self._asks_observe(message)  # pending asks (answers and new requests)
+            if await self._maybe_delete_own(message):
+                return
+            mentioned = mentions_bot(message, self.user)
+            if not (
+                mentioned or self._starts_with_name(message)
+            ):  # asked directly: the agent checks
+                await self._link_guard_maybe(message, mode)  # dangerous-link warning (link_guard)
+            receipt_ids = self.team.receipt_channel_ids(gid, self.s.receipt_channel_ids)
+            qa_on = self.team.enabled(gid, "qa")
+            # Receipts are recognised by content, never by channel name. A configured or learned
+            # receipt channel (hub setting, or 3+ receipts in the last 30 days) is a fast path:
+            # direct intake, quiet in listen mode. Elsewhere images go through the describer
+            # (receipt-like -> intake), PDFs through intake, and a message to Dory with files goes
+            # to the agent; only with Q&A off does "@Dory + receipt file" mean direct intake.
+            is_receipt_post = message.attachments and (
+                message.channel.id in receipt_ids
+                or (
+                    receipts_on
+                    and has_receipt_file(message)
+                    and message.channel.id in learned_channels(await self._counts(gid))
+                )
+                or (mentioned and has_receipt_file(message) and not qa_on)
+            )
+            describe = not own_receipt(is_receipt_post, receipts_on)
+            try:
+                await self._route(
+                    message, mode, mentioned, bool(is_receipt_post), receipts_on, qa_on
+                )
+            finally:
+                # images -> text for memory (and receipts anywhere nobody is talking to Dory),
+                # in the background. A message the agent read is not run through receipt intake.
+                to_agent = message.id in self._agent_msgs
+                # a quiet read (nobody addressed Dory, no receipt pipeline reaction): 👀 when done
+                react = (
+                    not to_agent and not is_receipt_post and self.team.enabled(gid, "read_receipts")
+                )
+                self._media_soon(message, logged, react=react)
+                self._doc_soon(message, logged, react=react)
+                if describe:
+                    self._agent_msgs.discard(message.id)
+                    content_path = (
+                        receipts_on
+                        and not is_receipt_post
+                        and not to_agent
+                        and message.id not in self._intaken
+                    )
+                    self._describe_soon(
+                        message, logged, intake_mode=mode if content_path else None, react=react
+                    )
+                    if content_path and self._pdf_attachments(message):
+                        self._spawn(self._intake(message, quiet=mode == "listen", pdf_only=True))
+        except Exception:
+            logger.exception("handler failed")
+
+    async def _route(
+        self,
+        message: discord.Message,
+        mode: str,
+        mentioned: bool,
+        is_receipt_post: bool,
+        receipts_on: bool,
+        qa_on: bool,
+    ) -> None:
+        gid = message.guild.id
+        if is_receipt_post:
+            if receipts_on:
+                await self._intake(message, quiet=mode == "listen")
+            return
+        called = mentioned or (self._starts_with_name(message))
+        if not called and mode in ("listen", "join"):
+            self.vote_offer_soon(message)  # a small vote offer from untagged talk (dory.votes_bot)
+        if called and await self._meeting_command(message):
+            return
+        if called and await self._snooze_command(message):
+            return
+        if called and await self._cancel_task_command(message):
+            return
+        if called and await self._audience_command(message):  # personal / company-only forms
+            return
+        if called and await self._language_command(message):
+            return
+        if called and await self._tone_command(message):
+            return
+        if called and await self._task_mode_command(message):
+            return
+        if called and await self._captions_default_command(message):
+            return
+        if called and await self._voice_talk_command(message):
+            return
+        if called and await self._help_command(message):
+            return
+        if called and await self._plan_confirm_command(message):  # "ยืนยัน" a waiting plan import
+            return
+        if called and await self._private_command(message, message.guild, message.author):
+            return
+        # Q&A off and no image describer: images are receipt candidates when Dory is addressed
+        if (
+            receipts_on
+            and not qa_on
+            and self._image_candidates(message)
+            and not self._images_enabled(gid)
+            and (mode == "chat" or (mode in ("call", "join") and called))
+            and await self._intake(message)
+        ):
+            return
+        if (
+            mode in ("chat", "call", "join")
+            and not message.attachments
+            and (mode == "chat" or self._window_open(message.channel.id))
+            and not mentions_other(message, self.user)
+            and is_thanks(message.content)
+        ):  # gratitude / acknowledgement: a reaction, not a reply (no LLM)
+            with contextlib.suppress(discord.HTTPException):
+                await message.add_reaction(self._choose(("👍", "🙏")))
+            return
+        if mode == "listen":
+            if mentioned and self._is_snoozed(message.channel.id):
+                with contextlib.suppress(discord.HTTPException):
+                    await message.add_reaction("👂")
+            elif mentioned:  # listen answers a tag, never a bare name, never unprompted
+                await self._answer(message, message.guild, message.author)
+            return
+        if mode == "chat":
+            await self._answer(message, message.guild, message.author)
+            return
+        await self._call_or_join(message, mode, mentioned)
+
+    def _mode(self, channel, guild_id: int) -> str:
+        """The channel's mode now: the resolved setting, or listen while snoozed."""
+        mode = self.team.channel_mode(
+            guild_id, channel.id, getattr(channel, "name", None), self.s.ask_channel_ids
+        )
+        return "listen" if mode != "off" and self._is_snoozed(channel.id) else mode
+
+    def _is_snoozed(self, channel_id: int) -> bool:
+        until = self._snoozed.get(channel_id)
+        if until is not None and self._clock() >= until:
+            del self._snoozed[channel_id]
+            return False
+        return until is not None
+
+    # ------------------------------------------------------------- reply language
+    def _lang_setting(self, target) -> str:
+        """th / en / auto for the channel of `target` (a message or a channel). DMs: see `_dm_setting`."""
+        guild = getattr(target, "guild", None)
+        if guild is None:
+            return self._dm_setting(target)
+        channel = getattr(target, "channel", None) or target
+        return self.team.channel_language(guild.id, getattr(channel, "id", 0))
+
+    def _dm_setting(self, target) -> str:
+        """A DM's language setting: the main language of the company the DM is about (the only shared server, or the one they picked) when it has
+        chosen one. Otherwise, or when the shared servers disagree: auto (follow their words,
+        English when there are none)."""
+        user = getattr(target, "author", None) or getattr(target, "user", None)
+        uid = getattr(user, "id", None)
+        if uid is None:
+            return "auto"
+        try:
+            shared = [g for g, _ in self._shared_guilds(uid)]
+            if len(shared) > 1:
+                active = self.dm_guilds.active(uid)
+                picked = [g for g in shared if g.id == active]
+                shared = picked or shared
+            langs = set()
+            for g in shared:
+                # the company's chosen language; `auto` (follow the words they write) until chosen
+                # the company's language decides (personal languages are added to the audience list)
+                langs.add(self.team.current(g.id).language_setting)
+        except Exception:  # a store hiccup must never stop an answer
+            return "auto"
+        return langs.pop() if len(langs) == 1 else "auto"
+
+    def _lang(self, target, text: str | None = None) -> str:
+        """Language (th or en) for Dory's fixed replies to `target`. `auto` follows `text`, by
+        default the message's own words."""
+        if text is None and hasattr(target, "content"):
+            text = self._strip_mentions(target.content or "", target)
+        return resolve_lang(self._lang_setting(target), text)
+
+    def _interaction_lang(self, interaction) -> str:
+        """Language for a slash command reply: the channel's setting; `auto` has no message to
+        follow, so the user's Discord locale (`th-*` Thai, another known language of Dory's, else
+        English)."""
+        setting = self._lang_setting(interaction)
+        if setting != "auto":
+            return setting
+        return locale_lang(getattr(interaction, "locale", ""))
+
+    def _starts_with_name(self, message: discord.Message) -> bool:
+        """The message opens with Dory's name (no @tag): "Dory เข้าประชุมหน่อย"."""
+        return command_text(self._strip_mentions(message.content or "", message))[1]
+
+    async def _call_or_join(self, message: discord.Message, mode: str, mentioned: bool) -> None:
+        """call/join: answer when called by tag or name, replied to, or (inside the conversation
+        window) when the gate says the message is meant for Dory. Join mode also queues
+        questions for the quiet-time batch gate."""
+        cid = message.channel.id
+        if mentioned or mentions_name(message.content):
+            await self._answer(message, message.guild, message.author)
+            return
+        if self._replying_to_dory(message):
+            await self._answer(message, message.guild, message.author)
+            return
+        if mentions_other(message, self.user):
+            return  # talking to someone else
+        if self._window_open(cid) and await self._gate_window(message):
+            await self._answer(message, message.guild, message.author)
+            return
+        if mode != "join":
+            return
+        if message.content and is_join_candidate(message.content):
+            pending = self._pending.get(cid)
+            if pending is None:
+                pending = self._pending[cid] = _Pending(message.channel, message.guild, 0.0)
+            pending.candidates = [*pending.candidates, message][-MAX_JOIN_CANDIDATES:]
+        if cid in self._pending:
+            self._pending[cid].last_activity = self._clock()
+
+    @staticmethod
+    def _files_line(message: discord.Message) -> str:
+        """Gate text of a message that is only attachments."""
+        return " ".join(f"[{a.filename}]" for a in message.attachments)
+
+    def _replying_to_dory(self, message: discord.Message) -> bool:
+        ref = message.reference
+        resolved = getattr(ref, "resolved", None) if ref else None
+        return self.user is not None and getattr(resolved, "author", None) == self.user
+
+    def _window_open(self, channel_id: int) -> bool:
+        convo = self._convos.get(channel_id)
+        return convo is not None and self._clock() - convo.last < CONVERSATION_SECONDS
+
+    async def _gate_window(self, message: discord.Message) -> bool:
+        history = await self._gate_lines(message.channel, GATE_HISTORY, before=message)
+        line = GateLine(
+            str(message.id),
+            message.author.display_name,
+            self._strip_mentions(message.content, message) or self._files_line(message),
+        )
+        return await asyncio.to_thread(
+            gate.addressed_to_dory,
+            self.llm,
+            self.s.gate_model,
+            history,
+            line,
+            channel_id=message.channel.id,
+        )
+
+    async def _gate_lines(self, channel, limit: int, before=None) -> list[GateLine]:
+        """The channel's last lines, oldest first, for a gate prompt."""
+        lines: list[GateLine] = []
+        for prev in await self._history(channel, limit, before):
+            text = self._strip_mentions(prev.content, prev)
+            if text:
+                who = "ดอรี่" if prev.author == self.user else prev.author.display_name
+                lines.append(GateLine(str(prev.id), who, text))
+        return lines[::-1]
+
+    async def _history(self, channel, limit: int, before=None) -> list:
+        """The channel's messages before `before` (default: the newest), newest first: from the
+        recent buffer when the channel is primed, else from Discord, which then primes it (only
+        when nothing newer than `before` could be missing)."""
+        cid = getattr(channel, "id", None)
+        if cid is not None:
+            got = self.recent.history(cid, limit, getattr(before, "id", None))
+            if got is not None:
+                return got
+        history = getattr(channel, "history", None)
+        if history is None:
+            return []
+        kw = {"limit": max(limit, self.recent.per_channel)}
+        if before is not None:
+            kw["before"] = before
+        try:
+            rows = [m async for m in history(**kw)]
+        except discord.HTTPException:
+            logger.warning("could not read channel history", exc_info=True)
+            return []
+        newest = self.recent.newest_id(cid) if cid is not None else None
+        if cid is not None and (before is None or newest == getattr(before, "id", None)):
+            self.recent.prime(cid, rows)
+        return rows[:limit]
+
+    def _command_text(self, message: discord.Message) -> str:
+        """Text for the typed-command parsers: tag, a leading name ("Dory ...") and trailing
+        politeness (หน่อย / ครับ / please) removed."""
+        return command_text(self._strip_mentions(message.content or "", message))[0]
+
+    async def _snooze_command(self, message: discord.Message) -> bool:
+        """'@Dory เงียบก่อน' / 'be quiet' (listen mode for an hour) and 'คุยได้แล้ว' / 'you can talk'
+        again. Open to everyone."""
+        cmd = parse_snooze_command(self._command_text(message))
+        if cmd is None:
+            return False
+        cid = message.channel.id
+        if cmd == "snooze":
+            self._snoozed[cid] = self._clock() + SNOOZE_SECONDS
+            self._convos.pop(cid, None)
+            self._pending.pop(cid, None)
+            key = "snooze"
+        else:
+            key = "unsnooze" if self._snoozed.pop(cid, None) is not None else "not_snoozed"
+        await message.reply(t(key, self._lang(message)), mention_author=False)
+        return True
+
+    async def _language_command(self, message: discord.Message) -> bool:
+        """'@Dory พูดภาษาอังกฤษ' / 'speak English' etc.: sets this channel's reply language.
+        Executives and server managers only; others get a short refusal."""
+        text = self._command_text(message)
+        server_cmd = parse_server_language_command(text) if message.guild else None
+        cmd = server_cmd or parse_language_command(text)
+        if cmd is None or message.guild is None:
+            return False
+        user = message.author
+        if not server_cmd:  # "speak Thai" with no scope: the person's own language
+            cmd_p = ("unset", None) if cmd == "auto" else ("set", cmd)
+            company = self._person_langs(message.guild.id)
+            reply = self._set_personal_language(message.guild.id, user.id, cmd_p, company)
+            await message.reply(reply, mention_author=False)
+            return True
+        if not hasattr(user, "guild_permissions") or not (
+            can_manage_guild(user) or self.is_exec_member(user)
+        ):
+            await message.reply(t("lang_denied", self._lang(message)), mention_author=False)
+            return True
+        new = resolve_lang(cmd, text)  # the reply follows the language just chosen
+        if server_cmd:
+            try:
+                await self._apply_server_language(message.guild, server_cmd, True)
+            except Exception:
+                logger.exception("could not save server language")
+                await message.reply(t("lang_failed", new), mention_author=False)
+                return True
+            label = t(f"lang_label_{server_cmd}", new)
+            await message.reply(t("server_lang_set", new, label=label), mention_author=False)
+            return True
+        try:
+            await asyncio.to_thread(
+                self.team.set_channel_language,
+                message.guild.id,
+                message.channel.id,
+                self._channel_language_value(message.guild.id, cmd),
+            )
+        except Exception:
+            logger.exception("could not save channel language")
+            await message.reply(t("lang_failed", new), mention_author=False)
+            return True
+        if cmd == "auto" and self.team.language_chosen(message.guild.id):
+            cmd = self.team.channel_language(message.guild.id, message.channel.id)
+            new = resolve_lang(cmd)  # `auto` = the company language once it is chosen
+        label = t(f"lang_label_{cmd}", new)
+        await message.reply(t("lang_set", new, label=label), mention_author=False)
+        return True
+
+    def _channel_language_value(self, gid: int, cmd: str) -> str | None:
+        """What a channel override stores: `auto` is no longer an override once the company has
+        chosen its language (the channel then simply follows the company language)."""
+        return None if cmd == "auto" and self.team.language_chosen(gid) else cmd
+
+    async def _apply_server_language(self, guild, language: str, apply_all: bool) -> None:
+        """Save the guild default (and clear or restore per-channel overrides), then rename the
+        private channels in the background."""
+        await asyncio.to_thread(self.team.set_server_language, guild.id, language, apply_all)
+        self._spawn(self._pc_rename_for_language(guild, language))
+        self._spawn(self._rename_dory_channels(guild, language))
+
+    async def _rename_dory_channels(self, guild, language: str) -> None:
+        """The channels Dory created for itself (the chat channel, the reports channel) follow the
+        company language: rename the other-language name to this language's. Failures are logged."""
+        from .coo import REPORT_CHANNEL_NAME, REPORT_CHANNEL_NAME_EN
+        from .modes import CHAT_CHANNEL_NAME_EN
+
+        lang = base_lang(language)
+        pairs = [
+            (CHAT_CHANNEL_NAME, CHAT_CHANNEL_NAME_EN),
+            (REPORT_CHANNEL_NAME, REPORT_CHANNEL_NAME_EN),
+        ]
+        for th, en in pairs:
+            new, old = (th, en) if lang == "th" else (en, th)
+            for ch in list(getattr(guild, "text_channels", []) or []):
+                if ch.name == old:
+                    try:
+                        await ch.edit(name=new, reason="Dory: company language")
+                        await asyncio.sleep(1.0)
+                    except Exception:
+                        logger.warning("could not rename channel %s", ch.id, exc_info=True)
+
+    async def _reconcile_channel_names(self) -> None:
+        """At startup: Dory's own channels and private channels match the company language."""
+        for guild in list(self.guilds):
+            try:
+                settings = await asyncio.to_thread(self.team.current, guild.id)
+                if not settings.language_chosen:
+                    continue
+                lang = settings.language_setting
+                await self._rename_dory_channels(guild, lang)
+                await self._pc_rename_for_language(guild, lang)
+            except Exception:
+                logger.warning(
+                    "channel name reconcile failed for guild %s", guild.id, exc_info=True
+                )
+
+    async def _join_voice_tool(self, message, member, lang: str) -> dict:
+        """Agent tool: join the voice channel the requester is in (explicit: overrides cooldowns)."""
+        channel = getattr(getattr(member, "voice", None), "channel", None)
+        if channel is None:
+            return {"error": "not_in_voice", "note": "the requester is not in a voice channel"}
+        reply = await self.meetings.join(member, fallback_channel=message.channel, lang=lang)
+        if self.meetings.session_in(member.guild.id, channel.id) is None:
+            return {"error": reply}
+        return {"status": "joined", "channel": channel.name}
+
+    async def _leave_voice_tool(self, message, member, lang: str) -> dict:
+        reply = await self.meetings.leave(member, lang=lang, text_channel_id=message.channel.id)
+        return {"result": reply}
+
+    async def _meeting_command(self, message: discord.Message) -> bool:
+        """'@Dory เข้าประชุม' / 'join' / 'ออกประชุม' / 'leave' typed in a text channel."""
+        cmd = parse_meeting_command(self._command_text(message))
+        if cmd is None or not hasattr(message.author, "voice"):
+            return False
+        lang = self._lang(message)
+        if cmd == "join":
+            reply = await self.meetings.join(
+                message.author, fallback_channel=message.channel, lang=lang
+            )
+        else:
+            reply = await self.meetings.leave(
+                message.author, lang=lang, text_channel_id=message.channel.id
+            )
+        await message.reply(reply, mention_author=False)
+        return True
+
+    async def on_scheduled_event_create(self, event) -> None:
+        """Somebody made a Discord event: track it (reminders, no-show logic for voice events)
+        and refresh the guild document (the company calendar on the web)."""
+        await self._sched_event(self.scheduler.track_discord_event, event)
+        self._request_sync(event.guild)
+
+    async def on_scheduled_event_update(self, before, after) -> None:
+        await self._sched_event(self.scheduler.update_discord_event, after)
+        self._request_sync(after.guild)
+
+    async def on_scheduled_event_delete(self, event) -> None:
+        await self._sched_event(self.scheduler.delete_discord_event, event)
+        self._request_sync(event.guild)
+
+    @staticmethod
+    async def _sched_event(fn, event) -> None:
+        try:
+            await fn(event)
+        except Exception:
+            logger.exception("could not track scheduled event")
+
+    async def on_voice_state_update(self, member, before, after):
+        """Dory itself was disconnected (network, gateway, kicked): reconnect, else end."""
+        if member == self.user and after.channel is None and before.channel is not None:
+            await self.meetings.on_disconnected(before.channel.guild.id)
+        guild = getattr(member, "guild", None)
+        if guild is not None and not await self._licensed(guild.id):
+            return  # unlicensed: no auto-join
+        try:
+            await self.meetings.on_voice_activity(member, before, after)
+        except Exception:
+            logger.exception("auto-join check failed")
+
+    async def _helper_left(self, body_index: int, guild_id: int) -> None:
+        """A voice helper lost its connection (network, kicked): reconnect it or end the meeting."""
+        await self.meetings.on_disconnected(guild_id, body_index)
+
+    async def close(self):
+        if self._tick_task is not None:
+            self._tick_task.cancel()
+        self._monitor_stop()
+        if self._memory_worker is not None:
+            self._memory_worker.cancel()
+        await self.meetings.shutdown()
+        await self.voice_pool.close()
+        await super().close()
+
+    async def _direct_message(self, message: discord.Message):
+        """DMs have no guild: answer only when the asker shares exactly one guild with Dory."""
+        if message.author == self.user or getattr(message.author, "bot", False):
+            return  # Dory's own (and other bots') DMs are never answered or recorded
+        shared = self._shared_guilds(message.author.id)
+        if not shared:
+            await message.reply(
+                t("dm", self._lang(message), mention=self.user.mention), mention_author=False
+            )
+            return
+        resolved = await self._dm_resolve(message, shared)  # which company (dory.dm_guild)
+        if resolved is None:  # Dory asked "which company?" (or switched); nothing recorded yet
+            return
+        guild, member = resolved
+        if not await self._licensed(guild.id):  # the license gate comes before any routing
+            return
+        self._dm_note_footer(message, len(shared), guild)
+        await self._personal_message(message, guild, member)
+
+    async def _personal_message(self, message, guild, member) -> None:
+        """A message to Dory that is the member's own business (a DM, resolved to `guild`, or their
+        private channel in it): private-channel commands, replies to reminders and forms, the
+        private note, then the answer. Nothing here leaves `guild`."""
+        if await self._change_ack_reply(message, guild):  # "รับทราบ" to a central-change notice
+            return
+        if await self._private_command(message, guild, member):
+            return
+        if await self._personal_tone_command(message, guild, member):  # their own tone
+            return
+        if await self._task_mode_command(message, guild, member):  # their own task mode
+            return
+        if await self._help_command(message, guild, member):  # "how do I use Dory?"
+            return
+        if await self._plan_confirm_command(message, guild, member):  # "ยืนยัน" a plan import
+            return
+        if await self._owner_answer_command(message, guild, member):  # "who takes this task?"
+            return
+        await asyncio.to_thread(self.team.current, guild.id)
+        ack = await self.scheduler.handle_dm_reply(
+            message.author.id, message.content, guild_id=guild.id
+        )
+        if ack:  # (b) the reason an attendee gave after a meeting reminder / no-show nudge
+            await message.reply(ack, mention_author=False)
+            return
+        if await self._form_dm_answer(message, guild, member):  # an answer to a form question
+            return
+        try:  # (c) every other DM is work information: noted for the team (dory.coo)
+            handled, note = await self._coo_dm_record(message, guild, member)
+        except Exception:
+            logger.warning("could not record a DM note", exc_info=True)
+            handled, note = False, ""
+        if handled:  # only "keep it private": already answered
+            return
+        await self._answer(message, guild, member, **({"note": note} if note else {}))  # (d)
+        with contextlib.suppress(Exception):
+            await self._coo_dm_notice(message, guild)
+
+    async def _maybe_correction(self, message: discord.Message) -> bool:
+        ref = message.reference
+        if not ref or not ref.message_id or not message.content.strip():
+            return False
+        receipt = self.store.get_by_reply_message(ref.message_id)
+        if not receipt or receipt.guild_id != message.guild.id:
+            return False
+        if message.author.id != receipt.submitter_id and not self.is_exec_member(message.author):
+            await message.reply(t("correction_denied", self._lang(message)), mention_author=False)
+            return True
+        action = parse_void_command(message.content)
+        delete_kind = parse_delete_message(self._command_text(message))
+        if action is None and delete_kind is not None:
+            action = "void"  # "remove"/"unsend" on a receipt message cancels the receipt
+        if action:
+            text = await asyncio.to_thread(
+                apply_void_command,
+                self.store,
+                receipt,
+                action,
+                f"{message.author.display_name} ({message.author.id})",
+                self._lang(message),
+            )
+            if action == "void" and delete_kind == "message":
+                # voiding is the important part; the receipt message itself goes too
+                await self._delete_messages(message.channel, [ref.message_id], message.guild.id)
+                text = t("receipt_void_ack", self._lang(message), id=receipt.id)
+            await message.reply(text, mention_author=False)
+            return True
+        async with message.channel.typing():
+            text = await asyncio.to_thread(
+                apply_correction,
+                self.store,
+                self.llm,
+                self.s,
+                receipt,
+                message.content,
+                self._lang(message),
+            )
+        await message.reply(text, mention_author=False)
+        return True
+
+    async def _ingest_one(self, message: discord.Message, att, data: bytes, quiet: bool):
+        """Receipt pipeline for one attachment (bytes already read): ingest, reaction, reply."""
+        async with message.channel.typing():
+            res = await asyncio.to_thread(
+                ingest_attachment,
+                self.store,
+                self.llm,
+                self.s,
+                guild_id=message.guild.id,
+                data=data,
+                filename=att.filename,
+                content_type=att.content_type,
+                submitter_id=message.author.id,
+                submitter_name=message.author.display_name,
+                channel_id=message.channel.id,
+                message_id=message.id,
+                note=message.content.strip(),
+                archive=self.archive,
+                lang=self._lang(message),
+            )
+        if res.status == "ignored":
+            return res
+        if res.reaction:
+            with contextlib.suppress(discord.HTTPException):
+                await message.add_reaction(res.reaction)
+        fwd = await self._forward(
+            message, message.guild, [(att.filename, data)], res, self._lang(message)
+        )
+        if not quiet:  # listen mode: reaction only, no text reply
+            text = res.reply
+            if fwd is not None:
+                text += "\n" + t("fwd_ack", self._lang(message), home=fwd.channel.name)
+            sent = await message.reply(text, mention_author=False)
+            if res.status == "created":
+                self.store.set_reply_message(res.receipt.id, sent.id)
+        if fwd is not None and res.status == "created":  # replies in the home channel win
+            self.store.set_reply_message(res.receipt.id, fwd.id)
+        return res
+
+    async def _forward(self, message, guild, files, res, lang):
+        """Copy a created / duplicate receipt to the guild's receipt home channel when it was
+        posted elsewhere (see dory.receipt_forward). The sent copy, or None."""
+        if res.status not in ("created", "duplicate") or guild is None:
+            return None
+        await self._note_home_permissions(message, guild, lang)
+        try:
+            return await forward_receipt(
+                guild=guild,
+                settings=self.team.current(guild.id),
+                env_receipt_ids=self.s.receipt_channel_ids,
+                counts=await self._counts(guild.id),
+                source=message.channel if message.guild is not None else None,
+                author=message.author,
+                jump_url=getattr(message, "jump_url", None),
+                files=files,
+                text=res.reply,
+                lang=lang,
+            )
+        except Exception:
+            logger.exception("receipt forward failed")
+            return None
+
+    @staticmethod
+    def _pdf_attachments(message) -> list:
+        return [
+            a
+            for a in message.attachments
+            if guess_mime(a.filename, getattr(a, "content_type", None)) == "application/pdf"
+        ]
+
+    async def _counts(self, guild_id: int) -> dict[int, int]:
+        """Receipts recorded per channel in the last 30 days (cached ~10 min, fail quiet): which
+        channels have learned to be receipt channels, and where receipts are copied to."""
+        now = self._clock()
+        hit = self._receipt_counts.get(guild_id)
+        if hit is not None and now - hit[0] < RECEIPT_COUNTS_TTL_S:
+            return hit[1]
+        since = (self.s.now().date() - timedelta(days=LEARN_DAYS)).isoformat()
+        try:
+            counts = await asyncio.to_thread(self.store.receipt_channel_counts, guild_id, since)
+        except Exception:
+            logger.warning("could not count receipts per channel", exc_info=True)
+            counts = hit[1] if hit else {}
+        self._receipt_counts[guild_id] = (now, counts)
+        return counts
+
+    async def _note_home_permissions(self, message, guild, lang: str) -> None:
+        """The hub-chosen receipt home exists but Dory cannot post files there: say what is
+        missing (at most once every 10 minutes per guild) instead of failing silently."""
+        settings = self.team.current(guild.id)
+        home_id = settings.receipt_home_channel_id
+        if not settings.receipt_forward or not home_id:
+            return
+        home = guild.get_channel(int(home_id))
+        lacking = (
+            channel_missing(home, guild, ("view_channel", "send_messages", "attach_files"))
+            if home is not None
+            else []
+        )
+        now = self._clock()
+        key = (guild.id, "home")
+        if not lacking or now - self._perm_noted.get(key, float("-inf")) < 600:
+            return
+        self._perm_noted[key] = now
+        with contextlib.suppress(discord.HTTPException):
+            await message.reply(
+                permission_message(lacking, lang, self.application_id), mention_author=False
+            )
+
+    async def _intake(
+        self, message: discord.Message, quiet: bool = False, pdf_only: bool = False
+    ) -> bool:
+        """Read every attachment as a receipt (`pdf_only`: just the PDFs). True when at least one
+        was a receipt (saved or a duplicate); images that are not receipts are described for
+        memory instead."""
+        found = False
+        self._intaken[message.id] = None
+        while len(self._intaken) > IMAGE_NOTES_KEPT:
+            self._intaken.pop(next(iter(self._intaken)))
+        for idx, att in enumerate(message.attachments):
+            if att.size > ATTACH_LIMIT:
+                continue
+            if pdf_only and att not in self._pdf_attachments(message):
+                continue
+            data = await att.read()
+            res = await self._ingest_one(message, att, data, quiet)
+            if res.receipt is not None and self.team.enabled(message.guild.id, "memory"):
+                self._apply_notes(message, {idx: receipt_note(res.receipt)})
+            elif (
+                res.status == "ignored"
+                and image_mime(att)
+                and self._images_enabled(message.guild.id)
+            ):  # not a receipt: describe it instead
+                self._spawn(self._describe_message(message, [(idx, att)]))
+            found = found or res.status != "ignored"
+        return found
+
+    def _note_answer(self, message: discord.Message, sent) -> None:
+        """Dory answered here: open or refresh the channel's conversation (call/join only)."""
+        if message.guild is None:
+            return
+        cid = message.channel.id
+        self._pending.pop(cid, None)  # whatever was waiting has just been dealt with
+        if self._mode(message.channel, message.guild.id) not in ("call", "join"):
+            return
+        convo = self._convos.get(cid)
+        if convo is None or not self._window_open(cid):
+            convo = self._convos[cid] = _Convo(message.channel, self._clock())
+        convo.replies += 1
+        convo.last, convo.last_reply = self._clock(), sent
+
+    def _strip_mentions(self, text: str, message: discord.Message) -> str:
+        if self.user:
+            text = text.replace(f"<@{self.user.id}>", "").replace(f"<@!{self.user.id}>", "")
+        for role in getattr(message, "role_mentions", ()):
+            text = text.replace(f"<@&{role.id}>", "")
+        return text.strip()
+
+    def _name_mentions(self, text: str, message: discord.Message) -> str:
+        """`<@123>` of other people -> `@display name`, so the model can use the name in a tool
+        ("ฝากบอก @Jemm ทาง DM" -> send_dm(to="Jemm")) instead of searching chat for a number.
+        Dory's own tag is already gone (see `_strip_mentions`)."""
+        guild = getattr(message, "guild", None)
+        pool = {m.id: m for m in getattr(message, "mentions", ()) or ()}
+
+        def one(m: re.Match) -> str:
+            uid = int(m.group(1))
+            who = pool.get(uid) or (guild.get_member(uid) if guild is not None else None)
+            if who is None or uid == getattr(self.user, "id", None):
+                return m.group(0)
+            return f"@{getattr(who, 'display_name', None) or getattr(who, 'name', uid)}"
+
+        return re.sub(r"<@!?(\d{1,25})>", one, text)
+
+    async def _recent_chat(self, message: discord.Message) -> str:
+        """The room's recent conversation, oldest first: every participant (not only the asker)
+        with local times, plus the message being replied to and today's summary of this channel
+        when memory has one. Context only; the ledger and memory scopes are decided in code."""
+        if getattr(message.channel, "history", None) is None:
+            return ""
+        zone = self.s.zone
+        lines: list[str] = []
+        authors: list[str] = []
+        for prev in await self._history(message.channel, HISTORY_MESSAGES + 10, before=message):
+            if (message.created_at - prev.created_at).total_seconds() > HISTORY_SECONDS:
+                break
+            if getattr(prev.author, "bot", False) and prev.author != self.user:
+                continue
+            text = self._strip_mentions(prev.content, prev)
+            if not text and getattr(prev, "attachments", None):
+                text = " ".join(f"[{a.filename}]" for a in prev.attachments)
+            if text:
+                who = "ดอรี่" if prev.author == self.user else prev.author.display_name
+                if who not in authors:
+                    authors.append(who)
+                at = prev.created_at.astimezone(zone).strftime("%H:%M")
+                lines.append(f"[{at}] {who}: {text[:HISTORY_LINE_CHARS]}")
+            if len(lines) >= HISTORY_MESSAGES:
+                break
+        self._recent_authors[message.id] = authors
+        while len(self._recent_authors) > 50:
+            self._recent_authors.pop(next(iter(self._recent_authors)))
+        lines.reverse()
+        while lines and sum(len(x) + 1 for x in lines) > HISTORY_CHARS:
+            lines.pop(0)
+        parts = []
+        summary = await self._today_summary(message)
+        if summary:
+            parts.append(f"Summary of this room today (precedes the chat below):\n{summary}")
+        ref = getattr(message, "reference", None)
+        replied = getattr(ref, "resolved", None) if ref else None
+        if getattr(replied, "content", None):
+            who = "ดอรี่" if replied.author == self.user else replied.author.display_name
+            parts.append(f"The message the asker is replying to:\n{who}: {replied.content[:1000]}")
+        if lines:
+            parts.append("\n".join(lines))
+        return "\n\n".join(parts)
+
+    async def _today_summary(self, message: discord.Message) -> str:
+        """Today's memory summary of this channel (free: already stored), or ''."""
+        guild = getattr(message, "guild", None)
+        if guild is None or not self.team.enabled(guild.id, "memory"):
+            return ""
+        try:
+            day = datetime.now(self.s.zone).date().isoformat()
+            channel = getattr(message.channel, "parent", None) or message.channel
+            got = await asyncio.to_thread(self.memory_store.get_summary, guild.id, channel.id, day)
+            if got is None or got.dirty or not got.summary:  # dirty: a deleted text may remain
+                return ""
+            return render_summary(got.summary, max_chars=1500)
+        except Exception:
+            logger.warning("could not read today's summary", exc_info=True)
+            return ""
+
+    async def _previous_text(self, message: discord.Message) -> str:
+        """The author's own message just before a bare @mention ("Hi" then "@Dory")."""
+        for prev in await self._history(message.channel, 5, before=message):
+            if prev.author.id != message.author.id:
+                continue
+            age = (message.created_at - prev.created_at).total_seconds()
+            if age > FOLLOWUP_WINDOW_SECONDS:
+                return ""
+            text = self._strip_mentions(prev.content, prev)
+            if text:
+                return text
+        return ""
+
+    async def _file_inputs(self, message: discord.Message) -> list[FileInput]:
+        """The message's attachments as agent input, in order: readable ones downloaded (within
+        the size limits of qa.select_files), the rest carrying the reason they are skipped."""
+        atts = list(message.attachments)
+        inputs = [
+            FileInput(
+                i,
+                a.filename,
+                file_mime(a.filename, getattr(a, "content_type", None)),
+                size=int(getattr(a, "size", 0) or 0),
+            )
+            for i, a in enumerate(atts)
+        ]
+        media_idx = {i for i, _a in media_candidates(message)}
+        data_on = message.guild is None or self.team.enabled(message.guild.id, "data")
+        office_idx = {
+            i
+            for i, a in enumerate(atts)
+            if doc_kind(a) in ("docx", "xlsx", "pptx", "doc", "xls")
+            or (data_on and data_studio.is_data_file(a.filename))  # csv / tsv / json too
+        }
+        for i in media_idx | office_idx:  # read in code (transcript / text), not as raw bytes
+            inputs[i].mime, inputs[i].size = "text/plain", 0
+        usable, _skipped = select_files(inputs)
+        for f in usable:
+            if f.index in media_idx:
+                async with message.channel.typing():
+                    await self._fill_media_input(message, f, atts[f.index])
+                continue
+            if f.index in office_idx:
+                await self._fill_office_input(f, atts[f.index], data_on)
+                continue
+            try:
+                f.data = await atts[f.index].read()
+                f.size = len(f.data)
+            except Exception as e:  # never log contents
+                logger.warning("attachment download failed (%s)", type(e).__name__)
+                f.skip = "could not be downloaded"
+        return inputs
+
+    def _file_actions(
+        self, message, guild, member, is_exec: bool, setting: str, loop, forwards=None
+    ) -> FileActions:
+        """The side effects the agent may trigger for this message. Guild, submitter, channel and
+        message are bound here; the model only chooses which attachment."""
+        gid = guild.id
+        lang = self._lang(message)
+
+        def record(f: FileInput, note: str):
+            res = ingest_attachment(
+                self.store,
+                self.llm,
+                self.s,
+                guild_id=gid,
+                data=f.data,
+                filename=f.filename,
+                content_type=f.mime,
+                submitter_id=member.id,
+                submitter_name=member.display_name,
+                channel_id=message.channel.id,
+                message_id=message.id,
+                note=" ".join(x for x in ((message.content or "").strip(), note.strip()) if x),
+                archive=self.archive,
+                lang=lang,
+            )
+            if forwards is not None:
+                forwards.append((f, res))  # posted to the receipt home channel by _answer
+            return res
+
+        def deep(task: str) -> str:
+            status = self._deep_status(gid, task, is_exec)
+            if status == "ok":
+                loop.call_soon_threadsafe(self._launch_deep, message, gid, task, setting)
+                return "started"
+            return status
+
+        return FileActions(
+            record_receipt=record if self.team.enabled(gid, "receipts") else None,
+            start_deep_task=deep if self.team.enabled(gid, "deep_tasks") else None,
+        )
+
+    async def _in_reply_language(self, gid: int, message, member, text: str) -> str:
+        """The company language is the rule: when the reply should be in ONE language (company
+        language only, or nobody adds a personal language) and the model answered mostly in
+        Thai on an English server (or the other way round), translate it before it is posted.
+        Fail-soft: any problem keeps the original text."""
+        try:
+            if message.guild is None or not text:
+                return text
+            langs = self.langs_for(gid, message.channel.id, member.id)
+            if len(langs) != 1:
+                return text
+            from .captions import translate_lines
+            from .i18n import thai_share
+
+            want = langs[0]
+            # English-only servers: a mostly-Thai answer is translated (Thai servers unchanged)
+            if want != "en" or thai_share(text) <= 0.3:
+                return text
+            logger.warning("chat answer came in the wrong language for %s: translating", want)
+            fixed = await asyncio.to_thread(
+                translate_lines, self.llm, self.s.gate_model, [text], want
+            )
+            return fixed[0] if fixed and fixed[0].strip() else text
+        except Exception:
+            logger.warning("reply language check failed", exc_info=True)
+            return text
+
+    async def _answer(
+        self,
+        message: discord.Message,
+        guild: discord.Guild,
+        member,
+        *,
+        interjection: bool = False,
+        note: str = "",
+    ) -> bool:
+        """Answer `message`. `interjection`: Dory was not asked (join mode), so the model may
+        stay silent (NO_REPLY). Attachments (images, PDFs, text files) go to the agent with the
+        text, and it decides what to do with them (record a receipt, summarise, ...); not for an
+        interjection, which was not addressed to Dory. Returns True when something was posted."""
+        t0 = time.monotonic()
+        q = self._name_mentions(self._strip_mentions(message.content, message), message)
+        with_files = bool(message.attachments) and not interjection
+        if not q and not with_files:
+            q = await self._previous_text(message)
+        if not q and not with_files:
+            sent = await message.reply(
+                t(self._choose(GREETING_KEYS), self._lang(message, "")), mention_author=False
+            )
+            self._note_answer(message, sent)
+            return True
+        if note:  # e.g. the user marked a DM note confidential
+            q = f"{q}\n{note}"
+        gid = guild.id
+        is_exec = self.is_exec_member(member)
+        setting = self._lang_setting(message)  # th / en / auto: auto lets the model follow the user
+        profile = self._profile_of(gid, member.id)  # the asker's own preferences, never others'
+        setting = effective_language(setting, profile)  # a channel's th / en wins over it
+        lang = resolve_lang(setting, q)
+        task = parse_deep_trigger(q)
+        if task is not None:
+            if self.team.enabled(gid, "deep_tasks"):
+                await self._deep(message, gid, task, is_exec, setting)
+            else:
+                await message.reply(t("deep_off", lang), mention_author=False)
+            return True
+        if not self.team.enabled(gid, "qa"):
+            if interjection or (with_files and not q):  # a bare file is not worth a "Q&A is off"
+                return False
+            await message.reply(t("qa_off", lang), mention_author=False)
+            return True
+        if not interjection and is_summarize_request(q):
+            target = await self._referenced_message(message)
+            if target is not None:  # "สรุป" as a reply: summarise the message it answers
+                return await self._reply_summary(message, guild, member, target, setting)
+        history = await self._recent_chat(message)
+        meeting = self.meetings.context_for(message.channel.id)
+        if meeting:  # talking in a live meeting's chat: the spoken transcript is context too
+            history = t("history_meeting", lang, meeting=meeting, chat=history).rstrip()
+        memory = await self._memory_tools(message, guild, member)
+        files: list[FileInput] = []
+        forwards: list = []  # (file, IngestResult) of receipts the agent recorded
+        actions = None
+        if with_files:
+            self._agent_msgs.add(message.id)  # the agent reads these: no separate receipt intake
+            files = await self._file_inputs(message)
+            actions = self._file_actions(
+                message, guild, member, is_exec, setting, asyncio.get_running_loop(), forwards
+            )
+            q, files = self._voice_question(message, q, files)
+            lang = resolve_lang(setting, q)
+        agent = self._agent_kwargs(
+            message,
+            guild,
+            member,
+            is_exec,
+            setting=setting,
+            lang=lang,
+            question=q,
+            memory=memory,
+            profile=profile,
+            interjection=interjection,
+            people=tag_candidates(message.channel, self._recent_authors.pop(message.id, ())),
+            files=files,
+        )
+        t_ctx = time.monotonic()
+        ack = None if interjection else await self._start_ack(message, q, lang)
+        try:
+            async with message.channel.typing():
+                ans = await self._ask_in_time(
+                    self.s,
+                    self.store,
+                    q,
+                    guild_id=gid,
+                    is_exec=is_exec,
+                    user_id=message.author.id,
+                    history=history,
+                    interjection=interjection,
+                    deck=self.team.enabled(gid, "decks") and not interjection,
+                    **agent,
+                    **({"files": files, "actions": actions} if files else {}),
+                )
+        except BaseException:
+            await self._ack_failed(ack, lang)
+            raise
+        if ans is None:  # past the deadline: an apology, not "one moment..." forever
+            logger.warning(
+                "answer deadline passed guild=%s channel=%s message=%s after %.0fs",
+                gid, message.channel.id, message.id, time.monotonic() - t_ctx,
+            )  # fmt: skip
+            await self._ack_failed(ack, lang)
+            return not interjection
+        self._log_answer(gid, message.channel.id, is_exec, ans, t0, t_ctx, time.monotonic())
+        if interjection and is_no_reply(ans.text):
+            logger.info("interjection suppressed (nothing useful to add)")
+            return False
+        uploads = [
+            discord.File(io.BytesIO(data), filename=name)
+            for name, data in list(getattr(ans, "attachments", ()))[:10]
+        ]
+        everyone = wants_everyone(q, self._may_configure(member))
+        text = await self._in_reply_language(gid, message, member, ans.text)
+        if not interjection and message.guild is not None:
+            text = self._with_mode_notice(
+                message.channel.id, gid, text, self.langs_for(gid, message.channel.id, member.id)
+            )
+        sent, first, sent_ids = await self._deliver(message, guild, ack, text, uploads, everyone)
+        if sent_ids:
+            self._answers.add(message.channel.id, message.author.id, sent_ids)
+        lines = [
+            receipt_note(r)
+            for rid, _rx in getattr(ans, "receipts", ())
+            if (r := self.store.get(rid)) is not None
+        ]
+        if lines:  # the document note reuses these: a receipt is never ingested twice
+            self._agent_receipts[message.id] = lines
+        for n, (receipt_id, reaction) in enumerate(getattr(ans, "receipts", ())):
+            if n == 0 and first is not None:  # a correction by reply finds this receipt
+                self.store.set_reply_message(receipt_id, first.id)
+            if reaction:
+                with contextlib.suppress(discord.HTTPException):
+                    await message.add_reaction(reaction)
+        forwarded = None
+        for f, res in forwards[:4]:
+            fwd = await self._forward(message, guild, [(f.filename, f.data)], res, lang)
+            if fwd is not None and res.status == "created":
+                self.store.set_reply_message(res.receipt.id, fwd.id)
+            forwarded = forwarded or fwd
+        if forwarded is not None:
+            with contextlib.suppress(discord.HTTPException):
+                await message.reply(
+                    t("fwd_ack", lang, home=forwarded.channel.name), mention_author=False
+                )
+        self._note_answer(message, sent)
+        return True
+
+    async def _ask_in_time(self, *args, **kwargs):
+        """`ask` in a worker thread, or None when the answer deadline (answer_timeout_seconds)
+        passes first. The thread cannot be stopped: it ends on its own, bounded by the model's
+        request timeout (qa.build_agent), and its late answer is dropped."""
+        deadline = float(getattr(self.s, "answer_timeout_seconds", 120.0))
+        try:
+            async with asyncio.timeout(deadline) as budget:
+                return await asyncio.to_thread(ask, *args, **kwargs)
+        except TimeoutError:
+            if budget.expired():
+                return None
+            raise  # a TimeoutError of the answer itself is an ordinary failure
+
+    async def _start_ack(self, message, text: str, lang: str, *, target=None):
+        """Acknowledge slow work at once (files, links, audio: `target` is the message that has
+        them, the replied-to one for "summarise"), or after SLOW_AFTER_S seconds without an
+        answer. The Ack is stopped by `_deliver` / `_ack_failed`."""
+        flavor = ack_flavor(target or message, text)
+        kind = flavor or "slow"
+        key = getattr(message.channel, "id", None)
+        particle = str(getattr(self.s, "persona_particle", "ค่ะ") or "ค่ะ")
+        avoid = self.recent_acks.get(key)
+        pending = None
+        if self.fillers.enabled():  # written while the timer runs / the answer starts
+            pending = asyncio.create_task(
+                self.fillers.write(
+                    kind=kind, question=text, lang=lang, particle=particle, avoid=avoid
+                )
+            )
+        ack = Ack(
+            message,
+            ack_text(kind, lang, self._choose, avoid, particle),
+            sleep=self._sleep,
+            pending=pending,
+            timeout=float(getattr(self.s, "ack_llm_timeout_s", 2.0)),
+            on_text=lambda line: self.recent_acks.add(key, line),
+        )
+        if flavor:
+            await ack.now()
+        else:
+            ack.after()
+        return ack
+
+    async def _deep_ack_text(self, message, task: str, lang: str) -> str:
+        """The "big task started" reply: a line for this task that still says how long it takes and
+        that the result comes here; the catalog wording when the model is slow or fails."""
+        facts = (
+            ("a big job: it may take 1-5 minutes", "the result will be posted right here")
+            if lang != "th"
+            else ("งานใหญ่ อาจใช้เวลา 1-5 นาที", "เสร็จแล้วจะส่งผลในห้องนี้")
+        )
+        line = await within(
+            asyncio.create_task(
+                self.fillers.write(
+                    kind="deep",
+                    question=task,
+                    lang=lang,
+                    particle=str(getattr(self.s, "persona_particle", "ค่ะ") or "ค่ะ"),
+                    facts=facts,
+                )
+            ),
+            float(getattr(self.s, "ack_llm_timeout_s", 2.0)),
+        )
+        return line or t("deep_ack", lang)
+
+    async def _ack_failed(self, ack: Ack | None, lang: str) -> None:
+        """The answer blew up: do not leave "one moment..." hanging. The ack becomes the apology;
+        a failure before the ack went out (a quick 400 / 403) still gets it, as a reply. No ack
+        (an interjection, nobody asked): stay quiet."""
+        if ack is None:
+            return
+        await ack.finish()
+        with contextlib.suppress(discord.HTTPException):
+            if ack.sent is not None:
+                await ack.sent.edit(content=t("qa_failed", lang))
+            else:
+                await ack.message.reply(t("qa_failed", lang), mention_author=False)
+
+    async def _deliver(self, message, guild, ack, text: str, uploads=(), everyone: bool = False):
+        """Post an answer: mentions resolved (`@[name]` -> real tags, see dory.mentions), the
+        first chunk replaces the acknowledgement message (edited in place; when that fails the
+        answer is sent normally and the ack deleted), the rest follow as messages. Returns
+        (last sent, first sent, ids of every answer message)."""
+        if ack is not None:
+            await ack.finish()
+        text = resolve_mentions(defang_raw_mentions(text, guild), guild, allow_everyone=everyone)
+        text += self._dm_footers.pop(message.id, "")  # DM with 2+ companies: "— Company: X"
+        parts = split_sections(text)
+        if needs_attachment(
+            parts
+        ):  # more than ~3 messages: a short summary + the full text as a file
+            summary, long_file = self._long_answer_file(text, self._lang(message), guild)
+            uploads = [*uploads, long_file][:10]
+            parts = split_sections(f"{summary}\n\n{t('long_answer_note', self._lang(message))}")
+        allowed = allowed_mentions_for("\n".join(parts), allow_everyone=everyone)
+        acked = ack.sent if ack is not None else None
+        sent = first = None
+        sent_ids: list[int] = []
+        for i, part in enumerate(parts):
+            extra = {"files": list(uploads)} if i == 0 and uploads else {}
+            if i == 0 and acked is not None:
+                try:
+                    sent = await acked.edit(
+                        content=part,
+                        allowed_mentions=allowed,
+                        **({"attachments": list(uploads)} if uploads else {}),
+                    )
+                except discord.HTTPException:
+                    sent = await self._reply_with_uploads(message, part, allowed, extra)
+                    with contextlib.suppress(discord.HTTPException):
+                        await acked.delete()
+                else:
+                    sent = sent or acked
+                    if guild is not None:  # the memory log still holds the ack text
+                        self._memory_enqueue(
+                            partial(self.memory.edit, guild.id, sent.id, part, datetime.now(UTC))
+                        )
+            elif i == 0:
+                sent = await self._reply_with_uploads(message, part, allowed, extra)
+            else:
+                sent = await message.channel.send(part, allowed_mentions=allowed)
+            first = first or sent
+            if getattr(sent, "id", None) is not None:
+                sent_ids.append(sent.id)
+        if first is None and acked is not None:  # nothing to say after all
+            with contextlib.suppress(discord.HTTPException):
+                await acked.delete()
+        return sent, first, sent_ids
+
+    async def _reply_with_uploads(self, message, part: str, allowed, extra: dict):
+        """Reply with the generated files; if Discord refuses them (no Attach Files permission,
+        too large) the text still goes out, with a note, instead of the whole answer failing."""
+        try:
+            return await message.reply(
+                part, mention_author=False, allowed_mentions=allowed, **extra
+            )
+        except discord.HTTPException as e:
+            if not extra.get("files"):
+                raise
+            logger.warning("could not attach %d file(s) (HTTP %s)", len(extra["files"]), e.status)
+            note = t("attach_failed", self._lang(message))
+            return await message.reply(
+                f"{part}\n{note}", mention_author=False, allowed_mentions=allowed
+            )
+
+    def _long_answer_file(self, text: str, lang: str, guild) -> tuple[str, discord.File]:
+        """(short summary, the full answer as a PDF; Markdown when the PDF cannot be built)."""
+        summary = summary_of(text)
+        if note := font_note(lang):
+            summary = f"{summary}\n{note}"
+        try:
+            data = markdown_pdf(
+                org=getattr(guild, "name", "") or "Dory",
+                title="Dory",
+                markdown=text,
+                lang=lang,
+                generated_at=self.s.now(),
+                fonts=find_fonts(self.s.pdf_font, lang),
+            )
+            name = "dory-answer.pdf"
+        except Exception:
+            logger.warning("long answer PDF failed; attaching Markdown", exc_info=True)
+            data, name = text.encode("utf-8"), "dory-answer.md"
+        return summary, discord.File(io.BytesIO(data), filename=name)
+
+    def _chat_actions(
+        self, message, guild, member, is_exec: bool, setting: str, loop, secretary=None
+    ):
+        """The settings tools for this message: guild, channel and author are bound here, never
+        model input. Same permission rules as the slash commands (managers / executives)."""
+        gid, channel = guild.id, message.channel
+        lang = self._lang(message)
+
+        def run(coro):
+            return asyncio.run_coroutine_threadsafe(coro, loop).result(timeout=30)
+
+        def allowed() -> bool:
+            return self._may_configure(member)
+
+        def pick(ref: str | None):
+            return self._find_text_channel(guild, ref, channel)
+
+        def set_mode(mode: str, ref: str | None = None) -> dict:
+            if mode not in MODES:
+                return {"error": "unknown mode", "modes": list(MODES)}
+            if not allowed():
+                return {"error": "not_allowed", "needs": "server manager or executive"}
+            target = pick(ref)
+            if target is None:
+                return {"error": "channel_not_found"}
+            run(self._apply_mode(guild, target, mode))
+            return {"status": "ok", "channel": target.name, "mode": mode}
+
+        def set_language(language: str, ref: str | None = None) -> dict:
+            if language not in LANGS:
+                return {"error": "unknown language", "languages": list(LANGS)}
+            # Language is per server and per person only (b2378eb): a channel entry would be
+            # stored and never read, so nothing is written and the model is told what works.
+            return {
+                "error": "no_channel_languages",
+                "use": "Language is set per server and per person, never per channel. A request "
+                "for one room is not a request for the whole server: never call "
+                "set_server_language for it on your own. Ask the person first whether they mean "
+                "their own extra language (/language, or remember_my_preference language) or the "
+                "whole server's language (set_server_language, admins / executives only, and "
+                "only after they confirm).",
+            }
+
+        def set_server_lang(language: str, apply_to_all_channels: bool = True) -> dict:
+            if language not in LANGS or language == "auto":
+                return {"error": "unknown language", "languages": [x for x in LANGS if x != "auto"]}
+            if not allowed():
+                return {"error": "not_allowed", "needs": "server manager or executive"}
+            run(self._apply_server_language(guild, language, bool(apply_to_all_channels)))
+            return {
+                "status": "ok",
+                "language": language,
+                "applied_to_all_channels": bool(apply_to_all_channels),
+                "note": "answer this confirmation in the NEW language",
+            }
+
+        def set_days(days: int) -> dict:
+            if not allowed():
+                return {"error": "not_allowed", "needs": "server manager or executive"}
+            if valid_retention_days(days) is None:
+                return {
+                    "error": "bad_days",
+                    "min": MIN_RETENTION_DAYS,
+                    "max": MAX_RETENTION_DAYS,
+                }
+            previous = self.team.memory_retention_days(gid)
+            self.team.set_memory_retention_days(gid, days)
+            if effective_retention_days(days) < previous:  # 0 = forever is never a shortening
+                self._purge_soon(gid)
+            return {"status": "ok", "days": days}
+
+        def show() -> dict:
+            mode = self._mode(channel, gid)
+            return {
+                "channel": getattr(channel, "name", ""),
+                "mode": mode,
+                "mode_meaning": mode_help(mode, "en", self.team.retention_shown(gid)),
+                "snoozed": self._is_snoozed(channel.id),
+                "reply_language": self.team.channel_language(gid, channel.id),
+                "memory_on": self.team.enabled(gid, "memory"),
+                "memory_days": self.team.retention_shown(gid) or "forever",
+                "auto_join_meetings": self.team.enabled(gid, "auto_join_meetings"),
+                "voice_bodies": self.voice_pool.status_rows(gid, lang),
+                "voice_helper_invites": [
+                    {"name": n, "link": u} for n, u in self.voice_pool.invite_links(gid)
+                ],
+                "meetings_now": [
+                    {"channel": x.voice_channel.name, "body": getattr(x.body, "name", "Dory")}
+                    for x in self.meetings.sessions_in_guild(gid)
+                ],
+            }
+
+        def hidden() -> dict:
+            if not allowed():
+                return {"error": "not_allowed", "needs": "server manager or executive"}
+            rows = hidden_channels(guild, guild.me)
+            return {
+                "count": len(rows),
+                "channels": [
+                    {"mention": f"<#{r['id']}>", "name": r["name"], "problem": r["missing"]}
+                    for r in rows[:25]
+                ],
+                "how_to_add": t("hidden_steps", lang),
+            }
+
+        def cancel() -> dict:
+            return {"result": run(self._cancel_deep(gid, member, lang))}
+
+        dm_people: set[int] = set()  # other people this request has DMed (hard cap)
+
+        def dm(text: str, to: str = "me", attach: str | None = None) -> dict:
+            return run(
+                self._send_dm_tool(
+                    guild, member, text, to, attach, lang, secretary, dm_people=dm_people
+                )
+            )
+
+        notif_on = self.team.enabled(gid, "briefings")
+        request_id = new_id()  # one per request: a delivery confirms only in a later message
+
+        return ChatActions(
+            set_channel_mode=set_mode,
+            set_channel_language=set_language,
+            set_server_language=set_server_lang,
+            set_memory_days=set_days,
+            show_settings=show,
+            hidden_channels=hidden,
+            cancel_deep_task=cancel,
+            send_dm=dm,
+            set_my_notifications=(
+                (lambda **kw: self._notif_set(gid, member.id, **kw)) if notif_on else None
+            ),
+            show_my_notifications=(
+                (lambda: self._notif_show(gid, member.id)) if notif_on else None
+            ),
+            deliver_file=self._deliver_actions(
+                message, guild, member, lang, loop, secretary, request_id
+            ),
+            join_voice=lambda: run(self._join_voice_tool(message, member, lang)),
+            leave_voice=lambda: run(self._leave_voice_tool(message, member, lang)),
+            deliver_minutes=self._minutes_actions(message, guild, member, lang, loop),
+            **self._profile_actions(gid, member.id),
+        )
+
+    @staticmethod
+    def _find_text_channel(guild, ref: str | None, current):
+        """`ref` (mention, id or name; None = the current channel) as one of the guild's text
+        channels: exact name first, then a unique partial match."""
+        if not ref:
+            return current
+        digits = "".join(ch for ch in str(ref) if ch.isdigit())
+        chans = list(guild.text_channels)
+        if digits:
+            hit = next((c for c in chans if str(c.id) == digits), None)
+            if hit is not None:
+                return hit
+        want = str(ref).strip().lstrip("#").casefold()
+        exact = [c for c in chans if c.name.casefold() == want]
+        if len(exact) == 1:
+            return exact[0]
+        part = [c for c in chans if want and want in c.name.casefold()]
+        return part[0] if len(part) == 1 else None
+
+    async def _apply_mode(self, guild, channel, mode: str) -> str:
+        """Save a channel's mode and reset what depended on the old one. Returns the previous
+        mode (an off -> on switch starts the memory notice and import)."""
+        previous = self.team.channel_mode(
+            guild.id, channel.id, getattr(channel, "name", None), self.s.ask_channel_ids
+        )
+        await asyncio.to_thread(self.team.set_channel_mode, guild.id, channel.id, mode)
+        self._snoozed.pop(channel.id, None)
+        self._convos.pop(channel.id, None)
+        self._pending.pop(channel.id, None)
+        self._seen_mode[channel.id] = mode
+        if previous == "off" and mode != "off":
+            await self._memory_notice(channel, guild.id)
+            self._start_import()
+        return previous
+
+    async def _send_dm_tool(
+        self,
+        guild,
+        member,
+        text: str,
+        to: str,
+        attach: str | None,
+        lang: str,
+        secretary=None,
+        dm_people: set[int] | None = None,
+    ) -> dict:
+        """The send_dm tool. "me" DMs the requester; someone else gets a relay that says who it
+        is from. A PDF goes only to the requester, or to a recipient who can see at least as much
+        (executive / manager). At most DM_PER_GUILD_PER_HOUR per guild per hour."""
+        now = self._clock()
+        sent = [x for x in self._dm_sent.get(guild.id, []) if now - x < 3600]
+        if len(sent) >= DM_PER_GUILD_PER_HOUR:
+            return {"error": "rate_limited", "per_hour": DM_PER_GUILD_PER_HOUR}
+        me_words = {"", "me", "myself", "ฉัน", "ผม", "เรา", "ตัวเอง", "ผู้ถาม"}
+        mine = to.strip().casefold() in me_words
+        if mine:
+            target = member
+        else:
+            found = match_members(guild, to)
+            if not found:
+                return {"error": "person_not_found", "person": to}
+            if len(found) > 1:
+                return {
+                    "error": "ambiguous",
+                    "candidates": [m.display_name for m in found[:10]],
+                }
+            target = found[0]
+            if target.id == member.id:
+                mine = True
+        if dm_people is None:
+            dm_people = set()
+        refused = dm_refusal(text, dm_people, target.id, mine)
+        if refused:
+            return refused
+        files = []
+        if attach:
+            data = self.secretary_state.recall_pdf(guild.id, member.id, attach)
+            if data is None:
+                return {"error": "attachment_not_found", "attach": attach}
+            if not mine and not self._may_configure(target):
+                return {"error": "attachment_only_for_requester_or_executives"}
+            files = [discord.File(io.BytesIO(data), filename=attach)]
+        body = (
+            text[:1900]
+            if mine
+            else t(
+                "relay_dm", lang, sender=member.display_name, server=guild.name, text=text[:1500]
+            )
+        )
+        res = await send_dm(target, body, files)
+        if not res.ok:
+            if res.reason == "closed":
+                return {
+                    "error": "dms_closed",
+                    "person": target.display_name,
+                    "guidance": closed_dm_message(target.display_name, guild.name, lang),
+                }
+            return {"error": "could_not_dm", "person": target.display_name}
+        self._dm_sent[guild.id] = [*sent, now]
+        if not mine:
+            dm_people.add(target.id)
+        if attach and secretary is not None:  # delivered privately: not also posted in the channel
+            secretary.attachments[:] = [a for a in secretary.attachments if a[0] != attach]
+        return {"status": "sent", "to": "requester" if mine else target.display_name}
+
+    def _agent_kwargs(
+        self,
+        message,
+        guild,
+        asker,
+        is_exec: bool,
+        *,
+        setting: str,
+        lang: str,
+        question: str,
+        memory,
+        profile,
+        interjection: bool = False,
+        people=(),
+        files: list | None = None,
+        spoken: bool = False,
+    ) -> dict:
+        """Everything `ask` gets besides the question, history and files: memory, the secretary,
+        COO and settings tools, tag candidates, profile, web, language. The ONE place chat and
+        voice build their agent, so they cannot drift apart. `message` is a Discord message, or
+        a room stand-in (`room_message`) for a voice meeting; `asker` acts for the requester.
+        `spoken`: a voice answer (voice callers pass True); create_image and create_video_ad
+        stay out of it, and also when `imagegen_bot.looks_spoken` says so (voice code that does
+        not pass it). make_promo_kit is gated on `files is None` only (voice revisions)."""
+        secretary = (
+            None
+            if interjection
+            else self._room_secretary(
+                guild,
+                asker,
+                is_exec,
+                self._lang(message),
+                message.channel.id if message.guild is not None else None,
+            )
+        )
+        coo_tools = (
+            self._coo_tools_in(
+                message.channel.id if message.guild is not None else 0,
+                guild,
+                asker,
+                is_exec,
+                memory,
+                question,
+                lang,
+            )
+            if memory is not None and not interjection
+            else []
+        )
+        chat_actions = self._chat_actions(
+            message, guild, asker, is_exec, setting, asyncio.get_running_loop(), secretary
+        )
+        loop = asyncio.get_running_loop()
+        # every feature's agent tools, in one list (COO first); each keeps its own guards
+        extra_tools = [
+            *coo_tools,
+            *(self._captions_tools(asker) if coo_tools else []),  # only with the COO/memory setup
+            *([] if interjection else self._translate_tools(message, guild, asker, is_exec, loop)),
+            *([] if interjection else self._freetime_tools(guild, asker, lang)),
+            *(
+                []
+                if interjection
+                else self._poll_form_tools(message, guild, asker, is_exec, lang, new_id())
+            ),
+            *([] if interjection else self._vote_tools(message, guild, asker, is_exec, lang)),
+            *([] if interjection else self._catchup_tools(guild, asker, memory)),
+            *([] if interjection else self._meeting_doc_tools(message, guild, asker, lang, loop)),
+            *([] if interjection else self._wiki_tools(guild, asker, is_exec, memory, lang)),
+            *([] if interjection else self._approval_tools(guild, asker, is_exec, lang)),
+            *([] if interjection else self._places_tools(message, guild, asker, is_exec)),
+            *([] if interjection else self._maps_tools(message, guild, asker, is_exec, lang)),
+            *([] if interjection else self._travel_tools(guild, asker, lang)),  # fx + flights
+            *([] if interjection else self._markets_tools(guild, asker, is_exec, lang)),
+            *([] if interjection else self._reminder_tools(message, guild, asker, is_exec, lang)),
+            *(
+                []
+                if interjection
+                else self._project_tools(message, guild, asker, is_exec, lang, files)
+            ),
+            *([] if interjection else self._tone_tools(message, guild, asker, is_exec, lang)),
+            *([] if interjection else self._audience_tools(message, guild, asker, is_exec, lang)),
+            *([] if interjection else self._ideas_tools(message, guild, asker, is_exec, lang)),
+            *([] if interjection else self._quotation_tools(message, guild, asker, is_exec, lang)),
+            *([] if interjection else self._company_tools(message, guild, asker, is_exec, lang)),
+            # company knowledge: who does what / whom to ask / how we do it / onboarding / handover
+            *(
+                []
+                if interjection
+                else self._people_tools(message, guild, asker, is_exec, memory, lang)
+            ),
+            *([] if interjection else self._contest_tools(message, guild, asker, is_exec, lang)),
+            *([] if interjection else self._bizfin_tools(guild, asker, is_exec, lang)),
+            *([] if interjection else self._change_tools(guild, is_exec)),  # change_status
+            # make_promo_kit: with a photo, or a remembered kit (voice passes files=[]: revisions)
+            *([] if interjection else self._promo_tools(message, guild, asker, files)),
+            *([] if interjection else self._concept_tools(message, guild, asker, files, lang)),
+            # create_image: chat only, with or without a photo; never in a voice room (`spoken`,
+            # else files None or a `room_message` stand-in: imagegen_bot.looks_spoken)
+            *(
+                []
+                if interjection
+                else self._image_tools(message, guild, asker, files, lang=lang, spoken=spoken)
+            ),
+            # create_video_ad: chat only (same voice gate), flag video_ads (default off); a
+            # background job, in the answer's language `lang`
+            *(
+                []
+                if interjection
+                else self._video_tools(message, guild, asker, files, lang=lang, spoken=spoken)
+            ),
+            *(
+                []
+                if interjection
+                else self._data_tools(message, guild, asker, files, lang, is_exec)
+            ),
+            # post_message + send_dm_many (broadcast.py)
+            *([] if interjection else self._broadcast_tools(message, guild, asker, lang, new_id())),
+        ]
+        if not interjection:  # search_everything reads through the tools built above, then web
+            extra_tools += self._search_tools(
+                message, guild, asker, is_exec, memory, extra_tools, lang
+            )
+        company = self._company_block(message, guild, asker, is_exec, question, interjection, lang)
+        tone, tone_note = self._tone_for(message, guild, asker, profile)
+        room = getattr(message, "room", None)  # a voice room: everyone in it is the audience
+        languages = self.langs_for(
+            guild.id,
+            message.channel.id if message.guild is not None else None,
+            *(sorted(room) if room else [asker.id]),
+        )
+        return {
+            **({"languages": languages} if aud.multi(languages) else {}),
+            "language": setting,
+            "tone": tone,
+            "tone_note": tone_note,
+            "memory": memory,
+            "chat_actions": chat_actions,
+            "people": list(people),
+            **(
+                {"profile": profile_block(profile, self._tone_private(message, asker.id))}
+                if profile is not None
+                else {}
+            ),
+            **({"company": company} if company else {}),
+            **self._web_kw(guild.id),
+            **({"secretary": secretary} if secretary is not None else {}),
+            **({"extra_tools": extra_tools} if extra_tools else {}),
+        }
+
+    def _captions_tools(self, asker) -> list:
+        """`set_captions`: only for someone sitting in the voice channel of a running meeting."""
+
+        def session_of():
+            ch = getattr(getattr(asker, "voice", None), "channel", None)
+            gid = getattr(getattr(asker, "guild", None), "id", None)
+            return self.meetings.session_in(gid, ch.id) if ch is not None else None
+
+        def set_default(on: bool) -> dict:
+            if not self._may_configure(asker):
+                return {"error": "only admins and executives"}
+            self.team.set_captions_default(asker.guild.id, on)
+            return {"status": "on" if on else "off"}
+
+        return captions_tools(session_of, self.meetings.set_captions, set_default)
+
+    def _meeting_of(self, interaction):
+        """The meeting the person is in (their voice channel), else the one whose text channel this is."""
+        gid = interaction.guild.id
+        ch = getattr(getattr(interaction.user, "voice", None), "channel", None)
+        s = self.meetings.session_in(gid, ch.id) if ch is not None else None
+        return s or self.meetings.session_for_channel(interaction.channel.id)
+
+    async def handle_voice_talk(self, interaction, mode: str) -> None:
+        """/voice listen_only|may_talk: the human switch for the meeting the person is in."""
+        lang = self._interaction_lang(interaction)
+        s = self._meeting_of(interaction)
+        if s is None:
+            await interaction.response.send_message(t("cmd_no_meeting", lang), ephemeral=True)
+            return
+        if not self.meetings.may_switch_talk(s, interaction.user):
+            await interaction.response.send_message(t("voice_talk_denied", s.lang), ephemeral=True)
+            return
+        await interaction.response.defer(ephemeral=True, thinking=False)
+        await self.meetings.set_voice_talk(s, mode)
+        key = "voice_talk_listen" if mode == "listen_only" else "voice_talk_may"
+        await interaction.followup.send(t(key, s.lang), ephemeral=True)
+
+    async def handle_captions(self, interaction, on: bool) -> None:
+        """/show-captions and /hide-captions for the meeting the person is in (anyone in the room)."""
+        lang = self._interaction_lang(interaction)
+        s = self._meeting_of(interaction)
+        if s is None:
+            await interaction.response.send_message(t("cmd_no_meeting", lang), ephemeral=True)
+            return
+        res = self.meetings.set_captions(s, on)
+        key = "cmd_captions_on" if res.get("status") == "on" else "cmd_captions_off"
+        await interaction.response.send_message(t(key, s.lang), ephemeral=True)
+
+    async def handle_captions_default(self, interaction, on: bool) -> None:
+        """/captions-default on|off: executives and server managers set the org default."""
+        lang = self._interaction_lang(interaction)
+        if not self._may_configure(interaction.user):
+            await interaction.response.send_message(
+                t("captions_default_denied", lang), ephemeral=True
+            )
+            return
+        await asyncio.to_thread(self.team.set_captions_default, interaction.guild.id, on)
+        await interaction.response.send_message(
+            t(f"captions_default_{'on' if on else 'off'}", lang), ephemeral=True
+        )
+
+    async def handle_quiet(self, interaction) -> None:
+        """/quiet: Dory stops talking now and stays quiet until her name is called again."""
+        lang = self._interaction_lang(interaction)
+        s = self._meeting_of(interaction)
+        if s is None:
+            await interaction.response.send_message(t("cmd_no_meeting", lang), ephemeral=True)
+            return
+        self.meetings._hush(s)
+        await interaction.response.send_message(t("cmd_quiet_done", s.lang), ephemeral=True)
+
+    async def _voice_talk_command(self, message) -> bool:
+        """Dory's voice in meetings, typed by a human (never an agent tool): org default
+        ("listen only by default", executives) or this meeting ("listen only" / "you may talk" in
+        the meeting's chat, the chair or an executive)."""
+        if message.guild is None:
+            return False
+        text, gid, user = self._command_text(message), message.guild.id, message.author
+        if (mode := parse_voice_talk_default_command(text)) is not None:
+            lang = self._person_lang(gid, user.id, message.content or "")
+            if not self._may_configure(user):
+                await message.reply(t("voice_talk_default_denied", lang), mention_author=False)
+                return True
+            await asyncio.to_thread(self.team.set_voice_talk, gid, mode)
+            key = "voice_talk_default_listen" if mode == "listen_only" else "voice_talk_default_may"
+            await message.reply(t(key, lang), mention_author=False)
+            return True
+        if (mode := parse_voice_talk_command(text)) is None:
+            return False
+        s = self.meetings.session_for_channel(message.channel.id) or next(
+            (
+                x
+                for x in self.meetings.sessions_in_guild(gid)
+                if getattr(x.fallback_channel, "id", None) == message.channel.id
+            ),
+            None,
+        )
+        if s is None:
+            return False
+        if not self.meetings.may_switch_talk(s, user):
+            await message.reply(t("voice_talk_denied", s.lang), mention_author=False)
+        else:
+            await self.meetings.set_voice_talk(s, mode)
+        return True
+
+    async def _captions_default_command(self, message) -> bool:
+        """ "แสดงคำบรรยายทุกประชุม" / "captions on by default" (and the hide forms): admins and
+        executives set whether meetings start with live captions."""
+        on = parse_captions_default_command(self._command_text(message))
+        if on is None or message.guild is None:
+            return False
+        gid, user = message.guild.id, message.author
+        lang = self._person_lang(gid, user.id, message.content or "")
+        if not self._may_configure(user):
+            await message.reply(t("captions_default_denied", lang), mention_author=False)
+            return True
+        await asyncio.to_thread(self.team.set_captions_default, gid, on)
+        await message.reply(
+            t(f"captions_default_{'on' if on else 'off'}", lang), mention_author=False
+        )
+        return True
+
+    @staticmethod
+    def room_message(guild, asker, channel, room=None):
+        """What a message-bound tool needs from a voice meeting: the room's text channel as the
+        current channel, the asker as author, and no attachments or reply. `room`: the ids of the
+        humans present (the audience of every answer)."""
+        return SimpleNamespace(
+            id=0, guild=guild, channel=channel, author=asker, content="", attachments=[],
+            reference=None, room=frozenset(room) if room is not None else None,
+        )  # fmt: skip
+
+    def _room_secretary(self, guild, asker, is_exec: bool, lang: str, text_channel_id: int | None):
+        """The same bindings without a message (a voice meeting): `asker` stands for the room."""
+        gid = guild.id
+        on = {f: self.team.enabled(gid, f) for f in ("scheduling", "documents", "email")}
+        if not any(on.values()):
+            return None
+        loop = asyncio.get_running_loop()
+        senders = set(self.team.current(gid).email_senders)
+        can_email = is_exec or bool(senders & {r.name for r in asker.roles})
+        return SecretaryContext(
+            settings=self.s,
+            guild_id=gid,
+            guild_name=getattr(guild, "name", ""),
+            author_id=asker.id,
+            author_name=asker.display_name,
+            is_exec=is_exec,
+            can_email=can_email,
+            lang=lang,
+            app_id=self.application_id,
+            text_channel_id=text_channel_id,
+            store=self.secretary_store,
+            state=self.secretary_state,
+            run=lambda coro: asyncio.run_coroutine_threadsafe(coro, loop).result(timeout=60),
+            service=self.scheduler,
+            places=self._places_resolver(guild, asker, is_exec),
+            sender=self.email_sender,
+            documents=on["documents"],
+            scheduling=on["scheduling"],
+            email=on["email"],
+        )
+
+    def _web_kw(self, guild_id: int) -> dict:
+        """read_web (links + Google Search) for `ask`: only with the `web` feature on."""
+        if self.llm is not None and self.team.enabled(guild_id, "web"):
+            return {"web_client": self.llm}
+        return {}
+
+    async def _referenced_message(self, message) -> discord.Message | None:
+        """The message `message` is a reply to (None when it is not a reply or is gone)."""
+        ref = getattr(message, "reference", None)
+        if ref is None:
+            return None
+        found = getattr(ref, "resolved", None)
+        if found is None and getattr(ref, "message_id", None):
+            with contextlib.suppress(discord.HTTPException, AttributeError):
+                found = await message.channel.fetch_message(ref.message_id)
+        return found if getattr(found, "author", None) is not None else None
+
+    async def _summarize_message(self, target, guild, member, setting: str) -> str | None:
+        """Ask for a summary of one message: its text and links in the question, its attachments
+        as file parts (no receipt/deep-task actions, no chat memory). None: nothing to summarise."""
+        content = self._strip_mentions(getattr(target, "content", "") or "", target)
+        files = await self._file_inputs(target) if getattr(target, "attachments", None) else []
+        if not content and not files:
+            return None
+        profile = self._profile_of(guild.id, member.id)
+        setting = effective_language(setting, profile)
+        lang = resolve_lang(setting, content)
+        q = message_summary_question(lang, target.author.display_name, content)
+        ans = await asyncio.to_thread(
+            ask,
+            self.s,
+            self.store,
+            q,
+            guild_id=guild.id,
+            is_exec=self.is_exec_member(member),
+            user_id=member.id,
+            language=setting,
+            profile=profile_block(profile),
+            **({"files": files} if files else {}),
+            **self._web_kw(guild.id),
+        )
+        logger.info("summarised a message in %.1fs", ans.seconds)
+        return ans.text
+
+    async def _reply_summary(self, message, guild, member, target, setting: str) -> bool:
+        lang = resolve_lang(setting, message.content)
+        # the files / links that make this slow are in the message being summarised
+        ack = await self._start_ack(
+            message, getattr(target, "content", "") or "", lang, target=target
+        )
+        try:
+            async with message.channel.typing():
+                text = await self._summarize_message(target, guild, member, setting)
+        except BaseException:
+            await self._ack_failed(ack, lang)
+            raise
+        if text is None:
+            text = t("summary_nothing", lang)
+        sent, _first, ids = await self._deliver(message, guild, ack, text)
+        if ids:
+            self._answers.add(message.channel.id, message.author.id, ids)
+        self._note_answer(message, sent)
+        return True
+
+    @staticmethod
+    def _log_answer(gid, cid, is_exec, ans, t0: float, t_ctx: float, t_end: float) -> None:
+        """One metrics line per answer: ids, timings and token counts, never content. New Answer
+        fields are read with defaults (callers and tests may hand back a minimal object)."""
+        tool_ms = getattr(ans, "tool_ms", None) or {}
+        tools = ",".join(f"{k}:{v:.0f}" for k, v in tool_ms.items()) or "-"
+        logger.info(
+            "answer guild=%s channel=%s exec=%s rounds=%d calls=%d ms_total=%d ms_context=%d "
+            "ms_agent=%d tools=%s tok_in=%d tok_cached=%d tok_out=%d tok_thought=%d",
+            gid, cid, is_exec, getattr(ans, "rounds", 0), getattr(ans, "model_calls", 0),
+            (t_end - t0) * 1000, (t_ctx - t0) * 1000, (t_end - t_ctx) * 1000, tools,
+            getattr(ans, "tokens_in", 0), getattr(ans, "tokens_cached", 0),
+            getattr(ans, "tokens_out", 0), getattr(ans, "tokens_thought", 0),
+        )  # fmt: skip
+
+    def _deep_status(self, guild_id: int, task: str, is_exec: bool) -> str:
+        """Why a deep task cannot start now (not_executive / disabled / empty / busy), else ok."""
+        if not is_exec:
+            return "not_executive"
+        if not self.s.gemini_cli_path:
+            return "disabled"
+        if not task:
+            return "empty"
+        if any(not job.done() for job in self._deep_tasks):
+            return "busy"
+        return "ok"
+
+    def _launch_deep(self, message, guild_id: int, task: str, setting: str = "en") -> None:
+        handle = DeepHandle()
+        job_id = new_job_id()
+        job = asyncio.create_task(
+            self._run_deep(message, guild_id, task, setting, handle, job_id=job_id)
+        )
+        self._deep_tasks.add(job)
+        self._deep_jobs[guild_id] = _DeepJob(
+            job, handle, getattr(getattr(message, "author", None), "id", None), job_id
+        )
+        job.add_done_callback(self._deep_tasks.discard)
+        job.add_done_callback(
+            lambda _j, g=guild_id, me=job: (
+                self._deep_jobs.pop(g, None)
+                if getattr(self._deep_jobs.get(g), "task", None) is me
+                else None
+            )
+        )
+
+    async def _cancel_deep(self, guild_id: int, user, lang: str) -> str:
+        """Stop the guild's running deep task (cancel the asyncio task, kill the CLI process).
+        Allowed for whoever started it, server managers and executives."""
+        job = self._deep_jobs.get(guild_id)
+        if job is None or job.task.done():
+            stopped = self._research_cancel(guild_id, user, lang)  # a running deep_research
+            return stopped if stopped is not None else t("cancel_none", lang)
+        if user.id != job.starter_id and not (
+            hasattr(user, "guild_permissions") and self.is_exec_member(user)
+        ):
+            return t("cancel_denied", lang)
+        job.handle.cancel()
+        job.task.cancel()
+        return t("cancel_done", lang)
+
+    async def _cancel_task_command(self, message: discord.Message) -> bool:
+        """'@Dory ยกเลิกงาน' / 'cancel task'."""
+        if message.guild is None or not parse_cancel_task(self._command_text(message)):
+            return False
+        reply = await self._cancel_deep(message.guild.id, message.author, self._lang(message))
+        await message.reply(reply, mention_author=False)
+        return True
+
+    async def handle_cancel(self, interaction: discord.Interaction) -> None:
+        """/ยกเลิก: cancel the running big task."""
+        lang = self._interaction_lang(interaction)
+        if interaction.guild is None:
+            await interaction.response.send_message(t("cancel_none", lang), ephemeral=True)
+            return
+        reply = await self._cancel_deep(interaction.guild.id, interaction.user, lang)
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    # ------------------------------------------------------------- deleting Dory's messages
+    async def _delete_messages(self, channel, ids: list[int], guild_id: int) -> None:
+        for mid in ids:
+            with contextlib.suppress(discord.HTTPException):
+                await channel.get_partial_message(mid).delete()
+        # the gateway delete event does the same; doing it here too makes it immediate
+        self._memory_enqueue(partial(self.memory.delete, guild_id, list(ids)))
+
+    async def _maybe_delete_own(self, message: discord.Message) -> bool:
+        """Reply to one of Dory's messages with just "ลบ" / "delete" / "unsend" ...: Dory deletes
+        it (and every chunk of the same answer). Allowed for the person Dory was answering,
+        server managers and executives. A thumbs up replaces a confirmation message."""
+        ref = message.reference
+        if not ref or not ref.message_id or not message.content.strip():
+            return False
+        if parse_delete_message(self._command_text(message)) is None:
+            return False
+        rec = self._answers.get(ref.message_id)
+        asker_id = rec.asker_id if rec else None
+        if rec is None:
+            target = getattr(ref, "resolved", None)
+            if target is None:
+                with contextlib.suppress(discord.HTTPException):
+                    target = await message.channel.fetch_message(ref.message_id)
+            if target is None or getattr(target, "author", None) != self.user:
+                return False  # not a Dory message: nothing to do here
+            origin = getattr(getattr(target, "reference", None), "resolved", None)
+            asker_id = getattr(getattr(origin, "author", None), "id", None)
+        user = message.author
+        allowed = user.id == asker_id or (
+            hasattr(user, "guild_permissions") and self.is_exec_member(user)
+        )
+        if not allowed:
+            await message.reply(t("delete_denied", self._lang(message)), mention_author=False)
+            return True
+        ids = list(rec.message_ids) if rec else [ref.message_id]
+        if rec:
+            self._answers.forget(rec)
+        await self._delete_messages(message.channel, ids, message.guild.id)
+        with contextlib.suppress(discord.HTTPException):
+            await message.add_reaction("👍")
+        return True
+
+    async def _deep(
+        self,
+        message: discord.Message,
+        guild_id: int,
+        task: str,
+        is_exec: bool,
+        setting: str = "en",
+    ):
+        """Executives only. Acknowledge at once, run Gemini CLI in the background, post the result."""
+        lang = resolve_lang(setting, task)
+        reply = message.reply
+        status = self._deep_status(guild_id, task, is_exec)
+        if status == "ok":
+            await reply(await self._deep_ack_text(message, task, lang), mention_author=False)
+            self._launch_deep(message, guild_id, task, setting)
+        else:
+            key = {
+                "not_executive": "deep_not_exec",
+                "disabled": "deep_disabled",
+                "empty": "deep_usage",
+                "busy": "deep_busy",
+            }[status]
+            await reply(t(key, lang), mention_author=False)
+
+    async def _run_deep(
+        self,
+        message: discord.Message,
+        guild_id: int,
+        task: str,
+        setting: str = "en",
+        handle: DeepHandle | None = None,
+        job_id: str = "",
+    ):
+        """The deep task's background job. With a `job_id` it is recorded (dory.jobs_bot):
+        running first, then done / failed ("failed" for a DeepTaskError, else "error") /
+        cancelled by the user, whatever happens; a shutdown leaves it for the next start's
+        sweep. Never the task text."""
+        lang = resolve_lang(setting, task)
+        state: str | None = "failed"  # until it ends some other way
+        reason = "error"
+        try:
+            try:
+                await self._job_start("deep_task", job_id, message, guild_id)
+                res = await asyncio.to_thread(
+                    run_deep_task,
+                    self.s,
+                    self.store,
+                    task,
+                    guild_id=guild_id,
+                    lang=setting,
+                    **({"handle": handle} if handle is not None else {}),
+                )
+            except (asyncio.CancelledError, DeepCancelled) as e:
+                state, reason = self._job_cancel_state(handle, e), ""  # before handle.cancel()
+                if handle is not None:
+                    handle.cancel()  # make sure the CLI process is gone
+                logger.info("deep task %s", "cancelled" if state else "stopped by a shutdown")
+                return
+            except DeepTaskError as e:
+                reason = "failed"
+                await message.channel.send(f"❌ {e}")
+                return
+            except Exception:
+                logger.exception("deep task crashed")
+                await message.channel.send(t("deep_failed", lang))
+                return
+            logger.info(
+                "deep task done in %.0fs, %d tokens, models=%s",
+                res.seconds,
+                res.tokens,
+                list(res.models),
+            )
+            text, attachment = reply_parts(res, lang)
+            file = (
+                discord.File(io.BytesIO(attachment), filename=REPORT_NAME) if attachment else None
+            )
+            await message.reply(text, file=file, mention_author=False)
+            state, reason = "done", ""
+        except asyncio.CancelledError as e:  # stopped while the result was being posted
+            state, reason = self._job_cancel_state(handle, e), ""
+            raise
+        finally:
+            await self._job_end(guild_id, job_id, state, reason)
+
+    # ------------------------------------------------------------- slash commands
+    def _register_commands(self) -> None:
+        async def setup(interaction: discord.Interaction):
+            await self.handle_setup(interaction)
+
+        setup = app_commands.guild_only()(setup)
+        setup = app_commands.default_permissions(manage_guild=True)(setup)
+        for name in SETUP_COMMANDS:
+            self.tree.add_command(
+                app_commands.Command(
+                    name=name,
+                    description=t("cmd_setup"),
+                    callback=setup,
+                )
+            )
+
+        async def link_account(interaction: discord.Interaction):
+            await self.handle_link_account(interaction)
+
+        link_account = app_commands.guild_only()(link_account)
+        for name in LINK_ACCOUNT_COMMANDS:
+            self.tree.add_command(
+                app_commands.Command(
+                    name=name, description=t("cmd_link_account"), callback=link_account
+                )
+            )
+
+        async def mode_cb(interaction: discord.Interaction, mode: str | None = None):
+            await self.handle_mode(interaction, mode)
+
+        mode_cb = app_commands.guild_only()(mode_cb)
+        mode_cb = app_commands.describe(mode=t("cmd_mode_arg"))(mode_cb)
+        mode_cb = app_commands.choices(
+            mode=[app_commands.Choice(name=mode_choice_name(m), value=m) for m in MODES]
+        )(mode_cb)
+        for name in MODE_COMMANDS:
+            self.tree.add_command(
+                app_commands.Command(
+                    name=name,
+                    description=t("cmd_mode"),
+                    callback=mode_cb,
+                )
+            )
+
+        async def voice_cb(interaction: discord.Interaction, mode: str):
+            await self.handle_voice_talk(interaction, mode)
+
+        voice_cb = app_commands.guild_only()(voice_cb)
+        voice_cb = app_commands.describe(mode=t("cmd_voice_arg"))(voice_cb)
+        voice_cb = app_commands.choices(
+            mode=[
+                app_commands.Choice(name=t("cmd_voice_choice_listen"), value="listen_only"),
+                app_commands.Choice(name=t("cmd_voice_choice_talk"), value="may_talk"),
+            ]
+        )(voice_cb)
+        for name in ("voice", "เสียง"):
+            self.tree.add_command(
+                app_commands.Command(name=name, description=t("cmd_voice"), callback=voice_cb)
+            )
+
+        async def show_captions_cb(interaction: discord.Interaction):
+            await self.handle_captions(interaction, True)
+
+        async def hide_captions_cb(interaction: discord.Interaction):
+            await self.handle_captions(interaction, False)
+
+        show_captions_cb = app_commands.guild_only()(show_captions_cb)
+        hide_captions_cb = app_commands.guild_only()(hide_captions_cb)
+        for name in ("show-captions", "แสดงคำบรรยาย"):
+            self.tree.add_command(
+                app_commands.Command(
+                    name=name, description=t("cmd_show_captions"), callback=show_captions_cb
+                )
+            )
+        for name in ("hide-captions", "ซ่อนคำบรรยาย"):
+            self.tree.add_command(
+                app_commands.Command(
+                    name=name, description=t("cmd_hide_captions"), callback=hide_captions_cb
+                )
+            )
+
+        async def captions_default_cb(interaction: discord.Interaction, mode: str):
+            await self.handle_captions_default(interaction, mode == "on")
+
+        captions_default_cb = app_commands.guild_only()(captions_default_cb)
+        captions_default_cb = app_commands.describe(mode=t("cmd_voice_arg"))(captions_default_cb)
+        captions_default_cb = app_commands.choices(
+            mode=[
+                app_commands.Choice(name=t("cmd_captions_choice_on"), value="on"),
+                app_commands.Choice(name=t("cmd_captions_choice_off"), value="off"),
+            ]
+        )(captions_default_cb)
+        for name in ("captions-default", "คำบรรยายทุกประชุม"):
+            self.tree.add_command(
+                app_commands.Command(
+                    name=name,
+                    description=t("cmd_captions_default"),
+                    callback=captions_default_cb,
+                )
+            )
+
+        async def quiet_cb(interaction: discord.Interaction):
+            await self.handle_quiet(interaction)
+
+        quiet_cb = app_commands.guild_only()(quiet_cb)
+        for name in ("quiet", "เงียบ"):
+            self.tree.add_command(
+                app_commands.Command(name=name, description=t("cmd_quiet"), callback=quiet_cb)
+            )
+
+        async def memory_cb(interaction: discord.Interaction, days: int | None = None):
+            await self.handle_memory(interaction, days)
+
+        memory_cb = app_commands.guild_only()(memory_cb)
+        memory_cb = app_commands.describe(days=t("cmd_memory_arg"))(memory_cb)
+        for name in MEMORY_COMMANDS:
+            self.tree.add_command(
+                app_commands.Command(name=name, description=t("cmd_memory"), callback=memory_cb)
+            )
+
+        async def language_cb(interaction: discord.Interaction, language: str | None = None):
+            await self.handle_language(interaction, language)
+
+        language_cb = app_commands.guild_only()(language_cb)
+        language_cb = app_commands.describe(language=t("cmd_language_arg"))(language_cb)
+        language_cb = app_commands.choices(
+            language=[app_commands.Choice(name=LANGUAGE_LABELS[x], value=x) for x in LANGS]
+        )(language_cb)
+
+        async def company_language_cb(interaction: discord.Interaction, language: str):
+            await self.handle_company_language(interaction, language)
+
+        company_language_cb = app_commands.guild_only()(company_language_cb)
+        company_language_cb = app_commands.describe(language=t("cmd_language_arg"))(
+            company_language_cb
+        )
+        company_language_cb = app_commands.choices(
+            language=[
+                app_commands.Choice(name=LANGUAGE_LABELS[x], value=x) for x in LANGS if x != "auto"
+            ]
+        )(company_language_cb)
+        for name in ("company-language", "ภาษาบริษัท"):
+            self.tree.add_command(
+                app_commands.Command(
+                    name=name, description=t("cmd_company_language"), callback=company_language_cb
+                )
+            )
+        for name in LANGUAGE_COMMANDS:
+            self.tree.add_command(
+                app_commands.Command(name=name, description=t("cmd_language"), callback=language_cb)
+            )
+
+        async def tone_cb(
+            interaction: discord.Interaction, tone: str | None = None, scope: str | None = None,
+            note: str | None = None,
+        ):  # fmt: skip
+            await self.handle_tone(interaction, tone, scope, note)
+
+        tone_cb = app_commands.guild_only()(tone_cb)
+        tone_cb = app_commands.describe(
+            tone=t("cmd_tone_arg"), scope=t("cmd_tone_scope_arg"), note=t("cmd_tone_note_arg")
+        )(tone_cb)
+        tone_cb = app_commands.choices(
+            tone=[
+                app_commands.Choice(name=f"{tone_label(k, 'th')} · {tone_label(k, 'en')}", value=k)
+                for k in (*TONES, TONE_RESET)
+            ],
+            scope=[
+                app_commands.Choice(
+                    name=f"{t(f'tone_cmd_scope_choice_{k}', 'th')} · {t(f'tone_cmd_scope_choice_{k}', 'en')}",
+                    value=k,
+                )
+                for k in ("channel", "server")
+            ],
+        )(tone_cb)
+        for name in TONE_COMMANDS:
+            self.tree.add_command(
+                app_commands.Command(name=name, description=t("cmd_tone"), callback=tone_cb)
+            )
+
+        async def private_cb(interaction: discord.Interaction):
+            await self.handle_private_chat(interaction)
+
+        private_cb = app_commands.guild_only()(private_cb)
+        for name in PRIVATE_COMMANDS:
+            self.tree.add_command(
+                app_commands.Command(name=name, description=t("cmd_private"), callback=private_cb)
+            )
+
+        async def company_cb(interaction: discord.Interaction, name: str | None = None):
+            await self.handle_company(interaction, name)
+
+        company_cb = app_commands.describe(name=t("cmd_company_arg"))(company_cb)
+        for name in SWITCH_COMMANDS:
+            self.tree.add_command(
+                app_commands.Command(name=name, description=t("cmd_company"), callback=company_cb)
+            )
+
+        async def summary_cb(
+            interaction: discord.Interaction,
+            period: str = "today",
+            channel: discord.TextChannel | None = None,
+            all_channels: bool = False,
+            topic: str | None = None,
+            private: bool = False,
+        ):
+            await self.handle_summary(interaction, period, channel, all_channels, topic, private)
+
+        summary_cb = app_commands.guild_only()(summary_cb)
+        summary_cb = app_commands.describe(
+            period=t("cmd_summary_period"),
+            channel=t("cmd_summary_channel"),
+            all_channels=t("cmd_summary_all"),
+            topic=t("cmd_summary_topic"),
+            private=t("cmd_summary_private"),
+        )(summary_cb)
+        summary_cb = app_commands.choices(
+            period=[app_commands.Choice(name=t(f"period_{p}"), value=p) for p in PERIODS]
+        )(summary_cb)
+        for name in SUMMARY_COMMANDS:
+            self.tree.add_command(
+                app_commands.Command(name=name, description=t("cmd_summary"), callback=summary_cb)
+            )
+
+        async def summarize_menu(interaction: discord.Interaction, message: discord.Message):
+            await self.handle_summarize_menu(interaction, message)
+
+        summarize_menu = app_commands.guild_only()(summarize_menu)
+        self.tree.add_command(
+            app_commands.ContextMenu(name=MENU_SUMMARIZE, callback=summarize_menu)
+        )
+
+        async def translate_menu(interaction: discord.Interaction, message: discord.Message):
+            await self.handle_translate_menu(interaction, message)
+
+        translate_menu = app_commands.guild_only()(translate_menu)
+        self.tree.add_command(
+            app_commands.ContextMenu(name=MENU_TRANSLATE, callback=translate_menu)
+        )
+        for names, handler, desc in (
+            (CANCEL_COMMANDS, self.handle_cancel, t("cmd_cancel")),
+            (CHANNELS_COMMANDS, self.handle_channels, t("cmd_channels")),
+            (JOIN_COMMANDS, self.handle_join, t("cmd_join")),
+            (LEAVE_COMMANDS, self.handle_leave, t("cmd_leave")),
+        ):
+            cb = self._command_callback(handler)
+            for name in names:
+                self.tree.add_command(
+                    app_commands.Command(name=name, description=desc, callback=cb)
+                )
+        self._register_coo_commands()  # /รายงาน /report
+        self._register_catchup_commands()  # /ตามทัน /catchup
+
+    async def handle_summary(
+        self,
+        interaction: discord.Interaction,
+        period: str = "today",
+        channel=None,
+        all_channels: bool = False,
+        topic: str | None = None,
+        private: bool = False,
+    ) -> None:
+        """/สรุป: summarise a period of chat memory through the normal ask. The channels the
+        model may read are computed for the invoker and for where the reply is posted (a private
+        reply: just the invoker's own access)."""
+        guild, user, here = interaction.guild, interaction.user, interaction.channel
+        await interaction.response.defer(ephemeral=bool(private))
+        await asyncio.to_thread(self.team.current, guild.id)
+        profile = self._profile_of(guild.id, user.id)
+        setting = effective_language(self._lang_setting(interaction), profile)
+        lang = self._interaction_lang(interaction)
+        if setting != "auto":
+            lang = setting
+        send = partial(interaction.followup.send, ephemeral=bool(private))
+        if not (self.team.enabled(guild.id, "qa") and self.team.enabled(guild.id, "memory")):
+            await send(t("summary_unavailable", lang))
+            return
+        where = SimpleNamespace(guild=None if private else guild, channel=here)
+        memory = await self._memory_tools(where, guild, user)
+        target = channel or here
+        found = self._memory_channel(target)
+        if memory is None or (
+            not all_channels and (found is None or found[0] not in memory.allowed)
+        ):
+            await send(t("summary_no_access", lang))
+            return
+        q = summary_question(
+            lang,
+            period=period if period in PERIODS else "today",
+            today=self.s.now().date(),
+            tz=self.s.tz,
+            channel_name=None if all_channels else getattr(target, "name", None),
+            topic=topic,
+        )
+        ans = await asyncio.to_thread(
+            ask,
+            self.s,
+            self.store,
+            q,
+            guild_id=guild.id,
+            is_exec=self.is_exec_member(user),
+            user_id=user.id,
+            language=setting if setting != "auto" else lang,
+            memory=memory,
+            profile=profile_block(profile),
+            **self._web_kw(guild.id),
+        )
+        logger.info("summary command answered in %.1fs (%d rounds)", ans.seconds, ans.rounds)
+        for part in chunks(ans.text):
+            await send(part)
+
+    async def handle_summarize_menu(self, interaction: discord.Interaction, message) -> None:
+        """Message context menu "Summarize with Dory": summarise the right-clicked message."""
+        guild, user = interaction.guild, interaction.user
+        await interaction.response.defer(ephemeral=True)
+        await asyncio.to_thread(self.team.current, guild.id)
+        setting = self._lang_setting(interaction)
+        lang = self._interaction_lang(interaction)
+        send = partial(interaction.followup.send, ephemeral=True)
+        if not self.team.enabled(guild.id, "qa"):
+            await send(t("summary_unavailable", lang))
+            return
+        text = await self._summarize_message(
+            message, guild, user, setting if setting != "auto" else lang
+        )
+        if text is None:
+            text = t("summary_nothing", lang)
+        for part in chunks(text):
+            await send(part)
+
+    @staticmethod
+    def _command_callback(handler):
+        async def cb(interaction: discord.Interaction):
+            await handler(interaction)
+
+        return app_commands.guild_only()(cb)
+
+    async def handle_join(self, interaction: discord.Interaction) -> None:
+        """/เข้าประชุม: join the invoker's voice channel and start the meeting."""
+        await interaction.response.defer(ephemeral=True)
+        await asyncio.to_thread(self.team.current, interaction.guild.id)
+        reply = await self.meetings.join(
+            interaction.user,
+            fallback_channel=interaction.channel,
+            lang=self._interaction_lang(interaction),
+        )
+        await interaction.followup.send(reply, ephemeral=True)
+
+    async def handle_leave(self, interaction: discord.Interaction) -> None:
+        """/ออกประชุม: leave and post the summary."""
+        await asyncio.to_thread(self.team.current, interaction.guild.id)
+        reply = await self.meetings.leave(
+            interaction.user,
+            lang=self._interaction_lang(interaction),
+            text_channel_id=getattr(interaction.channel, "id", None),
+        )
+        await interaction.response.send_message(reply, ephemeral=True)
+
+    def _may_configure(self, user) -> bool:
+        return hasattr(user, "guild_permissions") and (
+            can_manage_guild(user) or self.is_exec_member(user)
+        )
+
+    async def handle_mode(self, interaction: discord.Interaction, mode: str | None) -> None:
+        """/โหมด: show this channel's mode, or (executives / server managers) change it."""
+        guild, channel, user = interaction.guild, interaction.channel, interaction.user
+        send = interaction.response.send_message
+        if guild is None or channel is None:
+            await send(t("setup_denied", self._interaction_lang(interaction)), ephemeral=True)
+            return
+        await asyncio.to_thread(self.team.current, guild.id)
+        lang = self._interaction_lang(interaction)
+        if mode is None:
+            current = self._mode(channel, guild.id)
+            lines = [t("mode_current", lang, label=mode_label(current, lang)), ""]
+            if self._is_snoozed(channel.id):
+                lines += [t("mode_snoozed", lang), ""]
+            days = self.team.retention_shown(guild.id)  # 0 = forever, said in words
+            lines += [f"{mode_label(m, lang)} — {mode_help(m, lang, days)}" for m in MODES]
+            lines += ["", t("mode_footer", lang)]
+            await send("\n".join(lines), ephemeral=True)
+            return
+        if mode not in MODES:
+            await send(t("mode_failed", lang), ephemeral=True)
+            return
+        if not self._may_configure(user):
+            await send(t("mode_denied", lang), ephemeral=True)
+            return
+        previous = self.team.channel_mode(
+            guild.id, channel.id, getattr(channel, "name", None), self.s.ask_channel_ids
+        )
+        try:
+            await asyncio.to_thread(self.team.set_channel_mode, guild.id, channel.id, mode)
+        except Exception:
+            logger.exception("could not save channel mode")
+            await send(t("mode_failed", lang), ephemeral=True)
+            return
+        self._snoozed.pop(channel.id, None)
+        self._convos.pop(channel.id, None)
+        self._pending.pop(channel.id, None)
+        self._seen_mode[channel.id] = mode
+        await send(t("mode_set", lang, label=mode_label(mode, lang)))
+        if previous == "off" and mode != "off":
+            await self._memory_notice(channel, guild.id)
+            self._start_import()
+
+    async def handle_memory(self, interaction: discord.Interaction, days: int | None) -> None:
+        """/ความจำ: show the memory status (everyone) or (executives / server managers) set how
+        many days this server's chat memory is kept."""
+        guild, user = interaction.guild, interaction.user
+        send = interaction.response.send_message
+        if guild is None:
+            await send(t("setup_denied", self._interaction_lang(interaction)), ephemeral=True)
+            return
+        await asyncio.to_thread(self.team.current, guild.id)
+        lang = self._interaction_lang(interaction)
+        current = self.team.memory_retention_days(guild.id)
+        if days is None:
+            state = t("memory_on" if self.team.enabled(guild.id, "memory") else "memory_off", lang)
+            recorded = ", ".join(mode_label(m, lang) for m in MODES if m != "off")
+            lines = [
+                t_days("memory_status", lang, self.team.retention_shown(guild.id), state=state),
+                t("memory_modes", lang, recorded=recorded, off=mode_label("off", lang)),
+            ]
+            prog = await asyncio.to_thread(
+                import_progress,
+                self.memory_store,
+                guild.id,
+                self.s.memory_import_images_per_day,
+                self.s.now().date().isoformat(),
+            )
+            if prog["channels_total"]:
+                lines.append(
+                    t(
+                        "memory_import",
+                        lang,
+                        done=prog["channels_done"],
+                        total=prog["channels_total"],
+                        messages=f"{prog['messages']:,}",
+                        images=prog["images_done"],
+                        cap=prog["images_cap"],
+                    )
+                )
+            lines.append(t("memory_footer", lang))
+            await send("\n".join(lines), ephemeral=True)
+            return
+        if not self._may_configure(user):
+            await send(t("memory_denied", lang), ephemeral=True)
+            return
+        if valid_retention_days(days) is None:
+            await send(
+                t("memory_bad_days", lang, lo=MIN_RETENTION_DAYS, hi=MAX_RETENTION_DAYS),
+                ephemeral=True,
+            )
+            return
+        try:
+            await asyncio.to_thread(self.team.set_memory_retention_days, guild.id, days)
+        except Exception:
+            logger.exception("could not save memory retention")
+            await send(t("memory_failed", lang), ephemeral=True)
+            return
+        if effective_retention_days(days) < current:  # 0 = keep forever: never shorter
+            self._purge_soon(guild.id)  # shortened: delete what is now past it, without waiting
+        await send(t_days("memory_set", lang, days))
+
+    async def handle_language(self, interaction: discord.Interaction, language: str | None) -> None:
+        """/language: show the languages Dory uses for YOU (company + your personal one), or set
+        your personal language. The company language is /company-language (executives)."""
+        guild, user = interaction.guild, interaction.user
+        send = interaction.response.send_message
+        if guild is None:
+            await send(t("setup_denied", self._interaction_lang(interaction)), ephemeral=True)
+            return
+        await asyncio.to_thread(self.team.current, guild.id)
+        lang = self._interaction_lang(interaction)
+        company = self._person_langs(guild.id)
+        if language is None:
+            mine = self._person_langs(guild.id, user.id)
+            labels = " + ".join(t(f"lang_label_{x}", lang) for x in mine)
+            await send(t("lang_current", lang, label=labels), ephemeral=True)
+            return
+        if language not in LANGS or language == "auto":
+            await send(t("lang_failed", lang), ephemeral=True)
+            return
+        reply = self._set_personal_language(guild.id, user.id, ("set", language), company)
+        await send(reply, ephemeral=True)
+
+    async def handle_company_language(
+        self, interaction: discord.Interaction, language: str
+    ) -> None:
+        """/company-language: the whole server's language (executives / server managers)."""
+        guild, user = interaction.guild, interaction.user
+        send = interaction.response.send_message
+        if guild is None:
+            await send(t("setup_denied", self._interaction_lang(interaction)), ephemeral=True)
+            return
+        await asyncio.to_thread(self.team.current, guild.id)
+        lang = self._interaction_lang(interaction)
+        if language not in LANGS or language == "auto":
+            await send(t("lang_failed", lang), ephemeral=True)
+            return
+        if not self._may_configure(user):
+            await send(t("lang_denied", lang), ephemeral=True)
+            return
+        try:
+            await self._apply_server_language(guild, language, True)
+        except Exception:
+            logger.exception("could not save server language")
+            await send(t("lang_failed", lang), ephemeral=True)
+            return
+        await send(t("server_lang_set", language, label=t(f"lang_label_{language}", language)))
+
+    async def handle_setup(self, interaction: discord.Interaction) -> None:
+        """/ตั้งค่า: DM-style ephemeral reply with a one-time link to the hub for this guild."""
+        guild, user = interaction.guild, interaction.user
+        if guild is not None:
+            await asyncio.to_thread(self.team.current, guild.id)
+        lang = self._interaction_lang(interaction)
+        if guild is None or not hasattr(user, "guild_permissions") or not can_manage_guild(user):
+            await interaction.response.send_message(t("setup_denied", lang), ephemeral=True)
+            return
+        try:
+            code = await asyncio.to_thread(
+                self.guilds_store.create_link_code, guild.id, user.id, str(user)
+            )
+        except Exception:
+            logger.exception("could not create a link code")
+            await interaction.response.send_message(t("setup_failed", lang), ephemeral=True)
+            return
+        url = f"{self.s.hub_url.rstrip('/')}/hub?link={code}"
+        await interaction.response.send_message(
+            t("setup_message", lang, name=guild.name, url=url), ephemeral=True
+        )
+        await self._send_hidden_channels(interaction, lang, first=False)
+
+    async def handle_link_account(self, interaction: discord.Interaction) -> None:
+        """/ลิงก์บัญชี: ephemeral one-time code that proves, on the web, that the Google account
+        pasting it is THIS Discord user. Any member may use it; it grants no admin rights."""
+        guild, user = interaction.guild, interaction.user
+        lang = self._interaction_lang(interaction)
+        if guild is None:
+            await interaction.response.send_message(
+                t("link_account_guild_only", lang), ephemeral=True
+            )
+            return
+        try:
+            code = await asyncio.to_thread(
+                self.guilds_store.create_link_code, guild.id, user.id, str(user)
+            )
+        except Exception:
+            logger.exception("could not create an identity code")
+            await interaction.response.send_message(t("setup_failed", lang), ephemeral=True)
+            return
+        url = f"{self.s.hub_url.rstrip('/')}/center?code={code}#/account"
+        await interaction.response.send_message(
+            t("link_account_message", lang, url=url, code=code), ephemeral=True
+        )
+
+    async def _send_hidden_channels(
+        self, interaction: discord.Interaction, lang: str, *, first: bool
+    ) -> None:
+        """Ephemeral "channels Dory cannot see" message(s); `first`: nothing was sent yet."""
+        entries = hidden_channels(interaction.guild, interaction.guild.me)
+        for text in hidden_channels_messages(entries, lang):
+            if first:
+                await interaction.response.send_message(text, ephemeral=True)
+                first = False
+            else:
+                await interaction.followup.send(text, ephemeral=True)
+
+    async def handle_channels(self, interaction: discord.Interaction) -> None:
+        """/ห้อง: which channels Dory cannot read and how to add it (managers and executives)."""
+        guild, user = interaction.guild, interaction.user
+        if guild is not None:
+            await asyncio.to_thread(self.team.current, guild.id)
+        lang = self._interaction_lang(interaction)
+        allowed = (
+            guild is not None
+            and hasattr(user, "guild_permissions")
+            and (can_manage_guild(user) or self.is_exec_member(user))
+        )
+        if not allowed:
+            await interaction.response.send_message(t("setup_denied", lang), ephemeral=True)
+            return
+        await self._send_hidden_channels(interaction, lang, first=True)
+
+    # ------------------------------------------------------------- timers (sign-off, join batches)
+    async def _tick_loop(self):
+        await self.wait_until_ready()
+        while not self.is_closed():
+            await asyncio.sleep(TICK_SECONDS)
+            try:
+                await self.tick()
+            except Exception:
+                logger.exception("tick failed")
+
+    async def tick(self) -> None:
+        if self._clock() - self._recent_swept >= 60:
+            self._recent_swept = self._clock()
+            self.recent.sweep(datetime.now(UTC))
+        await self._signoff_due()
+        await self._join_due()
+        await self._memory_due()
+        await self._scheduler_due()
+        await self._coo_due()
+        await self._polls_forms_due()
+        await self._votes_due()
+        await self._reminders_due()
+        await self._nodue_due()
+        self._monitor_note_queue("actions", await self._actions_due())
+        await self._pc_sweep()
+        await self._people_due()
+        await self._positions_due()
+        await self._change_outbox_due()
+        await self._travel_due()
+        await self._markets_due()
+        await self._contests_due()
+
+    async def _scheduler_due(self) -> None:
+        """Meeting reminders, no-show nudges and auto-join (every SCHEDULER_TICK_SECONDS)."""
+        now = self._clock()
+        if not self.guilds or now - self._sched_last < SCHEDULER_TICK_SECONDS:
+            return
+        self._sched_last = now
+        await self.scheduler.tick()
+
+    async def _signoff_due(self) -> None:
+        """Conversations whose window ran out: one short sign-off (or a 👋 reaction after a
+        single answer), once."""
+        now = self._clock()
+        for cid, convo in list(self._convos.items()):
+            if now - convo.last < CONVERSATION_SECONDS:
+                continue
+            del self._convos[cid]
+            try:
+                if convo.replies >= SIGNOFF_MIN_REPLIES:
+                    await convo.channel.send(t("signoff", self._lang(convo.channel)))
+                elif convo.last_reply is not None:
+                    await convo.last_reply.add_reaction("👋")
+            except discord.HTTPException:
+                logger.warning("could not sign off in channel %s", cid, exc_info=True)
+
+    def _interjection_allowed(self, channel_id: int) -> bool:
+        used = self._interjections.setdefault(channel_id, deque())
+        while used and self._clock() - used[0] >= 3600:
+            used.popleft()
+        return len(used) < MAX_INTERJECTIONS_PER_HOUR
+
+    async def _join_due(self) -> None:
+        """Join mode: channels that went quiet get one batch-gate call over their candidates."""
+        now = self._clock()
+        for cid, pending in list(self._pending.items()):
+            if now - pending.last_activity < QUIET_SECONDS:
+                continue
+            del self._pending[cid]
+            if not pending.candidates or self._mode(pending.channel, pending.guild.id) != "join":
+                continue
+            if not self._interjection_allowed(cid):  # budget first: no tokens when out of budget
+                logger.info("join budget used up in channel %s", cid)
+                continue
+            now = self._clock()
+            candidates = [  # same person twice in a row: dropped before the gate (no tokens)
+                m for m in pending.candidates if not self._user_cooling_down(cid, m.author.id, now)
+            ]
+            if not candidates:
+                logger.info("join candidates all in same-user cooldown in channel %s", cid)
+                continue
+            lines = await self._gate_lines(pending.channel, JOIN_HISTORY)
+            ids = [str(m.id) for m in candidates]
+            hints = await self._interjection_hints(pending.guild, candidates)
+            kw = {"hints": hints} if hints else {}
+            picked = await asyncio.to_thread(
+                partial(
+                    gate.pick_interjection,
+                    self.llm,
+                    self.s.gate_model,
+                    lines,
+                    ids,
+                    channel_id=cid,
+                    **kw,
+                )
+            )
+            target = next((m for m in candidates if str(m.id) == picked), None)
+            if target is None:
+                continue
+            try:  # budget and cooldown are used only when something was actually posted
+                posted = await self._answer(target, pending.guild, target.author, interjection=True)
+            except Exception:
+                logger.exception("join answer failed")
+                continue
+            if posted is not False:
+                self._interjections.setdefault(cid, deque()).append(self._clock())
+                self._interjected_at[(cid, target.author.id)] = self._clock()
+
+    def _user_cooling_down(self, channel_id: int, user_id: int, now: float) -> bool:
+        at = self._interjected_at.get((channel_id, user_id))
+        if at is not None and now - at >= INTERJECT_SAME_USER_COOLDOWN:
+            del self._interjected_at[(channel_id, user_id)]
+            return False
+        return at is not None
+
+    async def _interjection_hints(self, guild, candidates) -> dict[str, str]:
+        """Free stage-2 hints: per candidate a keyword search of memory (same scoping as the
+        chat_search tool for that candidate), compact lines, 600 characters in all. No LLM call.
+        Empty when memory is off."""
+        if not self.team.enabled(guild.id, "memory"):
+            return {}
+        hints: dict[str, str] = {}
+        for m in candidates:
+            kws = gate.extract_keywords(self._strip_mentions(m.content or "", m))
+            if not kws:
+                continue
+            try:
+                tools = await self._memory_tools(m, guild, m.author)
+                if tools is None:
+                    continue
+                result = await asyncio.to_thread(  # keyword-only: hints stay free
+                    tools.chat_search, kws, limit=gate.HINT_HITS_PER_CANDIDATE + 2, semantic=False
+                )
+            except Exception:
+                logger.warning("memory hint lookup failed", exc_info=True)
+                continue
+            if line := gate.hint_line(
+                result, exclude_text=self._strip_mentions(m.content or "", m)
+            ):
+                hints[str(m.id)] = line
+        return gate.fit_hints(hints)
+
+    # ------------------------------------------------------------- organisational memory
+    def _memory_enqueue(self, job) -> None:
+        """Queue a blocking memory write. One worker runs the jobs in order (an edit never
+        overtakes its message), off the event loop; a full queue drops the job, never blocks."""
+        if self._memory_queue is None:
+            self._memory_queue = asyncio.Queue(MEMORY_QUEUE_MAX)
+        if self._memory_worker is None or self._memory_worker.done():
+            self._memory_worker = asyncio.create_task(self._memory_run())
+        try:
+            self._memory_queue.put_nowait(job)
+        except asyncio.QueueFull:
+            logger.warning("memory queue full; dropped one record")
+
+    async def _memory_run(self) -> None:
+        queue = self._memory_queue
+        while True:
+            job = await queue.get()
+            try:
+                await asyncio.to_thread(job)
+            except Exception:
+                logger.warning("memory write failed", exc_info=True)
+            finally:
+                queue.task_done()
+
+    async def drain_memory(self) -> None:
+        """Wait until queued memory writes are done (tests, shutdown)."""
+        if self._memory_queue is not None:
+            await self._memory_queue.join()
+
+    @staticmethod
+    def _memory_channel(channel) -> tuple[int, int | None, str | None] | None:
+        """(channel id for access checks, thread id, name for the mode) or None to skip. A thread
+        counts as its parent channel; private threads are not recorded."""
+        parent_id = getattr(channel, "parent_id", None)
+        if parent_id is None:
+            return channel.id, None, getattr(channel, "name", None)
+        is_private = getattr(channel, "is_private", None)
+        if callable(is_private) and is_private():
+            return None
+        return parent_id, channel.id, getattr(getattr(channel, "parent", None), "name", None)
+
+    def _memory_message(self, message, own: bool, cid: int, thread_id: int | None):
+        """The log record for a Discord message, or None when it has no text."""
+        text = message_text(message.content, message.attachments)
+        if not text:
+            return None
+        return build_message(
+            self.s,
+            guild_id=message.guild.id,
+            channel_id=cid,
+            thread_id=thread_id,
+            message_id=message.id,
+            author_id=message.author.id,
+            author_name="Dory" if own else message.author.display_name,
+            created_at=message.created_at,
+            text=text,
+            jump_url=getattr(message, "jump_url", ""),
+            kind="dory" if own else "chat",
+        )
+
+    async def _memory_record(self, message: discord.Message, own: bool) -> bool:
+        """Layer 1: log the message when the channel's mode is not off. Never raises."""
+        try:
+            guild = message.guild
+            gid = guild.id
+            if await self._pc_owner(gid, message.channel.id) is not None:
+                return False  # a private channel is kept as the member's private notes instead
+            await asyncio.to_thread(self.team.current, gid)
+            where = self._memory_channel(message.channel)
+            if where is None:
+                return
+            cid, thread_id, cname = where
+            mode = self.team.channel_mode(gid, cid, cname, self.s.ask_channel_ids)
+            previous, self._seen_mode[cid] = self._seen_mode.get(cid), mode
+            if mode == "off" or not self.team.enabled(gid, "memory"):
+                return
+            record = self._memory_message(message, own, cid, thread_id)
+            if record is not None:
+                self._memory_enqueue(partial(self.memory.record, record))
+                if not own:
+                    self._places_hook(message, cid)  # address-looking text -> remembered places
+            if previous == "off" and not own:  # switched on elsewhere (hub): tell the channel once
+                target = message.channel if thread_id is None else message.channel.parent
+                await self._memory_notice(target or message.channel, gid)
+                self._start_import()  # and read this channel's history
+            return record is not None
+        except Exception:
+            logger.warning("memory record failed", exc_info=True)
+            return False
+
+    async def _memory_notice(self, channel, guild_id: int) -> None:
+        """One-time note that Dory now remembers this channel (off -> on)."""
+        if not self.team.enabled(guild_id, "memory"):
+            return
+        with contextlib.suppress(discord.HTTPException):
+            await channel.send(
+                t_days("memory_notice", self._lang(channel), self.team.retention_shown(guild_id))
+            )
+
+    async def record_voice(self, voice_channel, user_id: int, name: str, text: str, at: datetime):
+        """A transcribed meeting segment goes into the log as kind "voice" (channel = the voice
+        channel). Never raises."""
+        try:
+            guild = voice_channel.guild
+            await asyncio.to_thread(self.team.current, guild.id)
+            mode = self.team.channel_mode(
+                guild.id, voice_channel.id, getattr(voice_channel, "name", None),
+                self.s.ask_channel_ids,
+            )  # fmt: skip
+            if mode == "off" or not self.team.enabled(guild.id, "memory") or not text.strip():
+                return
+            self._memory_enqueue(
+                partial(
+                    self.memory.record,
+                    build_message(
+                        self.s,
+                        guild_id=guild.id,
+                        channel_id=voice_channel.id,
+                        message_id=synthetic_id(at, user_id % 1000),
+                        author_id=user_id,
+                        author_name=name,
+                        created_at=at,
+                        text=text[:4000],
+                        jump_url=f"https://discord.com/channels/{guild.id}/{voice_channel.id}",
+                        kind="voice",
+                    ),
+                )
+            )
+        except Exception:
+            logger.warning("memory voice record failed", exc_info=True)
+
+    async def on_raw_message_edit(self, payload) -> None:
+        data = getattr(payload, "data", None) or {}
+        if "content" in data:
+            self.recent.edit(
+                getattr(payload, "channel_id", None), payload.message_id, data["content"]
+            )
+        if payload.guild_id is None or "content" not in data:
+            return
+        atts = [
+            SimpleNamespace(filename=a.get("filename"), content_type=a.get("content_type"))
+            for a in data.get("attachments") or []
+        ]
+        stamp = data.get("edited_timestamp")
+        try:
+            edited = datetime.fromisoformat(stamp).astimezone(UTC) if stamp else datetime.now(UTC)
+        except ValueError:
+            edited = datetime.now(UTC)
+        self._memory_enqueue(
+            partial(
+                self.memory.edit,
+                payload.guild_id,
+                payload.message_id,
+                message_text(data["content"], atts),
+                edited,
+            )
+        )
+
+    async def on_raw_message_delete(self, payload) -> None:
+        self.recent.delete(getattr(payload, "channel_id", None), [payload.message_id])
+        if payload.guild_id is not None:
+            self._asks_forget(payload.guild_id, {payload.message_id})
+            await self._places_source_deleted(payload.guild_id, {payload.message_id})
+            self._memory_enqueue(
+                partial(self.memory.delete, payload.guild_id, [payload.message_id])
+            )
+
+    async def on_raw_bulk_message_delete(self, payload) -> None:
+        self.recent.delete(getattr(payload, "channel_id", None), payload.message_ids)
+        if payload.guild_id is not None:
+            self._asks_forget(payload.guild_id, set(payload.message_ids))
+            await self._places_source_deleted(payload.guild_id, set(payload.message_ids))
+            self._memory_enqueue(
+                partial(self.memory.delete, payload.guild_id, sorted(payload.message_ids))
+            )
+
+    # ---- history import (see dory.memory_import)
+    def _start_import(self) -> None:
+        """Ask for an import run (startup, reconnect, a channel switched on, retention
+        lengthened, a capped run resuming). One background task; requests while it runs are
+        folded into one more pass."""
+        self._import_requested = True
+        if self._import_task is None or self._import_task.done():
+            self._import_task = asyncio.create_task(self._import_loop())
+
+    def _request_import(self) -> None:
+        """Import soon after Dory may have gained access to channels. Debounced: events that
+        arrive while one request is waiting are folded into it, so a burst starts one run."""
+        if self._import_debounce is not None and not self._import_debounce.done():
+            return
+
+        async def later():
+            await asyncio.sleep(IMPORT_DEBOUNCE_S)
+            self._start_import()
+
+        self._import_debounce = asyncio.create_task(later())
+
+    async def _import_loop(self) -> None:
+        try:
+            while self._import_requested:
+                self._import_requested = False
+                await self._import_all()
+        except Exception:
+            logger.exception("memory import failed")
+
+    async def _import_all(self) -> None:
+        for guild in list(self.guilds):
+            await asyncio.to_thread(self.team.current, guild.id)
+            if not await self._licensed(guild.id) or not self.team.enabled(guild.id, "memory"):
+                continue
+            targets = await self._import_targets(guild)
+            res = await self.importer.run_guild(guild.id, targets)
+            if res.capped:
+                self._import_resume_at = self._clock() + IMPORT_RESUME_S
+            if self.team.enabled(guild.id, "image_memory"):
+                await self._image_backlog(guild, {t.cid for t in targets})
+            await self._media_doc_backlog(guild, {t.cid for t in targets})
+
+    async def _import_targets(self, guild) -> list[Target]:
+        """Readable, non-off channels (text, voice chat) and threads (active, and archived ones
+        of readable text channels). Private threads are skipped."""
+        me = guild.me
+        floor = self.s.now() - timedelta(
+            days=self.team.fresh_memory_retention_days(guild.id, fail_closed=True)
+        )
+
+        def usable(ch):
+            where = self._memory_channel(ch)
+            if where is None:
+                return None
+            cid, thread_id, cname = where
+            if self.team.channel_mode(guild.id, cid, cname, self.s.ask_channel_ids) == "off":
+                return None
+            if not self._can_read(ch, me):
+                return None
+            return Target(ch, cid, thread_id)
+
+        out: dict[int, Target] = {}
+        chans = [*guild.text_channels, *getattr(guild, "voice_channels", ())]
+        for ch in [*chans, *getattr(guild, "threads", ())]:
+            if (tg := usable(ch)) is not None:
+                out[tg.state_id] = tg
+        for ch in guild.text_channels:
+            if not hasattr(ch, "archived_threads") or ch.id not in {t.cid for t in out.values()}:
+                continue
+            try:
+                async for th in ch.archived_threads(limit=50):
+                    stamp = getattr(th, "archive_timestamp", None)
+                    if stamp is not None and stamp < floor:
+                        break
+                    if (tg := usable(th)) is not None:
+                        out.setdefault(tg.state_id, tg)
+            except discord.HTTPException:
+                logger.debug("could not list archived threads of %s", ch.id, exc_info=True)
+        return list(out.values())
+
+    def _import_record(self, message, target: Target):
+        own = message.author == self.user
+        if not own and getattr(message.author, "bot", False):
+            return None
+        return self._memory_message(message, own, target.cid, target.thread_id)
+
+    def _purge_soon(self, guild_id: int) -> None:
+        """Retention was shortened: purge that guild's memory and drop its index now, in the
+        background (the daily purge would leave expired data readable for up to a day)."""
+
+        def purge() -> None:
+            try:
+                m, s = self.memory.scheduler.purge_guild(guild_id)
+                logger.info("retention shortened: purged %d messages, %d summaries", m, s)
+            except Exception:
+                logger.warning("could not purge after shortening retention", exc_info=True)
+
+        try:
+            asyncio.get_running_loop()
+        except RuntimeError:  # called from a tool thread
+            threading.Thread(target=purge, daemon=True).start()
+            return
+        self._spawn(asyncio.to_thread(purge))
+
+    def _memory_triggers(self) -> None:
+        """Start an import when memory was switched on or retention lengthened (hub or
+        command), and resume a run the guild cap stopped."""
+        for guild in self.guilds:
+            now = (
+                self.team.enabled(guild.id, "memory"),
+                self.team.fresh_memory_retention_days(guild.id),
+            )
+            before = self._memory_cfg_seen.get(guild.id)
+            self._memory_cfg_seen[guild.id] = now
+            if before is not None and now[1] < before[1]:  # shortened (e.g. in the hub)
+                self._purge_soon(guild.id)
+            if before is not None and now[0] and (not before[0] or now[1] > before[1]):
+                self._start_import()
+        if self._import_resume_at is not None and self._clock() >= self._import_resume_at:
+            self._import_resume_at = None
+            self._start_import()
+
+    # ---- images (see dory.image_memory)
+    def _spawn(self, coro) -> None:
+        task = asyncio.create_task(coro)
+        self._bg_tasks.add(task)
+        task.add_done_callback(self._bg_tasks.discard)
+
+    def _image_candidates(self, message) -> list[tuple[int, object]]:
+        found = [(i, a) for i, a in enumerate(message.attachments) if image_mime(a)]
+        return found[:MAX_IMAGES_PER_MESSAGE]
+
+    def _images_enabled(self, guild_id: int) -> bool:
+        return self.team.enabled(guild_id, "memory") and self.team.enabled(guild_id, "image_memory")
+
+    def _describe_soon(
+        self, message, logged: bool = True, intake_mode: str | None = None, react: bool = False
+    ) -> None:
+        """Describe the message's images in the background (never delays a reply). With
+        `intake_mode` set, images the describer takes for receipts also go through receipt
+        intake (quietly in listen mode)."""
+        cands = self._image_candidates(message)
+        notes_on = self._images_enabled(message.guild.id)
+        if cands and (intake_mode or (notes_on and logged)):  # receipts need no image memory
+            self._spawn(
+                self._describe_message(
+                    message, cands, intake_mode=intake_mode, apply=logged and notes_on, react=react
+                )
+            )
+
+    async def _read_describe(self, att) -> tuple[bytes | None, ImageNote | None]:
+        """One model call per image; the bytes are returned so receipt intake can reuse them."""
+        if (getattr(att, "size", 0) or 0) > MAX_IMAGE_BYTES:
+            self.image_stats["skipped"] += 1
+            return None, None
+        data = None
+        try:
+            data = await att.read()
+            async with self._image_sem:
+                note = await asyncio.to_thread(
+                    describe_image, self.llm, self.s.gate_model, data, image_mime(att)
+                )
+        except Exception as e:  # never log contents, only the kind of failure
+            self.image_stats["failed"] += 1
+            logger.warning("image description failed (%s)", type(e).__name__)
+            return data, None
+        self.image_stats["described"] += 1
+        return data, note
+
+    async def _describe_att(self, att) -> str | None:
+        _data, note = await self._read_describe(att)
+        return format_note(note) if note is not None else None
+
+    async def _read_react(self, message) -> None:
+        """👀 on a message whose files Dory has just read quietly (once per message)."""
+        if message.id in self._reacted:
+            return
+        self._reacted[message.id] = None
+        while len(self._reacted) > IMAGE_NOTES_KEPT:
+            self._reacted.pop(next(iter(self._reacted)))
+        with contextlib.suppress(discord.HTTPException):
+            await message.add_reaction(READ_REACTION)
+
+    async def _describe_message(
+        self,
+        message,
+        cands,
+        intake_mode: str | None = None,
+        apply: bool = True,
+        react: bool = False,
+    ) -> tuple[bool, dict[int, str]]:
+        """Describe images; receipt-like ones also run receipt intake when `intake_mode` is set.
+        Returns (a receipt was handled, notes by attachment index)."""
+        notes: dict[int, str] = {}
+        handled = False
+        for i, att in cands:
+            data, note = await self._read_describe(att)
+            if note is None:
+                continue
+            notes[i] = format_note(note)
+            self._doc_alert_soon(
+                message,
+                i,
+                DocInfo(
+                    getattr(att, "filename", "") or "image", "image", note.type,
+                    note.description, note.amount_value, split_names(note.addressed_to),
+                ),
+            )  # fmt: skip
+            if intake_mode and data is not None and note.is_receipt_like:
+                try:
+                    res = await self._ingest_one(message, att, data, intake_mode == "listen")
+                except Exception:
+                    logger.exception("receipt intake from image failed")
+                    continue
+                if res.status != "ignored":
+                    handled = True
+                    if res.receipt is not None:
+                        notes[i] = receipt_note(res.receipt)
+        logger.info(
+            "memory images guild=%s channel=%s described=%d of %d (totals %s)",
+            message.guild.id, message.channel.id, len(notes), len(cands), self.image_stats,
+        )  # fmt: skip
+        if notes and apply:
+            self._apply_notes(message, notes)
+        if react and notes and not handled:  # a recorded receipt already got its own reaction
+            await self._read_react(message)
+        return handled, notes
+
+    def _apply_notes(self, message, notes: dict[int, str]) -> None:
+        """Update the message's log record with image descriptions / receipt summaries."""
+        merged = self._image_notes.setdefault(message.id, {})
+        merged.update(notes)
+        while len(self._image_notes) > IMAGE_NOTES_KEPT:
+            self._image_notes.pop(next(iter(self._image_notes)))
+        text = message_text(message.content, message.attachments, merged)
+        self._memory_enqueue(partial(self.memory.edit, message.guild.id, message.id, text, None))
+
+    async def _image_backlog(self, guild, channel_ids: set[int]) -> None:
+        """Historical images (records still holding a plain "[image: name]" descriptor), newest
+        first, at most `memory_import_images_per_day` per guild per day. Messages are re-fetched
+        from Discord; ones that are gone or unreadable are marked "[image-unread: name]"."""
+        gid = guild.id
+        gstate = self.importer.guild_state(gid)
+        cap = self.s.memory_import_images_per_day
+        now = self.s.now()
+        start = (
+            (now - timedelta(days=self.team.fresh_memory_retention_days(gid, fail_closed=True)))
+            .date()
+            .isoformat()
+        )
+        rows = await asyncio.to_thread(
+            self.memory_store.messages, gid, channel_ids, start, now.date().isoformat(),
+            keyword="[image:", limit=5000,
+        )  # fmt: skip
+        done = 0
+        logger.info(
+            "memory backlog images guild=%s pending=%d today=%d/%d", gid, len(rows),
+            gstate.images_done, cap,
+        )  # fmt: skip
+        for rec in rows:
+            if gstate.images_done >= cap:
+                break
+            if "[image: " not in rec.text or rec.kind == "dory":
+                continue
+            new_text, used = await self._backlog_record(guild, rec)
+            if used:
+                gstate.images_done += used
+                done += used
+            if new_text != rec.text:
+                self._memory_enqueue(partial(self.memory.edit, gid, rec.message_id, new_text, None))
+                await asyncio.to_thread(self.memory_store.put_guild_state, gstate)
+            await asyncio.sleep(self.importer.page_sleep)
+        await asyncio.to_thread(self.memory_store.put_guild_state, gstate)
+        if done:
+            logger.info(
+                "memory backlog images guild=%s described=%d today=%d/%d", gid, done,
+                gstate.images_done, cap,
+            )  # fmt: skip
+
+    async def _backlog_record(self, guild, rec) -> tuple[str, int]:
+        """(new text, model calls used) for one logged message with undescribed images."""
+        getter = getattr(guild, "get_channel_or_thread", None) or guild.get_channel
+        channel = getter(rec.thread_id or rec.channel_id)
+        text, used = rec.text, 0
+        try:
+            msg = await channel.fetch_message(rec.message_id) if channel else None
+        except discord.HTTPException:
+            msg = None
+        cands = self._image_candidates(msg) if msg is not None else []
+        logger.info(
+            "memory backlog message=%s fetched=%s images=%d", rec.message_id, msg is not None,
+            len(cands),
+        )  # fmt: skip
+        for _i, att in cands:
+            marker = describe_attachment(att)
+            if marker not in text:
+                continue
+            used += 1
+            data, note = await self._read_describe(att)
+            new = format_note(note) if note is not None else None
+            if note is not None and note.is_receipt_like and data is not None:
+                receipt = await self._backlog_receipt(msg, att, data)
+                if receipt is not None:
+                    used += 1  # the extraction call counts against the same daily cap
+                    new = receipt_note(receipt)
+            text = text.replace(marker, new or marker.replace("[image:", "[image-unread:", 1), 1)
+        # anything still plain has no attachment to read (message gone): stop retrying it
+        if msg is None or not cands:
+            text = text.replace("[image: ", "[image-unread: ")
+        return text, used
+
+    async def _backlog_receipt(self, msg, att, data: bytes):
+        """Quietly ingest an old receipt-like image into the ledger (no reply, no reaction):
+        original author as submitter, the message time as the fallback date, deduped by sha256."""
+        gid = msg.guild.id
+        if not self.team.enabled(gid, "receipts") or self._mode(msg.channel, gid) == "off":
+            return None
+        try:
+            res = await asyncio.to_thread(
+                ingest_attachment,
+                self.store,
+                self.llm,
+                self.s,
+                guild_id=gid,
+                data=data,
+                filename=att.filename,
+                content_type=att.content_type,
+                submitter_id=msg.author.id,
+                submitter_name=msg.author.display_name,
+                channel_id=msg.channel.id,
+                message_id=msg.id,
+                note=(msg.content or "").strip(),
+                archive=self.archive,
+                lang=resolve_lang(self.team.current(gid).language_setting, msg.content),
+                at=msg.created_at,
+            )
+        except Exception as e:  # counts only, never contents
+            logger.warning("history receipt intake failed (%s)", type(e).__name__)
+            return None
+        return res.receipt if res.status in ("created", "duplicate") else None
+
+    async def _memory_due(self) -> None:
+        """Layer 2: run due summary updates (and the daily purge), throttled, off the loop."""
+        now = self._clock()
+        if now - self._memory_last < MEMORY_TICK_SECONDS:
+            return
+        self._memory_last = now
+        try:
+            self._memory_triggers()
+            await asyncio.to_thread(self.memory.scheduler.tick, [g.id for g in self.guilds])
+        except Exception:
+            logger.exception("memory tick failed")
+
+    def _can_read(self, channel, member) -> bool:
+        perms = channel.permissions_for(member)
+        return bool(
+            getattr(perms, "read_messages", False) and getattr(perms, "read_message_history", False)
+        )
+
+    def _channel_viewers(self, guild, channel, *, fresh: bool = False) -> frozenset[int]:
+        """Humans who can read `channel`, cached for a minute (and dropped by the permission
+        events). `fresh=True` ignores the cache: the audience an answer is posted to must always
+        be computed live, so a channel that just opened up never looks private."""
+        key = (guild.id, channel.id)
+        hit = self._viewers.get(key)
+        if not fresh and hit is not None and self._clock() - hit[0] < VIEWERS_TTL_S:
+            return hit[1]
+        members = guild.members.values() if isinstance(guild.members, dict) else guild.members
+        viewers = frozenset(
+            m.id for m in members if not getattr(m, "bot", False) and self._can_read(channel, m)
+        )
+        self._viewers[key] = (self._clock(), viewers)
+        return viewers
+
+    def _invalidate_viewers(self, guild_id: int, channel_id: int | None = None) -> None:
+        """Forget cached readers: one channel, or (None) every channel of the guild."""
+        if channel_id is not None:
+            self._viewers.pop((guild_id, channel_id), None)
+            return
+        for key in [k for k in self._viewers if k[0] == guild_id]:
+            del self._viewers[key]
+
+    def _memory_scope(self, guild, member, answering_channel_id: int | None) -> dict[int, str]:
+        """Channel id -> name the asker may get memory from (see dory.memory_access). Blocking:
+        run in a thread."""
+        channels = [
+            *guild.text_channels,
+            *getattr(guild, "voice_channels", ()),
+            *getattr(guild, "stage_channels", ()),
+        ]
+        access = []
+        for c in channels:
+            if self.team.channel_mode(guild.id, c.id, c.name, self.s.ask_channel_ids) == "off":
+                continue
+            # the channel the answer goes to and the asker are read live, never from the cache
+            live = c.id == answering_channel_id
+            viewers = self._channel_viewers(guild, c, fresh=live) - {member.id}
+            if self._can_read(c, member):
+                viewers |= {member.id}
+            access.append(ChannelAccess(c.id, c.name, viewers))
+        allowed = allowed_channel_ids(access, member.id, answering_channel_id)
+        return {a.channel_id: a.name for a in access if a.channel_id in allowed}
+
+    def _answering_id(self, channel) -> int:
+        """The channel id whose readers bound a memory answer posted in `channel` (a thread
+        counts as its parent; a channel memory does not know gives -1, i.e. nothing)."""
+        where = self._memory_channel(channel)
+        return where[0] if where else -1
+
+    async def _memory_tools(self, message, guild, member) -> MemoryTools | None:
+        # in a DM (answering None) the asker's own readable channels are enough
+        answering = self._answering_id(message.channel) if message.guild is not None else None
+        return await self._memory_tools_for(guild, member, answering)
+
+    async def _memory_tools_for(
+        self, guild, member, answering: int | None, *also: int
+    ) -> MemoryTools | None:
+        """Memory tools for `member`, scoped to what everyone reading `answering` (a channel id;
+        None = a DM, the asker alone) may see, and also everyone reading each channel in `also`
+        (where the answer may be posted instead). None when memory is off or the scope fails."""
+        if not self.team.enabled(guild.id, "memory"):
+            return None
+        try:
+            allowed = await asyncio.to_thread(self._memory_scope, guild, member, answering)
+            for other in also:
+                if other != answering:
+                    more = await asyncio.to_thread(self._memory_scope, guild, member, other)
+                    allowed = {cid: name for cid, name in allowed.items() if cid in more}
+        except Exception:
+            logger.warning("could not compute memory scope", exc_info=True)
+            return None
+        vis = None
+        try:  # role hierarchy and disclosure grants (dory.memory_access); failing = plain scope
+            allowed, vis = await asyncio.to_thread(
+                self._coo_scope, guild, member, answering, allowed
+            )
+        except Exception:
+            logger.warning("could not compute the role hierarchy scope", exc_info=True)
+        allowed, vis = self.sharing.with_shared_docs(guild.id, allowed, vis)  # org uploads
+        return MemoryTools(
+            self.memory_store,
+            guild.id,
+            allowed,
+            self.s,
+            self.team.memory_retention_days(guild.id),
+            opener=self._make_opener(guild, allowed, asyncio.get_running_loop()),
+            visibility=vis,
+            embedder=self.embedder,
+            retention_of=lambda gid=guild.id: self.team.fresh_memory_retention_days(
+                gid, fail_closed=True
+            ),
+        )
+
+    def _room_scope(self, guild, voice_channel, humans) -> dict[int, str]:
+        """Channel id -> name that EVERY human in a voice room can read (the audience of a spoken
+        answer), plus the voice channel itself. Blocking: run in a thread."""
+        ids = {h.id for h in humans}
+        allowed: dict[int, str] = {}
+        channels = [
+            *guild.text_channels,
+            *getattr(guild, "voice_channels", ()),
+            *getattr(guild, "stage_channels", ()),
+        ]
+        for c in channels:
+            if self.team.channel_mode(guild.id, c.id, c.name, self.s.ask_channel_ids) == "off":
+                continue
+            viewers = set(self._channel_viewers(guild, c)) - ids
+            viewers |= {h.id for h in humans if self._can_read(c, h)}  # live, not from the cache
+            if c.id == voice_channel.id or ids <= viewers:
+                allowed[c.id] = c.name
+        return allowed
+
+    async def _room_memory_tools(
+        self, guild, voice_channel, humans, *also: int, asker=None
+    ) -> MemoryTools | None:
+        """Memory tools for an answer spoken to everyone in `voice_channel`: only channels all of
+        them can read, and hierarchy-granted work only when every human outranks its author.
+        With `asker` (typed echo of the answer): also only what everyone who reads the voice
+        channel's chat, and each channel id in `also` (the fallback it may be posted to), can read."""
+        humans = list(humans)
+        if not humans or not self.team.enabled(guild.id, "memory"):
+            return None
+        try:
+            allowed = await asyncio.to_thread(self._room_scope, guild, voice_channel, humans)
+            if asker is not None:
+                for other in dict.fromkeys((voice_channel.id, *also)):
+                    more = await asyncio.to_thread(self._memory_scope, guild, asker, other)
+                    allowed = {cid: name for cid, name in allowed.items() if cid in more}
+        except Exception:
+            logger.warning("could not compute the room memory scope", exc_info=True)
+            return None
+        vis = None
+        try:
+            ranks = await asyncio.to_thread(self._ranks, guild)
+            lowest = min(humans, key=lambda h: ranks.get(h.id, -1))
+            room = frozenset(h.id for h in humans)
+            allowed, vis = await asyncio.to_thread(
+                self._coo_scope, guild, lowest, None, allowed, room
+            )
+        except Exception:
+            logger.warning("could not compute the room hierarchy scope", exc_info=True)
+        allowed, vis = self.sharing.with_shared_docs(guild.id, allowed, vis)  # org uploads
+        return MemoryTools(
+            self.memory_store,
+            guild.id,
+            allowed,
+            self.s,
+            self.team.memory_retention_days(guild.id),
+            opener=self._make_opener(guild, allowed, asyncio.get_running_loop()),
+            visibility=vis,
+            embedder=self.embedder,
+            retention_of=lambda gid=guild.id: self.team.fresh_memory_retention_days(
+                gid, fail_closed=True
+            ),
+        )
+
+    # ------------------------------------------------------------- digest
+    def due_digests(self, now: datetime) -> list[tuple[discord.Guild, discord.abc.Messageable]]:
+        """Guilds whose daily digest is due this minute (and not yet sent today)."""
+        due = []
+        for guild in self.guilds:
+            gid = guild.id
+            if self._digest_sent.get(gid) == now.date() or not self.team.enabled(gid, "digest"):
+                continue
+            channel_id = self.team.digest_channel_id(gid, self.s.digest_channel_id)
+            channel = guild.get_channel(channel_id) if channel_id else None
+            if channel is None:  # no digest channel (or not in this guild): skip the guild
+                continue
+            if now.strftime("%H:%M") == self.team.digest_time(gid, self.s.digest_time):
+                due.append((guild, channel))
+        return due
+
+    async def _send_digests(self, now: datetime) -> None:
+        for guild, channel in self.due_digests(now):
+            self._digest_sent[guild.id] = now.date()
+            try:
+                lang = resolve_lang(self.team.channel_language(guild.id, channel.id))
+                text = await asyncio.to_thread(
+                    build_daily_digest, self.store, guild.id, now.date(), lang
+                )
+                for part in chunks(text):
+                    await channel.send(part)
+            except Exception:
+                logger.exception("digest for guild %s failed", guild.id)
+
+    async def _digest_loop(self):
+        await self.wait_until_ready()
+        while not self.is_closed():
+            for guild in self.guilds:  # refresh the caches off the event loop
+                await asyncio.to_thread(self.team.current, guild.id)
+            await self._send_digests(self.s.now())
+            await asyncio.sleep(20)  # < 1 minute, so the HH:MM match is never skipped

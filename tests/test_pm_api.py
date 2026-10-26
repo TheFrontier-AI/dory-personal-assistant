@@ -10,17 +10,17 @@ from zoneinfo import ZoneInfo
 import pytest
 from fastapi.testclient import TestClient
 
-sys.path.insert(0, str(Path(__file__).parent / "salid"))
+sys.path.insert(0, str(Path(__file__).parent / "dory"))
 
 from fake_firestore import FakeFirestore  # noqa: E402
 
+from dory.coo_store import FirestoreDocStore, SQLiteDocStore  # noqa: E402
+from dory.guild_settings import MemoryGuildStore  # noqa: E402
+from dory.orgs import Member, OrgStore, Workspace  # noqa: E402
+from dory.tasks import Task, TaskRepo  # noqa: E402
 from meeting_scribe import center, hub, pm_api  # noqa: E402
 from meeting_scribe.app import app  # noqa: E402
 from meeting_scribe.config import get_settings  # noqa: E402
-from salid.coo_store import FirestoreDocStore, SQLiteDocStore  # noqa: E402
-from salid.guild_settings import MemoryGuildStore  # noqa: E402
-from salid.orgs import Member, OrgStore, Workspace  # noqa: E402
-from salid.tasks import Task, TaskRepo  # noqa: E402
 
 CLIENT_ID = "123-abc.apps.googleusercontent.com"
 GUILD = 1000
@@ -289,7 +289,7 @@ def test_delete_is_admin_only_and_soft(w, docs):
     assert call(w, "mem", "GET", url).status_code == 404
     assert call(w, "mem", "GET", "/projects").json()["projects"] == []
     assert call(w, "adm", "DELETE", url).status_code == 404
-    from salid.projects import ProjectRepo
+    from dory.projects import ProjectRepo
 
     gone = ProjectRepo(docs).get(GUILD, p["id"], include_deleted=True)
     assert gone.deleted and gone.status == "cancelled"
@@ -821,7 +821,7 @@ def test_finance_flag_from_settings_opens_the_budget(w):
 
 # ------------------------------------------------------------------ updates heard in chat
 def test_updates_heard_in_chat_are_served_on_the_project_not_on_the_card(w):
-    from salid import projects as P
+    from dory import projects as P
 
     pid = make(w)["id"]
     repo = P.ProjectRepo(w.docs)
@@ -954,7 +954,7 @@ def test_settings_expose_the_company_language_as_the_pages_default(w):
 
 
 def test_the_risk_prompt_uses_the_company_language():
-    from salid import projects as P
+    from dory import projects as P
 
     p = P.Project(id="p1", name="Alpha", owner=P.Person(name="Boss"))
     stats = {"tasks_done": 0, "tasks_total": 0, "tasks_overdue": 0, "tasks_unassigned": 0}

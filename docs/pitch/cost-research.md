@@ -1,13 +1,13 @@
-# Salid cost estimate: research notes (18 Oct 2026, LINE bridge added 19 Oct)
+# Dory cost estimate: research notes (18 Oct 2026, LINE bridge added 19 Oct)
 
-Working notes for deck slide 10 (Estimated implementation cost). Rule: every number is official price x a stated assumption; label assumptions; cite sources. No measured token usage exists yet (the bot logs `tok_in/tok_cached/tok_out/tok_thought` per answer at src/salid/bot.py:2727, but no values were collected).
+Working notes for deck slide 10 (Estimated implementation cost). Rule: every number is official price x a stated assumption; label assumptions; cite sources. No measured token usage exists yet (the bot logs `tok_in/tok_cached/tok_out/tok_thought` per answer at src/dory/bot.py:2727, but no values were collected).
 
 ## Cost drivers in the code (codebase review)
 
-- **Cloud Run `salid-bot` worker pool**: 1 instance, 1 vCPU, 2 GiB, manual scaling, always on (scripts/deploy_salid.sh:33,139-143). Bills 24/7.
-- **Cloud Run `salid-platforms` service (LINE bridge, live since 19 Oct 2026 per the team)**: min 1 / max 1 instance, `--no-cpu-throttling` (instance-based billing), 1 GiB, default 1 vCPU (scripts/deploy_platforms.sh:74-82 on origin/main). Bills 24/7. Size taken from the script, not read from the live service.
+- **Cloud Run `dory-bot` worker pool**: 1 instance, 1 vCPU, 2 GiB, manual scaling, always on (scripts/deploy_dory.sh:33,139-143). Bills 24/7.
+- **Cloud Run `dory-platforms` service (LINE bridge, live since 19 Oct 2026 per the team)**: min 1 / max 1 instance, `--no-cpu-throttling` (instance-based billing), 1 GiB, default 1 vCPU (scripts/deploy_platforms.sh:74-82 on origin/main). Bills 24/7. Size taken from the script, not read from the live service.
 - **Cloud Run `meeting-scribe` service**: 1 vCPU, 1 GiB, max 1 instance, concurrency 20, request-based CPU (scripts/deploy.sh:72). Bills only while serving.
-- **Models**: chat/briefs/meeting transcription and summary = gemini-3.5-flash; gates, day summaries, image descriptions, task/project/people listeners = gemini-3.5-flash-lite; Meet minutes synthesizer = gemini-3.1-pro-preview (3 Flash extractors first); live voice = gemini-live-2.5-flash-native-audio (us-central1); TTS = Cloud TTS Chirp 3 HD (voice Leda); embeddings = gemini-embedding-001 (256-d); images = gemini-nano-banana-2.1 (1K default); deep tasks = gemini-3-flash-preview via Gemini CLI (src/salid/config.py:37,55,62,69-80,206-207,233-240; src/meeting_scribe/config.py:25-27; agents.py:106-165).
+- **Models**: chat/briefs/meeting transcription and summary = gemini-3.5-flash; gates, day summaries, image descriptions, task/project/people listeners = gemini-3.5-flash-lite; Meet minutes synthesizer = gemini-3.1-pro-preview (3 Flash extractors first); live voice = gemini-live-2.5-flash-native-audio (us-central1); TTS = Cloud TTS Chirp 3 HD (voice Leda); embeddings = gemini-embedding-001 (256-d); images = gemini-nano-banana-2.1 (1K default); deep tasks = gemini-3-flash-preview via Gemini CLI (src/dory/config.py:37,55,62,69-80,206-207,233-240; src/meeting_scribe/config.py:25-27; agents.py:106-165).
 - **Chat answer**: up to 6 tool rounds (5 spoken), max_llm_calls = rounds + 2 (qa.py:61-62,2477). Thinking LOW (chat) / MINIMAL (voice). Stable prompt first for implicit caching. Stable prompt size measured: ~15k chars (no tools) to ~56k chars (all tool families), excluding tool declarations and history.
 - **Passive work**: day summaries every 30 messages or 20 quiet min (Flash-Lite, <=150 msgs/call, <=4,096 out tokens); each summary update triggers 3 Flash-Lite listener calls (tasks, projects, people); 1 Flash-Lite call per image seen; gates only in call/join modes (not listen); morning + evening brief per person on Flash (08:30/18:00, on by default).
 - **Meetings**: Discord voice segments <=20 s per speaker, each transcribed with Flash; summary on leave with Flash. Meet recorder: 45 s FLAC chunks to Flash; minutes = 3 Flash extractors + 1 Pro synthesizer.
@@ -15,7 +15,7 @@ Working notes for deck slide 10 (Estimated implementation cost). Rule: every num
 - **Media caps (per guild)**: images 20/day (5/user), promo kits 20/day, concept images 20/day, deep research 10/day, video ads OFF by default (10/month cap; hero/music off).
 - **Embeddings**: only day-summary items + each query (cached); negligible volume.
 - **Storage**: Firestore one doc per remembered message + day summaries (kept forever, retention 0); Cloud Storage receipt/document originals (if bucket set) and Meet FLAC chunks (no lifecycle rule).
-- **Existing notes**: README.md:703-706 says the always-on worker costs "roughly tens of USD per month"; salid-deck.md says never show a guess.
+- **Existing notes**: README.md:703-706 says the always-on worker costs "roughly tens of USD per month"; dory-deck.md says never show a guess.
 
 ## Official prices (read 18 Oct 2026, USD)
 
@@ -70,7 +70,7 @@ Reference customer: one 20-person company, 22 workdays/month.
 | Images (Nano Banana 2.1, 1K) | $0 | $1 | $7 |
 | Search grounding, TTS, embeddings | $0 | $0 | $0 |
 | Cloud Run worker pool (1 vCPU, 2 GiB, 24/7) | $38 | $38 | $38 |
-| LINE bridge: Cloud Run service salid-platforms (1 vCPU, 1 GiB, always on) | $58 | $58 | $58 |
+| LINE bridge: Cloud Run service dory-platforms (1 vCPU, 1 GiB, always on) | $58 | $58 | $58 |
 | Cloud Run service, Firestore, Storage, Pub/Sub, Secrets, Registry | $3 | $3 | $3 |
 | **Total per month (20-person company)** | **$136** | **$258** | **$876** |
 | Per person per month | $6.79 | $12.90 | $43.78 |
@@ -78,4 +78,4 @@ Reference customer: one 20-person company, 22 workdays/month.
 
 Worker pool list price $43.25/mo, after free tier $38.03 (19 Oct: free tier now applied as the official Tier 1 spending discount; the 18 Oct figure $36.98 subtracted free seconds at Tier 2 prices). LINE service list $63.07, after free tier $57.85. Fixed floor $98.9 (62% of the Base total is Gemini). Chat cost per question: Low $0.023 (880 q/mo), Base $0.055 (2,200 q/mo), High $0.159 (4,400 q/mo)
 
-Biggest unknown: input tokens per chat call (dominates the bill). Measure it from the `tok_in/tok_cached` log line (src/salid/bot.py:2727) before quoting a final number; an always-on demo server with light use sits near the Low column (~$99 infra, Discord bot + LINE bridge + web, plus a few dollars of AI). The fixed floor serves every company on the deployment (multi-tenant), so per-company figures here are conservative.
+Biggest unknown: input tokens per chat call (dominates the bill). Measure it from the `tok_in/tok_cached` log line (src/dory/bot.py:2727) before quoting a final number; an always-on demo server with light use sits near the Low column (~$99 infra, Discord bot + LINE bridge + web, plus a few dollars of AI). The fixed floor serves every company on the deployment (multi-tenant), so per-company figures here are conservative.

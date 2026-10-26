@@ -5,17 +5,17 @@ from __future__ import annotations
 import pytest
 from fastapi.testclient import TestClient
 
+from dory.coo_store import SQLiteDocStore
+from dory.orgs import OrgStore
 from meeting_scribe import center, hub
 from meeting_scribe.app import app
 from meeting_scribe.config import get_settings
-from salid.coo_store import SQLiteDocStore
-from salid.orgs import OrgStore
 
 
 @pytest.fixture
 def client(monkeypatch):
     monkeypatch.setenv("HUB_GOOGLE_CLIENT_ID", "123456-abc.apps.googleusercontent.com")
-    monkeypatch.setenv("SALID_DISCORD_CLIENT_ID", "123456789012345678")
+    monkeypatch.setenv("DORY_DISCORD_CLIENT_ID", "123456789012345678")
     get_settings.cache_clear()
     orgs = OrgStore(SQLiteDocStore(":memory:"))
     app.dependency_overrides[hub.require_user] = lambda: "boss@example.com"
@@ -30,7 +30,7 @@ def test_center_page_has_its_placeholders_replaced(client):
     assert r.status_code == 200 and "text/html" in r.headers["content-type"]
     assert "123456-abc.apps.googleusercontent.com" in r.text
     assert "__HUB_GOOGLE_CLIENT_ID__" not in r.text and "__INVITE_URL__" not in r.text
-    assert "client_id=123456789012345678" in r.text  # the Add-Salid-to-Discord link
+    assert "client_id=123456789012345678" in r.text  # the Add-Dory-to-Discord link
 
 
 def test_center_me_with_overridden_auth(client):

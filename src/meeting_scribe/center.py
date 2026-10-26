@@ -1,4 +1,4 @@
-"""Salid command center API: `/center` page and `/api/center/*` (organizations, workspaces,
+"""Dory command center API: `/center` page and `/api/center/*` (organizations, workspaces,
 sharing, license, documents library, web chat, connectors).
 
 Auth is the hub's: a Google ID token as Bearer (`hub.require_user`). Roles come from the
@@ -41,12 +41,10 @@ from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from meeting_scribe import hub
-from meeting_scribe.config import get_settings
-from salid import monitor
-from salid.actions import ActionQueue
-from salid.change_outbox import ChangeOutbox, record_org_edit
-from salid.connectors import (
+from dory import monitor
+from dory.actions import ActionQueue
+from dory.change_outbox import ChangeOutbox, record_org_edit
+from dory.connectors import (
     COMING_SOON,
     ClickUpConnector,
     ConnectorConfig,
@@ -54,9 +52,9 @@ from salid.connectors import (
     DiscordConnector,
     SlackConnector,
 )
-from salid.connectors.base import TOKENS
-from salid.guild_settings import LinkError
-from salid.identity_links import (
+from dory.connectors.base import TOKENS
+from dory.guild_settings import LinkError
+from dory.identity_links import (
     CODE_PLATFORMS,
     CodeError,
     IdentityLinks,
@@ -64,17 +62,17 @@ from salid.identity_links import (
     NotAMember,
     TooManyCodes,
 )
-from salid.library import (
+from dory.library import (
     CATEGORIES as LIB_CATEGORIES,
 )
-from salid.library import (
+from dory.library import (
     DocItem,
     Library,
     Viewer,
 )
-from salid.licensing import days_left, license_end, license_ok
-from salid.monitor_sources import adapt_action, adapt_change
-from salid.orgs import (
+from dory.licensing import days_left, license_end, license_ok
+from dory.monitor_sources import adapt_action, adapt_change
+from dory.orgs import (
     CATEGORIES,
     HANDOVER_UNDO_HOURS,
     IDENTITY_PLATFORMS,
@@ -104,8 +102,10 @@ from salid.orgs import (
     trial_license,
     workspace_id,
 )
-from salid.people_directory import Observed, PeopleBook, Person, Seen
-from salid.sharing import SHARED_DOCS_CHANNEL, SHARED_DOCS_NAME, WEB_DOCS_CHANNEL
+from dory.people_directory import Observed, PeopleBook, Person, Seen
+from dory.sharing import SHARED_DOCS_CHANNEL, SHARED_DOCS_NAME, WEB_DOCS_CHANNEL
+from meeting_scribe import hub
+from meeting_scribe.config import get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -113,7 +113,7 @@ CENTER_HTML = Path(__file__).parent / "static" / "center.html"
 MAX_ORGS_PER_USER = 5
 CHAT_PER_HOUR = 30
 CHAT_HISTORY_PROMPT_TURNS = 6
-STATE_KIND = "salid_oauth_state"
+STATE_KIND = "dory_oauth_state"
 STATE_TTL = timedelta(minutes=10)
 
 router = APIRouter(prefix="/api/center")
@@ -123,9 +123,9 @@ events_router = APIRouter()
 # ------------------------------------------------------------------ collaborators (overridable)
 @lru_cache
 def _org_store() -> OrgStore:
-    from salid.orgs import make_org_store
+    from dory.orgs import make_org_store
 
-    s, store = hub.get_salid_runtime()
+    s, store = hub.get_dory_runtime()
     return make_org_store(s, store)
 
 
@@ -135,15 +135,15 @@ def get_orgs() -> OrgStore:
 
 @lru_cache
 def _library() -> Library:
-    from salid.coo_store import make_doc_store
-    from salid.library import make_analyzer, make_blobs
+    from dory.coo_store import make_doc_store
+    from dory.library import make_analyzer, make_blobs
 
-    s, store = hub.get_salid_runtime()
+    s, store = hub.get_dory_runtime()
     lazy: dict[str, Any] = {}
 
     def analyze(data: bytes, filename: str, mime: str) -> dict:
         if "fn" not in lazy:
-            from salid.llm import make_client
+            from dory.llm import make_client
 
             lazy["fn"] = make_analyzer(make_client(s), s.gate_model, read_model=s.gemini_model)
         return lazy["fn"](data, filename, mime)
@@ -165,7 +165,7 @@ def get_library() -> Library:
 
 def get_ask() -> Callable[..., Any]:
     """`qa.ask`; tests replace it with a scripted function."""
-    from salid.qa import ask
+    from dory.qa import ask
 
     return ask
 
@@ -173,7 +173,7 @@ def get_ask() -> Callable[..., Any]:
 def connector_config() -> ConnectorConfig:
     st = get_settings()
     try:
-        base = hub.get_salid_runtime()[0].hub_url
+        base = hub.get_dory_runtime()[0].hub_url
     except Exception:
         base = ""
     return ConnectorConfig(
@@ -183,7 +183,7 @@ def connector_config() -> ConnectorConfig:
         slack_signing_secret=st.slack_signing_secret,
         clickup_client_id=st.clickup_client_id,
         clickup_client_secret=st.clickup_client_secret,
-        discord_client_id=st.salid_discord_client_id,
+        discord_client_id=st.dory_discord_client_id,
     )
 
 
@@ -247,7 +247,7 @@ class MemberView(BaseModel):
     job_description: str = ""
     identities: list[IdentityView] = Field(default_factory=list)
     linked_platforms: int = 0  # platforms linked besides Google
-    level: int = 0  # position level mirrored by the bot (salid.positions), 0 = unknown
+    level: int = 0  # position level mirrored by the bot (dory.positions), 0 = unknown
 
 
 def member_view(m: Member, p: UserProfile | None = None) -> MemberView:
@@ -466,9 +466,9 @@ def center_page() -> HTMLResponse:
         client_id = ""
     if not CENTER_HTML.exists():
         raise HTTPException(404, "center.html is not built yet")
-    from meeting_scribe.app import salid_invite_url  # late: app imports this module
+    from meeting_scribe.app import dory_invite_url  # late: app imports this module
 
-    invite = salid_invite_url(get_settings().salid_discord_client_id)
+    invite = dory_invite_url(get_settings().dory_discord_client_id)
     html = (
         CENTER_HTML.read_text(encoding="utf-8")
         .replace("__HUB_GOOGLE_CLIENT_ID__", client_id)
@@ -525,7 +525,7 @@ async def me(email: str = Depends(hub.require_user), orgs: OrgStore = Depends(ge
         about=profile.about,
         job_description=profile.job_description,
         identities=identity_views(profile),
-        discord_verify=bool(get_settings().salid_discord_client_secret),
+        discord_verify=bool(get_settings().dory_discord_client_secret),
         orgs=[
             OrgBrief(
                 id=o.id,
@@ -546,7 +546,7 @@ class CreateOrg(BaseModel):
 async def set_my_language(
     body: LanguageBody, email: str = Depends(hub.require_user), orgs: OrgStore = Depends(get_orgs)
 ) -> dict[str, str]:
-    """Remember the language this person wants every Salid page in (hub, center, start)."""
+    """Remember the language this person wants every Dory page in (hub, center, start)."""
     try:
         lang = await run_in_threadpool(orgs.set_user_language, email, body.language)
     except ValueError as exc:
@@ -603,7 +603,7 @@ async def link_my_google(
 ) -> list[IdentityView]:
     """Add a Google account to THIS account (for people who signed up with Discord): from now
     on "Sign in with Google" with it lands here. The token is verified like a sign-in; 409 when
-    that Google account is already a Salid account of its own."""
+    that Google account is already a Dory account of its own."""
     try:
         claims = verify(body.credential, get_settings().hub_google_client_id)
     except ValueError as exc:
@@ -636,7 +636,7 @@ async def verify_discord_by_code(
     orgs: OrgStore = Depends(get_orgs),
     guilds=Depends(hub.get_guild_store),
 ) -> list[IdentityView]:
-    """Redeem the one-time code Salid handed you in Discord (`/ลิงก์บัญชี` / `/linkaccount`):
+    """Redeem the one-time code Dory handed you in Discord (`/ลิงก์บัญชี` / `/linkaccount`):
     proof that this Google account is that Discord user."""
     try:
         _gid, uid, uname = await run_in_threadpool(
@@ -661,15 +661,15 @@ def discord_identity_redirect() -> str:
 def exchange_discord_identity(code: str) -> tuple[str, str]:
     """OAuth2 `identify`: turn the callback code into (discord user id, display name).
     Overridden in tests."""
-    from salid.connectors.base import http_client
+    from dory.connectors.base import http_client
 
     s = get_settings()
     with http_client() as http:
         tok = http.post(
             f"{DISCORD_OAUTH}/token",
             data={
-                "client_id": s.salid_discord_client_id,
-                "client_secret": s.salid_discord_client_secret,
+                "client_id": s.dory_discord_client_id,
+                "client_secret": s.dory_discord_client_secret,
                 "grant_type": "authorization_code",
                 "code": code,
                 "redirect_uri": discord_identity_redirect(),
@@ -691,16 +691,14 @@ def get_discord_identity_exchange() -> Callable[[str], tuple[str, str]]:
 
 # ------------------------------------------------------------------ sign in with Discord
 # Same OAuth app, scope `identify email`: a Discord account with a VERIFIED email signs in as
-# that email (the key of every org membership) and gets a Salid session, exactly like Google.
+# that email (the key of every org membership) and gets a Dory session, exactly like Google.
 LOGIN_STATE = "discord_login"
 LOGIN_NEXT = ("center", "start", "hub")
 
 
 def discord_login_enabled() -> bool:
     s = get_settings()
-    return bool(
-        s.salid_discord_client_id and s.salid_discord_client_secret and s.salid_session_secret
-    )
+    return bool(s.dory_discord_client_id and s.dory_discord_client_secret and s.dory_session_secret)
 
 
 def discord_login_redirect() -> str:
@@ -710,15 +708,15 @@ def discord_login_redirect() -> str:
 
 def exchange_discord_login(code: str) -> tuple[str, str, str, bool]:
     """(discord user id, display name, email, email_verified). Overridden in tests."""
-    from salid.connectors.base import http_client
+    from dory.connectors.base import http_client
 
     s = get_settings()
     with http_client() as http:
         tok = http.post(
             f"{DISCORD_OAUTH}/token",
             data={
-                "client_id": s.salid_discord_client_id,
-                "client_secret": s.salid_discord_client_secret,
+                "client_id": s.dory_discord_client_id,
+                "client_secret": s.dory_discord_client_secret,
                 "grant_type": "authorization_code",
                 "code": code,
                 "redirect_uri": discord_login_redirect(),
@@ -763,7 +761,7 @@ async def discord_login_start(
     )
     q = urlencode(
         {
-            "client_id": get_settings().salid_discord_client_id,
+            "client_id": get_settings().dory_discord_client_id,
             "response_type": "code",
             "scope": "identify email",
             "redirect_uri": discord_login_redirect(),
@@ -816,7 +814,7 @@ async def discord_login_callback(
         if not orgs.user_profile(email).name and uname:
             orgs.set_user_name(email, uname)
         s = get_settings()
-        token, _exp = hub.issue_session(email, s.salid_session_secret, s.salid_session_days)
+        token, _exp = hub.issue_session(email, s.dory_session_secret, s.dory_session_days)
         return nxt, None, token
 
     nxt, err, token = await run_in_threadpool(run)
@@ -834,7 +832,7 @@ async def discord_identity_start(
 ) -> dict[str, str]:
     """URL of Discord's consent screen (scope `identify` only). 503 until the client secret is set."""
     s = get_settings()
-    if not (s.salid_discord_client_id and s.salid_discord_client_secret):
+    if not (s.dory_discord_client_id and s.dory_discord_client_secret):
         raise HTTPException(503, "Discord verification is not configured")
     state = secrets.token_urlsafe(24)
     exp = (datetime.now(UTC) + STATE_TTL).isoformat(timespec="seconds")
@@ -847,7 +845,7 @@ async def discord_identity_start(
     )
     q = urlencode(
         {
-            "client_id": s.salid_discord_client_id,
+            "client_id": s.dory_discord_client_id,
             "response_type": "code",
             "scope": "identify",
             "redirect_uri": discord_identity_redirect(),
@@ -1385,7 +1383,7 @@ class PersonView(BaseModel):
     name: str
     nickname: str
     display_name: str
-    email: str  # linked Salid account, "" = no account yet
+    email: str  # linked Dory account, "" = no account yet
     member_role: str = ""  # their role in this org when linked
     title: str
     department: str
@@ -1412,10 +1410,10 @@ def get_people() -> PeopleBook:
 
 @lru_cache
 def _observer() -> Callable[[str], dict]:
-    from salid.llm import make_client
-    from salid.people_directory import make_observer
+    from dory.llm import make_client
+    from dory.people_directory import make_observer
 
-    s, _ = hub.get_salid_runtime()
+    s, _ = hub.get_dory_runtime()
     return make_observer(make_client(s), s.gate_model)
 
 
@@ -1462,7 +1460,7 @@ async def list_people(
     people: PeopleBook = Depends(get_people),
 ) -> dict:
     """Everyone seen on the company's Discord (account or not). Members see the public part;
-    owners / admins also see hidden people and what Salid observed."""
+    owners / admins also see hidden people and what Dory observed."""
     ws = people_workspace(ctx, workspace_id)
     rows = await run_in_threadpool(people.list, ws.memory_id, include_hidden=ctx.is_exec)
     return {
@@ -1482,15 +1480,15 @@ async def discover_people(
     people: PeopleBook = Depends(get_people),
 ) -> dict:
     """Scan the last 90 days of the team memory, the tasks and the bot's profiles; link the
-    people who have a Salid account (verified Discord)."""
+    people who have a Dory account (verified Discord)."""
     ws = people_workspace(ctx, workspace_id)
     channels = {cid: name for cid, name in chat_scope(lib, ctx.org, ws, True).items() if cid > 0}
 
     def run() -> list[Person]:
-        tasks = lib.docs.find("salid_tasks", ws.memory_id)
+        tasks = lib.docs.find("dory_tasks", ws.memory_id)
         nicks = {
             str(d.get("user_id")): str(d.get("nickname") or "")
-            for d in lib.docs.find("salid_profiles", ws.memory_id)
+            for d in lib.docs.find("dory_profiles", ws.memory_id)
             if d.get("nickname")
         }
         return people.discover(
@@ -1553,7 +1551,7 @@ async def observe_person(
     people: PeopleBook = Depends(get_people),
     observer: Callable[[str], dict] = Depends(get_observer),
 ) -> PersonView:
-    """Ask Salid what this person seems to do, from their own messages (one cheap-model call,
+    """Ask Dory what this person seems to do, from their own messages (one cheap-model call,
     in the company language). Execs only: it is derived from every room."""
     ws = people_workspace(ctx, workspace_id)
     p0 = await run_in_threadpool(people.get, ws.memory_id, pid)
@@ -1576,7 +1574,7 @@ async def observe_person(
         p = await run_in_threadpool(run)
     except Exception as exc:
         logger.exception("observe %s failed", pid)
-        raise HTTPException(502, "Salid could not read the conversations right now") from exc
+        raise HTTPException(502, "Dory could not read the conversations right now") from exc
     return person_view(p, ctx.org, exec_view=True)
 
 
@@ -1670,10 +1668,10 @@ class ExpertResult(BaseModel):
 
 @lru_cache
 def _expert_model() -> Callable[[str], dict]:
-    from salid.expertise import make_model_call
-    from salid.llm import make_client
+    from dory.expertise import make_model_call
+    from dory.llm import make_client
 
-    s, _ = hub.get_salid_runtime()
+    s, _ = hub.get_dory_runtime()
     return make_model_call(make_client(s), s.gemini_model)
 
 
@@ -1686,9 +1684,9 @@ def expertise_candidates(
     ctx: Ctx, orgs: OrgStore, lib: Library, people: PeopleBook, *, exclude: str = ""
 ) -> tuple[list, dict[str, dict]]:
     """Evidence for everyone: members (profile, positions, observed, tasks) and people seen on
-    the platforms without an account. What Salid OBSERVED (read from every room) is used only
+    the platforms without an account. What Dory OBSERVED (read from every room) is used only
     for owners / admins. Returns (candidates, key -> display info)."""
-    from salid.expertise import candidate
+    from dory.expertise import candidate
 
     org = orgs.get(ctx.org.id) or ctx.org
     profiles = orgs.member_profiles(org)
@@ -1697,7 +1695,7 @@ def expertise_candidates(
     persons = people.list(gid) if gid else []
     by_uid = {p.external_id: p for p in persons}
     by_email = {p.email: p for p in persons if p.email}
-    tasks = lib.docs.find("salid_tasks", gid) if gid else []
+    tasks = lib.docs.find("dory_tasks", gid) if gid else []
     done: dict[str, list[str]] = defaultdict(list)
     open_: dict[str, list[str]] = defaultdict(list)
     for t in sorted(tasks, key=lambda x: x.get("created_at", ""), reverse=True):
@@ -1781,7 +1779,7 @@ def locate_experts(
     position_id: str | None = None,
     exclude: str = "",
 ) -> ExpertResult:
-    from salid.expertise import rank
+    from dory.expertise import rank
 
     org = orgs.get(ctx.org.id) or ctx.org
     pos = next((x for x in org.positions if x.id == position_id), None) if position_id else None
@@ -1821,7 +1819,7 @@ async def find_experts(
     model_call: Callable[[str], dict] = Depends(get_expert_model),
 ) -> ExpertResult:
     """Expertise locator: the best person (and backups) for a need or a position, each with
-    the reasons and the evidence from Salid's records."""
+    the reasons and the evidence from Dory's records."""
     try:
         return await run_in_threadpool(
             locate_experts,
@@ -1839,7 +1837,7 @@ async def find_experts(
         raise
     except Exception as exc:
         logger.exception("expertise locator failed")
-        raise HTTPException(502, "Salid could not look for people right now") from exc
+        raise HTTPException(502, "Dory could not look for people right now") from exc
 
 
 # ------------------------------------------------------------------ workspaces
@@ -2259,9 +2257,9 @@ async def upload_document(
     lib: Library = Depends(get_library),
 ) -> DocItem:
     """Multipart upload (field `file`, <= 20 MB: PDF, Office, text, images). Flash-Lite reads,
-    categorises (`tags`) and summarises it; Salid can then find it for this org."""
-    from salid.docs import DocUnreadable
-    from salid.library import MAX_UPLOAD_BYTES
+    categorises (`tags`) and summarises it; Dory can then find it for this org."""
+    from dory.docs import DocUnreadable
+    from dory.library import MAX_UPLOAD_BYTES
 
     data = await file.read(MAX_UPLOAD_BYTES + 1)
     if len(data) > MAX_UPLOAD_BYTES:
@@ -2385,7 +2383,7 @@ async def overview(
     return await run_in_threadpool(run)
 
 
-# ------------------------------------------------------------------ tools Salid has on the web
+# ------------------------------------------------------------------ tools Dory has on the web
 def _route(coro) -> dict | list:
     """Run a command-center route from a chat / voice tool (a worker thread): the SAME code the
     buttons call, so the rules (roles, one owner, seats...) are identical. HTTP errors come back
@@ -2414,11 +2412,11 @@ def _route(coro) -> dict | list:
 
 def command_center_tools(ctx: Ctx, orgs: OrgStore, guilds: Any) -> list:
     """Everything the command center's buttons do, as tools, so a person can do it by asking
-    Salid (chat or Live voice). Each tool calls the same route as the button; owner / admin only
+    Dory (chat or Live voice). Each tool calls the same route as the button; owner / admin only
     actions are left out for members."""
     from types import SimpleNamespace
 
-    base = connector_config().base_url.rstrip("/") or "https://salid.frontier-tech.app"
+    base = connector_config().base_url.rstrip("/") or "https://dory.frontier-tech.app"
     req = SimpleNamespace(base_url=base + "/")
 
     def connect_link(app: str) -> dict:
@@ -2691,8 +2689,8 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
     my language) and, for owners / admins talking about a Discord workspace, the server
     settings the bot also exposes (saved in the guild document, picked up by the bot within a
     minute, so the change reaches Discord)."""
-    from salid.chat_tools import ChatActions, build_chat_tools
-    from salid.i18n import LANGS
+    from dory.chat_tools import ChatActions, build_chat_tools
+    from dory.i18n import LANGS
 
     email = ctx.email
 
@@ -2907,7 +2905,7 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
             people_without_account: str = "",
         ) -> dict:
             """(Owners / admins.) `people_without_account`: names (comma separated) of people in
-            this job who have no Salid account (planned hires, demo staff). Create a job position ahead of time, or update one
+            this job who have no Dory account (planned hires, demo staff). Create a job position ahead of time, or update one
             (`position_id`, or the same `title`): job description, responsibilities, skills
             (comma separated), the company policies that apply to it, `holder` = a member who
             holds it (name or email; "none" = vacant), `reports_to` = another position's title.
@@ -2995,7 +2993,7 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
         """Expertise locator: who in the company is best for a need ("who knows our tax
         filing", "who can take over Jems' tasks", "who could fill the Sales Lead role"),
         with a primary pick, backups, the reasons and the evidence (profiles, positions, what
-        Salid observed, finished tasks). `position` = a position title to match against its
+        Dory observed, finished tasks). `position` = a position title to match against its
         job description; `exclude` = the person being replaced. Present the picks WITH the
         reasons; say when the evidence is thin."""
         org = orgs.get(ctx.org.id) or ctx.org
@@ -3016,7 +3014,7 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
     def read_document(name: str) -> dict:
         """Read a document the company keeps on the website (uploaded files and originals
         archived from Discord): `name` = its file name or words from its title. Returns its
-        text (as Salid read it, page images included), summary and Documents group. Use this,
+        text (as Dory read it, page images included), summary and Documents group. Use this,
         not open_file, for files uploaded on the website."""
         lib = get_library()
         viewer = _viewer(ctx)
@@ -3063,7 +3061,7 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
         }
 
     def set_days(days: int) -> dict:
-        from salid.guild_settings import (
+        from dory.guild_settings import (
             MAX_RETENTION_DAYS,
             MIN_RETENTION_DAYS,
             valid_retention_days,
@@ -3102,7 +3100,7 @@ def _action_queue(docs: Any, org_id: str) -> ActionQueue:
 
 def discord_action_tools(ctx: Ctx, docs: Any, ws: Workspace) -> list:
     """Act on the company's Discord from the web (admins): the bot carries the action out
-    within seconds (salid.actions). Each tool returns an action id to check with
+    within seconds (dory.actions). Each tool returns an action id to check with
     `discord_action_status`."""
     q = _action_queue(docs, ctx.org.id)
     gid = ws.memory_id
@@ -3115,7 +3113,7 @@ def discord_action_tools(ctx: Ctx, docs: Any, ws: Workspace) -> list:
         return {
             "status": "queued",
             "action_id": a["id"],
-            "note": "Salid's Discord bot does this within a few seconds; check with discord_action_status",
+            "note": "Dory's Discord bot does this within a few seconds; check with discord_action_status",
         }
 
     def discord_post_message(channel: str, text: str) -> dict:
@@ -3401,12 +3399,12 @@ async def my_tasks(
     Discord id or any of their names), nearest due first."""
 
     def run() -> dict:
-        from salid.tasks import TaskRepo
+        from dory.tasks import TaskRepo
 
         out = my_tasks_sync(ctx, orgs, lib)
         out.sort(key=lambda x: (x["status"] != "open", x["due"] or "9999", x["title"]))
-        # things the company asked SALID to do (executives see them: they are usually theirs)
-        salid: list[dict] = []
+        # things the company asked DORY to do (executives see them: they are usually theirs)
+        dory: list[dict] = []
         if ctx.is_exec:
             repo = TaskRepo(lib.docs)
             for ws in ctx.org.workspaces:
@@ -3414,10 +3412,10 @@ async def my_tasks(
                     continue
                 for t in repo.list(ws.memory_id, status="open"):
                     if not t.assignee_id and (t.assignee_name or "").strip().casefold() in (
-                        "salid",
-                        "สลิด",
+                        "dory",
+                        "ดอรี่",
                     ):
-                        salid.append(
+                        dory.append(
                             {
                                 "id": t.id,
                                 "title": t.title,
@@ -3433,7 +3431,7 @@ async def my_tasks(
             "tasks": out,
             "open": sum(1 for x in out if x["status"] == "open"),
             "done": sum(1 for x in out if x["status"] != "open"),
-            "salid_tasks": salid,
+            "dory_tasks": dory,
         }
 
     return await run_in_threadpool(run)
@@ -3567,7 +3565,7 @@ def calendar_view(
 ) -> dict:
     """Calendar items by day. Company layer: meetings, Discord events, project deadlines and
     milestones (projects the caller may read). Personal layer: their reminders and task dues."""
-    from salid.reminders import KIND as REMINDERS
+    from dory.reminders import KIND as REMINDERS
 
     def run() -> dict:
         p = orgs.user_profile(ctx.email)
@@ -3605,8 +3603,8 @@ def calendar_view(
                         "workspace_name": t["workspace_name"],
                     }
                 )
-        # meetings Salid took minutes of, where this person was in the room (their Discord id)
-        from salid.coo_store import MINUTES
+        # meetings Dory took minutes of, where this person was in the room (their Discord id)
+        from dory.coo_store import MINUTES
 
         public_by_ws = {}
         for ws in ctx.org.workspaces:
@@ -3634,10 +3632,10 @@ def calendar_view(
                         "workspace_name": ws.name,
                     }
                 )
-            # meetings Salid scheduled (chat "นัดประชุม…") and Discord scheduled events the bot
+            # meetings Dory scheduled (chat "นัดประชุม…") and Discord scheduled events the bot
             # tracked: the secretary's meeting records
             try:
-                from salid.secretary_store import MEETINGS
+                from dory.secretary_store import MEETINGS
 
                 for m in sorted(
                     lib.docs.find(MEETINGS, ws.memory_id), key=lambda x: x.get("start_utc", "")
@@ -3707,7 +3705,7 @@ def calendar_view(
 def project_calendar_items(ctx: Ctx, lib: Library) -> list[dict]:
     """Deadlines and open milestones of the projects the caller may read (team projects, all
     for owners / admins), on the company layer."""
-    from salid.projects import PROJECTS, Project
+    from dory.projects import PROJECTS, Project
 
     out: list[dict] = []
     for ws in ctx.org.workspaces:
@@ -3745,7 +3743,7 @@ def project_calendar_items(ctx: Ctx, lib: Library) -> list[dict]:
 
 
 def my_tasks_sync(ctx: Ctx, orgs: OrgStore, lib: Library) -> list[dict]:
-    from salid.tasks import TaskRepo
+    from dory.tasks import TaskRepo
 
     p = orgs.user_profile(ctx.email)
     handles = _my_handles(ctx, p)
@@ -3780,7 +3778,7 @@ async def server_summary(
     ctx: Ctx = Depends(member_ctx), guilds=Depends(hub.get_guild_store)
 ) -> dict:
     """What a regular member may know about the company's Discord servers: name, language,
-    tone and which Salid features are on. No controls (those are the admins' Server settings)."""
+    tone and which Dory features are on. No controls (those are the admins' Server settings)."""
 
     def run() -> dict:
         rows = []
@@ -3811,11 +3809,11 @@ async def server_summary(
 
 # ------------------------------------------------------------------ voice input (any language)
 def transcribe_web_audio(data: bytes, mime: str, target_lang: str):
-    """Blocking: one utterance from the browser -> `salid.web_voice.Heard`. Overridden in tests."""
-    from salid.llm import make_client
-    from salid.web_voice import transcribe_utterance
+    """Blocking: one utterance from the browser -> `dory.web_voice.Heard`. Overridden in tests."""
+    from dory.llm import make_client
+    from dory.web_voice import transcribe_utterance
 
-    s, _store = hub.get_salid_runtime()
+    s, _store = hub.get_dory_runtime()
     return transcribe_utterance(make_client(s), s.gemini_model, data, mime, target_lang)
 
 
@@ -3897,7 +3895,7 @@ class ChatBody(BaseModel):
     document_ids: list[str] = Field(default_factory=list, max_length=10)  # several at once
 
 
-DOC_BLOCK_TEXT = 20_000  # characters of ONE uploaded file's text Salid reads in the chat
+DOC_BLOCK_TEXT = 20_000  # characters of ONE uploaded file's text Dory reads in the chat
 DOC_BLOCK_TOTAL = 45_000  # all files of one chat message together
 
 
@@ -3997,9 +3995,9 @@ def secretary_instructions(ctx: Ctx, n: int) -> str:
 def uploaded_doc_block(
     lib: Library, ctx: Ctx, doc_id: str, *, text_limit: int = 0, tail: bool = True
 ) -> str:
-    """What Salid needs to act like a secretary on a file just uploaded in the chat: where it
+    """What Dory needs to act like a secretary on a file just uploaded in the chat: where it
     was filed, its summary and text, and what to do with a company record. "" when unknown."""
-    from salid.library import ORG_DOCS, classify_group
+    from dory.library import ORG_DOCS, classify_group
 
     ws_id, _, key = doc_id.partition(":upload:")
     ws = ctx.org.workspace(ws_id)
@@ -4027,7 +4025,7 @@ class ChatReply(BaseModel):
 
 
 class Turn(BaseModel):
-    role: str  # user | salid
+    role: str  # user | dory
     text: str
     at: str
     workspace_id: str = ""
@@ -4055,7 +4053,7 @@ def company_workspace(org: Org) -> Workspace | None:
 
 def chat_scope(lib: Library, org: Org, ws: Workspace, is_exec: bool) -> dict[int, str]:
     """Channels (id -> name) the web caller's memory tools may read in `ws`. Decided here."""
-    from salid.sharing import sources_in_org
+    from dory.sharing import sources_in_org
 
     allowed: dict[int, str] = {}
     if ws.platform == "web":
@@ -4078,8 +4076,8 @@ def chat_scope(lib: Library, org: Org, ws: Workspace, is_exec: bool) -> dict[int
 
 def _slack_channel_ids(lib: Library, ws: Workspace) -> list[int]:
     # DocStore.find returns docs only; the channel's int id is the doc key = namespaced_id(...)
-    from salid.connectors.slack import SLACK_CHANNELS
-    from salid.orgs import namespaced_id
+    from dory.connectors.slack import SLACK_CHANNELS
+    from dory.orgs import namespaced_id
 
     return [
         namespaced_id("slack", d["slack_id"], "channel")
@@ -4099,26 +4097,26 @@ def answer_question(
     page: str | None = None,
     language: str | None = None,
 ) -> str:
-    """Blocking: Salid's text brain for one web question, scoped like the chat route (the org's
+    """Blocking: Dory's text brain for one web question, scoped like the chat route (the org's
     workspace, the caller's memory rights, their profile, the web tools). Used by the chat route
-    and by the live voice session's ask_salid tool."""
-    from salid.qa import MemoryTools
+    and by the live voice session's ask_dory tool."""
+    from dory.qa import MemoryTools
 
-    s, store = hub.get_salid_runtime()
+    s, store = hub.get_dory_runtime()
     is_exec = ctx.is_exec and ws.platform == "discord"
     allowed = chat_scope(lib, ctx.org, ws, ctx.is_exec)
     memory = MemoryTools(lib.memory, ws.memory_id, allowed, s) if allowed else None
     turns = orgs.chat_history(ctx.org.id, ctx.email)
     history = "\n".join(
-        f"{'ผู้ใช้' if t['role'] == 'user' else 'สลิด'}: {t['text']}"
+        f"{'ผู้ใช้' if t['role'] == 'user' else 'ดอรี่'}: {t['text']}"
         for t in turns[-CHAT_HISTORY_PROMPT_TURNS:]
     )
     lang = language or company_language(guilds, ws)
     profile = orgs.user_profile(ctx.email)
     tools = web_tools(ctx, orgs, guilds, ws)
     who = who_block(ctx, profile, page)
-    # ONE Salid: the Discord bot's own agent assembly (every feature's tools, company playbook,
-    # tone, web search), driven headless with web stand-ins. See salid.headless.
+    # ONE Dory: the Discord bot's own agent assembly (every feature's tools, company playbook,
+    # tone, web search), driven headless with web stand-ins. See dory.headless.
     kw = (
         headless_kwargs(ctx, profile, ws, question, lang, memory)
         if ws.platform == "discord"
@@ -4160,14 +4158,14 @@ def answer_question(
 
 
 def get_bot() -> Any:
-    """The headless Salid (the Discord bot object, never connected). None when it cannot be
+    """The headless Dory (the Discord bot object, never connected). None when it cannot be
     built here (then the chat falls back to the lighter tool set). Overridden in tests."""
     try:
-        from salid.headless import get_headless_bot
+        from dory.headless import get_headless_bot
 
         return get_headless_bot()
     except Exception:
-        logger.exception("headless Salid unavailable")
+        logger.exception("headless Dory unavailable")
         return None
 
 
@@ -4189,7 +4187,7 @@ def company_language(guilds: Any, ws: Workspace) -> str:
 def needs_language_fix(text: str, lang: str) -> bool:
     """True when `text` is visibly not in `lang`: Thai letters in a non-Thai reply, or a Thai
     reply with no Thai at all (script check only: cheap and never wrong about Thai)."""
-    from salid.i18n import base_lang, has_thai
+    from dory.i18n import base_lang, has_thai
 
     if not text:
         return False
@@ -4200,10 +4198,10 @@ def needs_language_fix(text: str, lang: str) -> bool:
 
 @lru_cache
 def _translator() -> Callable[[str, str], str]:
-    from salid.llm import make_client
-    from salid.translate import translate_text
+    from dory.llm import make_client
+    from dory.translate import translate_text
 
-    s, _ = hub.get_salid_runtime()
+    s, _ = hub.get_dory_runtime()
     client = make_client(s)
 
     def run(text: str, lang: str) -> str:
@@ -4233,7 +4231,7 @@ def headless_kwargs(
     ctx: Ctx, profile: UserProfile, ws: Workspace, question: str, lang: str, memory: Any
 ) -> dict | None:
     """`SecretaryBot._agent_kwargs` for a web request, or None when the headless bot is off."""
-    from salid.headless import agent_kwargs_in_thread, person_id, web_context
+    from dory.headless import agent_kwargs_in_thread, person_id, web_context
 
     bot = get_bot()
     if bot is None:
@@ -4281,19 +4279,19 @@ def company_knowledge(
     question: str,
     lang: str,
 ) -> tuple[str, list]:
-    """The company playbook (what the company taught Salid: addresses, tax id, rules, glossary,
+    """The company playbook (what the company taught Dory: addresses, tax id, rules, glossary,
     SOPs, FAQ) as a prompt block plus the teach / show / forget tools, exactly like in Discord.
     ("" , []) when the feature is off or anything fails: the chat never breaks on it."""
-    from salid.company_brain import CompanyCtx, CompanyRepo, company_block, company_tools
-    from salid.i18n import base_lang
-    from salid.orgs import _email_bucket
+    from dory.company_brain import CompanyCtx, CompanyRepo, company_block, company_tools
+    from dory.i18n import base_lang
+    from dory.orgs import _email_bucket
 
     try:
         gid = ws.memory_id
         g = guilds.get(gid)
         if not getattr(g.features, "company_learning", True):
             return "", []
-        s, _store = hub.get_salid_runtime()
+        s, _store = hub.get_dory_runtime()
         repo = CompanyRepo(lib.docs, clock=lambda: s.now())
         pb = repo.get(gid)
         block = company_block(pb, question, lang=base_lang(lang))
@@ -4325,7 +4323,7 @@ async def chat(
     guilds=Depends(hub.get_guild_store),
 ) -> ChatReply:
     """Same `qa.ask` brain as Discord, as the logged-in member (owner / admin = executive).
-    Salid is ONE colleague of the company: without `workspace_id` she answers from the company's
+    Dory is ONE colleague of the company: without `workspace_id` she answers from the company's
     workspace (its Discord server when connected, else the web workspace)."""
     ws = ctx.org.workspace(body.workspace_id) if body.workspace_id else company_workspace(ctx.org)
     if ws is None or ws.status != "connected":
@@ -4358,7 +4356,7 @@ async def chat(
         raise
     except Exception as exc:
         logger.exception("center chat failed")
-        raise HTTPException(502, "Salid could not answer right now") from exc
+        raise HTTPException(502, "Dory could not answer right now") from exc
     at = stamp()
     await run_in_threadpool(
         orgs.append_chat,
@@ -4366,7 +4364,7 @@ async def chat(
         ctx.email,
         [
             {"role": "user", "text": question, "at": at, "workspace_id": ws.id},
-            {"role": "salid", "text": text, "at": stamp(), "workspace_id": ws.id},
+            {"role": "dory", "text": text, "at": stamp(), "workspace_id": ws.id},
         ],
     )
     return ChatReply(answer=text, workspace_id=ws.id, at=at)
@@ -4378,7 +4376,7 @@ async def chat_history(ctx: Ctx = Depends(member_ctx), orgs: OrgStore = Depends(
     return {"turns": [Turn(**t) for t in turns]}
 
 
-# ------------------------------------------------------------------ live voice (the Discord Salid, on the web)
+# ------------------------------------------------------------------ live voice (the Discord Dory, on the web)
 LIVE_MAX_S = 30 * 60
 _live_open: set[str] = set()  # "org:email" sessions currently open (one per person)
 
@@ -4399,11 +4397,11 @@ async def live_voice(
     verify: Callable[[str, str], dict[str, Any]] = Depends(hub.google_token_verifier),
     connect: Callable[[Any], Any] | None = Depends(get_live_connect),
 ) -> None:
-    """Two-way live conversation with Salid, exactly like a Discord voice room: the browser sends
-    16 kHz PCM16 frames (binary), Salid's 24 kHz audio comes back (binary); JSON events carry
+    """Two-way live conversation with Dory, exactly like a Discord voice room: the browser sends
+    16 kHz PCM16 frames (binary), Dory's 24 kHz audio comes back (binary); JSON events carry
     transcripts, "interrupted", "thinking", "turn", "ready", "error". First message from the
-    browser: {"token", "lang": th|en, "page", "greet": true} (greet = Salid speaks first)."""
-    from salid.web_live import WebLive, build_web_instruction
+    browser: {"token", "lang": th|en, "page", "greet": true} (greet = Dory speaks first)."""
+    from dory.web_live import WebLive, build_web_instruction
 
     await websocket.accept()
     key = None
@@ -4439,7 +4437,7 @@ async def live_voice(
         _live_open.add(key)
         lang = hello.get("lang") if hello.get("lang") in ("th", "en") else "en"
         page = str(hello.get("page") or "")[:80] or None
-        s, _store = hub.get_salid_runtime()
+        s, _store = hub.get_dory_runtime()
         tone, note = "cheerful", ""
         if ws.platform == "discord":
             try:
@@ -4518,9 +4516,9 @@ async def tasks_view(
     lib: Library = Depends(get_library),
     connectors: dict = Depends(get_connectors),
 ) -> dict:
-    """Open tasks: Discord workspaces from Salid's COO list (plain members see tasks that came
+    """Open tasks: Discord workspaces from Dory's COO list (plain members see tasks that came
     from public channels), ClickUp workspaces live and read-only."""
-    from salid.tasks import TaskRepo
+    from dory.tasks import TaskRepo
 
     def run() -> list[dict]:
         out: list[dict] = []
@@ -4773,7 +4771,7 @@ class IssuedCodeView(BaseModel):
     platform: str
     kind: str  # identity | attach
     expires_at: str
-    command: str  # what to send to Salid in a private chat
+    command: str  # what to send to Dory in a private chat
 
 
 class LinkedIdentityView(BaseModel):
@@ -4806,7 +4804,7 @@ async def create_identity_code(
     links: IdentityLinks = Depends(get_identity_links),
 ) -> IssuedCodeView:
     """A 15-minute single-use code that links the caller's `platform` chat account to their
-    member record: they send `link 1234-5678` to Salid in a private chat. At most 5 live codes
+    member record: they send `link 1234-5678` to Dory in a private chat. At most 5 live codes
     per member (429)."""
     _code_platform(platform)
 
@@ -4873,7 +4871,7 @@ async def create_attach_code(
 
 # ------------------------------------------------------------------ Google Calendar (per member)
 def get_google_oauth(orgs: OrgStore = Depends(get_orgs)) -> Any:
-    from salid.google_oauth import GoogleConfig, GoogleOAuth
+    from dory.google_oauth import GoogleConfig, GoogleOAuth
 
     return GoogleOAuth(orgs.docs, GoogleConfig.from_settings(get_settings()))
 
@@ -4911,7 +4909,7 @@ async def google_calendar_disconnect(
     ctx: Ctx = Depends(member_ctx), g: Any = Depends(get_google_oauth)
 ) -> dict:
     """Revoke at Google and delete the stored token."""
-    from salid.google_oauth import Account
+    from dory.google_oauth import Account
 
     email = _google_member(ctx, g)
     await run_in_threadpool(g.revoke, Account(ctx.org.id, email))
@@ -4927,7 +4925,7 @@ async def google_calendar_callback(
     """Browser redirect from Google (no Bearer header): the single-use `state` made by /connect
     identifies the org and member. Redirects to `/center?calendar=connected` or
     `/center?calendar=error&reason=<code>`."""
-    from salid.google_oauth import Account, GoogleOAuthError
+    from dory.google_oauth import Account, GoogleOAuthError
 
     params = dict(request.query_params)
 
@@ -4940,7 +4938,7 @@ async def google_calendar_callback(
         return fail("not_available")
     if params.get("error"):  # the user pressed Cancel at Google
         if params.get("state"):
-            await run_in_threadpool(lambda: g.docs.delete("salid_google_state", 0, params["state"]))
+            await run_in_threadpool(lambda: g.docs.delete("dory_google_state", 0, params["state"]))
         return fail("denied")
 
     def run() -> tuple[str, Account | None]:

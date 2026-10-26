@@ -1,15 +1,15 @@
 """Workflow monitor API: `/api/center/orgs/{org_id}/monitor/*` (summary, items, item detail,
 change feed) and the super-admin operations view `/api/center/admin/monitor/*`.
 
-Design: `docs/superpowers/specs/2026-10-18-salid-workflow-monitor-design.md` sections 4
+Design: `docs/superpowers/specs/2026-10-18-dory-workflow-monitor-design.md` sections 4
 (API, permissions), 6 (server behaviour) and 7 (privacy). Auth is the command center's:
 `member_ctx` decides who belongs to the org, `super_user` guards the operations view.
 
 - Every route answers 404 while `MONITOR_ENABLED` is off, even before sign-in.
 - Org routes answer 402 for an org whose licence is not active, super admins included; the
   operations view is read-only and has no licence gate.
-- Items come from the per-kind sources in `salid.monitor_sources`; who sees an item and which
-  controls are offered is decided here by `salid.monitor` (`visible`, `controls`), never by the
+- Items come from the per-kind sources in `dory.monitor_sources`; who sees an item and which
+  controls are offered is decided here by `dory.monitor` (`visible`, `controls`), never by the
   client. An item the viewer may not see answers 404, like an unknown one. An item whose
   `org_id` is not the requested org is never returned, to anyone (tenant guard).
 - No response carries an item's `audience`, a prompt, a name or raw error text.
@@ -34,20 +34,20 @@ from fastapi import APIRouter, Depends, Header, HTTPException, Query, Response
 from fastapi.responses import JSONResponse
 from starlette.concurrency import run_in_threadpool
 
+from dory import monitor as M
+from dory import monitor_sources as S
+from dory.coo_store import DocStore
+from dory.licensing import license_ok
+from dory.monitor import PAGE_MAX, MonitorItem, Viewer
+from dory.orgs import Org, OrgStore
 from meeting_scribe import hub
 from meeting_scribe.center import Ctx, get_orgs, member_ctx, super_user
 from meeting_scribe.config import get_settings
-from salid import monitor as M
-from salid import monitor_sources as S
-from salid.coo_store import DocStore
-from salid.licensing import license_ok
-from salid.monitor import PAGE_MAX, MonitorItem, Viewer
-from salid.orgs import Org, OrgStore
 
 logger = logging.getLogger(__name__)
 
 ZONE = ZoneInfo("Asia/Bangkok")  # `from` / `to` dates and "done today" are Bangkok days
-PAGE, IDS_MAX = 50, 50  # PAGE_MAX (100) comes from salid.monitor
+PAGE, IDS_MAX = 50, 50  # PAGE_MAX (100) comes from dory.monitor
 DEFAULT_DEEP_TIMEOUT_S = 600
 BRIDGE_PLATFORMS = ("slack", "line", "telegram", "whatsapp")  # served by the `platforms` process
 LIMITER_KEYS_MAX = 10_000  # people tracked by the rate limiter before idle ones are forgotten
@@ -61,9 +61,9 @@ def now() -> datetime:
 
 def get_deep_timeout() -> int:
     """The bot's deep-task timeout in seconds (the deep-task `stuck` threshold); 600 on any
-    error. Blocking on first use (it may open the Salid store): call it off the event loop."""
+    error. Blocking on first use (it may open the Dory store): call it off the event loop."""
     try:
-        return int(hub.get_salid_runtime()[0].deep_task_timeout)
+        return int(hub.get_dory_runtime()[0].deep_task_timeout)
     except Exception:
         return DEFAULT_DEEP_TIMEOUT_S
 

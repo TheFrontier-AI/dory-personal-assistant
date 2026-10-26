@@ -51,6 +51,6 @@ def block_external(page) -> None:
 
 @pytest.fixture(autouse=True)
 def english_ui(page) -> None:
-    """The UI language is deterministic: the page's saved choice (one key for every Salid page) is
+    """The UI language is deterministic: the page's saved choice (one key for every Dory page) is
     English before any navigation."""
-    page.add_init_script("try { localStorage.setItem('salid-language', 'en'); } catch (e) {}")
+    page.add_init_script("try { localStorage.setItem('dory-language', 'en'); } catch (e) {}")

@@ -2,9 +2,9 @@
 risks, links, hackathon block, budget, my tasks, insights, settings).
 
 The contract (shared with the page, `static/pm.html`) is `brief-pm-contract.md`; the logic lives in
-`salid.projects`. Auth is the command center's: a Google ID token as Bearer, `member_ctx` decides who
+`dory.projects`. Auth is the command center's: a Google ID token as Bearer, `member_ctx` decides who
 belongs to the org. Roles: Admin (org owner / admin / super admin), Project Owner, Member, Finance
-(`Member.finance`). Who may read / edit what is decided in `salid.projects`, never by the client.
+(`Member.finance`). Who may read / edit what is decided in `dory.projects`, never by the client.
 
 Projects live in the org's Discord workspace (its memory id = the guild id, next to the Discord
 tasks) when there is one, else in the web workspace. Lists run across all connected workspaces.
@@ -24,12 +24,12 @@ from zoneinfo import ZoneInfo
 from fastapi import APIRouter, Depends, HTTPException, Query, Response
 from pydantic import BaseModel, ConfigDict, Field, ValidationError
 
+from dory import projects as P
+from dory.i18n import LANG_NAMES, lang_name
+from dory.orgs import Member, OrgStore, Workspace
+from dory.tasks import Task, TaskRepo, is_overdue
 from meeting_scribe import hub
 from meeting_scribe.center import Ctx, get_orgs, member_ctx, role_change_error
-from salid import projects as P
-from salid.i18n import LANG_NAMES, lang_name
-from salid.orgs import Member, OrgStore, Workspace
-from salid.tasks import Task, TaskRepo, is_overdue
 
 logger = logging.getLogger(__name__)
 
@@ -58,9 +58,9 @@ def get_assessor() -> Callable[[str], str]:
     def run(prompt: str) -> str:
         from google.genai import types
 
-        from salid.llm import generate, make_client
+        from dory.llm import generate, make_client
 
-        s, _ = hub.get_salid_runtime()
+        s, _ = hub.get_dory_runtime()
         resp = generate(
             make_client(s),
             s.gate_model,
@@ -653,7 +653,7 @@ def delete_risk(project_id: str, rid: str, pm: Pm = Depends(pm_ctx)) -> Response
 
 
 def get_pm_guilds():
-    """The Salid guild settings store (the bot reads task_confirm_mode / personal_settings from
+    """The Dory guild settings store (the bot reads task_confirm_mode / personal_settings from
     it); None when it cannot be opened. Tests override this dependency."""
     try:
         return hub.get_guild_store()
@@ -678,7 +678,7 @@ on why and what to do}}]}}. Only risks that follow from the facts above; no fill
 
 
 def _risk_prompt(p: P.Project, stats: dict, language: str = "") -> str:
-    """`language`: the company language (salid.audience): documents stay in one language, so the
+    """`language`: the company language (dory.audience): documents stay in one language, so the
     risks are written in it, whatever language the project text is in."""
     rule = (
         f" Write the risks in {lang_name(language)}."

@@ -3,15 +3,15 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>สลิด ศูนย์บัญชาการ · Salid Command Center</title>
+<title>ดอรี่ ศูนย์บัญชาการ · Dory Command Center</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap">
-<link rel="icon" type="image/png" href="/static/salid/favicon.png">
-<link rel="stylesheet" href="/static/salid/theme.css">
+<link rel="icon" type="image/png" href="/static/dory/favicon.png">
+<link rel="stylesheet" href="/static/dory/theme.css">
 <script src="https://accounts.google.com/gsi/client?hl=en" async defer></script>
 <style>
   /* Page-specific rules only; tokens, base resets, buttons, cards, forms, badges and tables come
-     from /static/salid/theme.css. Light theme only on purpose. */
+     from /static/dory/theme.css. Light theme only on purpose. */
 
   /* ---------- login ---------- */
   #login { min-height: 100vh; display: flex; flex-wrap: wrap;
@@ -287,7 +287,6 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
           <label><span data-i18n="tone_note_l"></span> <input type="text" id="tone-note" maxlength="200" data-i18n-attr="placeholder:tone_note_ph"><small data-i18n="tone_note_s"></small></label>
           <label><input type="checkbox" id="personal-settings" checked> <span data-i18n="personal_l"></span><small data-i18n="personal_s"></small></label>
           <label><span data-i18n="langmode_l"></span> <select class="field" id="language-mode"><option value="audience" data-i18n="langmode_audience"></option><option value="company_only" data-i18n="langmode_only"></option></select><small data-i18n="langmode_s"></small></label>
- },
           <label><input type="checkbox" id="captions-default"> <span data-i18n="captions_default_l"></span><small data-i18n="captions_default_s"></small></label>
           <label><span data-i18n="voice_talk_l"></span> <select class="field" id="voice-talk"><option value="may_talk" data-i18n="voice_talk_may"></option><option value="listen_only" data-i18n="voice_talk_listen"></option></select><small data-i18n="voice_talk_s"></small></label>
           <label><span data-i18n="wake_policy_l"></span> <select class="field" id="wake-policy"><option value="strict" data-i18n="wake_policy_strict"></option><option value="natural" data-i18n="wake_policy_natural"></option></select></label>
@@ -338,16 +337,16 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
 
 <script type="application/json" id="i18n-data">{
  "title": {
-  "th": "สลิด ศูนย์บัญชาการ",
-  "en": "Salid Command Center"
+  "th": "ดอรี่ ศูนย์บัญชาการ",
+  "en": "Dory Command Center"
  },
  "mark": {
-  "th": "ส",
-  "en": "S"
+  "th": "ด",
+  "en": "D"
  },
  "brand_name": {
-  "th": "สลิด",
-  "en": "Salid"
+  "th": "ดอรี่",
+  "en": "Dory"
  },
  "brand_sub": {
   "th": "ศูนย์บัญชาการ",
@@ -358,8 +357,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Your team's secretary, working inside the chat your team already uses"
  },
  "login_p": {
-  "th": "เชื่อมต่อ Discord ครั้งเดียว แล้วเลือกว่าจะให้สลิดทำอะไรให้ทีมจากหน้านี้ ทุกอย่างทำงานบน Google Cloud",
-  "en": "Connect Discord once, then choose from this page what Salid does for your team. Everything runs on Google Cloud."
+  "th": "เชื่อมต่อ Discord ครั้งเดียว แล้วเลือกว่าจะให้ดอรี่ทำอะไรให้ทีมจากหน้านี้ ทุกอย่างทำงานบน Google Cloud",
+  "en": "Connect Discord once, then choose from this page what Dory does for your team. Everything runs on Google Cloud."
  },
  "login_li1": {
   "th": "รับรูปใบเสร็จ ทำบัญชีให้อัตโนมัติ",
@@ -386,8 +385,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Sign-in is not configured yet (HUB_GOOGLE_CLIENT_ID must be set). Please contact the administrator."
  },
  "login_p3": {
-  "th": "ยังไม่มีเซิร์ฟเวอร์? เข้าสู่ระบบแล้วกด <strong>เพิ่ม Salid เข้า Discord<\/strong> ไม่ต้องติดตั้งหรือเขียนโค้ด",
-  "en": "No server yet? Sign in and press <strong>Add Salid to Discord<\/strong>. No installation or coding needed."
+  "th": "ยังไม่มีเซิร์ฟเวอร์? เข้าสู่ระบบแล้วกด <strong>เพิ่ม Dory เข้า Discord<\/strong> ไม่ต้องติดตั้งหรือเขียนโค้ด",
+  "en": "No server yet? Sign in and press <strong>Add Dory to Discord<\/strong>. No installation or coding needed."
  },
  "back_recorder": {
   "th": "กลับหน้าอัดประชุม",
@@ -418,16 +417,16 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Chat channels"
  },
  "nav_hidden": {
-  "th": "ห้องที่สลิดมองไม่เห็น",
-  "en": "Channels Salid cannot see"
+  "th": "ห้องที่ดอรี่มองไม่เห็น",
+  "en": "Channels Dory cannot see"
  },
  "nav_skills": {
-  "th": "สลิดทำอะไรให้ทีม",
-  "en": "What Salid does for the team"
+  "th": "ดอรี่ทำอะไรให้ทีม",
+  "en": "What Dory does for the team"
  },
  "nav_command": {
-  "th": "สั่งสลิด",
-  "en": "Ask Salid"
+  "th": "สั่งดอรี่",
+  "en": "Ask Dory"
  },
  "nav_activity": {
   "th": "กิจกรรมล่าสุด",
@@ -438,24 +437,24 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Who sees what"
  },
  "hello": {
-  "th": "สวัสดีค่ะ วันนี้ให้สลิดช่วยอะไรดีคะ",
-  "en": "Hello! What can Salid help you with today?"
+  "th": "สวัสดีค่ะ วันนี้ให้ดอรี่ช่วยอะไรดีคะ",
+  "en": "Hello! What can Dory help you with today?"
  },
  "ng_h": {
   "th": "ยังไม่มีเซิร์ฟเวอร์ที่เชื่อมกับบัญชีนี้",
   "en": "No server is linked to this account yet"
  },
  "invite_big": {
-  "th": "เพิ่ม Salid เข้า Discord",
-  "en": "Add Salid to Discord"
+  "th": "เพิ่ม Dory เข้า Discord",
+  "en": "Add Dory to Discord"
  },
  "discord_not_set": {
-  "th": "ยังไม่ได้ตั้งค่าแอป Discord (SALID_DISCORD_CLIENT_ID)",
-  "en": "The Discord app is not configured yet (SALID_DISCORD_CLIENT_ID)"
+  "th": "ยังไม่ได้ตั้งค่าแอป Discord (DORY_DISCORD_CLIENT_ID)",
+  "en": "The Discord app is not configured yet (DORY_DISCORD_CLIENT_ID)"
  },
  "ng_step1": {
-  "th": "เพิ่ม Salid เข้าเซิร์ฟเวอร์",
-  "en": "Add Salid to your server"
+  "th": "เพิ่ม Dory เข้าเซิร์ฟเวอร์",
+  "en": "Add Dory to your server"
  },
  "ng_step2": {
   "th": "พิมพ์ <strong>/ตั้งค่า<\/strong> ใน Discord แล้วกดลิงก์ที่ได้",
@@ -474,16 +473,16 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Ready"
  },
  "guild_left": {
-  "th": "สลิดออกจากเซิร์ฟเวอร์แล้ว",
-  "en": "Salid has left this server"
+  "th": "ดอรี่ออกจากเซิร์ฟเวอร์แล้ว",
+  "en": "Dory has left this server"
  },
  "guild_name_default": {
   "th": "เซิร์ฟเวอร์ที่เชื่อมอยู่",
   "en": "Linked server"
  },
  "invite_other": {
-  "th": "เพิ่ม Salid เข้าเซิร์ฟเวอร์อื่น",
-  "en": "Add Salid to another server"
+  "th": "เพิ่ม Dory เข้าเซิร์ฟเวอร์อื่น",
+  "en": "Add Dory to another server"
  },
  "meet_p": {
   "th": "อัดประชุมจากเบราว์เซอร์ แล้วส่งสรุปเข้า Discord",
@@ -498,12 +497,12 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Coming soon"
  },
  "line_p": {
-  "th": "ใช้สลิดตัวเดิมผ่าน LINE กลุ่มของทีม",
-  "en": "Use the same Salid in your team's LINE group"
+  "th": "ใช้ดอรี่ตัวเดิมผ่าน LINE กลุ่มของทีม",
+  "en": "Use the same Dory in your team's LINE group"
  },
  "hc_h": {
-  "th": "ห้องที่สลิดยังมองไม่เห็น",
-  "en": "Channels Salid cannot see yet"
+  "th": "ห้องที่ดอรี่ยังมองไม่เห็น",
+  "en": "Channels Dory cannot see yet"
  },
  "loading": {
   "th": "กำลังโหลด...",
@@ -514,8 +513,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "{n} channels"
  },
  "hc_how": {
-  "th": "วิธีให้สลิดเข้าห้อง",
-  "en": "How to let Salid into a channel"
+  "th": "วิธีให้ดอรี่เข้าห้อง",
+  "en": "How to let Dory into a channel"
  },
  "hc_s1": {
   "th": "เปิด Discord แล้วกดชื่อห้องที่ต้องการ แล้วกด ⚙️ (Edit Channel)",
@@ -526,28 +525,28 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Go to Permissions → click + (Add members or roles)"
  },
  "hc_s3": {
-  "th": "พิมพ์ Salid แล้วเลือก",
-  "en": "Type Salid and select it"
+  "th": "พิมพ์ Dory แล้วเลือก",
+  "en": "Type Dory and select it"
  },
  "hc_s4": {
   "th": "ติ๊ก ✅ View Channel และ ✅ Read Message History แล้วกด Save",
   "en": "Tick ✅ View Channel and ✅ Read Message History, then click Save"
  },
  "hc_hint1": {
-  "th": "สลิดจะเริ่มอ่านห้องนั้นและประวัติย้อนหลังให้เองทันที ห้องลับที่ไม่อยากให้สลิดรู้ ไม่ต้องเพิ่มครับ",
-  "en": "Salid will start reading that channel and its history right away. For private channels you do not want Salid to see, simply do not add it."
+  "th": "ดอรี่จะเริ่มอ่านห้องนั้นและประวัติย้อนหลังให้เองทันที ห้องลับที่ไม่อยากให้ดอรี่รู้ ไม่ต้องเพิ่มครับ",
+  "en": "Dory will start reading that channel and its history right away. For private channels you do not want Dory to see, simply do not add it."
  },
  "hc_hint2": {
   "th": "รายการนี้อัปเดตเองภายใน 1 นาทีหลังแก้สิทธิ์ใน Discord (โหลดหน้าใหม่เพื่อดูล่าสุด)",
   "en": "This list updates by itself within 1 minute after you change permissions in Discord (reload the page to see the latest)"
  },
  "hc_none": {
-  "th": "สลิดเห็นทุกห้องแล้วค่ะ 👍",
-  "en": "Salid can see every channel 👍"
+  "th": "ดอรี่เห็นทุกห้องแล้วค่ะ 👍",
+  "en": "Dory can see every channel 👍"
  },
  "hc_nolist": {
-  "th": "ยังไม่มีรายชื่อห้องจากสลิด",
-  "en": "Salid has not sent a channel list yet"
+  "th": "ยังไม่มีรายชื่อห้องจากดอรี่",
+  "en": "Dory has not sent a channel list yet"
  },
  "hc_why_hidden": {
   "th": "ไม่เห็นห้อง",
@@ -558,8 +557,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "cannot read history"
  },
  "sk_h": {
-  "th": "สลิดทำอะไรให้ทีมนี้",
-  "en": "What Salid does for this team"
+  "th": "ดอรี่ทำอะไรให้ทีมนี้",
+  "en": "What Dory does for this team"
  },
  "receipt_ids_l": {
   "th": "ห้องรับใบเสร็จเพิ่มเติม",
@@ -578,24 +577,24 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Pick automatically"
  },
  "home_id_s": {
-  "th": "ใบเสร็จที่ส่งผิดห้องจะถูกคัดลอกมาที่นี่ ถ้าไม่เลือก สลิดใช้ห้องรับใบเสร็จห้องแรกที่ส่งข้อความได้",
-  "en": "Receipts posted in other channels are copied here. If not set, Salid uses the first receipt channel it can post in"
+  "th": "ใบเสร็จที่ส่งผิดห้องจะถูกคัดลอกมาที่นี่ ถ้าไม่เลือก ดอรี่ใช้ห้องรับใบเสร็จห้องแรกที่ส่งข้อความได้",
+  "en": "Receipts posted in other channels are copied here. If not set, Dory uses the first receipt channel it can post in"
  },
  "fwd_l": {
   "th": "ส่งต่อใบเสร็จที่ส่งผิดห้อง",
   "en": "Forward receipts sent to the wrong channel"
  },
  "fwd_s": {
-  "th": "ข้อความเดิมไม่ถูกลบ (สลิดไม่มีสิทธิ์ลบข้อความ)",
-  "en": "The original message is kept (Salid cannot delete messages)"
+  "th": "ข้อความเดิมไม่ถูกลบ (ดอรี่ไม่มีสิทธิ์ลบข้อความ)",
+  "en": "The original message is kept (Dory cannot delete messages)"
  },
  "ask_ids_l": {
   "th": "ห้องตอบทุกข้อความ",
   "en": "Reply-to-everything channels"
  },
  "ask_ids_s": {
-  "th": "สลิดตอบทุกข้อความในห้องนี้ (เหมือนโหมด 💬) ห้องชื่อ “คุยกับน้องสลิด” เป็นแบบนี้อยู่แล้ว",
-  "en": "Salid replies to every message in these channels (like the 💬 mode). A channel named “คุยกับน้องสลิด” already works this way"
+  "th": "ดอรี่ตอบทุกข้อความในห้องนี้ (เหมือนโหมด 💬) ห้องชื่อ “คุยกับน้องดอรี่” เป็นแบบนี้อยู่แล้ว",
+  "en": "Dory replies to every message in these channels (like the 💬 mode). A channel named “คุยกับน้องดอรี่” already works this way"
  },
  "digest_id_l": {
   "th": "ห้องสรุปรายวัน",
@@ -622,8 +621,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Keep forever (company asset) — default"
  },
  "mem_days_s": {
-  "th": "ค่าเริ่มต้นคือเก็บถาวร: สิ่งที่พนักงานบอกสลิดเป็นทรัพย์สินของบริษัท อยู่ตราบที่บริษัทใช้บริการ ตั้งจำนวนวัน (1-3650) เฉพาะเมื่อต้องการให้ลบของเก่าอัตโนมัติ (ล้างวันละครั้ง) สลิดนำเข้าประวัติย้อนหลังตามนี้ด้วย",
-  "en": "Default is keep forever: what the staff tell Salid is the company's asset and stays as long as the company uses the service. Set a number of days (1-3650) only if you want old memory deleted automatically (cleaned once a day). Salid also imports past history for that window."
+  "th": "ค่าเริ่มต้นคือเก็บถาวร: สิ่งที่พนักงานบอกดอรี่เป็นทรัพย์สินของบริษัท อยู่ตราบที่บริษัทใช้บริการ ตั้งจำนวนวัน (1-3650) เฉพาะเมื่อต้องการให้ลบของเก่าอัตโนมัติ (ล้างวันละครั้ง) ดอรี่นำเข้าประวัติย้อนหลังตามนี้ด้วย",
+  "en": "Default is keep forever: what the staff tell Dory is the company's asset and stays as long as the company uses the service. Set a number of days (1-3650) only if you want old memory deleted automatically (cleaned once a day). Dory also imports past history for that window."
  },
  "mem_progress": {
   "th": "นำเข้าประวัติแล้ว {done}/{total} ห้อง, {messages} ข้อความ, รูป {images}/{cap}",
@@ -678,8 +677,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Used for channels without their own mode"
  },
  "default_lang_l": {
-  "th": "ภาษาที่สลิดตอบ (เริ่มต้นของเซิร์ฟเวอร์)",
-  "en": "Language Salid replies in (server default)"
+  "th": "ภาษาที่ดอรี่ตอบ (เริ่มต้นของเซิร์ฟเวอร์)",
+  "en": "Language Dory replies in (server default)"
  },
  "default_lang_s": {
   "th": "ใช้กับห้องที่ไม่ได้เลือกภาษาเฉพาะ · อัตโนมัติ = ตอบตามภาษาที่คนพิมพ์มา",
@@ -694,16 +693,16 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Change the company language?"
  },
  "lang_confirm_p": {
-  "th": "ตั้งแต่นี้ไปสลิดจะพูด พิมพ์ และทำเอกสารเป็น{lname}สำหรับทุกคนในเซิร์ฟเวอร์นี้ และจะประกาศการเปลี่ยนแปลงนี้ในเซิร์ฟเวอร์ให้ทุกคนทราบ",
-  "en": "From now on Salid will speak, write and produce documents in {lname} for everyone on this server, and she will announce the change on the server so nobody is surprised."
+  "th": "ตั้งแต่นี้ไปดอรี่จะพูด พิมพ์ และทำเอกสารเป็น{lname}สำหรับทุกคนในเซิร์ฟเวอร์นี้ และจะประกาศการเปลี่ยนแปลงนี้ในเซิร์ฟเวอร์ให้ทุกคนทราบ",
+  "en": "From now on Dory will speak, write and produce documents in {lname} for everyone on this server, and she will announce the change on the server so nobody is surprised."
  },
  "lang_confirm_ok": {
   "th": "ใช่ เปลี่ยนภาษาของบริษัท",
   "en": "Yes, change the company language"
  },
  "modes_hint": {
-  "th": "🔇 ปิด = สลิดไม่ยุ่งกับห้องนี้ · 👂 ฟังเงียบ = อ่านใบเสร็จแล้วแปะอีโมจิเท่านั้น · 🙋 เรียกแล้วคุย = ตอบเมื่อถูกแท็กหรือเรียกชื่อ · 🎧 ร่วมวง = เหมือนเรียกแล้วคุย และเข้าร่วมเองเมื่อมีคำถามที่ช่วยได้ · 💬 ตอบทุกข้อความ",
-  "en": "🔇 Off = Salid stays out of the channel · 👂 Listen = only reads receipts and adds an emoji · 🙋 Call = replies when tagged or called by name · 🎧 Join = like Call, and joins in by itself when it can help with a question · 💬 Chat = replies to every message"
+  "th": "🔇 ปิด = ดอรี่ไม่ยุ่งกับห้องนี้ · 👂 ฟังเงียบ = อ่านใบเสร็จแล้วแปะอีโมจิเท่านั้น · 🙋 เรียกแล้วคุย = ตอบเมื่อถูกแท็กหรือเรียกชื่อ · 🎧 ร่วมวง = เหมือนเรียกแล้วคุย และเข้าร่วมเองเมื่อมีคำถามที่ช่วยได้ · 💬 ตอบทุกข้อความ",
+  "en": "🔇 Off = Dory stays out of the channel · 👂 Listen = only reads receipts and adds an emoji · 🙋 Call = replies when tagged or called by name · 🎧 Join = like Call, and joins in by itself when it can help with a question · 💬 Chat = replies to every message"
  },
  "mode_off": {
   "th": "🔇 ปิด",
@@ -734,8 +733,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "When off, everyone uses the organisation's settings (language, tone, task mode)."
  },
  "langmode_l": {
-  "th": "ภาษาที่สลิดตอบ",
-  "en": "Languages Salid answers in"
+  "th": "ภาษาที่ดอรี่ตอบ",
+  "en": "Languages Dory answers in"
  },
  "langmode_audience": {
   "th": "ภาษาบริษัท + ภาษาส่วนตัวของคนที่เกี่ยวข้อง",
@@ -746,8 +745,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Company language only"
  },
  "langmode_s": {
-  "th": "สลิดฟังได้ทั้งไทยและอังกฤษเสมอ ตัวเลือกนี้กำหนดเฉพาะภาษาที่สลิดพูดและพิมพ์ (เอกสารและรายงานใช้ภาษาบริษัทเสมอ)",
-  "en": "Salid always understands Thai and English. This only sets the languages she speaks and types (documents and reports always use the company language)."
+  "th": "ดอรี่ฟังได้ทั้งไทยและอังกฤษเสมอ ตัวเลือกนี้กำหนดเฉพาะภาษาที่ดอรี่พูดและพิมพ์ (เอกสารและรายงานใช้ภาษาบริษัทเสมอ)",
+  "en": "Dory always understands Thai and English. This only sets the languages she speaks and types (documents and reports always use the company language)."
  },
  "captions_default_l": {
   "th": "แสดงคำบรรยายสด (ข้อความที่ถอดจากเสียง) ในแชตห้องประชุมทุกครั้ง",
@@ -758,8 +757,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Off = as before, nothing is shown. People in a meeting can still turn captions on or off for that meeting."
  },
  "voice_talk_l": {
-  "th": "เสียงของสลิดในห้องประชุม",
-  "en": "Salid's voice in meetings"
+  "th": "เสียงของดอรี่ในห้องประชุม",
+  "en": "Dory's voice in meetings"
  },
  "voice_talk_may": {
   "th": "🔊 พูดได้เมื่อถูกเรียก",
@@ -770,20 +769,20 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "🔇 Listen and take notes only"
  },
  "voice_talk_s": {
-  "th": "ฟังและจดอย่างเดียว = สลิดไม่พูดในห้องเลย ถามได้ทางข้อความ ผู้จัดประชุมหรือผู้บริหารสั่งเปลี่ยนเฉพาะประชุมนั้นได้",
-  "en": "Listen only = Salid never speaks in the room; people ask in text. The chair or an executive can change it for one meeting."
+  "th": "ฟังและจดอย่างเดียว = ดอรี่ไม่พูดในห้องเลย ถามได้ทางข้อความ ผู้จัดประชุมหรือผู้บริหารสั่งเปลี่ยนเฉพาะประชุมนั้นได้",
+  "en": "Listen only = Dory never speaks in the room; people ask in text. The chair or an executive can change it for one meeting."
  },
  "wake_policy_l": {
-  "th": "การปลุกสลิดในห้องเสียง",
-  "en": "How Salid wakes in voice"
+  "th": "การปลุกดอรี่ในห้องเสียง",
+  "en": "How Dory wakes in voice"
  },
  "wake_policy_strict": {
   "th": "เฉพาะเรียกชื่อ",
   "en": "Name only"
  },
  "wake_policy_natural": {
-  "th": "เรียกชื่อ หรือคำถามตรง ๆ ถึงสลิด",
-  "en": "Name, or a direct question to Salid"
+  "th": "เรียกชื่อ หรือคำถามตรง ๆ ถึงดอรี่",
+  "en": "Name, or a direct question to Dory"
  },
  "task_mode_l": {
   "th": "โหมดมอบหมายงาน",
@@ -794,7 +793,7 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Notify"
  },
  "task_mode_notify_s": {
-  "th": "ผู้รับงานกดรับ/แก้ไข งานถูกบันทึก แล้วสลิดแจ้งคนมอบงาน",
+  "th": "ผู้รับงานกดรับ/แก้ไข งานถูกบันทึก แล้วดอรี่แจ้งคนมอบงาน",
   "en": "The assignee accepts or edits, the task is recorded and the giver is told."
  },
  "task_mode_approve_l": {
@@ -806,8 +805,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "After the assignee accepts, the boss (the giver) approves, edits or sends it back before it is recorded."
  },
  "default_tone_l": {
-  "th": "โทนการพูดของสลิด (เริ่มต้นของเซิร์ฟเวอร์)",
-  "en": "Salid's tone of voice (server default)"
+  "th": "โทนการพูดของดอรี่ (เริ่มต้นของเซิร์ฟเวอร์)",
+  "en": "Dory's tone of voice (server default)"
  },
  "default_tone_s": {
   "th": "ใช้กับห้องที่ไม่ได้เลือกโทนเฉพาะ · สมาชิกตั้งโทนของตัวเองได้ในห้องส่วนตัวและ DM",
@@ -822,8 +821,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "e.g. Always address customers as “valued customer”"
  },
  "tone_note_s": {
-  "th": "ไม่เกิน 200 ตัวอักษร ใช้ได้เฉพาะเรื่องวิธีพูด ไม่ใช้เปลี่ยนสิทธิ์หรือตัวตนของสลิด",
-  "en": "Up to 200 characters, only about how to speak; it cannot change permissions or Salid's identity"
+  "th": "ไม่เกิน 200 ตัวอักษร ใช้ได้เฉพาะเรื่องวิธีพูด ไม่ใช้เปลี่ยนสิทธิ์หรือตัวตนของดอรี่",
+  "en": "Up to 200 characters, only about how to speak; it cannot change permissions or Dory's identity"
  },
  "tone_cheerful": {
   "th": "สดใส ร่าเริง",
@@ -898,16 +897,16 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Server default"
  },
  "no_channels": {
-  "th": "สลิดยังไม่ได้ส่งรายชื่อห้องของเซิร์ฟเวอร์นี้มา ลองรอสักครู่แล้วโหลดหน้าใหม่",
-  "en": "Salid has not sent this server's channel list yet. Wait a moment and reload the page."
+  "th": "ดอรี่ยังไม่ได้ส่งรายชื่อห้องของเซิร์ฟเวอร์นี้มา ลองรอสักครู่แล้วโหลดหน้าใหม่",
+  "en": "Dory has not sent this server's channel list yet. Wait a moment and reload the page."
  },
  "save": {
   "th": "บันทึกการตั้งค่า",
   "en": "Save settings"
  },
  "save_hint": {
-  "th": "สลิดอ่านการตั้งค่าใหม่ภายในประมาณ 1 นาที",
-  "en": "Salid picks up new settings within about 1 minute"
+  "th": "ดอรี่อ่านการตั้งค่าใหม่ภายในประมาณ 1 นาที",
+  "en": "Dory picks up new settings within about 1 minute"
  },
  "saving": {
   "th": "กำลังบันทึก...",
@@ -930,8 +929,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "{id} (this channel no longer exists)"
  },
  "cm_h": {
-  "th": "สั่งสลิด",
-  "en": "Ask Salid"
+  "th": "สั่งดอรี่",
+  "en": "Ask Dory"
  },
  "chat_empty": {
   "th": "ลองถาม เช่น \"เดือนนี้ค่าวัตถุดิบเท่าไร ซื้อร้านไหนเยอะสุด\"",
@@ -950,12 +949,12 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Send"
  },
  "ask_hint": {
-  "th": "คำตอบเดียวกับที่ได้จากการถามสลิดใน Discord ในฐานะผู้บริหาร (เห็นบัญชีทั้งเซิร์ฟเวอร์นี้) งานใหญ่หลายขั้นตอนสั่งผ่าน Discord",
-  "en": "The same answers you get by asking Salid in Discord as an executive (sees the whole server's ledger). Big multi-step tasks are started from Discord."
+  "th": "คำตอบเดียวกับที่ได้จากการถามดอรี่ใน Discord ในฐานะผู้บริหาร (เห็นบัญชีทั้งเซิร์ฟเวอร์นี้) งานใหญ่หลายขั้นตอนสั่งผ่าน Discord",
+  "en": "The same answers you get by asking Dory in Discord as an executive (sees the whole server's ledger). Big multi-step tasks are started from Discord."
  },
  "thinking": {
-  "th": "สลิดกำลังคิด...",
-  "en": "Salid is thinking..."
+  "th": "ดอรี่กำลังคิด...",
+  "en": "Dory is thinking..."
  },
  "ask_failed": {
   "th": "ตอบไม่ได้ในตอนนี้ ลองใหม่อีกครั้งค่ะ",
@@ -1042,16 +1041,16 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Admins of this page"
  },
  "pp4_d": {
-  "th": "บัญชี Google ที่เชื่อมผ่านคำสั่ง /ตั้งค่า เห็นภาพรวมและถามสลิดได้เหมือนผู้บริหาร",
-  "en": "Google accounts linked with the /setup command see the overview and can ask Salid like an executive"
+  "th": "บัญชี Google ที่เชื่อมผ่านคำสั่ง /ตั้งค่า เห็นภาพรวมและถามดอรี่ได้เหมือนผู้บริหาร",
+  "en": "Google accounts linked with the /setup command see the overview and can ask Dory like an executive"
  },
  "f_receipts_n": {
   "th": "รับใบเสร็จและทำบัญชี",
   "en": "Receive receipts and keep the books"
  },
  "f_receipts_d": {
-  "th": "ส่งรูปใบเสร็จในห้อง สลิดอ่านยอดและบันทึกให้",
-  "en": "Post a receipt photo in the channel and Salid reads the amount and records it"
+  "th": "ส่งรูปใบเสร็จในห้อง ดอรี่อ่านยอดและบันทึกให้",
+  "en": "Post a receipt photo in the channel and Dory reads the amount and records it"
  },
  "f_receipts_w": {
   "th": "#ใบเสร็จ",
@@ -1062,20 +1061,20 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Answer questions about spending"
  },
  "f_qa_d": {
-  "th": "ถามสลิดใน Discord แล้วได้คำตอบจากบัญชีของทีม",
-  "en": "Ask Salid in Discord and get answers from the team's ledger"
+  "th": "ถามดอรี่ใน Discord แล้วได้คำตอบจากบัญชีของทีม",
+  "en": "Ask Dory in Discord and get answers from the team's ledger"
  },
  "f_qa_w": {
-  "th": "@Salid",
-  "en": "@Salid"
+  "th": "@Dory",
+  "en": "@Dory"
  },
  "f_meetings_n": {
   "th": "ส่งสรุปประชุมเข้าแชต",
   "en": "Post meeting summaries to chat"
  },
  "f_meetings_d": {
-  "th": "อัดประชุมจากหน้าเว็บ แล้วสลิดโพสต์สรุปและงานที่ต้องทำ เปิดไว้เสมอ",
-  "en": "Record a meeting from the web page and Salid posts the summary and action items. Always on."
+  "th": "อัดประชุมจากหน้าเว็บ แล้วดอรี่โพสต์สรุปและงานที่ต้องทำ เปิดไว้เสมอ",
+  "en": "Record a meeting from the web page and Dory posts the summary and action items. Always on."
  },
  "f_meetings_w": {
   "th": "#ประชุม",
@@ -1086,8 +1085,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Listen to meetings in voice channels"
  },
  "f_voice_meetings_d": {
-  "th": "พิมพ์ /เข้าประชุม ให้สลิดเข้าห้องเสียง ถอดว่าใครพูดอะไร ตอบเมื่อถูกเรียก และสรุปตอนจบ",
-  "en": "Type /join-meeting and Salid enters the voice channel, transcribes who said what, answers when called and summarizes at the end"
+  "th": "พิมพ์ /เข้าประชุม ให้ดอรี่เข้าห้องเสียง ถอดว่าใครพูดอะไร ตอบเมื่อถูกเรียก และสรุปตอนจบ",
+  "en": "Type /join-meeting and Dory enters the voice channel, transcribes who said what, answers when called and summarizes at the end"
  },
  "f_voice_meetings_w": {
   "th": "/เข้าประชุม",
@@ -1098,8 +1097,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Join voice meetings by itself"
  },
  "f_auto_join_meetings_d": {
-  "th": "เมื่อมีคนเข้าห้องเสียง สลิดเข้ามาจดประชุมเอง ถ้ามีหลายห้องพร้อมกันจะแบ่งร่างไปให้ ห้องที่สำคัญกว่าได้ก่อน (ต้องเปิด “ฟังประชุมในห้องเสียง” ด้วย)",
-  "en": "When someone is in a voice channel, Salid joins to take notes by itself. With several rooms at once it splits across its voice helpers, the most important room first (needs “Listen to meetings in voice channels”)"
+  "th": "เมื่อมีคนเข้าห้องเสียง ดอรี่เข้ามาจดประชุมเอง ถ้ามีหลายห้องพร้อมกันจะแบ่งร่างไปให้ ห้องที่สำคัญกว่าได้ก่อน (ต้องเปิด “ฟังประชุมในห้องเสียง” ด้วย)",
+  "en": "When someone is in a voice channel, Dory joins to take notes by itself. With several rooms at once it splits across its voice helpers, the most important room first (needs “Listen to meetings in voice channels”)"
  },
  "f_auto_join_meetings_w": {
   "th": "ห้องเสียง",
@@ -1110,8 +1109,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Accounting documents as PDF"
  },
  "f_documents_d": {
-  "th": "สลิดสร้างรายงานค่าใช้จ่าย รายการใบเสร็จ และรายงานการประชุมเป็นไฟล์ PDF แนบในแชต (ผู้บริหารเห็นของทั้งทีม คนอื่นเห็นของตัวเอง)",
-  "en": "Salid builds expense summaries, receipt lists and meeting minutes as PDF attachments (executives see the whole team, others only their own)"
+  "th": "ดอรี่สร้างรายงานค่าใช้จ่าย รายการใบเสร็จ และรายงานการประชุมเป็นไฟล์ PDF แนบในแชต (ผู้บริหารเห็นของทั้งทีม คนอื่นเห็นของตัวเอง)",
+  "en": "Dory builds expense summaries, receipt lists and meeting minutes as PDF attachments (executives see the whole team, others only their own)"
  },
  "f_documents_w": {
   "th": "ขอในแชต",
@@ -1122,8 +1121,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Schedule meetings and reminders"
  },
  "f_scheduling_d": {
-  "th": "สลิดสร้างกิจกรรมนัดประชุมใน Discord (ถามยืนยันก่อน) เตือนผู้เข้าร่วมทางแชตและ DM ทักคนที่ยังไม่เข้า และเข้ามาจดประชุมให้ตามนัด",
-  "en": "Salid creates Discord scheduled events (after confirming), reminds attendees in chat and DM, nudges no-shows and joins to take notes at the start time"
+  "th": "ดอรี่สร้างกิจกรรมนัดประชุมใน Discord (ถามยืนยันก่อน) เตือนผู้เข้าร่วมทางแชตและ DM ทักคนที่ยังไม่เข้า และเข้ามาจดประชุมให้ตามนัด",
+  "en": "Dory creates Discord scheduled events (after confirming), reminds attendees in chat and DM, nudges no-shows and joins to take notes at the start time"
  },
  "f_scheduling_w": {
   "th": "ขอในแชต",
@@ -1134,8 +1133,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Draft and send email"
  },
  "f_email_d": {
-  "th": "สลิดร่างอีเมลให้ดูก่อน และส่งเมื่อผู้บริหารหรือผู้จัดการยืนยันเท่านั้น (ต้องตั้งค่า Gmail ก่อนจึงส่งจริง)",
-  "en": "Salid drafts an email for review and sends it only after an executive or manager confirms (real sending needs Gmail to be configured)"
+  "th": "ดอรี่ร่างอีเมลให้ดูก่อน และส่งเมื่อผู้บริหารหรือผู้จัดการยืนยันเท่านั้น (ต้องตั้งค่า Gmail ก่อนจึงส่งจริง)",
+  "en": "Dory drafts an email for review and sends it only after an executive or manager confirms (real sending needs Gmail to be configured)"
  },
  "f_email_w": {
   "th": "ขอในแชต",
@@ -1158,8 +1157,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Big multi-step tasks"
  },
  "f_deep_tasks_d": {
-  "th": "ผู้บริหารสั่งงานวิเคราะห์ สลิดทำเบื้องหลังแล้วส่งรายงาน",
-  "en": "Executives order an analysis, Salid works in the background and sends a report"
+  "th": "ผู้บริหารสั่งงานวิเคราะห์ ดอรี่ทำเบื้องหลังแล้วส่งรายงาน",
+  "en": "Executives order an analysis, Dory works in the background and sends a report"
  },
  "f_deep_tasks_w": {
   "th": "เฉพาะผู้บริหาร",
@@ -1170,80 +1169,80 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Slide decks"
  },
  "f_decks_d": {
-  "th": "ขอให้สลิดทำสไลด์ PowerPoint จากข้อมูลของทีมหรือหัวข้อใดก็ได้ กราฟใช้ตัวเลขจริงจากบัญชี ไฟล์ไม่ถูกเก็บไว้",
-  "en": "Ask Salid for a PowerPoint deck from team data or any topic. Charts use real ledger numbers. Files are not stored."
+  "th": "ขอให้ดอรี่ทำสไลด์ PowerPoint จากข้อมูลของทีมหรือหัวข้อใดก็ได้ กราฟใช้ตัวเลขจริงจากบัญชี ไฟล์ไม่ถูกเก็บไว้",
+  "en": "Ask Dory for a PowerPoint deck from team data or any topic. Charts use real ledger numbers. Files are not stored."
  },
  "f_decks_w": {
-  "th": "แท็กสลิดแล้วพิมพ์ “ทำสไลด์…”",
-  "en": "Tag Salid and ask “make slides…”"
+  "th": "แท็กดอรี่แล้วพิมพ์ “ทำสไลด์…”",
+  "en": "Tag Dory and ask “make slides…”"
  },
  "f_quotations_n": {
   "th": "ใบเสนอราคา",
   "en": "Quotations"
  },
  "f_quotations_d": {
-  "th": "ขอให้สลิดทำใบเสนอราคา PDF และ Word พร้อมเลขที่ต่อเนื่อง VAT ส่วนลด และแก้ไขเป็นฉบับใหม่ได้ ใช้ข้อมูลหัวบริษัทจากสิ่งที่สอนสลิดไว้",
-  "en": "Ask Salid for a quotation as PDF and Word with running numbers, VAT, discounts and revisions. The header comes from what the company taught Salid."
+  "th": "ขอให้ดอรี่ทำใบเสนอราคา PDF และ Word พร้อมเลขที่ต่อเนื่อง VAT ส่วนลด และแก้ไขเป็นฉบับใหม่ได้ ใช้ข้อมูลหัวบริษัทจากสิ่งที่สอนดอรี่ไว้",
+  "en": "Ask Dory for a quotation as PDF and Word with running numbers, VAT, discounts and revisions. The header comes from what the company taught Dory."
  },
  "f_quotations_w": {
-  "th": "ผู้บริหารหรือบทบาทที่กำหนด แท็กสลิดแล้วพิมพ์ “ทำใบเสนอราคา…”",
-  "en": "Executives or chosen roles. Tag Salid and ask “make a quotation…”"
+  "th": "ผู้บริหารหรือบทบาทที่กำหนด แท็กดอรี่แล้วพิมพ์ “ทำใบเสนอราคา…”",
+  "en": "Executives or chosen roles. Tag Dory and ask “make a quotation…”"
  },
  "f_votes_n": {
   "th": "ลงมติด้วยปุ่ม",
   "en": "Button votes"
  },
  "f_votes_d": {
-  "th": "สลิดส่งปุ่มเห็นด้วย/ไม่เห็นด้วย/งดออกเสียงไปที่ห้องส่วนตัวของแต่ละคน นับคะแนน ปิดโหวต แล้วสรุปผลในแชทประชุมและรายงานการประชุม",
-  "en": "Salid sends agree/disagree/abstain buttons to each person's private channel, tallies, closes the vote and posts the result in the meeting chat and minutes."
+  "th": "ดอรี่ส่งปุ่มเห็นด้วย/ไม่เห็นด้วย/งดออกเสียงไปที่ห้องส่วนตัวของแต่ละคน นับคะแนน ปิดโหวต แล้วสรุปผลในแชทประชุมและรายงานการประชุม",
+  "en": "Dory sends agree/disagree/abstain buttons to each person's private channel, tallies, closes the vote and posts the result in the meeting chat and minutes."
  },
  "f_votes_w": {
-  "th": "แท็กสลิดแล้วพิมพ์ “ขอมติว่า…”",
-  "en": "Tag Salid and say “let's vote on…”"
+  "th": "แท็กดอรี่แล้วพิมพ์ “ขอมติว่า…”",
+  "en": "Tag Dory and say “let's vote on…”"
  },
  "f_vote_offers_n": {
   "th": "เสนอเปิดโหวตเอง",
   "en": "Vote offers"
  },
  "f_vote_offers_d": {
-  "th": "เมื่อทีมคุยกันว่าจะเลือกอะไร สลิดถามครั้งเดียวว่าจะให้เปิดโหวตไหม (ในห้องเสียงถามเป็นข้อความ ไม่พูด) ต้องเปิดการลงมติด้วย",
-  "en": "When the team is trying to decide something, Salid asks once whether to open a vote (text only in voice rooms). Needs button votes."
+  "th": "เมื่อทีมคุยกันว่าจะเลือกอะไร ดอรี่ถามครั้งเดียวว่าจะให้เปิดโหวตไหม (ในห้องเสียงถามเป็นข้อความ ไม่พูด) ต้องเปิดการลงมติด้วย",
+  "en": "When the team is trying to decide something, Dory asks once whether to open a vote (text only in voice rooms). Needs button votes."
  },
  "f_projects_n": {
   "th": "โปรเจกต์ (PM)",
   "en": "Projects (PM)"
  },
  "f_projects_d": {
-  "th": "สลิดเปิดและดูแลโปรเจกต์ของบริษัทให้ สร้างโปรเจกต์ เพิ่มงาน เปลี่ยนสถานะ/กำหนดส่ง/เจ้าของพร้อมบันทึกเหตุผล ใช้ชุดเดียวกับหน้า /pm",
-  "en": "Salid opens and tracks company projects: create a project, add tasks, change status, deadline or owner with a recorded reason. Same data as the /pm dashboard."
+  "th": "ดอรี่เปิดและดูแลโปรเจกต์ของบริษัทให้ สร้างโปรเจกต์ เพิ่มงาน เปลี่ยนสถานะ/กำหนดส่ง/เจ้าของพร้อมบันทึกเหตุผล ใช้ชุดเดียวกับหน้า /pm",
+  "en": "Dory opens and tracks company projects: create a project, add tasks, change status, deadline or owner with a recorded reason. Same data as the /pm dashboard."
  },
  "f_projects_w": {
-  "th": "แท็กสลิดแล้วพิมพ์ “เปิดโปรเจกต์ ...” หรือ “โปรเจกต์ของฉัน”",
-  "en": "Tag Salid and say “create a project called…” or “my projects”"
+  "th": "แท็กดอรี่แล้วพิมพ์ “เปิดโปรเจกต์ ...” หรือ “โปรเจกต์ของฉัน”",
+  "en": "Tag Dory and say “create a project called…” or “my projects”"
  },
  "f_project_notes_n": {
   "th": "แจ้งในห้องเมื่อจดความเคลื่อนไหวโปรเจกต์",
   "en": "Announce project updates heard in chat"
  },
  "f_project_notes_d": {
-  "th": "สลิดฟังทุกห้องและอัปเดตโปรเจกต์เองเมื่อทีมคุยกันว่าเลื่อนกำหนด เปลี่ยนสถานะ งานสำคัญเสร็จ หรือมีความเสี่ยงใหม่ เปิดข้อนี้เพื่อให้สลิดพิมพ์บอกสั้นๆ ในห้องหนึ่งบรรทัดว่าจดอะไรไว้ (ไม่แจ้งในห้องส่วนตัว และไม่เกิน 1 ครั้งต่อห้องใน 10 นาที) ปิดแล้วสลิดยังจดให้เหมือนเดิม ต้องเปิดโปรเจกต์ด้วย",
-  "en": "Salid listens in every channel and updates projects when the team says a deadline moved, a status changed, a milestone is done or a new risk came up. With this on, Salid posts one short line in the room saying what it recorded (never in private rooms, at most once per room every 10 minutes). Off: it still records, silently. Needs Projects."
+  "th": "ดอรี่ฟังทุกห้องและอัปเดตโปรเจกต์เองเมื่อทีมคุยกันว่าเลื่อนกำหนด เปลี่ยนสถานะ งานสำคัญเสร็จ หรือมีความเสี่ยงใหม่ เปิดข้อนี้เพื่อให้ดอรี่พิมพ์บอกสั้นๆ ในห้องหนึ่งบรรทัดว่าจดอะไรไว้ (ไม่แจ้งในห้องส่วนตัว และไม่เกิน 1 ครั้งต่อห้องใน 10 นาที) ปิดแล้วดอรี่ยังจดให้เหมือนเดิม ต้องเปิดโปรเจกต์ด้วย",
+  "en": "Dory listens in every channel and updates projects when the team says a deadline moved, a status changed, a milestone is done or a new risk came up. With this on, Dory posts one short line in the room saying what it recorded (never in private rooms, at most once per room every 10 minutes). Off: it still records, silently. Needs Projects."
  },
  "f_project_notes_w": {
-  "th": "ถ้าจดผิด บอกสลิดให้แก้กลับได้",
-  "en": "If it got something wrong, tell Salid to correct it"
+  "th": "ถ้าจดผิด บอกดอรี่ให้แก้กลับได้",
+  "en": "If it got something wrong, tell Dory to correct it"
  },
  "f_reminders_n": {
   "th": "เตือนความจำ",
   "en": "Reminders"
  },
  "f_reminders_d": {
-  "th": "ขอให้สลิดเตือนตามเวลา ครั้งเดียวหรือซ้ำ (ทุกกี่ชั่วโมง ทุกวัน ทุกวันจันทร์...) ส่งเข้าห้องส่วนตัวหรือ DM ของคนนั้น เตือนซ้ำจะเงียบช่วง 22:00-08:00 ผู้บริหารตั้งเตือนให้คนอื่นได้",
-  "en": "Ask Salid for timed reminders, once or repeating (every few hours, daily, every Monday...), sent to the person's private channel or DM. Repeating ones stay quiet from 22:00 to 08:00. Executives can set reminders for others."
+  "th": "ขอให้ดอรี่เตือนตามเวลา ครั้งเดียวหรือซ้ำ (ทุกกี่ชั่วโมง ทุกวัน ทุกวันจันทร์...) ส่งเข้าห้องส่วนตัวหรือ DM ของคนนั้น เตือนซ้ำจะเงียบช่วง 22:00-08:00 ผู้บริหารตั้งเตือนให้คนอื่นได้",
+  "en": "Ask Dory for timed reminders, once or repeating (every few hours, daily, every Monday...), sent to the person's private channel or DM. Repeating ones stay quiet from 22:00 to 08:00. Executives can set reminders for others."
  },
  "f_reminders_w": {
-  "th": "แท็กสลิดแล้วพิมพ์ “เตือนฉัน...” หรือ “ทุก 2 ชั่วโมงเตือน...”",
-  "en": "Tag Salid and say “remind me to…” or “every 2 hours remind me…”"
+  "th": "แท็กดอรี่แล้วพิมพ์ “เตือนฉัน...” หรือ “ทุก 2 ชั่วโมงเตือน...”",
+  "en": "Tag Dory and say “remind me to…” or “every 2 hours remind me…”"
  },
  "f_vote_offers_w": {
   "th": "ห้องที่ตั้งโหมดฟังหรือเข้าร่วม",
@@ -1254,20 +1253,20 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Team knowledge"
  },
  "f_memory_d": {
-  "th": "สลิดจำข้อความในห้องที่เปิดโหมด (ไม่ใช่ปิด) ไว้ 90 วัน เพื่อตอบว่าเมื่อวานคุยอะไร งานถึงไหน โดยเปิดเผยเฉพาะกับคนที่เห็นห้องนั้น",
-  "en": "Salid remembers messages in channels with a mode on (not Off) for 90 days, to answer what was discussed yesterday or where a task stands, revealing it only to people who can see that channel"
+  "th": "ดอรี่จำข้อความในห้องที่เปิดโหมด (ไม่ใช่ปิด) ไว้ 90 วัน เพื่อตอบว่าเมื่อวานคุยอะไร งานถึงไหน โดยเปิดเผยเฉพาะกับคนที่เห็นห้องนั้น",
+  "en": "Dory remembers messages in channels with a mode on (not Off) for 90 days, to answer what was discussed yesterday or where a task stands, revealing it only to people who can see that channel"
  },
  "f_memory_w": {
-  "th": "ถามสลิดได้เลย",
-  "en": "Just ask Salid"
+  "th": "ถามดอรี่ได้เลย",
+  "en": "Just ask Dory"
  },
  "f_image_memory_n": {
   "th": "จำเนื้อหารูปภาพ",
   "en": "Remember image content"
  },
  "f_image_memory_d": {
-  "th": "สลิดอ่านรูปที่โพสต์ในห้องที่เปิดความจำ (บรรยายภาพและถอดข้อความในรูป) เพื่อให้ค้นหาและสรุปได้ ไม่เก็บไฟล์รูป ต้องเปิดองค์ความรู้ของทีมไว้ด้วย",
-  "en": "Salid reads images posted in channels with memory on (describes them and extracts text) so they can be searched and summarized. Image files are not stored. Team knowledge must be on too."
+  "th": "ดอรี่อ่านรูปที่โพสต์ในห้องที่เปิดความจำ (บรรยายภาพและถอดข้อความในรูป) เพื่อให้ค้นหาและสรุปได้ ไม่เก็บไฟล์รูป ต้องเปิดองค์ความรู้ของทีมไว้ด้วย",
+  "en": "Dory reads images posted in channels with memory on (describes them and extracts text) so they can be searched and summarized. Image files are not stored. Team knowledge must be on too."
  },
  "f_image_memory_w": {
   "th": "ห้องที่ไม่ใช่โหมดปิด",
@@ -1278,8 +1277,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Remember audio and video content"
  },
  "f_media_memory_d": {
-  "th": "สลิดถอดเสียงพูดจากไฟล์เสียง วิดีโอ และข้อความเสียงที่โพสต์ในห้องที่เปิดความจำ (เฉพาะเสียง ไม่ส่งทั้งวิดีโอ) เพื่อให้ค้นหาและสรุปได้ จำกัดเวลาเสียงต่อวัน ไม่เก็บไฟล์ ต้องเปิดองค์ความรู้ของทีมไว้ด้วย",
-  "en": "Salid transcribes the speech in audio files, videos and voice messages posted in channels with memory on (audio only, the video itself is never sent) so they can be searched and summarized. Daily audio limit applies. Files are not stored. Team knowledge must be on too."
+  "th": "ดอรี่ถอดเสียงพูดจากไฟล์เสียง วิดีโอ และข้อความเสียงที่โพสต์ในห้องที่เปิดความจำ (เฉพาะเสียง ไม่ส่งทั้งวิดีโอ) เพื่อให้ค้นหาและสรุปได้ จำกัดเวลาเสียงต่อวัน ไม่เก็บไฟล์ ต้องเปิดองค์ความรู้ของทีมไว้ด้วย",
+  "en": "Dory transcribes the speech in audio files, videos and voice messages posted in channels with memory on (audio only, the video itself is never sent) so they can be searched and summarized. Daily audio limit applies. Files are not stored. Team knowledge must be on too."
  },
  "f_media_memory_w": {
   "th": "ห้องที่ไม่ใช่โหมดปิด",
@@ -1290,8 +1289,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "React 👀 once a file is read"
  },
  "f_read_receipts_d": {
-  "th": "เมื่อสลิดอ่านรูป เอกสาร หรือเสียงที่ไม่ได้ส่งถึงสลิดเสร็จเรียบร้อยแล้ว (เก็บลงความจำเงียบๆ) จะกดอีโมจิ 👀 ที่ข้อความนั้นหนึ่งครั้ง เพื่อให้ทุกคนรู้ว่าสลิดอ่านแล้ว โดยไม่พิมพ์ข้อความ ไม่ทำกับข้อความเก่าที่อ่านย้อนหลัง",
-  "en": "When Salid has quietly read an image, document or audio that was not addressed to it, it adds one 👀 reaction to that message so people know it was read, without posting text. Not done for old messages read from history."
+  "th": "เมื่อดอรี่อ่านรูป เอกสาร หรือเสียงที่ไม่ได้ส่งถึงดอรี่เสร็จเรียบร้อยแล้ว (เก็บลงความจำเงียบๆ) จะกดอีโมจิ 👀 ที่ข้อความนั้นหนึ่งครั้ง เพื่อให้ทุกคนรู้ว่าดอรี่อ่านแล้ว โดยไม่พิมพ์ข้อความ ไม่ทำกับข้อความเก่าที่อ่านย้อนหลัง",
+  "en": "When Dory has quietly read an image, document or audio that was not addressed to it, it adds one 👀 reaction to that message so people know it was read, without posting text. Not done for old messages read from history."
  },
  "f_read_receipts_w": {
   "th": "ห้องที่ไม่ใช่โหมดปิด",
@@ -1302,8 +1301,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Remember document content (PDF etc.)"
  },
  "f_doc_memory_d": {
-  "th": "สลิดอ่านไฟล์ PDF, Word, Excel, PowerPoint และไฟล์ข้อความที่โพสต์ในห้องที่เปิดความจำ แล้วจดสรุปและข้อความสำคัญ เพื่อให้ค้นหาและสรุปได้ จำกัดจำนวนหน้าต่อวัน ไม่เก็บไฟล์ ต้องเปิดองค์ความรู้ของทีมไว้ด้วย",
-  "en": "Salid reads PDF, Word, Excel, PowerPoint and text files posted in channels with memory on and keeps a summary and key text so they can be searched and summarized. A daily page limit applies. Files are not stored. Team knowledge must be on too."
+  "th": "ดอรี่อ่านไฟล์ PDF, Word, Excel, PowerPoint และไฟล์ข้อความที่โพสต์ในห้องที่เปิดความจำ แล้วจดสรุปและข้อความสำคัญ เพื่อให้ค้นหาและสรุปได้ จำกัดจำนวนหน้าต่อวัน ไม่เก็บไฟล์ ต้องเปิดองค์ความรู้ของทีมไว้ด้วย",
+  "en": "Dory reads PDF, Word, Excel, PowerPoint and text files posted in channels with memory on and keeps a summary and key text so they can be searched and summarized. A daily page limit applies. Files are not stored. Team knowledge must be on too."
  },
  "f_doc_memory_w": {
   "th": "ห้องที่ไม่ใช่โหมดปิด",
@@ -1314,8 +1313,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Read links and search the web"
  },
  "f_web_d": {
-  "th": "สลิดอ่านลิงก์เว็บและวิดีโอ YouTube ที่ส่งมา และค้นข้อมูลล่าสุดด้วย Google Search พร้อมแนบแหล่งที่มา ข้อมูลของทีมไม่ถูกส่งออกไปค้น",
-  "en": "Salid reads web links and YouTube videos you send and looks up current information with Google Search, citing sources. Team data is never sent out in searches."
+  "th": "ดอรี่อ่านลิงก์เว็บและวิดีโอ YouTube ที่ส่งมา และค้นข้อมูลล่าสุดด้วย Google Search พร้อมแนบแหล่งที่มา ข้อมูลของทีมไม่ถูกส่งออกไปค้น",
+  "en": "Dory reads web links and YouTube videos you send and looks up current information with Google Search, citing sources. Team data is never sent out in searches."
  },
  "f_web_w": {
   "th": "แปะลิงก์หรือถามข่าวล่าสุด",
@@ -1326,8 +1325,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Daily task follow-ups"
  },
  "f_followups_d": {
-  "th": "สลิดจดว่าใครรับงานอะไรจากแชตและการประชุมเอง แล้ว DM ถามความคืบหน้าสมาชิกที่มีงานครบกำหนดหรือเลยกำหนดทุกเช้า",
-  "en": "Salid notes who took on what from chats and meetings by itself, then DMs each member with tasks due or overdue every morning to ask for a status update."
+  "th": "ดอรี่จดว่าใครรับงานอะไรจากแชตและการประชุมเอง แล้ว DM ถามความคืบหน้าสมาชิกที่มีงานครบกำหนดหรือเลยกำหนดทุกเช้า",
+  "en": "Dory notes who took on what from chats and meetings by itself, then DMs each member with tasks due or overdue every morning to ask for a status update."
  },
  "f_followups_w": {
   "th": "ส่ง DM ตามเวลาที่ตั้ง",
@@ -1338,8 +1337,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Evening report for leadership"
  },
  "f_reports_d": {
-  "th": "ทุกเย็นสลิดโพสต์รายงานเข้าห้องส่วนตัว “รายงานจากสลิด” (เจ้าของ แอดมิน และ role ผู้บริหารเท่านั้น): สรุปการเงิน งานของแต่ละคน การประชุม ความเสี่ยงและสิ่งที่ควรทำต่อ",
-  "en": "Every evening Salid posts a report in the private channel “รายงานจากสลิด” (owner, admins and executive roles only): finances, each person's work, meetings, risks and suggested next actions."
+  "th": "ทุกเย็นดอรี่โพสต์รายงานเข้าห้องส่วนตัว “รายงานจากดอรี่” (เจ้าของ แอดมิน และ role ผู้บริหารเท่านั้น): สรุปการเงิน งานของแต่ละคน การประชุม ความเสี่ยงและสิ่งที่ควรทำต่อ",
+  "en": "Every evening Dory posts a report in the private channel “รายงานจากดอรี่” (owner, admins and executive roles only): finances, each person's work, meetings, risks and suggested next actions."
  },
  "f_reports_w": {
   "th": "ห้องส่วนตัวของผู้บริหาร",
@@ -1350,8 +1349,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Personal morning/evening briefs and alerts"
  },
  "f_briefings_d": {
-  "th": "สลิด DM สรุปเช้า (นัดประชุม งานที่ครบกำหนด เอกสารสำคัญ เรื่องที่รอคุณตอบ) และสรุปเย็นให้สมาชิกแต่ละคน แจ้งเตือนทันทีเมื่อมีเอกสารสำคัญที่เกี่ยวกับเขา และเตือนเบาๆ เมื่อมีคนฝากเรื่องไว้แล้วยังไม่ได้ตอบ สมาชิกปรับเองได้โดยคุยกับสลิด (ใช้แทน DM ติดตามงานเดิม)",
-  "en": "Salid DMs each member a morning brief (meetings, tasks due, important documents, asks waiting for them) and an evening brief, alerts them at once about important documents that concern them, and gently reminds them of unanswered requests. Members tune it by talking to Salid. Replaces the old task follow-up DM."
+  "th": "ดอรี่ DM สรุปเช้า (นัดประชุม งานที่ครบกำหนด เอกสารสำคัญ เรื่องที่รอคุณตอบ) และสรุปเย็นให้สมาชิกแต่ละคน แจ้งเตือนทันทีเมื่อมีเอกสารสำคัญที่เกี่ยวกับเขา และเตือนเบาๆ เมื่อมีคนฝากเรื่องไว้แล้วยังไม่ได้ตอบ สมาชิกปรับเองได้โดยคุยกับดอรี่ (ใช้แทน DM ติดตามงานเดิม)",
+  "en": "Dory DMs each member a morning brief (meetings, tasks due, important documents, asks waiting for them) and an evening brief, alerts them at once about important documents that concern them, and gently reminds them of unanswered requests. Members tune it by talking to Dory. Replaces the old task follow-up DM."
  },
  "f_briefings_w": {
   "th": "DM ส่วนตัว ปรับได้รายคน",
@@ -1362,8 +1361,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Catch-up on what you missed"
  },
  "f_catchup_d": {
-  "th": "สมาชิกถามสลิดว่า “มีอะไรที่ผมพลาดไปบ้าง” หรือใช้ /ตามทัน /catchup สลิดสรุปเฉพาะห้องที่เขาอ่านได้: คนแท็กเขา งานของเขา ประชุมที่พลาด ไฮไลต์รายห้อง และใส่ส่วนสั้นๆ ในสรุปเช้าเมื่อเขาหายไปเกิน 1 วันทำการ",
-  "en": "Members ask Salid “what did I miss” or use /catchup. Salid summarises only channels that person can read: mentions, their tasks, missed meetings, channel highlights, plus a short section in the morning brief after a working day away."
+  "th": "สมาชิกถามดอรี่ว่า “มีอะไรที่ผมพลาดไปบ้าง” หรือใช้ /ตามทัน /catchup ดอรี่สรุปเฉพาะห้องที่เขาอ่านได้: คนแท็กเขา งานของเขา ประชุมที่พลาด ไฮไลต์รายห้อง และใส่ส่วนสั้นๆ ในสรุปเช้าเมื่อเขาหายไปเกิน 1 วันทำการ",
+  "en": "Members ask Dory “what did I miss” or use /catchup. Dory summarises only channels that person can read: mentions, their tasks, missed meetings, channel highlights, plus a short section in the morning brief after a working day away."
  },
  "f_catchup_w": {
   "th": "ส่วนตัว เห็นเฉพาะห้องที่อ่านได้",
@@ -1374,8 +1373,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Meeting minutes document with who-said-what"
  },
  "f_meeting_transcript_doc_d": {
-  "th": "เมื่อประชุมเสียงจบ สลิดแนบ PDF รายงานการประชุม (สรุป มติ งานที่ต้องทำ และบทพูดของแต่ละคน) และสมาชิกที่เข้าประชุมขอเป็น PDF / Word ภายหลังได้ ไม่รวมช่วงที่ปิดการบันทึก บทพูดสร้างจากความจำของห้องตามอายุที่ตั้งไว้",
-  "en": "When a voice meeting ends Salid attaches a minutes PDF (summary, decisions, action items and each person's transcript); attendees can ask for it later as PDF / Word. Nothing from a not-recording pause is included; the transcript is rebuilt from the room's memory under its retention."
+  "th": "เมื่อประชุมเสียงจบ ดอรี่แนบ PDF รายงานการประชุม (สรุป มติ งานที่ต้องทำ และบทพูดของแต่ละคน) และสมาชิกที่เข้าประชุมขอเป็น PDF / Word ภายหลังได้ ไม่รวมช่วงที่ปิดการบันทึก บทพูดสร้างจากความจำของห้องตามอายุที่ตั้งไว้",
+  "en": "When a voice meeting ends Dory attaches a minutes PDF (summary, decisions, action items and each person's transcript); attendees can ask for it later as PDF / Word. Nothing from a not-recording pause is included; the transcript is rebuilt from the room's memory under its retention."
  },
  "f_meeting_transcript_doc_w": {
   "th": "เฉพาะคนที่เข้าประชุมหรือเห็นห้องเสียง",
@@ -1386,20 +1385,20 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Log who joins and leaves a meeting, and when"
  },
  "f_attendance_log_d": {
-  "th": "ระหว่างประชุมเสียง สลิดพิมพ์บรรทัดสั้น ๆ ในแชทของห้องว่าใครเข้าหรือออกตอนกี่โมง และใส่หัวข้อ \"ผู้เข้าร่วม\" (ช่วงเวลาและจำนวนนาทีของแต่ละคน) ไว้เหนือสรุปและในเอกสารรายงานการประชุม ไม่บันทึกเสียงเพิ่ม",
-  "en": "During a voice meeting Salid posts a short line in the room's chat when someone joins or leaves and when, and puts an Attendees section (each person's time in the room and minutes) above the summary and in the minutes document. No extra audio is kept."
+  "th": "ระหว่างประชุมเสียง ดอรี่พิมพ์บรรทัดสั้น ๆ ในแชทของห้องว่าใครเข้าหรือออกตอนกี่โมง และใส่หัวข้อ \"ผู้เข้าร่วม\" (ช่วงเวลาและจำนวนนาทีของแต่ละคน) ไว้เหนือสรุปและในเอกสารรายงานการประชุม ไม่บันทึกเสียงเพิ่ม",
+  "en": "During a voice meeting Dory posts a short line in the room's chat when someone joins or leaves and when, and puts an Attendees section (each person's time in the room and minutes) above the summary and in the minutes document. No extra audio is kept."
  },
  "f_attendance_log_w": {
   "th": "คนในห้องแชทของห้องประชุม",
   "en": "People who can read the meeting room's chat"
  },
  "f_private_channels_n": {
-  "th": "ห้องส่วนตัวกับสลิดของทุกคน",
-  "en": "A private Salid channel for every member"
+  "th": "ห้องส่วนตัวกับดอรี่ของทุกคน",
+  "en": "A private Dory channel for every member"
  },
  "f_private_channels_d": {
-  "th": "สลิดสร้างห้องส่วนตัวให้สมาชิกทุกคนในหมวด “คุยกับสลิด (ส่วนตัว)” (สมาชิกใหม่ได้ห้องทันที คนเดิมค่อยๆ สร้างให้) แล้วส่งสรุปเช้า-เย็น เตือนงาน และคำขออนุมัติไปที่ห้องนั้นพร้อมแท็กเจ้าของ ห้องเห็นแค่เจ้าของ สลิด และแอดมินที่มีสิทธิ์ Administrator คนที่ออกจากเซิร์ฟเวอร์จะถูกลบห้องหลัง 24 ชั่วโมง ปิดสวิตช์นี้จะหยุดสร้างห้องใหม่ แต่ไม่ลบห้องที่มีอยู่",
-  "en": "Salid creates a private channel for every member under “Salid private chats” (new members at once, existing ones gradually) and sends briefings, reminders and approval requests there, tagging the owner. Only the owner, Salid and admins with the Administrator permission can see it. A channel is deleted 24 hours after its member leaves. Turning this off stops new channels but does NOT delete existing ones."
+  "th": "ดอรี่สร้างห้องส่วนตัวให้สมาชิกทุกคนในหมวด “คุยกับดอรี่ (ส่วนตัว)” (สมาชิกใหม่ได้ห้องทันที คนเดิมค่อยๆ สร้างให้) แล้วส่งสรุปเช้า-เย็น เตือนงาน และคำขออนุมัติไปที่ห้องนั้นพร้อมแท็กเจ้าของ ห้องเห็นแค่เจ้าของ ดอรี่ และแอดมินที่มีสิทธิ์ Administrator คนที่ออกจากเซิร์ฟเวอร์จะถูกลบห้องหลัง 24 ชั่วโมง ปิดสวิตช์นี้จะหยุดสร้างห้องใหม่ แต่ไม่ลบห้องที่มีอยู่",
+  "en": "Dory creates a private channel for every member under “Dory private chats” (new members at once, existing ones gradually) and sends briefings, reminders and approval requests there, tagging the owner. Only the owner, Dory and admins with the Administrator permission can see it. A channel is deleted 24 hours after its member leaves. Turning this off stops new channels but does NOT delete existing ones."
  },
  "f_private_channels_w": {
   "th": "สมาชิกเลือกรับทาง DM แทนได้",
@@ -1410,8 +1409,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Approval requests (expense, purchase, leave)"
  },
  "f_approvals_d": {
-  "th": "สมาชิกขอให้สลิดส่งคำขออนุมัติ เช่น ขอเบิกค่าแท็กซี่ ขอซื้อของ ขอลา ไปให้หัวหน้า (ตามลำดับ role ของเซิร์ฟเวอร์ หรือคนที่ระบุ) สลิดถามยืนยันก่อนส่ง หัวหน้ากดอนุมัติหรือไม่อนุมัติใน DM และผู้ขอได้รับแจ้งผล มีสรุปในรายงานเย็นและเตือนหัวหน้าในสรุปเช้าถ้าค้างเกิน 1 วัน",
-  "en": "Members ask Salid to send an approval request (expense claim, purchase, leave) to their manager (by the server's role hierarchy, or a named person). Salid confirms before sending, the approver taps Approve or Decline in a DM and the requester is told the outcome. Counts appear in the evening report and approvers are reminded in the morning brief when something has waited over a day."
+  "th": "สมาชิกขอให้ดอรี่ส่งคำขออนุมัติ เช่น ขอเบิกค่าแท็กซี่ ขอซื้อของ ขอลา ไปให้หัวหน้า (ตามลำดับ role ของเซิร์ฟเวอร์ หรือคนที่ระบุ) ดอรี่ถามยืนยันก่อนส่ง หัวหน้ากดอนุมัติหรือไม่อนุมัติใน DM และผู้ขอได้รับแจ้งผล มีสรุปในรายงานเย็นและเตือนหัวหน้าในสรุปเช้าถ้าค้างเกิน 1 วัน",
+  "en": "Members ask Dory to send an approval request (expense claim, purchase, leave) to their manager (by the server's role hierarchy, or a named person). Dory confirms before sending, the approver taps Approve or Decline in a DM and the requester is told the outcome. Counts appear in the evening report and approvers are reminded in the morning brief when something has waited over a day."
  },
  "f_approvals_w": {
   "th": "ต้องยืนยันก่อนส่งทุกครั้ง",
@@ -1422,8 +1421,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Find a time everyone is free"
  },
  "f_freetime_d": {
-  "th": "สมาชิกขอให้สลิดหาเวลาประชุมที่ทุกคนว่าง โดยดูจากเวลาทำงานที่แต่ละคนตั้งไว้ ปฏิทิน และวันลาที่อนุมัติแล้ว",
-  "en": "Members ask Salid to find a meeting time when everyone is free, using each person's work hours, calendar events and approved leave."
+  "th": "สมาชิกขอให้ดอรี่หาเวลาประชุมที่ทุกคนว่าง โดยดูจากเวลาทำงานที่แต่ละคนตั้งไว้ ปฏิทิน และวันลาที่อนุมัติแล้ว",
+  "en": "Members ask Dory to find a meeting time when everyone is free, using each person's work hours, calendar events and approved leave."
  },
  "f_freetime_w": {
   "th": "ใช้เฉพาะข้อมูลว่าง/ไม่ว่าง ไม่เปิดเผยรายละเอียดนัด",
@@ -1434,8 +1433,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Polls and forms"
  },
  "f_polls_d": {
-  "th": "สมาชิกขอให้สลิดสร้างโพลในห้อง หรือส่งแบบสอบถามทาง DM แล้วสลิดสรุปผลให้",
-  "en": "Members ask Salid to run a poll in a channel or collect answers by DM form, then summarise the results."
+  "th": "สมาชิกขอให้ดอรี่สร้างโพลในห้อง หรือส่งแบบสอบถามทาง DM แล้วดอรี่สรุปผลให้",
+  "en": "Members ask Dory to run a poll in a channel or collect answers by DM form, then summarise the results."
  },
  "f_polls_w": {
   "th": "ผู้ตอบแบบสอบถามปฏิเสธได้ทุกเมื่อ",
@@ -1446,8 +1445,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Company wiki"
  },
  "f_wiki_d": {
-  "th": "สลิดเขียนและค้นหาหน้าความรู้ของบริษัท (เช่น ขั้นตอนเบิกเงิน) จากความจำที่อ่านได้ และตอบจากวิกิก่อน",
-  "en": "Salid writes and searches company knowledge pages (e.g. how to claim expenses) from memory it can read, and consults the wiki first."
+  "th": "ดอรี่เขียนและค้นหาหน้าความรู้ของบริษัท (เช่น ขั้นตอนเบิกเงิน) จากความจำที่อ่านได้ และตอบจากวิกิก่อน",
+  "en": "Dory writes and searches company knowledge pages (e.g. how to claim expenses) from memory it can read, and consults the wiki first."
  },
  "f_wiki_w": {
   "th": "ต้องเปิดความจำ (memory) ด้วย",
@@ -1458,8 +1457,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Remembered places"
  },
  "f_places_d": {
-  "th": "สลิดจำที่ตั้งสำนักงานใหญ่ สาขา โกดัง และสถานที่ส่วนตัวที่เจ้าตัวขอให้จำ แล้วบอกที่อยู่และลิงก์แผนที่เมื่อมีคนถาม",
-  "en": "Salid remembers the head office, branches, warehouses and personal places their owner asked it to keep, and gives the address and map link when asked."
+  "th": "ดอรี่จำที่ตั้งสำนักงานใหญ่ สาขา โกดัง และสถานที่ส่วนตัวที่เจ้าตัวขอให้จำ แล้วบอกที่อยู่และลิงก์แผนที่เมื่อมีคนถาม",
+  "en": "Dory remembers the head office, branches, warehouses and personal places their owner asked it to keep, and gives the address and map link when asked."
  },
  "f_places_w": {
   "th": "สถานที่ส่วนตัวเห็นได้เฉพาะผู้ที่เจ้าตัวอนุญาต",
@@ -1470,20 +1469,20 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Travel time and weather"
  },
  "f_maps_d": {
-  "th": "สลิดประเมินเวลาเดินทางและเส้นทางด้วย Google Maps (รถติดแค่ไหน ควรออกกี่โมง) และดูพยากรณ์อากาศ (ฝนตกไหม) ให้เมื่อมีคนถาม",
-  "en": "Salid estimates travel time and routes with Google Maps (traffic, when to leave) and checks the weather forecast (will it rain) when asked."
+  "th": "ดอรี่ประเมินเวลาเดินทางและเส้นทางด้วย Google Maps (รถติดแค่ไหน ควรออกกี่โมง) และดูพยากรณ์อากาศ (ฝนตกไหม) ให้เมื่อมีคนถาม",
+  "en": "Dory estimates travel time and routes with Google Maps (traffic, when to leave) and checks the weather forecast (will it rain) when asked."
  },
  "f_maps_w": {
-  "th": "ต้องเปิดใช้ Google Maps API ฝั่งเซิร์ฟเวอร์ (SALID_MAPS_ENABLED) ด้วย; ที่อยู่ส่วนตัวไม่ถูกเปิดเผยในห้องรวม",
-  "en": "Also needs the Google Maps APIs enabled server-side (SALID_MAPS_ENABLED); private addresses are never shown in shared rooms"
+  "th": "ต้องเปิดใช้ Google Maps API ฝั่งเซิร์ฟเวอร์ (DORY_MAPS_ENABLED) ด้วย; ที่อยู่ส่วนตัวไม่ถูกเปิดเผยในห้องรวม",
+  "en": "Also needs the Google Maps APIs enabled server-side (DORY_MAPS_ENABLED); private addresses are never shown in shared rooms"
  },
  "f_search_n": {
   "th": "ค้นหาข้อมูล",
   "en": "Information search"
  },
  "f_search_d": {
-  "th": "สลิดค้นข้อมูลภายในทีมในครั้งเดียว (แชต ไฟล์ วิกิ ใบเสร็จ งาน ประชุม สถานที่) ค้นเว็บพร้อมอ้างอิงแหล่งที่มา และทำรีเสิร์ชเชิงลึกเป็นรายงาน PDF (จำกัดต่อวัน)",
-  "en": "Salid searches all internal sources in one go (chat, files, wiki, receipts, tasks, meetings, places), searches the web with cited sources, and runs deep research into a PDF report (daily limit)."
+  "th": "ดอรี่ค้นข้อมูลภายในทีมในครั้งเดียว (แชต ไฟล์ วิกิ ใบเสร็จ งาน ประชุม สถานที่) ค้นเว็บพร้อมอ้างอิงแหล่งที่มา และทำรีเสิร์ชเชิงลึกเป็นรายงาน PDF (จำกัดต่อวัน)",
+  "en": "Dory searches all internal sources in one go (chat, files, wiki, receipts, tasks, meetings, places), searches the web with cited sources, and runs deep research into a PDF report (daily limit)."
  },
  "f_search_w": {
   "th": "ค้นเว็บและรีเสิร์ชเชิงลึกต้องเปิดการค้นเว็บ (web) ด้วย",
@@ -1494,8 +1493,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Currency and flights"
  },
  "f_travel_d": {
-  "th": "สลิดแปลงสกุลเงินด้วยอัตราอ้างอิงจริง (ECB) เช็กสถานะเที่ยวบิน หาราคาตั๋วโดยประมาณ และเตือนเที่ยวบินเมื่อมีคีย์ข้อมูลเที่ยวบิน",
-  "en": "Salid converts currencies with real reference (ECB) rates, checks flight status, finds indicative fares, and tracks flights when a flight-data key is configured."
+  "th": "ดอรี่แปลงสกุลเงินด้วยอัตราอ้างอิงจริง (ECB) เช็กสถานะเที่ยวบิน หาราคาตั๋วโดยประมาณ และเตือนเที่ยวบินเมื่อมีคีย์ข้อมูลเที่ยวบิน",
+  "en": "Dory converts currencies with real reference (ECB) rates, checks flight status, finds indicative fares, and tracks flights when a flight-data key is configured."
  },
  "f_travel_w": {
   "th": "ราคาตั๋วและสถานะจากการค้นเว็บเป็นค่าโดยประมาณ",
@@ -1506,8 +1505,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Stocks, gold and news"
  },
  "f_markets_d": {
-  "th": "สลิดตอบราคาหุ้นไทย/ต่างประเทศ ราคาทอง และข่าวล่าสุด ตั้งแจ้งเตือนราคาให้แต่ละคน ใส่บรรทัด “ตลาดเช้านี้” ในสรุปเช้าเมื่อขอ และผู้บริหารให้ติดตามข่าวลูกค้า/คู่แข่งในรายงานเย็นได้",
-  "en": "Salid answers Thai and global stock prices, gold prices and latest news, sets per-person price alerts, adds a market line to the morning brief on request, and executives can follow customer/competitor news in the evening report."
+  "th": "ดอรี่ตอบราคาหุ้นไทย/ต่างประเทศ ราคาทอง และข่าวล่าสุด ตั้งแจ้งเตือนราคาให้แต่ละคน ใส่บรรทัด “ตลาดเช้านี้” ในสรุปเช้าเมื่อขอ และผู้บริหารให้ติดตามข่าวลูกค้า/คู่แข่งในรายงานเย็นได้",
+  "en": "Dory answers Thai and global stock prices, gold prices and latest news, sets per-person price alerts, adds a market line to the morning brief on request, and executives can follow customer/competitor news in the evening report."
  },
  "f_markets_w": {
   "th": "ใช้แหล่งข้อมูลสาธารณะ ราคาอาจล่าช้า และไม่ใช่คำแนะนำการลงทุน",
@@ -1518,8 +1517,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Ideas and projects"
  },
  "f_ideas_d": {
-  "th": "สลิดเก็บไอเดียที่สมาชิกกำลังพัฒนาเป็นเอกสารโปรเจกต์ (ปัญหา ลูกค้า BMC SWOT คู่แข่ง วิธีขาย ราคา) เขียนเฟรมเวิร์กธุรกิจให้ครบทุกหัวข้อเป็น PDF และส่งออกเป็น PDF/DOCX/Markdown ค่าเริ่มต้นเห็นเฉพาะเจ้าของและผู้ที่ตำแหน่งสูงกว่า",
-  "en": "Salid keeps ideas members develop as project documents (problem, customers, BMC, SWOT, competitors, go-to-market, pricing), writes complete business frameworks as PDF and exports to PDF/DOCX/Markdown. By default only the owner and people with a higher role can read an idea."
+  "th": "ดอรี่เก็บไอเดียที่สมาชิกกำลังพัฒนาเป็นเอกสารโปรเจกต์ (ปัญหา ลูกค้า BMC SWOT คู่แข่ง วิธีขาย ราคา) เขียนเฟรมเวิร์กธุรกิจให้ครบทุกหัวข้อเป็น PDF และส่งออกเป็น PDF/DOCX/Markdown ค่าเริ่มต้นเห็นเฉพาะเจ้าของและผู้ที่ตำแหน่งสูงกว่า",
+  "en": "Dory keeps ideas members develop as project documents (problem, customers, BMC, SWOT, competitors, go-to-market, pricing), writes complete business frameworks as PDF and exports to PDF/DOCX/Markdown. By default only the owner and people with a higher role can read an idea."
  },
  "f_ideas_w": {
   "th": "ไอเดียที่เจ้าของแชร์ให้ทีมจะแสดงในคลังเอกสารของ Command Center",
@@ -1530,8 +1529,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Learn the company and domain"
  },
  "f_company_learning_d": {
-  "th": "สลิดจำสิ่งที่บริษัทสอน (กฎ ศัพท์ ขั้นตอน FAQ น้ำเสียง) และความรู้พื้นฐานตามสายงาน เช่น ร้านอาหาร นิติบุคคล คลินิก ผู้ดูแลสอนได้ทันที ส่วนคนอื่นเสนอได้และต้องรอผู้ดูแลอนุมัติ",
-  "en": "Salid remembers what the company teaches her (rules, glossary, procedures, FAQ, tone) and built-in domain knowledge such as restaurant, condo juristic or clinic. Admins teach directly; everyone else can only suggest and an admin must approve."
+  "th": "ดอรี่จำสิ่งที่บริษัทสอน (กฎ ศัพท์ ขั้นตอน FAQ น้ำเสียง) และความรู้พื้นฐานตามสายงาน เช่น ร้านอาหาร นิติบุคคล คลินิก ผู้ดูแลสอนได้ทันที ส่วนคนอื่นเสนอได้และต้องรอผู้ดูแลอนุมัติ",
+  "en": "Dory remembers what the company teaches her (rules, glossary, procedures, FAQ, tone) and built-in domain knowledge such as restaurant, condo juristic or clinic. Admins teach directly; everyone else can only suggest and an admin must approve."
  },
  "f_company_learning_w": {
   "th": "ข้อมูลที่สอนเป็นเพียงข้อมูลประกอบ ไม่เปลี่ยนสิทธิ์ ขอบเขตข้อมูล หรือความลับ",
@@ -1542,8 +1541,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Company knowledge: who does what, whom to ask, handover"
  },
  "f_company_knowledge_d": {
-  "th": "สลิดฟังการทำงานของทีมและจดว่าใครรับผิดชอบอะไร ทำงานอย่างไร ใช้ระบบอะไร ติดต่อใคร แล้วตอบพนักงานใหม่ได้ว่าบริษัททำอะไร ใครทำอะไร ควรถามใครเรื่องไหน ทำคู่มือต้อนรับ และเมื่อมีคนออก สลิดเขียนเอกสารส่งมอบงานให้ผู้บริหาร เก็บเฉพาะความรู้ด้านงาน ไม่เก็บแชตส่วนตัวหรือเรื่องส่วนตัว",
-  "en": "Salid listens to how the team works and notes who is responsible for what, how they work, which systems they use and who they deal with. New people can then ask what the company does, who does what and whom to ask; Salid writes onboarding briefs, and when someone leaves she writes a handover for the executives. Work knowledge only: never DMs, private channels or personal matters."
+  "th": "ดอรี่ฟังการทำงานของทีมและจดว่าใครรับผิดชอบอะไร ทำงานอย่างไร ใช้ระบบอะไร ติดต่อใคร แล้วตอบพนักงานใหม่ได้ว่าบริษัททำอะไร ใครทำอะไร ควรถามใครเรื่องไหน ทำคู่มือต้อนรับ และเมื่อมีคนออก ดอรี่เขียนเอกสารส่งมอบงานให้ผู้บริหาร เก็บเฉพาะความรู้ด้านงาน ไม่เก็บแชตส่วนตัวหรือเรื่องส่วนตัว",
+  "en": "Dory listens to how the team works and notes who is responsible for what, how they work, which systems they use and who they deal with. New people can then ask what the company does, who does what and whom to ask; Dory writes onboarding briefs, and when someone leaves she writes a handover for the executives. Work knowledge only: never DMs, private channels or personal matters."
  },
  "f_company_knowledge_w": {
   "th": "ทุกข้อมูลมีที่มา (ห้องและวัน) และจะแสดงให้เฉพาะคนที่อ่านห้องนั้นได้",
@@ -1554,23 +1553,23 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Contests and hackathons"
  },
  "f_contests_d": {
-  "th": "สลิดอ่านกติกาการแข่งขัน/แฮกกาธอน/ทุน/ประมูลที่วางมา เก็บเดดไลน์ เกณฑ์ตัดสิน เทคโนโลยีที่แนะนำ และเช็กลิสต์ส่งงาน วางแผนย้อนจากเดดไลน์ เป็นกรรมการจำลอง ร่างสคริปต์พิตช์ และเตือนทีมก่อนเดดไลน์ 7 วัน 3 วัน 1 วัน และ 3 ชั่วโมง",
-  "en": "Salid reads pasted contest / hackathon / grant / tender rules, keeps deadlines, judging criteria, suggested technologies and a submission checklist, plans backwards from the deadlines, acts as a mock judge, drafts pitch scripts and reminds the team 7 days, 3 days, 1 day and 3 hours before each deadline."
+  "th": "ดอรี่อ่านกติกาการแข่งขัน/แฮกกาธอน/ทุน/ประมูลที่วางมา เก็บเดดไลน์ เกณฑ์ตัดสิน เทคโนโลยีที่แนะนำ และเช็กลิสต์ส่งงาน วางแผนย้อนจากเดดไลน์ เป็นกรรมการจำลอง ร่างสคริปต์พิตช์ และเตือนทีมก่อนเดดไลน์ 7 วัน 3 วัน 1 วัน และ 3 ชั่วโมง",
+  "en": "Dory reads pasted contest / hackathon / grant / tender rules, keeps deadlines, judging criteria, suggested technologies and a submission checklist, plans backwards from the deadlines, acts as a mock judge, drafts pitch scripts and reminds the team 7 days, 3 days, 1 day and 3 hours before each deadline."
  },
  "f_contests_w": {
-  "th": "เตือนเฉพาะคนในทีมที่เจ้าของแชร์การแข่งขันให้ดูแล้ว คะแนนจากกรรมการจำลองเป็นเพียงการประเมินของสลิด",
-  "en": "Reminders go only to team members the owner shared the contest with; mock-judge scores are Salid's estimate"
+  "th": "เตือนเฉพาะคนในทีมที่เจ้าของแชร์การแข่งขันให้ดูแล้ว คะแนนจากกรรมการจำลองเป็นเพียงการประเมินของดอรี่",
+  "en": "Reminders go only to team members the owner shared the contest with; mock-judge scores are Dory's estimate"
  },
  "f_bizfin_n": {
   "th": "การเงินธุรกิจและเทียบตลาด",
   "en": "Business finance and benchmarking"
  },
  "f_bizfin_d": {
-  "th": "สลิดคำนวณจุดคุ้มทุน ตั้งราคาจากต้นทุน (แยก VAT 7%) ROI/Payback/NPV/IRR และประมาณการ 12-36 เดือนด้วยโค้ดที่แม่นยำ แนบ Excel เทียบตลาดและคู่แข่งพร้อมแหล่งอ้างอิง ตรวจลิงก์/ข้อความหลอกลวง และเช็กลิสต์สลิดโอนเงิน",
-  "en": "Salid calculates break-even, cost-based pricing (VAT 7% shown separately), ROI / payback / NPV / IRR and 12-36 month projections exactly in code with an Excel file, benchmarks markets and competitors with citations, checks links and messages for scams, and runs a payment-slip checklist."
+  "th": "ดอรี่คำนวณจุดคุ้มทุน ตั้งราคาจากต้นทุน (แยก VAT 7%) ROI/Payback/NPV/IRR และประมาณการ 12-36 เดือนด้วยโค้ดที่แม่นยำ แนบ Excel เทียบตลาดและคู่แข่งพร้อมแหล่งอ้างอิง ตรวจลิงก์/ข้อความหลอกลวง และเช็กลิสต์ดอรี่โอนเงิน",
+  "en": "Dory calculates break-even, cost-based pricing (VAT 7% shown separately), ROI / payback / NPV / IRR and 12-36 month projections exactly in code with an Excel file, benchmarks markets and competitors with citations, checks links and messages for scams, and runs a payment-slip checklist."
  },
  "f_bizfin_w": {
-  "th": "ตัวเลขเป็นผลจากสมมติฐานที่ผู้ใช้ให้ ตรวจสลิดไม่สามารถยืนยันกับธนาคารได้",
+  "th": "ตัวเลขเป็นผลจากสมมติฐานที่ผู้ใช้ให้ ตรวจดอรี่ไม่สามารถยืนยันกับธนาคารได้",
   "en": "Figures follow the user's assumptions; slip checks cannot confirm with the bank"
  },
  "f_promo_n": {
@@ -1578,8 +1577,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Promo posts from product photos"
  },
  "f_promo_d": {
-  "th": "ส่งรูปสินค้าพร้อมบอกโปร สลิดทำภาพโพสต์ 3 ขนาด (1:1, 4:5, 9:16) ตัวสินค้าคงเดิม พื้นหลังสร้างด้วย AI ข้อความภาษาไทยจัดวางโดยสลิด พร้อมแคปชัน แก้ต่อได้ภายใน 30 นาที",
-  "en": "Send a product photo with your offer: Salid makes post images in 3 sizes (1:1, 4:5, 9:16); the product stays as photographed, the background is made with AI, Salid typesets the text and writes a caption; changes work for 30 minutes"
+  "th": "ส่งรูปสินค้าพร้อมบอกโปร ดอรี่ทำภาพโพสต์ 3 ขนาด (1:1, 4:5, 9:16) ตัวสินค้าคงเดิม พื้นหลังสร้างด้วย AI ข้อความภาษาไทยจัดวางโดยดอรี่ พร้อมแคปชัน แก้ต่อได้ภายใน 30 นาที",
+  "en": "Send a product photo with your offer: Dory makes post images in 3 sizes (1:1, 4:5, 9:16); the product stays as photographed, the background is made with AI, Dory typesets the text and writes a caption; changes work for 30 minutes"
  },
  "f_promo_w": {
   "th": "ไม่เกิน 20 ชุดต่อวันต่อเซิร์ฟเวอร์ เกินแล้วใช้รูปเดิมแทนพื้นหลัง AI",
@@ -1602,32 +1601,32 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Task confirmation"
  },
  "f_task_handshake_d": {
-  "th": "เมื่อสลิดได้ยินว่ามีงานในแชต จะส่งการ์ดงานให้คนที่ต้องทำกด รับงาน / แก้ไข / ไม่ใช่ของฉัน แล้วแจ้งคนที่มอบงานว่าบันทึกแล้ว ถ้ายังไม่ตอบใน 24 ชั่วโมงจะเตือนหนึ่งครั้ง",
-  "en": "When Salid hears a task in chat she sends the person who has to do it a card to Accept, Edit or say Not mine, then tells whoever gave the task that it was recorded. One reminder after 24 hours without an answer."
+  "th": "เมื่อดอรี่ได้ยินว่ามีงานในแชต จะส่งการ์ดงานให้คนที่ต้องทำกด รับงาน / แก้ไข / ไม่ใช่ของฉัน แล้วแจ้งคนที่มอบงานว่าบันทึกแล้ว ถ้ายังไม่ตอบใน 24 ชั่วโมงจะเตือนหนึ่งครั้ง",
+  "en": "When Dory hears a task in chat she sends the person who has to do it a card to Accept, Edit or say Not mine, then tells whoever gave the task that it was recorded. One reminder after 24 hours without an answer."
  },
  "f_task_handshake_w": {
-  "th": "พูดถึงงานในแชตตามปกติ หรือบอกสลิดว่า “งาน #รหัส ให้ ...” เพื่อย้ายงาน",
-  "en": "Just talk about tasks in chat, or tell Salid “task #id to ...” to reassign"
+  "th": "พูดถึงงานในแชตตามปกติ หรือบอกดอรี่ว่า “งาน #รหัส ให้ ...” เพื่อย้ายงาน",
+  "en": "Just talk about tasks in chat, or tell Dory “task #id to ...” to reassign"
  },
  "f_role_sync_n": {
   "th": "ซิงค์ตำแหน่งกับ role ใน Discord และระบบกลาง",
   "en": "Position and role sync"
  },
  "f_role_sync_d": {
-  "th": "ตำแหน่งในบริษัท (ผู้ก่อตั้ง CEO CTO ผู้จัดการ ฯลฯ) มีรายการเดียว สลิดอ่าน role ใน Discord และแอดมินแล้วอัปเดตระบบกลาง และเมื่อมีคนระบุตำแหน่งในสลิดหรือระบบกลาง สลิดสร้าง role ชื่อเดียวกันให้แท็กได้และมอบให้คนนั้น ลำดับตำแหน่งใช้บอกว่าใครอ่านงานของใครได้",
-  "en": "One list of company positions (founder, CEO, CTO, manager...). Salid reads Discord roles and admins into the central system, and when a position is stated in Salid or the central system she creates a taggable role of that name and gives it to the person. Position levels also set who may read whose work."
+  "th": "ตำแหน่งในบริษัท (ผู้ก่อตั้ง CEO CTO ผู้จัดการ ฯลฯ) มีรายการเดียว ดอรี่อ่าน role ใน Discord และแอดมินแล้วอัปเดตระบบกลาง และเมื่อมีคนระบุตำแหน่งในดอรี่หรือระบบกลาง ดอรี่สร้าง role ชื่อเดียวกันให้แท็กได้และมอบให้คนนั้น ลำดับตำแหน่งใช้บอกว่าใครอ่านงานของใครได้",
+  "en": "One list of company positions (founder, CEO, CTO, manager...). Dory reads Discord roles and admins into the central system, and when a position is stated in Dory or the central system she creates a taggable role of that name and gives it to the person. Position levels also set who may read whose work."
  },
  "f_role_sync_w": {
-  "th": "สลิดไม่แตะ role ที่สลิดไม่ได้สร้าง และต้องมีสิทธิ์ Manage Roles",
-  "en": "Salid never changes roles she did not create, and needs the Manage Roles permission"
+  "th": "ดอรี่ไม่แตะ role ที่ดอรี่ไม่ได้สร้าง และต้องมีสิทธิ์ Manage Roles",
+  "en": "Dory never changes roles she did not create, and needs the Manage Roles permission"
  },
  "f_data_n": {
   "th": "วิเคราะห์ข้อมูลจากไฟล์ Excel / CSV",
   "en": "Spreadsheet and CSV analysis"
  },
  "f_data_d": {
-  "th": "ส่งไฟล์ Excel (.xlsx .xls) CSV หรือ JSON แล้วให้สลิดอ่านโครงสร้าง ตรวจคุณภาพข้อมูล ตอบคำถามด้วย SQL สรุปตัวเลข ทำกราฟ (แท่ง เส้น วงกลม กระจาย ฮิสโตแกรม) และส่งผลเป็นไฟล์ Excel/CSV เก็บชุดข้อมูลไว้ถามต่อได้ (ตั้งแต่ปีพ.ศ. ตัวเลขมีคอมมา ฿ และ % แปลงให้เอง)",
-  "en": "Send an Excel (.xlsx .xls), CSV or JSON file and Salid reads its structure, checks the data quality, answers questions with SQL, summarises numbers, draws charts (bar, line, pie, scatter, histogram) and returns results as Excel/CSV; datasets can be saved for later questions (Buddhist-year dates, thousands separators, ฿ and % are converted)"
+  "th": "ส่งไฟล์ Excel (.xlsx .xls) CSV หรือ JSON แล้วให้ดอรี่อ่านโครงสร้าง ตรวจคุณภาพข้อมูล ตอบคำถามด้วย SQL สรุปตัวเลข ทำกราฟ (แท่ง เส้น วงกลม กระจาย ฮิสโตแกรม) และส่งผลเป็นไฟล์ Excel/CSV เก็บชุดข้อมูลไว้ถามต่อได้ (ตั้งแต่ปีพ.ศ. ตัวเลขมีคอมมา ฿ และ % แปลงให้เอง)",
+  "en": "Send an Excel (.xlsx .xls), CSV or JSON file and Dory reads its structure, checks the data quality, answers questions with SQL, summarises numbers, draws charts (bar, line, pie, scatter, histogram) and returns results as Excel/CSV; datasets can be saved for later questions (Buddhist-year dates, thousands separators, ฿ and % are converted)"
  },
  "f_data_w": {
   "th": "ไฟล์ไม่เกิน 25 MB และไม่เกิน 200,000 เซลล์ต่อตาราง ชุดข้อมูลที่เก็บไว้คนที่อ่านห้องต้นทางได้จึงจะเห็น (จากแชตส่วนตัวเห็นเฉพาะเจ้าของ) ตัวเลขทุกตัวมาจากคำสั่ง SQL ไม่ใช่การเดา",
@@ -1638,8 +1637,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Images from a description"
  },
  "f_images_d": {
-  "th": "พิมพ์บรรยายภาพที่อยากได้ สลิดสร้างภาพให้ 1-4 แบบ (1:1, 4:5, 9:16, 16:9) ใส่ข้อความภาษาไทยบนภาพได้ แก้ต่อได้ภายใน 30 นาที",
-  "en": "Describe the image you want: Salid makes 1-4 versions (1:1, 4:5, 9:16, 16:9), can put Thai text on them, and revises them for 30 minutes"
+  "th": "พิมพ์บรรยายภาพที่อยากได้ ดอรี่สร้างภาพให้ 1-4 แบบ (1:1, 4:5, 9:16, 16:9) ใส่ข้อความภาษาไทยบนภาพได้ แก้ต่อได้ภายใน 30 นาที",
+  "en": "Describe the image you want: Dory makes 1-4 versions (1:1, 4:5, 9:16, 16:9), can put Thai text on them, and revises them for 30 minutes"
  },
  "f_images_w": {
   "th": "ไม่เกิน 20 ภาพต่อวันต่อเซิร์ฟเวอร์ และ 5 ภาพต่อคน",
@@ -1650,8 +1649,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Short video ads"
  },
  "f_video_ads_d": {
-  "th": "บอกสินค้าและโปรโมชัน (แนบรูปสินค้าได้) สลิดวางสตอรีบอร์ด ทำภาพแต่ละฉาก ใส่คำบรรยายภาษาไทยและเสียงพากย์ แล้วส่งวิดีโอแนวตั้ง 15-30 วินาทีกลับมาในห้องภายในไม่กี่นาที",
-  "en": "Describe the product and offer (product photos welcome): Salid plans a storyboard, makes each scene, adds Thai captions and narration, and posts a 15-30 second vertical video in the channel within a few minutes"
+  "th": "บอกสินค้าและโปรโมชัน (แนบรูปสินค้าได้) ดอรี่วางสตอรีบอร์ด ทำภาพแต่ละฉาก ใส่คำบรรยายภาษาไทยและเสียงพากย์ แล้วส่งวิดีโอแนวตั้ง 15-30 วินาทีกลับมาในห้องภายในไม่กี่นาที",
+  "en": "Describe the product and offer (product photos welcome): Dory plans a storyboard, makes each scene, adds Thai captions and narration, and posts a 15-30 second vertical video in the channel within a few minutes"
  },
  "f_video_ads_w": {
   "th": "มีค่าใช้จ่ายต่อวิดีโอ ปิดไว้จนกว่าผู้ดูแลจะเปิด ไม่เกิน 10 ชิ้นต่อเดือนต่อเซิร์ฟเวอร์ และทำได้ทีละชิ้น",
@@ -1662,8 +1661,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Dangerous link guard"
  },
  "f_link_guard_d": {
-  "th": "เมื่อมีข้อความในช่องที่มีลิงก์ที่เห็นชัดว่าหลอกลวง (โดเมนปลอมเลียนแบบธนาคาร ไฟล์ .apk ลิงก์ซ่อนปลายทาง) สลิดตอบเตือนสั้นๆ หนึ่งครั้ง ไม่เตือนเว็บที่รู้จัก และไม่เตือนถี่",
-  "en": "When a channel message holds a clearly scammy link (bank lookalike domain, .apk file, masked destination) Salid replies once with a short warning. Known sites are never flagged and warnings are rate-limited."
+  "th": "เมื่อมีข้อความในช่องที่มีลิงก์ที่เห็นชัดว่าหลอกลวง (โดเมนปลอมเลียนแบบธนาคาร ไฟล์ .apk ลิงก์ซ่อนปลายทาง) ดอรี่ตอบเตือนสั้นๆ หนึ่งครั้ง ไม่เตือนเว็บที่รู้จัก และไม่เตือนถี่",
+  "en": "When a channel message holds a clearly scammy link (bank lookalike domain, .apk file, masked destination) Dory replies once with a short warning. Known sites are never flagged and warnings are rate-limited."
  },
  "f_link_guard_w": {
   "th": "ไม่ทำงานในช่องโหมดเงียบ/ปิด และการตรวจเป็นการประเมิน ไม่ใช่การรับรอง",
@@ -1690,12 +1689,12 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Evening report channel"
  },
  "report_auto": {
-  "th": "สร้างห้อง “รายงานจากสลิด” ให้เอง (ต้องมีสิทธิ์จัดการช่อง)",
-  "en": "Create “รายงานจากสลิด” automatically (needs Manage Channels)"
+  "th": "สร้างห้อง “รายงานจากดอรี่” ให้เอง (ต้องมีสิทธิ์จัดการช่อง)",
+  "en": "Create “รายงานจากดอรี่” automatically (needs Manage Channels)"
  },
  "report_id_s": {
-  "th": "ถ้าเลือกห้องเอง ให้เป็นห้องที่เห็นเฉพาะผู้บริหาร สลิดจะรายงานเรื่องงานของทุกคนในห้องนั้น",
-  "en": "If you pick a channel, make it visible to leadership only: Salid reports everyone's work there."
+  "th": "ถ้าเลือกห้องเอง ให้เป็นห้องที่เห็นเฉพาะผู้บริหาร ดอรี่จะรายงานเรื่องงานของทุกคนในห้องนั้น",
+  "en": "If you pick a channel, make it visible to leadership only: Dory reports everyone's work there."
  },
  "sw_off": {
   "th": "ปิด {name}",
@@ -1748,10 +1747,10 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
 <script>
 "use strict";
 const CLIENT_ID = "__HUB_GOOGLE_CLIENT_ID__";
-const TOKEN_KEY = "salid_hub_token";
-const LINK_KEY = "salid_hub_link";
-const GUILD_KEY = "salid_hub_guild";
-const LANG_KEY = "salid-language"; // one key for every Salid page (landing, start, hub, center)
+const TOKEN_KEY = "dory_hub_token";
+const LINK_KEY = "dory_hub_link";
+const GUILD_KEY = "dory_hub_guild";
+const LANG_KEY = "dory-language"; // one key for every Dory page (landing, start, hub, center)
 const $ = (id) => document.getElementById(id);
 
 // ---------- language (Thai / English) ----------
@@ -1804,7 +1803,7 @@ function setLang(l, { remember = true } = {}) {
   lang = l; readLang("set", l);
   applyStatic();
   for (const fn of rerender) fn();
-  // signed in: remember the choice with the account, so every device and every Salid page opens in it
+  // signed in: remember the choice with the account, so every device and every Dory page opens in it
   if (remember && token) api("/api/hub/me/language", { method: "PUT", body: JSON.stringify({ language: l }) }).catch(() => {});
 }
 // After sign-in: the language saved with the account wins; with none saved yet, the local choice is saved.
@@ -1882,8 +1881,8 @@ function mem(op, key, v) {
   } catch { /* storage blocked: values then live only in memory */ }
   return null;
 }
-// ---------- Salid session: sign in once, stay signed in (30 days, every page, survives reloads) ----------
-const SESSION_KEY = "salid_session";
+// ---------- Dory session: sign in once, stay signed in (30 days, every page, survives reloads) ----------
+const SESSION_KEY = "dory_session";
 function session(op, v) {
   try {
     if (op === "set") localStorage.setItem(SESSION_KEY, v);
@@ -1892,7 +1891,7 @@ function session(op, v) {
   } catch { /* storage blocked: the sign-in then lasts until reload */ }
   return null;
 }
-// Exchange a fresh Google sign-in for a Salid session (null when the server has no session secret).
+// Exchange a fresh Google sign-in for a Dory session (null when the server has no session secret).
 async function exchangeSession(googleCredential) {
   try {
     const r = await fetch("/api/hub/session", { method: "POST", headers: { Authorization: "Bearer " + googleCredential } });
@@ -2113,7 +2112,7 @@ function collectRetention() {
   const n = Number(sel.value === "custom" ? $("mem-days-custom").value : sel.value);
   return Number.isInteger(n) && n >= 0 && n <= 3650 ? n : 0; // invalid: keep forever, never purge
 }
-// Channels Salid cannot read, from the bot-synced flags (missing flags count as visible).
+// Channels Dory cannot read, from the bot-synced flags (missing flags count as visible).
 function hiddenChannels(channels) {
   return channels.filter((c) => c.visible === false || c.readable_history === false)
     .map((c) => ({ name: c.name, why: c.visible === false ? "hc_why_hidden" : "hc_why_history" }));
@@ -2249,7 +2248,7 @@ function confirmDlg(title, body, okText) {
   });
 }
 async function save() {
-  // the COMPANY language is a decision for the whole server: confirm it first (Salid also
+  // the COMPANY language is a decision for the whole server: confirm it first (Dory also
   // announces the change on the server)
   const newLang = $("default-language").value || "en", oldLang = lastSettings ? (lastSettings.default_language || "en") : newLang;
   if (newLang !== oldLang) {

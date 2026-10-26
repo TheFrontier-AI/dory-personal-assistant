@@ -1,4 +1,4 @@
-"""Salid command center: `/hub` page and `/api/hub/*` JSON API (multi-guild).
+"""Dory command center: `/hub` page and `/api/hub/*` JSON API (multi-guild).
 
 Auth is stateless and needs no server secret. The page signs the user in with Google Identity
 Services and sends the Google ID token as `Authorization: Bearer ...`. Every API call verifies
@@ -29,14 +29,14 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from meeting_scribe import pipeline
-from meeting_scribe.config import Settings, get_settings
-from salid.guild_settings import (
+from dory.guild_settings import (
     GuildSettings,
     GuildSettingsUpdate,
     GuildStore,
     LinkError,
 )
+from meeting_scribe import pipeline
+from meeting_scribe.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 
@@ -64,9 +64,9 @@ def google_token_verifier() -> Callable[[str, str], dict[str, Any]]:
     return verify
 
 
-# ------------------------------------------------------------------ Salid sessions
-# A Google ID token lives one hour. After the first sign-in the pages exchange it for a Salid
-# session token ("ss1.<payload>.<mac>", HMAC-SHA256 with SALID_SESSION_SECRET, 30 days) and keep
+# ------------------------------------------------------------------ Dory sessions
+# A Google ID token lives one hour. After the first sign-in the pages exchange it for a Dory
+# session token ("ss1.<payload>.<mac>", HMAC-SHA256 with DORY_SESSION_SECRET, 30 days) and keep
 # that in the browser, so nobody is signed out every hour or on every reload.
 SESSION_PREFIX = "ss1."
 
@@ -108,9 +108,9 @@ def verify_session(token: str, secret: str, now: datetime | None = None) -> str:
 
 @lru_cache
 def _prefs() -> Any:
-    from salid.orgs import make_org_store
+    from dory.orgs import make_org_store
 
-    return make_org_store(*get_salid_runtime())
+    return make_org_store(*get_dory_runtime())
 
 
 def get_prefs() -> Any:
@@ -120,9 +120,9 @@ def get_prefs() -> Any:
 
 @lru_cache
 def _doc_store() -> Any:
-    from salid.coo_store import make_doc_store
+    from dory.coo_store import make_doc_store
 
-    return make_doc_store(*get_salid_runtime())
+    return make_doc_store(*get_dory_runtime())
 
 
 def get_doc_store() -> Any:
@@ -131,9 +131,9 @@ def get_doc_store() -> Any:
 
 
 def language_change_notice(before: str, after: str, who: str) -> str:
-    """What Salid posts on the server when the company language changes: the line in the new
+    """What Dory posts on the server when the company language changes: the line in the new
     language, then in the old one (so everybody understands the switch)."""
-    from salid.i18n import lang_name, t
+    from dory.i18n import lang_name, t
 
     blocks: list[str] = []
     for lang in (after, before):
@@ -150,9 +150,9 @@ def language_change_notice(before: str, after: str, who: str) -> str:
 
 
 def announce_language_change(docs: Any, guild_id: int, before: str, after: str, who: str) -> None:
-    """Queue the notice for the bot (`salid.actions`, kind `announce`: the ask channel, else
+    """Queue the notice for the bot (`dory.actions`, kind `announce`: the ask channel, else
     general). Best effort: a queue problem never fails the settings save."""
-    from salid.actions import ActionQueue
+    from dory.actions import ActionQueue
 
     try:
         ActionQueue(docs).enqueue(
@@ -167,7 +167,7 @@ def require_user(
     verify: Callable[[str, str], dict[str, Any]] = Depends(google_token_verifier),
     prefs: Any = Depends(get_prefs),
 ) -> str:
-    """Return the verified email (Salid session or Google ID token), or raise 503 / 401 / 403."""
+    """Return the verified email (Dory session or Google ID token), or raise 503 / 401 / 403."""
     if not authorization or not authorization.lower().startswith("bearer "):
         if not get_settings().hub_google_client_id:
             raise HTTPException(503, "Hub is not configured")
@@ -176,7 +176,7 @@ def require_user(
 
 
 def account_for_google(email: str, prefs: Any) -> str:
-    """A Google sign-in lands in the Salid account that LINKED that Google account (someone who
+    """A Google sign-in lands in the Dory account that LINKED that Google account (someone who
     signed up through Discord and added Google later), else in the account of that email.
     Fail-soft: a broken preference store never blocks sign-in."""
     if prefs is None:
@@ -200,7 +200,7 @@ def user_from_token(
         raise HTTPException(401, "Missing bearer token")
     if raw.startswith(SESSION_PREFIX):
         try:
-            return verify_session(raw, settings.salid_session_secret)
+            return verify_session(raw, settings.dory_session_secret)
         except ValueError as exc:
             logger.info("Rejected session: %s", exc)
             raise HTTPException(401, "Invalid or expired session") from exc
@@ -222,25 +222,25 @@ def is_super_admin(email: str) -> bool:
 @lru_cache
 def get_guild_store() -> GuildStore:
     s = get_settings()
-    return GuildStore(collection=s.salid_guild_collection, project=s.gcp_project)
+    return GuildStore(collection=s.dory_guild_collection, project=s.gcp_project)
 
 
 @lru_cache
-def _salid_runtime() -> tuple[Any, Any]:
-    from salid.config import Settings as SalidSettings
-    from salid.store import make_store
+def _dory_runtime() -> tuple[Any, Any]:
+    from dory.config import Settings as DorySettings
+    from dory.store import make_store
 
-    s = SalidSettings.from_env()  # honours SALID_STORE like the bot and salid.cli
+    s = DorySettings.from_env()  # honours DORY_STORE like the bot and dory.cli
     return s, make_store(s)
 
 
-def get_salid_runtime() -> tuple[Any, Any]:
-    """(salid settings, salid store). Overridden in tests."""
-    return _salid_runtime()
+def get_dory_runtime() -> tuple[Any, Any]:
+    """(dory settings, dory store). Overridden in tests."""
+    return _dory_runtime()
 
 
 def get_memory_store() -> Any:
-    """The bot's memory store (same SALID_STORE settings). Overridden in tests."""
+    """The bot's memory store (same DORY_STORE settings). Overridden in tests."""
     return _memory_store()
 
 
@@ -252,10 +252,10 @@ def _memory_store() -> Any:
     """Day summaries are served from an in-process index (one Firestore read per guild, then
     memory), refreshed in the background every two minutes, so a web or voice question does not
     re-read every summary of the company (that took ~4.5 s per question)."""
-    from salid.memory_index import IndexedMemoryStore
-    from salid.memory_store import make_memory_store
+    from dory.memory_index import IndexedMemoryStore
+    from dory.memory_store import make_memory_store
 
-    s, store = get_salid_runtime()
+    s, store = get_dory_runtime()
     return IndexedMemoryStore(make_memory_store(s, store), refresh_s=WEB_MEMORY_REFRESH_S)
 
 
@@ -283,9 +283,9 @@ async def guild_admin(
 
 # ------------------------------------------------------------------ page
 def invite_url() -> str:
-    from meeting_scribe.app import salid_invite_url
+    from meeting_scribe.app import dory_invite_url
 
-    return salid_invite_url(get_settings().salid_discord_client_id)
+    return dory_invite_url(get_settings().dory_discord_client_id)
 
 
 @router.get("/hub", include_in_schema=False)
@@ -352,11 +352,11 @@ def hub_session(
     verify: Callable[[str, str], dict[str, Any]] = Depends(google_token_verifier),
     prefs: Any = Depends(get_prefs),
 ) -> SessionView:
-    """Exchange a fresh Google sign-in (or a still-valid session) for a Salid session token that
-    every page keeps in the browser. 503 when SALID_SESSION_SECRET is not set. A Google token
+    """Exchange a fresh Google sign-in (or a still-valid session) for a Dory session token that
+    every page keeps in the browser. 503 when DORY_SESSION_SECRET is not set. A Google token
     also fills the person's real first / last name (once) from the account."""
     s = get_settings()
-    if not s.salid_session_secret:
+    if not s.dory_session_secret:
         raise HTTPException(503, "Sessions are not configured")
     raw = (authorization or "")[7:].strip()
     if raw and not raw.startswith(SESSION_PREFIX):
@@ -374,7 +374,7 @@ def hub_session(
                 prefs.set_user_profile(email, **fields)
         except Exception:  # names are a convenience: never block sign-in on them
             logger.exception("could not record the Google name of %s", email)
-    token, exp = issue_session(email, s.salid_session_secret, s.salid_session_days)
+    token, exp = issue_session(email, s.dory_session_secret, s.dory_session_days)
     return SessionView(token=token, expires_at=exp, email=email)
 
 
@@ -397,7 +397,7 @@ async def hub_me(email: str = Depends(require_user), prefs: Any = Depends(get_pr
 async def hub_set_language(
     body: LanguageBody, email: str = Depends(require_user), prefs: Any = Depends(get_prefs)
 ) -> dict[str, str]:
-    """Remember the language this person wants every Salid page in (shared with /center)."""
+    """Remember the language this person wants every Dory page in (shared with /center)."""
     try:
         lang = await run_in_threadpool(prefs.set_user_language, email, body.language)
     except ValueError as exc:
@@ -443,10 +443,10 @@ async def hub_get_settings(access: GuildAccess = Depends(guild_admin)) -> GuildS
 async def hub_memory_status(
     access: GuildAccess = Depends(guild_admin),
     memory: Any = Depends(get_memory_store),
-    runtime: tuple[Any, Any] = Depends(get_salid_runtime),
+    runtime: tuple[Any, Any] = Depends(get_dory_runtime),
 ) -> dict:
     """History-import progress for the memory card: channels, messages, historical images."""
-    from salid.memory_import import import_progress
+    from dory.memory_import import import_progress
 
     s, _store = runtime
     cap = getattr(s, "memory_import_images_per_day", 300)
@@ -462,7 +462,7 @@ async def hub_put_settings(
     docs: Any = Depends(get_doc_store),
 ) -> GuildSettings:
     """Save the server settings. A change of the COMPANY language is announced on the server by
-    Salid (queued for the bot), so nobody is surprised by her switching languages."""
+    Dory (queued for the bot), so nobody is surprised by her switching languages."""
     known = {c.id for c in access.settings.channels}
     chosen = {
         *body.receipt_channel_ids,
@@ -492,14 +492,14 @@ def _utc(value: str | datetime) -> datetime:
 
 
 def build_activity(
-    salid_store: Any, guild_id: int, include_meetings: bool, limit: int = ACTIVITY_LIMIT
+    dory_store: Any, guild_id: int, include_meetings: bool, limit: int = ACTIVITY_LIMIT
 ) -> list[ActivityItem]:
     items: list[tuple[datetime, ActivityItem]] = []
     try:
-        from salid.store import duplicate_extras
+        from dory.store import duplicate_extras
 
-        dup_ids = {r.id for r in duplicate_extras(salid_store.duplicate_groups(guild_id))}
-        for r in salid_store.recent(guild_id, limit):  # void receipts are excluded
+        dup_ids = {r.id for r in duplicate_extras(dory_store.duplicate_groups(guild_id))}
+        for r in dory_store.recent(guild_id, limit):  # void receipts are excluded
             flagged = (
                 r.confidence < 0.7
                 or r.total is None
@@ -547,7 +547,7 @@ def build_activity(
 
 @router.get("/api/hub/guilds/{guild_id}/activity")
 async def hub_activity(
-    access: GuildAccess = Depends(guild_admin), runtime: tuple = Depends(get_salid_runtime)
+    access: GuildAccess = Depends(guild_admin), runtime: tuple = Depends(get_dory_runtime)
 ) -> list[ActivityItem]:
     return await run_in_threadpool(build_activity, runtime[1], access.guild_id, access.is_super)
 
@@ -556,10 +556,10 @@ async def hub_activity(
 async def hub_ask(
     body: AskBody,
     access: GuildAccess = Depends(guild_admin),
-    runtime: tuple = Depends(get_salid_runtime),
+    runtime: tuple = Depends(get_dory_runtime),
 ) -> AskReply:
-    """Salid's expense Q&A as an executive of this guild (hub admins are). No deep tasks here."""
-    from salid.qa import ask
+    """Dory's expense Q&A as an executive of this guild (hub admins are). No deep tasks here."""
+    from dory.qa import ask
 
     s, store = runtime
     try:
@@ -570,5 +570,5 @@ async def hub_ask(
         )
     except Exception as exc:
         logger.exception("hub ask failed")
-        raise HTTPException(502, "Salid could not answer right now") from exc
+        raise HTTPException(502, "Dory could not answer right now") from exc
     return AskReply(answer=ans.text)

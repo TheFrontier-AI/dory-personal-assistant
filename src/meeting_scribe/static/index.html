@@ -6,8 +6,8 @@
 <title>Meeting Scribe</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;display=swap">
-<link rel="icon" type="image/png" href="/static/salid/favicon.png">
-<link rel="stylesheet" href="/static/salid/theme.css">
+<link rel="icon" type="image/png" href="/static/dory/favicon.png">
+<link rel="stylesheet" href="/static/dory/theme.css">
 <style>
   /* Page-specific rules only; tokens, base resets, .nav/.logo/.btn/.card come from theme.css. */
   .nav .page-name { color: var(--muted); font-size: 14px; font-weight: 500; padding-left: 16px; border-left: 1px solid var(--line); line-height: 1.2; }
@@ -52,24 +52,24 @@
   #summary li { margin-bottom: 6px; }
   .due { color: var(--muted); }
   .sr-only { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .salid { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: start; }
-  .salid .mark { grid-row: span 3; width: 48px; height: 48px; border-radius: 14px; font-size: 22px; }
-  .salid h2 { margin: 0; }
-  .salid p { margin: 0; color: var(--muted); }
-  .salid ul { margin: 0; padding-left: 20px; color: var(--muted); }
+  .dory { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; align-items: start; }
+  .dory .mark { grid-row: span 3; width: 48px; height: 48px; border-radius: 14px; font-size: 22px; }
+  .dory h2 { margin: 0; }
+  .dory p { margin: 0; color: var(--muted); }
+  .dory ul { margin: 0; padding-left: 20px; color: var(--muted); }
   @media (max-width: 480px) {
     .nav .page-name { display: none; }
     main { padding-top: 24px; }
     .status-bar #stop-btn { margin-left: 0; width: 100%; }
-    .salid { grid-template-columns: 1fr; gap: 10px; }
-    .salid .mark { grid-row: auto; }
+    .dory { grid-template-columns: 1fr; gap: 10px; }
+    .dory .mark { grid-row: auto; }
   }
 </style>
 </head>
 <body>
 <header class="nav">
   <div class="wrap">
-    <a class="logo" href="/" aria-label="Salid"><span class="mark" aria-hidden="true">S</span>Salid</a>
+    <a class="logo" href="/" aria-label="Dory"><span class="mark" aria-hidden="true">D</span>Dory</a>
     <span class="page-name">Meeting recorder</span>
     <span class="grow"></span>
     <a class="nav-link" href="/center">Command center</a>
@@ -123,20 +123,20 @@
       <button type="button" id="new-btn" class="btn ghost">Start a new meeting</button>
     </div>
   </section>
-  <section class="card" id="salid" aria-labelledby="salid-h">
-    <div class="salid">
+  <section class="card" id="dory" aria-labelledby="dory-h">
+    <div class="dory">
       <span class="mark" aria-hidden="true">ส</span>
-      <h2 id="salid-h" style="margin:0">Salid, your team's assistant in Discord</h2>
-      <p>Post a receipt photo and Salid records it. Executives ask about spending and get an answer in seconds.
-        Meeting summaries from this page arrive as Salid too.</p>
+      <h2 id="dory-h" style="margin:0">Dory, your team's assistant in Discord</h2>
+      <p>Post a receipt photo and Dory records it. Executives ask about spending and get an answer in seconds.
+        Meeting summaries from this page arrive as Dory too.</p>
       <ul>
         <li>Click the button, pick your Discord server, then <strong>Authorize</strong>.</li>
         <li>Nothing to install and no code to write.</li>
       </ul>
     </div>
     <div class="row" style="margin-top:14px">
-      <a class="btn primary discord" id="salid-add" href="__SALID_INVITE_URL__" target="_blank" rel="noopener">Add Salid to Discord</a>
-      <span class="hint" id="salid-soon" hidden>Coming soon: the Discord app is being registered.</span>
+      <a class="btn primary discord" id="dory-add" href="__DORY_INVITE_URL__" target="_blank" rel="noopener">Add Dory to Discord</a>
+      <span class="hint" id="dory-soon" hidden>Coming soon: the Discord app is being registered.</span>
     </div>
   </section>
 </main>
@@ -531,8 +531,8 @@ window.addEventListener("beforeunload", (e) => {
 </script>
 <script>
 (() => {
-  const add = document.getElementById("salid-add");
-  if (!add.getAttribute("href")) { add.hidden = true; document.getElementById("salid-soon").hidden = false; }
+  const add = document.getElementById("dory-add");
+  if (!add.getAttribute("href")) { add.hidden = true; document.getElementById("dory-soon").hidden = false; }
 })();
 </script>
 </body>
