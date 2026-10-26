@@ -87,33 +87,65 @@ def test_language_is_english_by_default_and_a_saved_choice_wins():
     assert html.count('data-lang="th"') == 1 and html.count('data-lang="en"') == 1
 
 
-def test_hero_is_the_deep_sea_with_a_rigged_fish_and_a_pause_control():
-    """Lantern Deep: a dark hero, Dory as an inline SVG rig, motion that can always be stopped."""
+def test_hero_is_the_deep_sea_with_dory_and_a_pause_control():
+    """Lantern Deep: a dark hero with the official Dory picture, motion that can always be stopped."""
     _, html = _dict_and_html()
     hero = html.split('id="hero"', 1)[1].split("</section>", 1)[0]
     assert 'data-theme="deep"' in re.search(r'<section[^>]*id="hero"[^>]*>', html).group(0)
-    assert '<g class="dory-fish' in hero and 'class="df-pupil"' in hero
-    # gradients live in ONE rendered (never display:none) defs svg, shared by every fish
-    defs = re.search(r'<svg class="fish-defs"[^>]*>', html).group(0)
-    assert 'width="0" height="0"' in defs and "display:none" not in defs
-    assert html.count('id="df-iris"') == 1
+    # WebP for browsers that take it, the original JPEG otherwise; the size is reserved (no layout shift)
+    assert '<source type="image/webp" srcset="/static/dory/dory.webp">' in hero
+    assert 'src="/static/dory/dory.jpg" width="777" height="779"' in hero
     # a visible pause control (WCAG 2.2.2), remembered, and the OS setting respected
     assert "data-motion-toggle" in hero and 'MOTION_KEY = "dory-motion"' in html
     assert "prefers-reduced-motion" in html and ".motion-off" in html
     # loops sleep off-screen and in hidden tabs; reveal hides content only when JS runs
     assert "IntersectionObserver" in html and "visibilitychange" in html
     assert ".js .reveal" in html and 'classList.add("js")' in html
-    assert "<video" not in html and "autoplay" not in html
+
+
+def test_the_introduction_video_waits_for_play_and_starts_fast():
+    """The video has sound: it never autoplays, loads nothing before Play, and is a web-sized,
+    fast-start MP4 (its index before the data, so playback starts while it downloads)."""
+    _, html = _dict_and_html()
+    meet = html.split('id="meet"', 1)[1].split("</section>", 1)[0]
+    video = re.search(r"<video[^>]*>", meet).group(0)
+    assert "controls" in video and "playsinline" in video and 'preload="none"' in video
+    assert "autoplay" not in html and "muted" not in video
+    assert (
+        'poster="/static/dory/dory-introduction.webp"' in video and "aria-label:meet_aria" in video
+    )
+    assert '<source src="/static/dory/dory-introduction.mp4" type="video/mp4">' in meet
+    assert 'data-i18n="meet_cap"' in meet  # what the video shows, in words
+    assert html.index('id="meet"') < html.index('id="preview"')  # right under the hero
+    mp4 = PAGE.parent / "dory" / "dory-introduction.mp4"
+    assert mp4.stat().st_size < 5 * 1024 * 1024
+    with mp4.open("rb") as f:
+        top = []
+        while len(top) < 3:
+            head = f.read(8)
+            top.append(head[4:].decode("latin-1"))
+            f.seek(int.from_bytes(head[:4], "big") - 8, 1)
+    assert top.index("moov") < top.index("mdat") if "mdat" in top else "moov" in top
 
 
 def test_mascot_assets_are_served_but_not_the_page_templates(client):
     for name in ("dory.svg", "dory-mark.svg"):
         r = client.get(f"/static/dory/{name}")
         assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml"), name
+    for name, kind in (
+        ("dory.webp", "image/webp"),
+        ("dory.jpg", "image/jpeg"),
+        ("dory-introduction.mp4", "video/mp4"),
+    ):
+        r = client.get(f"/static/dory/{name}")
+        assert r.status_code == 200 and r.headers["content-type"] == kind, name
+    # Safari plays video only from servers that answer byte ranges
+    r = client.get("/static/dory/dory-introduction.mp4", headers={"Range": "bytes=0-99"})
+    assert r.status_code == 206 and len(r.content) == 100
     assert client.get("/static/dory/../hub.html").status_code == 404
     assert client.get("/static/hub.html").status_code == 404
     _, html = _dict_and_html()
-    assert "cat-" not in html  # the fish replaced the cats
+    assert "cat-" not in html  # Dory replaced the cats
 
 
 def test_sections_name_only_shipped_features():
@@ -123,7 +155,17 @@ def test_sections_name_only_shipped_features():
         assert flag in FEATURES
     _, html = _dict_and_html()
     assert html.count('class="card feat') == 8
-    for section in ("hero", "preview", "features", "how", "roles", "trust", "plans", "start"):
+    for section in (
+        "hero",
+        "meet",
+        "preview",
+        "features",
+        "how",
+        "roles",
+        "trust",
+        "plans",
+        "start",
+    ):
         assert f'id="{section}"' in html, section
     for href in (
         "#features",
