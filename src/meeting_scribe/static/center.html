@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
 <meta charset="utf-8">
-<meta name="viewport" content="width=device-width, initial-scale=1">
+<meta name="viewport" content="width=device-width, initial-scale=1, interactive-widget=resizes-content">
 <title>Dory Command Center</title>
 <meta name="color-scheme" content="light">
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -150,23 +150,86 @@ dialog form { display: flex; flex-direction: column; gap: 14px; }
 dialog h2, .drawer h2 { font-size: 20px; }
 pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--bg); border: 1px solid var(--line-soft); border-radius: 10px; padding: 12px; font-size: 14px; margin: 0; }
 
-/* chat */
-.chat { display: flex; flex-direction: column; min-height: 0; position: relative; }
-.msgs { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 10px; padding: 4px 2px 12px; }
-.msg { align-self: flex-start; width: fit-content; max-width: min(640px, 88%); padding: 10px 14px; border-radius: 16px 16px 16px 4px; overflow-wrap: anywhere; background: var(--bubble-bot); color: var(--ink); }
-.msg.me { align-self: flex-end; background: var(--bubble-me); color: #fff; border-radius: 16px 16px 4px 16px; box-shadow: 0 4px 12px rgba(74, 79, 191, .2); }
+/* chat (panel and #/chat page): quiet on purpose. The only motion is the send ripple and Dory's lantern, which pulses
+   for 10 s while she works and then holds steady; the counter and a status region carry the state in words. */
+.chat { display: flex; flex-direction: column; min-height: 0; position: relative; gap: 8px; }
+.msgs { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; gap: 14px; padding: 4px 2px 12px; }
+.msgs:focus-visible { outline-offset: -3px; }
+.msg { overflow-wrap: anywhere; }
+.msg:focus-visible { outline-offset: 4px; }
+.msg.me { align-self: flex-end; max-width: min(560px, 80%); background: var(--bubble-user-bg); color: var(--bubble-user-text); padding: 10px 14px; border-radius: 18px 18px 6px 18px; }
 .msg.me a { color: #fff; }
+.msg.bot { align-self: stretch; max-width: 720px; color: var(--ink); }
+.msg .who { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
+.msg .who .mark { width: 28px; height: 28px; border-radius: 9px; box-shadow: none; }
+.msg .who time { font-weight: 400; color: var(--faint); opacity: 0; transition: opacity var(--dur-fast); }
+.msg:hover .who time, .msg:focus-within .who time, .msg:focus .who time { opacity: 1; }
+.msg.bot.cont .who { display: none; }
 .msg code { font-family: var(--mono); font-size: 13px; background: rgba(43, 47, 122, .08); padding: 1px 5px; border-radius: 5px; }
 .msg.me code { background: rgba(255, 255, 255, .18); }
-.msg ul { margin: 4px 0; padding-left: 20px; }
+.msg ul, .msg ol { margin: 4px 0; padding-left: 20px; }
 .msg p + p { margin-top: 6px; }
-.typing span { display: inline-block; width: 7px; height: 7px; margin: 0 2px; border-radius: 50%; background: var(--faint); animation: b 1s infinite; }
-.typing span:nth-child(2) { animation-delay: .15s; }
-.typing span:nth-child(3) { animation-delay: .3s; }
-@keyframes b { 50% { transform: translateY(-4px); opacity: .5; } }
-.typing em { font-style: normal; font-size: 13px; color: var(--muted); margin-left: 8px; }
-.compose { display: flex; gap: 8px; align-items: flex-end; border-top: 1px solid var(--line-soft); padding-top: 12px; }
-.compose textarea { min-height: 44px; max-height: 140px; }
+.msg table { display: block; overflow-x: auto; max-width: 100%; }
+.msg .mact { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; opacity: 0; transition: opacity var(--dur-fast); }
+.msg:hover .mact, .msg:focus-within .mact, .msg.last .mact, .msg.cnote .mact { opacity: 1; }
+.msg .mact button { min-height: 32px; padding: 4px 12px; border-radius: 99px; border: 1px solid var(--line); background: var(--card); color: var(--indigo); font-size: 13px; font-weight: 600; }
+.msg .mact button:hover { border-color: var(--lavender); background: #FBFAFF; }
+@media (hover: none), (pointer: coarse) { .msg .mact { opacity: 1; } .msg .mact button { min-height: 44px; } }
+.msg.wait .body { color: var(--muted); font-size: 14px; }
+.msg.wait .long { margin-top: 4px; font-size: 13px; }
+.msg.cnote { align-self: stretch; max-width: 720px; padding: 10px 14px; border-radius: 12px; background: var(--bg-2); color: var(--ink); font-size: 14px; }
+.msg.cnote.err { background: var(--err-bg); color: var(--err-ink); }
+.day { align-self: stretch; display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
+.day::before, .day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
+.chat-empty { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; max-width: 420px; padding: 12px 8px; }
+.chat-empty .fish { width: 160px; animation: glowup var(--dur-gentle) var(--ease) forwards; }
+.chat-empty .fish svg { width: 100%; height: auto; display: block; }
+@keyframes glowup { from { filter: drop-shadow(0 0 0 rgba(11, 122, 114, 0)); } to { filter: drop-shadow(0 6px 18px rgba(11, 122, 114, .3)); } }
+.chat-empty h2 { font-size: 22px; font-family: var(--font-display); }
+.chat-empty p { color: var(--muted); font-size: 15px; }
+.chat-empty .trust { font-size: 13px; color: var(--faint); }
+.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
+.chipbtn { min-height: 36px; padding: 6px 14px; border-radius: 99px; border: 1px solid var(--plankton-300); background: var(--card); color: var(--plankton-800); font-weight: 500; font-size: 14px; overflow-wrap: anywhere; }
+.chipbtn:hover { background: #EEEDFB; }
+.chipbtn:active { background: #E0DEF8; }
+@media (pointer: coarse) { .chipbtn { min-height: 44px; } }
+.compose { display: flex; gap: 4px; align-items: flex-end; border: 1px solid var(--color-border-control); border-radius: var(--radius-xl); background: var(--card); padding: 5px; }
+.compose:hover { border-color: var(--ink-600); }
+.compose:focus-within { border-color: var(--color-focus); box-shadow: 0 0 0 3px rgba(74, 79, 191, .25); }
+.compose textarea { flex: 1; min-width: 0; min-height: 40px; max-height: 192px; padding: 8px 6px; border: 0; border-radius: 0; background: transparent; resize: none; box-shadow: none; line-height: 1.5; }
+.compose textarea:focus { box-shadow: none; outline: none; }
+.compose .ib { flex: none; position: relative; width: 40px; height: 40px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center; background: transparent; color: var(--muted); }
+.compose .ib svg { width: 20px; height: 20px; display: block; }
+.compose .ib:hover { background: var(--chip); color: var(--indigo); }
+.compose .send { background: var(--color-action); color: #fff; }
+.compose .send:hover { background: var(--color-action-hover); color: #fff; }
+.compose .send[disabled] { background: #E3E2EE; color: var(--ink-500); cursor: default; }
+.compose .send.stop { background: var(--ink-900); }
+.compose .send.ripple::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--color-action); animation: dory-ripple var(--dur-base) var(--ease) forwards; pointer-events: none; }
+.chat .hintline { font-size: 12px; color: var(--faint); padding: 0 12px; }
+@media (pointer: coarse) { .chat .hintline { display: none; } }
+.chat.drag::after { content: attr(data-drop); position: absolute; inset: 0; z-index: 3; display: grid; place-items: center; border: 2px dashed var(--glow-700); border-radius: 16px; background: rgba(250, 249, 246, .94); color: var(--glow-700); font-weight: 600; }
+/* #/chat: rail + a 720 px conversation column */
+.chatpage { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; height: calc(var(--vvh, 100dvh) - 96px); min-height: 420px; }
+.chatpage .rail { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; padding-right: 16px; border-right: 1px solid var(--line); }
+.chatpage .rail-h { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 10px; }
+.chatpage .days { display: flex; flex-direction: column; gap: 2px; }
+.chatpage .dayb { text-align: left; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 10px; background: none; color: var(--ink); }
+.chatpage .dayb:hover { background: var(--nav-active); }
+.chatpage .convo { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
+.chat-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
+.chat-head .mark { width: 44px; height: 44px; border-radius: 13px; }
+.chat-head .hist { display: none; }
+.chatpage .chat { flex: 1; }
+.chatpage .msgs { padding-inline: max(2px, calc((100% - 720px) / 2)); }
+.chatpage .compose, .chatpage .hintline, .chatpage .chat > .notice { width: min(720px, 100%); margin-inline: auto; }
+@media (max-width: 1023px) {
+  .chatpage { grid-template-columns: minmax(0, 1fr); }
+  .chatpage .rail { display: none; }
+  .chat-head .hist { display: inline-flex; }
+  .chatpage.rail-open .rail { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; max-height: 70vh; padding: 16px; border: 0; border-radius: 16px 16px 0 0; background: var(--card); box-shadow: var(--shadow-lg); }
+}
+@media (max-width: 720px) { .chatpage { gap: 0; } .chat-head .grow .muted { display: none; } }
 
 /* floating "Talk to Dory" button + side panel (logged-in shell only: both live inside #app) */
 #fab { position: fixed; right: 20px; bottom: 20px; z-index: 60; width: 60px; height: 60px; border-radius: 50%; border: 3px solid #fff; padding: 0; font-size: 0;
@@ -184,16 +247,17 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 #panel .x:hover { color: var(--indigo); border-color: var(--lavender); }
 #panel .ph .mark { width: 42px; height: 42px; border-radius: 13px; }
 /* "Live": a real voice call (header button, pill with the handset icon; red with a pulsing dot while the call is on) */
-#panel .livebtn { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 15px 0 12px; border: 0; border-radius: 99px; color: #fff; font-weight: 700; font-size: 14px;
+.livebtn { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 15px 0 12px; border: 0; border-radius: 99px; color: #fff; font-weight: 700; font-size: 14px;
   background: linear-gradient(135deg, #B9B4F2, #7A6CF0 55%, var(--indigo-2)); box-shadow: 0 6px 16px rgba(122, 108, 240, .38); transition: transform .15s var(--ease), box-shadow .15s var(--ease), background .2s; }
-#panel .livebtn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(122, 108, 240, .45); }
-#panel .livebtn svg { width: 18px; height: 18px; display: block; }
-#panel .livebtn[aria-pressed=true] { background: #E5484D; box-shadow: 0 6px 16px rgba(229, 72, 77, .32); }
-#panel .livebtn i { width: 9px; height: 9px; border-radius: 50%; background: #fff; animation: livedot 1.2s ease-in-out infinite; }
+.livebtn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(122, 108, 240, .45); }
+.livebtn svg { width: 18px; height: 18px; display: block; }
+.livebtn[aria-pressed=true] { background: #E5484D; box-shadow: 0 6px 16px rgba(229, 72, 77, .32); }
+.livebtn i { width: 9px; height: 9px; border-radius: 50%; background: #fff; animation: livedot 1.2s ease-in-out infinite; }
 @keyframes livedot { 50% { opacity: .3; } }
 #panel .pb { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 12px 16px 16px; gap: 10px; }
 #panel .chat { height: auto; min-height: 0; flex: 1; }
-#panel .chat .msg { max-width: 92%; }
+#panel .msg.me { max-width: 88%; }
+@media (max-width: 767px) { #panel { width: 100%; height: var(--vvh, 100%); bottom: auto; } }
 #panel label.f { font-size: 13px; }
 #panel .card { margin: 0; }
 
@@ -248,7 +312,7 @@ fieldset { border-color: var(--line-soft); }
 .titem:first-child { padding-top: 4px; }
 .titem .tk { width: 30px; height: 30px; border-radius: 9px; flex: none; display: grid; place-items: center; font-size: 15px; background: var(--chip); color: var(--indigo); }
 .titem.done .tk { background: var(--ok-bg); color: var(--ok-ink); }
-.titem .tk.mark, .titem.done .tk.mark { border-radius: 9px; box-shadow: none; font-size: 0; color: transparent; background: #F6E7C9 url("/static/dory/cat-avatar.webp") center / cover no-repeat; }
+.titem .tk.mark, .titem.done .tk.mark { border-radius: 9px; box-shadow: none; font-size: 0; color: transparent; background: var(--ocean-800) url("/static/dory/dory-mark.svg") center / cover no-repeat; }
 details.sys.tasks { margin: 4px 0 0; } details.sys.tasks > .inner { padding-top: 4px; }
 .titem.done .tt { color: var(--muted); text-decoration: line-through; }
 .titem .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -350,93 +414,95 @@ input[type=datetime-local]:focus { outline: none; border-color: var(--indigo-2);
 .frame .fh h2 { margin-bottom: 2px; }
 .hubframe { width: 100%; min-height: 80vh; border: 0; background: #fff; display: block; }
 
-/* live call: Dory (her photo in an orb) over the chat. State classes: connecting / idle (muted) / listening / thinking /
-   speaking / ended; emotion classes happy / sorry / curious. --lvl = mic level, --mouth = Dory's output level (both 0..1, set per frame). */
-.call { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 4px 2px 2px; text-align: center; --lvl: 0; --mouth: 0;
-  background: radial-gradient(70% 42% at 50% 30%, #EEEDFB 0%, rgba(255, 255, 255, 0) 70%), var(--card); border-radius: 12px; }
-.chat:has(> .call) > .msgs, .chat:has(> .call) > .compose { visibility: hidden; } /* shadows must not spill from under the view */
-.call .st { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--indigo); min-height: 22px; max-width: 100%; padding: 0 8px; }
+/* live call: Dory (the rigged fish in an orb) in the deep theme, over the chat. State classes: connecting / idle (muted) /
+   listening / thinking / speaking / ended; emotion classes happy / sorry / curious. --lvl = mic level, --mouth = Dory's output
+   level (both 0..1, set per frame): the fish reads --mouth for her mouth and headset bars, and --glow for her lights. */
+.call { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px 6px; text-align: center; --lvl: 0; --mouth: 0;
+  background: radial-gradient(70% 42% at 50% 30%, rgba(95, 242, 224, .12) 0%, rgba(5, 11, 31, 0) 70%), linear-gradient(180deg, var(--ocean-900), var(--ocean-950)); border-radius: 12px; color: var(--color-text); }
+.chat:has(> .call) > .msgs, .chat:has(> .call) > .compose, .chat:has(> .call) > .hintline { visibility: hidden; } /* shadows must not spill from under the view */
+.call .st { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--color-text); min-height: 22px; max-width: 100%; padding: 0 8px; }
 .call .st .tx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.call .st .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--faint); }
-.call.listening .st .dot { background: #2BB673; animation: livedot 1.2s ease-in-out infinite; }
-.call.speaking .st .dot { background: var(--indigo-2); } .call.thinking .st .dot { background: var(--gold); }
-.call .st .tm { font-weight: 500; color: var(--faint); font-variant-numeric: tabular-nums; }
+.call .st .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ocean-400); }
+.call.listening .st .dot { background: #5BE3A0; animation: livedot 1.2s ease-in-out infinite; }
+.call.speaking .st .dot { background: var(--glow-300); } .call.thinking .st .dot { background: var(--lantern-300); }
+.call .st .tm { font-weight: 500; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
 .call .st .tm:empty { display: none; }
 .call .stage { position: relative; width: 252px; height: 252px; flex: none; display: grid; place-items: center; }
-.call .ring { position: absolute; inset: 22px; border-radius: 50%; border: 2px solid rgba(185, 180, 242, .95); opacity: 0; transition: transform .1s linear, opacity .3s; }
+.call .ring { position: absolute; inset: 22px; border-radius: 50%; border: 2px solid rgba(95, 242, 224, .6); opacity: 0; transition: transform .1s linear, opacity .3s; }
 .call.listening .ring { opacity: .9; animation: ringbreath 2.2s ease-in-out infinite; }
 .call.listening .ring.r1 { transform: scale(calc(1.02 + var(--lvl) * .2)); }
 .call.listening .ring.r2 { transform: scale(calc(1.1 + var(--lvl) * .4)); opacity: .55; animation-delay: .25s; }
 .call.listening .ring.r3 { transform: scale(calc(1.18 + var(--lvl) * .6)); opacity: .3; animation-delay: .5s; }
-@keyframes ringbreath { 50% { border-color: rgba(122, 108, 240, .95); } }
+@keyframes ringbreath { 50% { border-color: rgba(185, 180, 242, .9); } }
 .call .halo { position: absolute; inset: 14px; border-radius: 50%; opacity: .7; transition: opacity .3s, transform .08s linear;
-  background: radial-gradient(circle, rgba(185, 180, 242, .6) 0%, rgba(191, 214, 246, .4) 44%, rgba(255, 255, 255, 0) 70%); filter: blur(2px); }
+  background: radial-gradient(circle, rgba(95, 242, 224, .32) 0%, rgba(74, 79, 191, .22) 44%, rgba(5, 11, 31, 0) 70%); filter: blur(2px); }
 .call.speaking .halo { opacity: calc(.6 + var(--mouth) * .6); transform: scale(calc(1 + var(--mouth) * .22)); }
-.call.thinking .halo { background: radial-gradient(circle, rgba(217, 194, 138, .45) 0%, rgba(238, 237, 251, .5) 44%, rgba(255, 255, 255, 0) 70%); }
-.call .orb { position: relative; z-index: 2; width: 180px; height: 180px; border-radius: 50%; overflow: hidden; border: 5px solid #fff; background: #F6E7C9; transform-origin: 50% 62%;
-  box-shadow: 0 14px 34px rgba(74, 79, 191, .28), 0 0 0 calc(2px + var(--mouth) * 9px) rgba(185, 180, 242, calc(.4 + var(--mouth) * .5));
+.call.thinking .halo { background: radial-gradient(circle, rgba(255, 196, 107, .32) 0%, rgba(74, 79, 191, .2) 44%, rgba(5, 11, 31, 0) 70%); }
+.call .orb { position: relative; z-index: 2; width: 180px; height: 180px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; transform-origin: 50% 62%;
+  border: 3px solid rgba(163, 183, 221, .35); background: radial-gradient(circle at 50% 38%, var(--ocean-700), var(--ocean-900));
+  box-shadow: 0 14px 34px rgba(0, 0, 0, .45), 0 0 0 calc(2px + var(--mouth) * 9px) rgba(95, 242, 224, calc(.18 + var(--mouth) * .45));
   transition: box-shadow .08s linear, rotate .45s var(--ease), translate .45s var(--ease); }
-.call .orb img { width: 100%; height: 100%; object-fit: cover; display: block; transform: translateY(3%) scale(1.12); transform-origin: 50% 45%; }
-.call .cheeks { position: absolute; inset: 0; border-radius: 50%; opacity: 0; transition: opacity .3s; pointer-events: none;
-  background: radial-gradient(16% 11% at 30% 54%, rgba(247, 120, 170, .55), rgba(247, 120, 170, 0) 75%), radial-gradient(16% 11% at 70% 54%, rgba(247, 120, 170, .55), rgba(247, 120, 170, 0) 75%); }
-.call.happy .cheeks { opacity: 1; }
+.call .orb .fish-svg { width: 186px; height: auto; display: block; transform: translate(-30px, 8px); } /* a portrait: her face centred */
+.call.listening .dory-fish, .call.thinking .dory-fish, .call.speaking .dory-fish { --glow: 1; }
+.call.thinking .df-pupil { transform: translate(1.5px, -3px); }
+.call.happy .df-eye { transform: scaleY(.78); }
+.call.curious .df-brow { transform: translateY(-3px); }
+.call.sorry .df-brow { transform: translateY(2px); }
 .call.connecting .orb, .call.idle .orb, .call.ended .orb { animation: breathe 3.8s ease-in-out infinite, tilt 11s ease-in-out infinite; }
 .call.listening .orb { animation: listen 2.6s ease-in-out infinite; }
 .call.speaking .orb { animation: bob 1.15s ease-in-out infinite; }
 .call.thinking .orb { rotate: -7deg; translate: 0 -2px; animation: none; }
 .call.curious .orb { rotate: 7deg; animation: none; }
 .call.sorry .orb { translate: 0 7px; rotate: 0deg; animation: none; }
-.call.ended .orb { filter: saturate(.6); }
+.call.ended .orb { filter: saturate(.5) brightness(.8); }
 @keyframes breathe { 50% { transform: scale(1.03); } }
 @keyframes tilt { 0%, 78%, 100% { rotate: 0deg; } 84% { rotate: -3.5deg; } 92% { rotate: 2deg; } }
 @keyframes listen { 0%, 100% { transform: scale(1.05); } 50% { transform: scale(1.08); } }
 @keyframes bob { 50% { transform: translateY(-5px) scale(1.02); } }
 .call .bars { position: absolute; top: 50%; translate: 0 -50%; display: flex; gap: 4px; align-items: center; height: 44px; opacity: 0; transition: opacity .25s; z-index: 1; }
 .call .bars.l { left: 8px; } .call .bars.r { right: 8px; flex-direction: row-reverse; }
-.call .bars i { width: 5px; border-radius: 3px; background: linear-gradient(180deg, #7A6CF0, var(--lavender)); height: calc(7px + var(--mouth) * var(--k) * 40px); transition: height .07s linear; }
+.call .bars i { width: 5px; border-radius: 3px; background: linear-gradient(180deg, var(--glow-300), var(--plankton-300)); height: calc(7px + var(--mouth) * var(--k) * 40px); transition: height .07s linear; }
 .call .bars i:nth-child(1) { --k: .5; } .call .bars i:nth-child(2) { --k: 1; } .call .bars i:nth-child(3) { --k: .75; } .call .bars i:nth-child(4) { --k: .4; }
 .call.speaking .bars { opacity: 1; }
-.call .dots { position: absolute; top: 26px; right: 26px; z-index: 3; display: flex; gap: 5px; padding: 9px 11px; background: #fff; border-radius: 14px 14px 14px 3px;
-  box-shadow: 0 4px 14px rgba(43, 47, 122, .16); opacity: 0; scale: .6; transition: opacity .2s, scale .25s var(--ease); }
-.call .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--indigo-2); animation: b 1s infinite; }
+.call .dots { position: absolute; top: 26px; right: 26px; z-index: 3; display: flex; gap: 5px; padding: 9px 11px; background: var(--ocean-800); border: 1px solid var(--color-border); border-radius: 14px 14px 14px 3px;
+  box-shadow: 0 4px 14px rgba(0, 0, 0, .4); opacity: 0; scale: .6; transition: opacity .2s, scale .25s var(--ease); }
+.call .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--glow-300); animation: b 1s infinite; }
 .call .dots span:nth-child(2) { animation-delay: .15s; } .call .dots span:nth-child(3) { animation-delay: .3s; }
+@keyframes b { 50% { transform: translateY(-4px); opacity: .5; } }
 .call.thinking .dots { opacity: 1; scale: 1; }
 .call .ovl { position: absolute; z-index: 3; opacity: 0; scale: .5; transition: opacity .2s, scale .3s var(--ease); line-height: 1; pointer-events: none; }
-.call .ovl.eyes { top: 50px; left: 30px; width: 38px; height: 38px; border-radius: 50%; background: #fff; box-shadow: 0 4px 14px rgba(43, 47, 122, .16); display: grid; place-items: center; }
-.call .ovl.eyes svg { width: 26px; height: 26px; display: block; }
-.call.thinking .ovl.eyes { opacity: 1; scale: 1; }
-.call .ovl.sparkle { top: 30px; left: 36px; font-size: 30px; filter: drop-shadow(0 2px 6px rgba(217, 194, 138, .7)); }
+.call .ovl.sparkle { top: 30px; left: 36px; font-size: 30px; filter: drop-shadow(0 2px 6px rgba(255, 196, 107, .7)); }
 .call .ovl.sparkle2 { top: 150px; right: 26px; font-size: 20px; }
 .call.happy .ovl.sparkle, .call.happy .ovl.sparkle2 { opacity: 1; scale: 1; animation: twinkle 1.2s ease-in-out; }
 .call.happy .ovl.sparkle2 { animation-delay: .15s; }
 @keyframes twinkle { 0%, 100% { rotate: -10deg; } 50% { rotate: 12deg; scale: 1.15; } }
-.call .ovl.tear { top: 44px; right: 50px; width: 24px; height: 30px; } .call .ovl.tear svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 4px rgba(74, 79, 191, .3)); }
+.call .ovl.tear { top: 44px; right: 50px; width: 24px; height: 30px; } .call .ovl.tear svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .4)); }
 .call.sorry .ovl.tear { opacity: 1; scale: 1; animation: dropfall 1.2s ease-in; }
 @keyframes dropfall { to { translate: 0 10px; } }
-.call .ovl.q { top: 30px; right: 36px; width: 36px; height: 36px; border-radius: 50%; background: var(--indigo); color: #fff; font-weight: 800; font-size: 20px; display: grid; place-items: center; box-shadow: 0 6px 14px rgba(43, 47, 122, .3); }
+.call .ovl.q { top: 30px; right: 36px; width: 36px; height: 36px; border-radius: 50%; background: var(--lantern-300); color: var(--ocean-950); font-weight: 800; font-size: 20px; display: grid; place-items: center; box-shadow: 0 6px 14px rgba(0, 0, 0, .4); }
 .call.curious .ovl.q { opacity: 1; scale: 1; }
 .call .caps { flex: 1 1 auto; min-height: 0; width: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 2px 6px; }
-.call .bubble { position: relative; max-width: 100%; background: var(--bubble-bot); color: var(--ink); padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; text-align: left; margin-top: 7px; }
-.call .bubble::before { content: ""; position: absolute; top: -7px; left: 50%; margin-left: -7px; border: 7px solid transparent; border-top: 0; border-bottom-color: var(--bubble-bot); }
+.call .bubble { position: relative; max-width: 100%; background: var(--ocean-800); color: var(--color-text); border: 1px solid var(--color-border); padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; text-align: left; margin-top: 7px; }
+.call .bubble::before { content: ""; position: absolute; top: -7px; left: 50%; margin-left: -7px; border: 7px solid transparent; border-top: 0; border-bottom-color: var(--ocean-800); }
 .call .bubble:empty { display: none; }
-.call .heard { font-size: 13px; color: var(--muted); max-width: 100%; overflow-wrap: anywhere; }
+.call .heard { font-size: 13px; color: var(--color-text-muted); max-width: 100%; overflow-wrap: anywhere; }
 .call .heard:empty { display: none; }
 .call .heard::before { content: "\201C"; } .call .heard::after { content: "\201D"; }
-.call .hint { font-size: 12.5px; color: var(--faint); }
+.call .hint { font-size: 12.5px; color: var(--color-text-muted); }
 .call.ended .hint, .call.speaking .hint, .call.thinking .hint { display: none; }
 .call .ctl { display: flex; align-items: flex-start; justify-content: center; gap: 26px; padding: 2px 0; }
-.call .ctl > div { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--muted); }
-.call .rb { width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--line); background: #fff; color: var(--indigo); display: grid; place-items: center; padding: 0; transition: transform .15s var(--ease), background .15s, color .15s; }
+.call .ctl > div { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); }
+.call .rb { width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--color-border-control); background: var(--ocean-800); color: var(--color-text); display: grid; place-items: center; padding: 0; transition: transform .15s var(--ease), background .15s, color .15s; }
 .call .rb svg { width: 22px; height: 22px; display: block; }
 .call .rb:hover { transform: scale(1.06); }
-.call .rb.mute[aria-pressed=true] { background: var(--warn-bg); color: var(--warn-ink); border-color: #F0DCA8; }
+.call .rb.mute[aria-pressed=true] { background: var(--lantern-300); color: var(--ocean-950); border-color: transparent; }
 .call .rb.end { width: 66px; height: 66px; background: #E5484D; color: #fff; border: 0; box-shadow: 0 10px 24px rgba(229, 72, 77, .38); }
 .call .rb.end:hover { background: #D13B40; }
 .call .rb.end svg { width: 28px; height: 28px; }
 .call .rb[disabled] { opacity: .5; cursor: default; transform: none; }
 .call form.say { display: flex; gap: 8px; width: 100%; align-items: center; }
-.call form.say input { min-height: 40px; padding: 7px 14px; border-radius: 99px; font-size: 14px; }
-.call form.say button { flex: none; width: 40px; height: 40px; min-height: 40px; padding: 0; border-radius: 50%; background: var(--indigo); color: #fff; border: 0; display: grid; place-items: center; }
+.call form.say input { min-height: 44px; padding: 7px 14px; border-radius: 99px; font-size: 14px; }
+.call form.say button { flex: none; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; background: var(--color-action); color: var(--color-on-action); border: 0; display: grid; place-items: center; }
 .call form.say button svg { width: 18px; height: 18px; display: block; }
 /* company profile: hero, leadership, departments, the collapsed "Dory & systems" section */
 .card.hero { flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: flex-start; background: linear-gradient(135deg, #FFFFFF 0%, #F7F5FF 55%, #EEF4FF 100%); }
@@ -468,9 +534,6 @@ details.sys[open] > summary::before { content: "\25BE"; }
 details.sys > summary .muted { font-weight: 400; font-size: 13.5px; }
 details.sys > .inner { padding-top: 12px; }
 /* chat panel: attach a document (paperclip, drop a file on the panel) */
-.compose .clip { flex: none; width: 44px; min-height: 44px; padding: 0; border-radius: 10px; background: #fff; border: 1px solid var(--line); color: var(--muted); display: grid; place-items: center; transition: color .15s, border-color .15s; }
-.compose .clip:hover { color: var(--indigo); border-color: var(--lavender); }
-.compose .clip svg { width: 20px; height: 20px; display: block; }
 .msg.sys { align-self: center; max-width: 96%; background: transparent; color: var(--muted); font-size: 13px; border: 1px dashed var(--line); border-radius: 16px; padding: 5px 14px; display: inline-flex; flex-wrap: wrap; justify-content: center; align-items: center; gap: 4px 8px; text-align: center; }
 .msg.sys a { white-space: nowrap; }
 .msg.sys .spin { width: 12px; height: 12px; border-radius: 50%; border: 2px solid var(--lavender); border-top-color: var(--indigo-2); animation: spin 1s linear infinite; flex: none; }
@@ -615,7 +678,7 @@ details.sys > .inner { padding-top: 12px; }
 .note.pink { background: #FFC9D6; } .note.orange { background: #FFD9A8; } .note.blue { background: #CDE6FF; } .note.green { background: #D6F5D0; }
 .note.done .nt { text-decoration: line-through; color: #6B6B5E; }
 .note .pin { position: absolute; top: 8px; left: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff8a8a, #c62828); box-shadow: 0 2px 3px rgba(0,0,0,.3); }
-.note .pin.mark { width: 26px; height: 26px; margin-left: -13px; top: 4px; border-radius: 50%; background: #F6E7C9 url("/static/dory/cat-avatar.webp") center / cover no-repeat; }
+.note .pin.mark { width: 26px; height: 26px; margin-left: -13px; top: 4px; border-radius: 50%; background: var(--ocean-800) url("/static/dory/dory-mark.svg") center / cover no-repeat; }
 .note .nt { font-weight: 600; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
 .note .nm { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
 .note .nf { margin-top: 8px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
@@ -773,7 +836,7 @@ h3 .n { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99
 
 <section id="login" hidden>
   <div class="pitch">
-    <a class="brand" href="/"><div class="mark" aria-hidden="true">S</div><strong>Dory Command Center</strong></a>
+    <a class="brand" href="/"><div class="mark" aria-hidden="true">D</div><strong>Dory Command Center</strong></a>
     <h1 data-i="login_h"></h1>
     <p data-i="login_p"></p>
     <ul><li data-i="vp1"></li><li data-i="vp2"></li><li data-i="vp3"></li></ul>
@@ -797,7 +860,7 @@ h3 .n { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99
     <span class="t" id="topbar-title">Dory</span>
   </div>
   <aside id="side" aria-label="Main">
-    <div class="brand"><div class="mark" aria-hidden="true">S</div><strong>Dory</strong></div>
+    <div class="brand"><div class="mark" aria-hidden="true">D</div><strong>Dory</strong></div>
     <label class="f"><span class="sr" data-i="org"></span>
       <select id="org-switch" aria-label="Organization"></select></label>
     <button class="btn ghost sm" id="new-org" type="button" data-i="new_org"></button>
@@ -812,7 +875,7 @@ h3 .n { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99
   <button id="fab" class="mark" type="button" aria-controls="panel" aria-expanded="false" aria-haspopup="dialog"></button>
   <aside id="panel" role="dialog" aria-labelledby="panel-t" aria-hidden="true">
     <div class="ph">
-      <div class="mark" aria-hidden="true">S</div>
+      <div class="mark" aria-hidden="true">D</div>
       <div class="ttl"><h2 id="panel-t" data-i="talk"></h2><p data-i="panel_p"></p></div>
       <button class="livebtn" id="panel-live" type="button" aria-pressed="false"></button>
       <button class="x" id="panel-x" type="button" data-i-label="close" aria-label="Close">&times;</button>
@@ -837,6 +900,7 @@ h3 .n { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99
   </form>
 </dialog>
 <div id="toast" role="status" aria-live="polite"></div>
+<svg id="dory-defs" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><linearGradient id="df-fin" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#6A9BF5"/><stop offset=".5" stop-color="#B9B4F2"/><stop offset="1" stop-color="#FFDDB8"/></linearGradient><linearGradient id="df-dorsal" x1="0" y1="1" x2=".3" y2="0"><stop offset="0" stop-color="#5B8DF2"/><stop offset=".55" stop-color="#B9B4F2"/><stop offset="1" stop-color="#FFE4C8"/></linearGradient><linearGradient id="df-side" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#C9C4F7"/><stop offset="1" stop-color="#FFE0C2"/></linearGradient><radialGradient id="df-body" cx=".62" cy=".62" r=".7"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".7" stop-color="#F3F7FE"/><stop offset="1" stop-color="#D4E2F8"/></radialGradient><linearGradient id="df-back" x1=".2" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="#2140A8"/><stop offset="1" stop-color="#5F93F4"/></linearGradient><radialGradient id="df-iris" cx=".45" cy=".35" r=".75"><stop offset="0" stop-color="#5A93F7"/><stop offset="1" stop-color="#1A3484"/></radialGradient><clipPath id="df-clip"><path d="M64 104C64 74 100 50 142 50C186 50 210 78 210 106C210 138 182 160 140 160C100 160 64 134 64 104Z"/></clipPath><clipPath id="df-mouth-clip"><path d="M173 117Q187 120 200 114Q198 133 186 134Q175 133 173 117Z"/></clipPath><filter id="df-glow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="2.2"/></filter></defs></svg>
 
 <script>
 "use strict";
@@ -887,6 +951,7 @@ th: {
   c_title:"ชื่อ", c_ws:"พื้นที่", c_date:"วันที่", c_who:"โดย", c_size:"ขนาด", no_docs:"ยังไม่มีเอกสารในหมวดนี้", no_docs_hint:"เอกสารที่ดอรี่อ่านใน Discord หรือที่คุณอัปโหลดจะแสดงที่นี่",
   upload:"อัปโหลดเอกสาร", drop_here:"ลากไฟล์มาวางที่นี่ หรือกดเลือกไฟล์", uploading:"กำลังอัปโหลด {name}", upload_done:"อัปโหลดแล้ว", open_source:"เปิดใน Discord", more:"โหลดเพิ่ม", preview:"ตัวอย่าง", no_preview:"ไม่มีตัวอย่าง",
   chat_ph:"พิมพ์ข้อความถึงดอรี่…", send:"ส่ง", chat_empty:"ถามดอรี่ได้เลย เช่น “สรุปค่าใช้จ่ายเดือนนี้”", typing:"ดอรี่กำลังพิมพ์",
+  n_chat:"คุยกับดอรี่", dory_name:"ดอรี่", you:"คุณ", chat_hi:"สวัสดีค่ะ ดอรี่เองค่ะ", chat_intro:"ถามเรื่องบริษัทได้เลยค่ะ ทั้งใบเสร็จ เอกสาร การประชุม และงาน", chat_trust:"ดอรี่ตอบจากห้องที่คุณมีสิทธิ์อ่านเท่านั้นค่ะ", chat_try:"ลองถาม", chip_missed:"ฉันพลาดอะไรไปบ้าง", chip_tasks:"งานของฉันวันนี้", chip_spend:"สรุปค่าใช้จ่ายเดือนนี้", chip_upload:"อัปโหลดเอกสาร", thinking_s:"กำลังคิด… {n} วินาที", thinking_sr:"ดอรี่กำลังคิด", still_working:"ดอรี่ยังทำอยู่", long_wait:"คำตอบยาว ๆ อาจใช้เวลาถึงหนึ่งนาที", stop_wait:"หยุดรอ", stopped:"คุณหยุดรอแล้ว ดอรี่อาจยังตอบต่อ และคำตอบจะอยู่ในประวัติแชท", ask_again:"ถามอีกครั้ง", chat_err:"ดอรี่ตอบไม่ได้: {e}", copy_q:"คัดลอกคำถาม", copy_fail:"คัดลอกไม่ได้", offline_p:"คุณออฟไลน์อยู่ ข้อความยังอยู่ในช่องพิมพ์", send_hint:"Enter เพื่อส่ง · Shift+Enter ขึ้นบรรทัดใหม่", drop_files:"วางไฟล์ได้สูงสุด 10 ไฟล์", search_hist:"ค้นในแชท", jump_day:"ไปยังวันที่", yesterday:"เมื่อวาน", no_match:"ไม่พบข้อความที่ตรงกัน", files_sent:"ไฟล์ที่ฉันส่ง", history:"ประวัติ",
   sec_company:"บริษัท", sec_personal:"ส่วนตัว",
   live:"คุยสด", live_on:"กำลังคุย", live_title:"คุยสดกับดอรี่", live_hint:"พูดได้เลย แทรกได้ทุกเมื่อ", live_connecting:"กำลังเชื่อมต่อ…", live_listening:"กำลังฟัง", live_thinking:"กำลังคิด", live_speaking:"ดอรี่กำลังพูด", live_checking:"ดอรี่กำลังเช็กให้: {q}", live_muted:"ปิดไมค์อยู่", live_ended:"วางสายแล้ว", live_lost:"สายหลุด กดคุยสดใหม่ได้เลยค่ะ",
   live_end:"วางสาย", live_mute:"ปิดไมค์", live_unmute:"เปิดไมค์", live_type_ph:"หรือพิมพ์ถึงดอรี่…", live_send:"ส่ง", live_na:"เบราว์เซอร์นี้คุยสดไม่ได้ (ลอง Chrome หรือ Edge)", live_mic_denied:"ไม่ได้รับอนุญาตให้ใช้ไมโครโฟน", live_mic_err:"เปิดไมโครโฟนไม่ได้ ({e})",
@@ -997,6 +1062,7 @@ en: {
   c_title:"Title", c_ws:"Workspace", c_date:"Date", c_who:"By", c_size:"Size", no_docs:"No documents in this category", no_docs_hint:"Documents Dory reads in Discord, or that you upload, appear here.",
   upload:"Upload a document", drop_here:"Drag a file here, or click to choose", uploading:"Uploading {name}", upload_done:"Uploaded", open_source:"Open in Discord", more:"Load more", preview:"Preview", no_preview:"No preview",
   chat_ph:"Message Dory…", send:"Send", chat_empty:"Just ask, e.g. “Summarize this month's expenses”", typing:"Dory is typing",
+  n_chat:"Chat with Dory", dory_name:"Dory", you:"You", chat_hi:"Hi, I'm Dory.", chat_intro:"Ask about your company: receipts, documents, meetings and tasks.", chat_trust:"I answer from the channels you can read.", chat_try:"Try asking", chip_missed:"What did I miss?", chip_tasks:"My tasks today", chip_spend:"Summarise this month's expenses", chip_upload:"Upload a document", thinking_s:"Thinking… {n} s", thinking_sr:"Dory is thinking", still_working:"Still working", long_wait:"Long answers can take up to a minute.", stop_wait:"Stop waiting", stopped:"You stopped waiting. Dory may still finish, and her answer will show up in your history.", ask_again:"Ask again", chat_err:"Dory couldn't answer: {e}", copy_q:"Copy question", copy_fail:"Couldn't copy", offline_p:"You're offline. Your draft stays here.", send_hint:"Enter to send · Shift+Enter for a new line", drop_files:"Drop up to 10 files", search_hist:"Search this chat", jump_day:"Jump to day", yesterday:"Yesterday", no_match:"No messages match", files_sent:"Files I sent", history:"History",
   sec_company:"Company", sec_personal:"Personal",
   live:"Live", live_on:"On call", live_title:"Live call with Dory", live_hint:"Just talk. You can interrupt her any time", live_connecting:"Connecting…", live_listening:"Listening", live_thinking:"Thinking", live_speaking:"Dory is speaking", live_checking:"Dory is checking: {q}", live_muted:"Mic muted", live_ended:"Call ended", live_lost:"Connection lost. Press Live to call again.",
   live_end:"End call", live_mute:"Mute mic", live_unmute:"Unmute mic", live_type_ph:"or type to Dory…", live_send:"Send", live_na:"Live calls are not supported in this browser (try Chrome or Edge)", live_mic_denied:"Microphone access was not allowed", live_mic_err:"Could not open the microphone ({e})",
@@ -1325,11 +1391,11 @@ function monTitleRest(title, labelEn) {
 
 /* ---------- state & routing ---------- */
 let me = null, orgId = null, cur = null;
-// Company settings and personal settings are two labelled groups. "Talk to Dory" is not a page: it is the
-// floating panel (bottom-right), so the old #/chat route opens the panel over the company profile.
+// Company settings and personal settings are two labelled groups. "Talk to Dory" is the floating panel on every page
+// and also a full page (#/chat: the same chat with a history rail); both read the same history.
 const NAV_SECTIONS = [
   ["sec_company", [["overview", "n_overview", "▦"], ["monitor", "n_monitor", "◉"], ["mycal", "n_mycal", "▣"], ["docs", "n_docs", "▤"], ["ws", "n_ws", "◫"], ["apps", "n_apps", "⚙"], ["members", "n_members", "☺"], ["license", "n_license", "★"], ["settings", "n_settings", "⚒"]]],
-  ["sec_personal", [["account", "n_account", "☉"], ["mytasks", "n_mytasks", "☑"]]],
+  ["sec_personal", [["chat", "n_chat", "✦"], ["account", "n_account", "☉"], ["mytasks", "n_mytasks", "☑"]]],
 ];
 const NAV = NAV_SECTIONS.flatMap(([, pages]) => pages);
 const ADMIN_PAGES = ["apps", "license", "settings"]; // hidden from plain members of the current org
@@ -1359,13 +1425,12 @@ let navSeq = 0;
 function route() {
   if (!me) return;
   let id = (location.hash.match(/^#\/(\w+)/) || [])[1];
-  if (id === "chat") { // old bookmark / link: the chat is the panel now
-    history.replaceState(null, "", location.pathname + location.search + "#/overview"); id = "overview"; panelWanted(true);
-  }
   if (!NAV.some((n) => n[0] === id) || !pageVisible(id)) { id = "overview"; history.replaceState(null, "", location.pathname + location.search + "#/overview"); }
   const moved = cur !== id;
+  if (cur === "chat" && id !== "chat" && chatPage.w) { chatPage.w.stop(); chatPage.w = null; }
   cur = id; renderNav();
-  if (!panel.open && panelWanted()) setTimeout(panelOpen, 0); // this tab had the panel open (reload, #/chat link)
+  $("fab").hidden = id === "chat"; // the page is the chat
+  if (id !== "chat" && !panel.open && panelWanted()) setTimeout(panelOpen, 0); // this tab had the panel open (reload, #/chat link)
   const nm = NAV.find((n) => n[0] === id);
   $("topbar-title").textContent = t(nm[1]);
   const c = $("content");
@@ -1934,14 +1999,15 @@ const ICON = {
   micOff: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 9v2a3 3 0 0 0 5.1 2.1M15 10V6a3 3 0 0 0-5.6-1.5"/><path d="M5 11a7 7 0 0 0 11.4 5.4M19 11a7 7 0 0 1-.6 2.8M12 18v3M8 21h8"/><path d="m3 3 18 18"/></svg>',
   send: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M22 2 11 13"/><path d="m22 2-7 20-4-9-9-4z"/></svg>',
   drop: '<svg viewBox="0 0 24 30" aria-hidden="true"><path d="M12 2c3 6 8 10.5 8 17a8 8 0 0 1-16 0c0-6.5 5-11 8-17z" fill="#BFD6F6" stroke="#4A4FBF" stroke-width="1.6" stroke-linejoin="round"/><path d="M8.5 19.5a3.5 3.5 0 0 0 2.5 3.3" fill="none" stroke="#fff" stroke-width="1.6" stroke-linecap="round"/></svg>',
-  eyesUp: '<svg viewBox="0 0 26 26" aria-hidden="true"><circle cx="8" cy="13" r="5.5" fill="#fff" stroke="#2B2F7A" stroke-width="1.6"/><circle cx="18" cy="13" r="5.5" fill="#fff" stroke="#2B2F7A" stroke-width="1.6"/><circle cx="9.8" cy="10.4" r="2.4" fill="#2B2F7A"/><circle cx="19.8" cy="10.4" r="2.4" fill="#2B2F7A"/></svg>',
 };
 const pageName = () => { const nm = NAV.find((n) => n[0] === cur); return nm ? I.en[nm[1]] : ""; };
 function liveLabel() {
-  const b = $("panel-live"); if (!b) return;
-  const on = !!(panel.w && panel.w.live.active());
-  b.innerHTML = on ? '<i aria-hidden="true"></i>' : ICON.live; b.append(el("span", { text: t(on ? "live_on" : "live") }));
-  b.setAttribute("aria-pressed", String(on)); const l = t(on ? "live_end" : "live_title"); b.setAttribute("aria-label", l); b.title = l;
+  for (const [id, w] of [["panel-live", panel.w], ["chat-live", chatPage.w]]) {
+    const b = $(id); if (!b) continue;
+    const on = !!(w && w.live.active());
+    b.innerHTML = on ? '<i aria-hidden="true"></i>' : ICON.live; b.append(el("span", { text: t(on ? "live_on" : "live") }));
+    b.setAttribute("aria-pressed", String(on)); const l = t(on ? "live_end" : "live_title"); b.setAttribute("aria-label", l); b.title = l;
+  }
 }
 
 /* ---------- live call audio ---------- */
@@ -1997,9 +2063,11 @@ const HAPPY_RE = /สวัสดี|ขอบคุณ|ยินดี|ดี�
 const SORRY_RE = /^\s*(ขอโทษ|ขออภัย|เสียใจ|ต้องขอโทษ|sorry|apolog|i'?m afraid|unfortunately)/i;
 const CURIOUS_RE = /(\?|ไหม|มั้ย|คะ|เปล่า|หรือยัง)\s*[.!]?\s*$/;
 const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
+// Dory the fish, rigged (static/dory/dory.svg is the master; the gradients live once in #dory-defs).
+const FISH_SVG = '<svg class="fish-svg" viewBox="2 6 216 162" aria-hidden="true" focusable="false"><g class="dory-fish"><g class="df-tail"><path d="M72 96C60 84 46 66 26 58C16 54 8 58 12 66C18 78 24 92 32 104C24 116 18 130 12 142C8 150 16 154 26 150C46 142 60 124 72 112Z" fill="url(#df-fin)"/><path d="M68 101Q42 80 20 64M68 104Q46 94 28 90M68 107Q46 116 28 120M68 110Q42 128 20 144" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="1.4" stroke-linecap="round" fill="none"/></g><g class="df-dorsal"><path d="M146 54C141 37 128 22 108 15C98 12 90 15 91 22C93 31 96 42 88 52C84 58 80 66 80 75Z" fill="url(#df-dorsal)"/><path d="M132 58Q122 36 106 22M116 63Q106 46 96 30M100 70Q94 58 90 48" fill="none" stroke="#FFFFFF" stroke-opacity=".4" stroke-width="1.2" stroke-linecap="round"/></g><g class="df-body"><path d="M64 104C64 74 100 50 142 50C186 50 210 78 210 106C210 138 182 160 140 160C100 160 64 134 64 104Z" fill="url(#df-body)"/><path clip-path="url(#df-clip)" d="M48 122C80 97 110 77 150 66C171 60 190 59 216 70V30H48Z" fill="url(#df-back)"/><path clip-path="url(#df-clip)" d="M48 122C80 97 110 77 150 66C171 60 190 59 216 70" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="1.6"/><path d="M206 122C198 146 176 159 140 159C104 159 76 141 67 118" fill="none" stroke="#9FF7EC" stroke-opacity=".45" stroke-width="1.6" stroke-linecap="round"/><g class="df-lights" fill="#9FF7EC"><g class="df-halo" filter="url(#df-glow)" opacity=".85"><circle cx="86" cy="96" r="3.4"/><circle cx="102" cy="86" r="3.6"/><circle cx="119" cy="77" r="3.8"/><circle cx="136" cy="70" r="3.8"/><circle cx="153" cy="65" r="3.6"/><circle cx="170" cy="62" r="3.2"/></g><circle cx="86" cy="96" r="2.2"/><circle cx="102" cy="86" r="2.4"/><circle cx="119" cy="77" r="2.6"/><circle cx="136" cy="70" r="2.6"/><circle cx="153" cy="65" r="2.4"/><circle cx="170" cy="62" r="2.1"/></g></g><path class="df-pectoral" d="M147 123C136 126 125 133 118 144C115 149 119 153 125 151C136 147 146 141 153 134Z" fill="url(#df-side)" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="1.2"/><g class="df-headset"><path d="M114 82C116 60 132 48 150 47C166 46 180 52 188 61" fill="none" stroke="#1A2F5C" stroke-width="5.6" stroke-linecap="round"/><path d="M116 79C119 61 133 51 150 50C163 49 174 54 182 60" fill="none" stroke="#5F93F4" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/><path d="M124 113Q133 133 154 135" fill="none" stroke="#1A2F5C" stroke-width="3.4" stroke-linecap="round"/><ellipse cx="158" cy="135" rx="6.2" ry="4.4" fill="#1A2F5C"/><circle cx="161.5" cy="135" r="2" fill="#5FF2E0"/><circle cx="114" cy="98" r="18.5" fill="#EEF3FB" stroke="#1A2F5C" stroke-width="3"/><circle cx="114" cy="98" r="12.5" fill="#10204A"/><g class="df-bars" fill="#5FF2E0"><rect x="107" y="94" width="3.2" height="8" rx="1.6"/><rect x="112.4" y="91.5" width="3.2" height="13" rx="1.6"/><rect x="117.8" y="94" width="3.2" height="8" rx="1.6"/></g></g><ellipse class="df-blush" cx="150" cy="121" rx="8.5" ry="4.8" fill="#FFB0B8" opacity=".55"/><g class="df-eyes"><g class="df-eye df-eye-near"><ellipse cx="164" cy="96" rx="15" ry="17" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1.2"/><circle cx="166.5" cy="98" r="11" fill="url(#df-iris)"/><circle class="df-pupil" cx="167.5" cy="99" r="5.8" fill="#0A1530"/><circle cx="162.5" cy="93" r="3.6" fill="#FFFFFF"/><circle cx="170.5" cy="103.5" r="1.6" fill="#FFFFFF"/></g><g class="df-eye df-eye-far"><ellipse cx="194" cy="94" rx="10" ry="13" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1"/><circle cx="195.6" cy="96" r="7.8" fill="url(#df-iris)"/><circle class="df-pupil" cx="196.4" cy="97" r="4.2" fill="#0A1530"/><circle cx="192.6" cy="92.2" r="2.6" fill="#FFFFFF"/></g><path class="df-brow" d="M152 74Q163 68 175 74M187 75Q194 71 201 76" fill="none" stroke="#1A2F5C" stroke-width="2.6" stroke-linecap="round"/></g><g class="df-mouth"><path d="M173 117Q187 120 200 114Q198 133 186 134Q175 133 173 117Z" fill="#1A2F5C"/><ellipse clip-path="url(#df-mouth-clip)" cx="187" cy="131" rx="8" ry="5" fill="#FF8A9A"/></g></g></svg>';
 const STAGE_HTML = '<div class="ring r3"></div><div class="ring r2"></div><div class="ring r1"></div><div class="halo"></div>'
-  + '<div class="bars l"><i></i><i></i><i></i><i></i></div><div class="orb"><img src="/static/dory/dory-profile.webp" alt=""><div class="cheeks"></div></div><div class="bars r"><i></i><i></i><i></i><i></i></div>'
-  + '<div class="dots"><span></span><span></span><span></span></div><div class="ovl eyes">' + ICON.eyesUp + '</div>'
+  + '<div class="bars l"><i></i><i></i><i></i><i></i></div><div class="orb">' + FISH_SVG + '</div><div class="bars r"><i></i><i></i><i></i><i></i></div>'
+  + '<div class="dots"><span></span><span></span><span></span></div>'
   + '<div class="ovl sparkle">✨</div><div class="ovl sparkle2">✨</div><div class="ovl tear">' + ICON.drop + '</div><div class="ovl q">?</div>';
 
 // One live call per chat widget. wrap = the .chat element the call view covers; addMsg(who, text) writes finished turns to the chat log.
@@ -2026,7 +2094,7 @@ function liveCall(wrap, addMsg) {
     const sendB = el("button", { type: "submit", "aria-label": t("live_send"), title: t("live_send") }); sendB.innerHTML = ICON.send;
     const f = el("form", { class: "say" }, inp, sendB);
     f.addEventListener("submit", (ev) => { ev.preventDefault(); const x = inp.value.trim(); if (x) { inp.value = ""; say(x); } });
-    const v = el("div", { class: "call connecting", role: "region", "aria-label": t("live_title") }, st, stage, caps, ctl, f);
+    const v = el("div", { class: "call connecting", role: "region", "aria-label": t("live_title"), "data-theme": "deep" }, st, stage, caps, ctl, f);
     S.view = Object.assign(v, { tx, tm, bubble, heard, muteB, muteL, endB, inp });
     return v;
   };
@@ -2159,19 +2227,81 @@ function liveCall(wrap, addMsg) {
   return { active, start, end: (why) => end(why || "now"), say, show, toggle: () => (active() || S.starting ? end("user") : start()) };
 }
 
-function chatWidget(hist, prefix) {
-  const msgs = el("div", { class: "msgs", role: "log", "aria-live": "polite", "aria-label": t("talk") });
-  const add = (who, text) => { const n = el("div", { class: "msg " + (who === "user" || who === "me" ? "me" : "bot") }); n.innerHTML = md(text); msgs.append(n); msgs.scrollTop = msgs.scrollHeight; return n; };
-  const h = items(hist, "turns");
-  if (!h.length) msgs.append(el("div", { class: "empty", text: t("chat_empty") }));
-  else h.forEach((m) => add(m.role, m.text || ""));
-  const ta = el("textarea", { id: prefix + "-in", rows: "1", placeholder: t("chat_ph"), "aria-label": t("chat_ph") });
-  const btn = el("button", { class: "btn", type: "submit" }, t("send"));
-  const clip = el("button", { class: "clip", type: "button", "aria-label": t("up_attach"), title: t("up_attach") }); clip.innerHTML = ICON.clip;
+// The chat, in the panel and on the #/chat page. Quiet on purpose: the only motion is the send ripple and Dory's lantern,
+// which pulses for 10 s while she works and then holds steady. The counter and a status region (outside the log, so the
+// log announces finished answers only) say the same in words.
+ICON.stop = '<svg viewBox="0 0 24 24" aria-hidden="true"><rect x="7" y="7" width="10" height="10" rx="2" fill="currentColor"/></svg>';
+const STOPPED = new Error("stopped");
+const locale = () => (lang === "th" ? "th-TH" : "en-GB");
+function dayLabel(d) {
+  if (d.toDateString() === new Date().toDateString()) return t("today");
+  if (d.toDateString() === new Date(Date.now() - 86400000).toDateString()) return t("yesterday");
+  return d.toLocaleDateString(locale(), { weekday: "short", day: "numeric", month: "short" });
+}
+function copyText(s) {
+  const p = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(s) : Promise.reject(new Error("no clipboard"));
+  p.then(() => toast(t("copied")), () => toast(t("copy_fail"), "error"));
+}
+// First visit: who Dory is, what she can see, four things to try (a chip sends its words, as if typed)
+function chatEmpty(onAsk, onUpload) {
+  const fish = el("div", { class: "fish", "aria-hidden": "true" }); fish.innerHTML = FISH_SVG;
+  const chips = [["chip_missed"], ["chip_tasks"], canManage() ? ["chip_spend"] : null, ["chip_upload", true]].filter(Boolean);
+  return el("div", { class: "chat-empty" }, fish,
+    el("h2", { text: t("chat_hi") }), el("p", { text: t("chat_intro") }), el("p", { class: "trust", text: t("chat_trust") }),
+    el("div", { class: "chips", role: "group", "aria-label": t("chat_try") },
+      chips.map(([k, up]) => el("button", { type: "button", class: "chipbtn", onclick: () => (up ? onUpload() : onAsk(t(k))) }, t(k)))));
+}
+function chatWidget(hist, prefix, opts = {}) {
+  const msgs = el("div", { class: "msgs", role: "log", "aria-live": "polite", "aria-relevant": "additions", "aria-label": t("talk"), tabindex: "0" });
+  const status = el("div", { class: "sr", role: "status", "aria-live": "polite" });
+  let lastDay = "", lastWho = "", busy = null;
+  const unEmpty = () => { const emp = msgs.querySelector(".chat-empty"); if (emp) emp.remove(); };
+  const end = () => { msgs.scrollTop = msgs.scrollHeight; };
+  const dayRow = (d) => { const k = d.toDateString(); if (k === lastDay) return; lastDay = k; lastWho = ""; msgs.append(el("div", { class: "day", "data-day": k }, el("span", { text: dayLabel(d) }))); };
+  // q = the question that led to an answer: "Ask again" sends it once more
+  const add = (who, text, at, q) => {
+    const d = at ? new Date(at) : new Date(), ok = !isNaN(d), me = who === "user" || who === "me";
+    if (ok) dayRow(d);
+    const tm = ok ? d.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) : "";
+    const body = el("div", { class: "body" }); body.innerHTML = md(text);
+    const sr = el("span", { class: "sr", text: t(me ? "you" : "dory_name") + (tm ? ", " + tm : "") + ": " });
+    let n;
+    if (me) n = el("article", { class: "msg me", tabindex: "-1" }, sr, body);
+    else {
+      for (const x of msgs.querySelectorAll(".msg.last")) x.classList.remove("last");
+      n = el("article", { class: "msg bot last" + (lastWho === "bot" ? " cont" : ""), tabindex: "-1" },
+        el("div", { class: "who", "aria-hidden": "true" }, el("span", { class: "mark" }), el("span", { text: t("dory_name") }), tm ? el("time", { text: tm }) : null),
+        sr, body,
+        el("div", { class: "mact" },
+          el("button", { type: "button", onclick: () => copyText(text) }, t("copy")),
+          q ? el("button", { type: "button", onclick: () => send(q) }, t("ask_again")) : null));
+    }
+    lastWho = me ? "me" : "bot";
+    msgs.append(n); end(); return n;
+  };
+  const coarse = matchMedia("(pointer: coarse)").matches; // touch: Enter is a new line, the button sends
+  const ta = el("textarea", { id: prefix + "-in", rows: "1", placeholder: t("chat_ph"), "aria-label": t("chat_ph"), enterkeyhint: coarse ? "enter" : "send" });
+  const btn = el("button", { class: "ib send", type: "submit" });
+  const clip = el("button", { class: "ib clip", type: "button", "aria-label": t("up_attach"), title: t("up_attach") }); clip.innerHTML = ICON.clip;
   const fileIn = el("input", { type: "file", class: "sr", id: prefix + "-file", accept: UP_ACCEPT, multiple: true, "aria-label": t("up_attach") });
+  const offNote = el("div", { class: "notice", role: "status", hidden: true, text: t("offline_p") });
   const form = el("form", { class: "compose" }, clip, ta, btn);
-  const wrap = el("div", { class: "chat" }, msgs, form, fileIn);
-  const unEmpty = () => { const emp = msgs.querySelector(".empty"); if (emp) emp.remove(); };
+  const wrap = el("div", { class: "chat", "data-drop": t("drop_files") }, msgs, status, offNote, form, el("div", { class: "hintline", "aria-hidden": "true", text: t("send_hint") }), fileIn);
+  const h = items(hist, "turns");
+  let asked = "";
+  for (const m of h) { const me = m.role === "user"; add(m.role, m.text || "", m.at, me ? null : asked); asked = me ? m.text || "" : ""; }
+  if (!h.length) msgs.append(chatEmpty((x) => send(x), () => fileIn.click()));
+  const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 192) + "px"; };
+  const syncSend = () => { offNote.hidden = navigator.onLine; btn.disabled = !busy && (!navigator.onLine || !ta.value.trim()); };
+  const setMode = (stop) => {
+    btn.classList.toggle("stop", stop); btn.innerHTML = stop ? ICON.stop : ICON.send;
+    const l = t(stop ? "stop_wait" : "send"); btn.setAttribute("aria-label", l); btn.title = l; syncSend();
+  };
+  setMode(false);
+  ta.addEventListener("input", () => { grow(); syncSend(); });
+  // shortcut: these listeners outlive a replaced widget (it is rebuilt only on a company or language change); syncSend
+  // then only touches detached nodes
+  addEventListener("online", syncSend); addEventListener("offline", syncSend);
   const live = liveCall(wrap, (who, text) => { unEmpty(); add(who, text); }); // finished call turns land in the chat log too
   // attach a document: upload to the company's Documents, say so in the log, then ask Dory about it (through the call when one is on)
   // several files at once (e.g. all the company's registration papers): each is uploaded and
@@ -2181,7 +2311,7 @@ function chatWidget(hist, prefix) {
     const ids = [], names = [];
     for (const file of list) {
       const bad = checkUpload(file); if (bad) { toast(file.name + ": " + t(bad), "error"); continue; }
-      unEmpty(); const line = el("div", { class: "msg sys", role: "status" }, el("span", { class: "spin", "aria-hidden": "true" }), t("uploading", { name: file.name })); msgs.append(line); msgs.scrollTop = msgs.scrollHeight;
+      unEmpty(); const line = el("div", { class: "msg sys", role: "status" }, el("span", { class: "spin", "aria-hidden": "true" }), t("uploading", { name: file.name })); msgs.append(line); end();
       try {
         const doc = await uploadDoc(file);
         line.replaceChildren(t(doc && doc.duplicate ? "up_dup" : "up_sys", { name: file.name }), " ", el("a", { href: "#/docs", text: t("n_docs") }), doc && doc.group ? [" · ", el("span", { class: "chip gchip " + doc.group, text: t("dg_" + doc.group) })] : null);
@@ -2194,23 +2324,113 @@ function chatWidget(hist, prefix) {
   };
   clip.addEventListener("click", () => fileIn.click());
   fileIn.addEventListener("change", () => { attach(fileIn.files); fileIn.value = ""; });
-  const sendWhenFree = (x, n = 0, docId) => { if (!btn.disabled || n > 60) send(x, docId); else setTimeout(() => sendWhenFree(x, n + 1, docId), 500); };
-  const send = async (preset, docId) => {
-    const text = String(preset || ta.value).trim(); if (!text || btn.disabled) return;
-    unEmpty(); if (!preset) ta.value = "";
-    if (live.active()) { live.say(text); return; } // during a call a typed line is handed to Dory on the socket
-    add("user", text); btn.disabled = true;
-    const ty = el("div", { class: "msg typing", role: "status", "aria-label": t("typing") }, el("span"), el("span"), el("span"), el("em", { text: t("typing_dots") })); msgs.append(ty); msgs.scrollTop = msgs.scrollHeight;
-    try {
-      const r = await api(O("/chat"), J("POST", { message: text, page: pageName(), document_ids: Array.isArray(docId) ? docId : docId ? [docId] : [] }));
-      ty.remove(); add("bot", r.answer || ""); refreshView();
-    } catch (e) { ty.remove(); if (handleAuth(e)) return; msgs.append(el("div", { class: "notice error", role: "alert", text: errText(e) })); }
-    btn.disabled = false; ta.focus();
+  const sendWhenFree = (x, n = 0, docId) => { if (!busy || n > 60) send(x, docId); else setTimeout(() => sendWhenFree(x, n + 1, docId), 500); };
+  const waitRow = () => {
+    const mark = el("span", { class: "mark lantern pulse" }), txt = el("span", { text: t("thinking_s", { n: 0 }) }), long = el("p", { class: "long", hidden: true, text: t("long_wait") });
+    const row = el("div", { class: "msg bot wait", "aria-hidden": "true" }, el("div", { class: "who" }, mark, el("span", { text: t("dory_name") })), el("div", { class: "body" }, txt, long));
+    return Object.assign(row, { mark, txt, long });
   };
-  form.addEventListener("submit", (ev) => { ev.preventDefault(); send(); });
-  ta.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing) { ev.preventDefault(); send(); } });
-  return { wrap, msgs, form, focus: () => ta.focus(), end: () => { msgs.scrollTop = msgs.scrollHeight; }, stop: () => live.end("now"), live, attach };
+  const note = (err, text, q) => {
+    const again = el("button", { type: "button", onclick: () => { n.remove(); send(q, null, true); } }, t(err ? "retry" : "ask_again"));
+    const n = el("div", { class: "msg cnote" + (err ? " err" : ""), role: err ? "alert" : "status" }, el("p", { text }),
+      el("div", { class: "mact" }, again, err ? el("button", { type: "button", onclick: () => copyText(q) }, t("copy_q")) : null));
+    msgs.append(n); end();
+  };
+  // again = the question is already on screen (Retry after an error, Ask again after Stop waiting)
+  const send = async (preset, docId, again) => {
+    if (busy) return;
+    const text = String(preset || ta.value).trim(); if (!text) return;
+    if (!navigator.onLine) { syncSend(); return; }
+    unEmpty(); if (!preset) { ta.value = ""; grow(); }
+    if (live.active()) { live.say(text); return; } // during a call a typed line is handed to Dory on the socket
+    if (!again) add("user", text);
+    btn.classList.remove("ripple"); void btn.offsetWidth; btn.classList.add("ripple");
+    const row = waitRow(); msgs.append(row); end();
+    const ac = new AbortController(), t0 = Date.now();
+    busy = ac; setMode(true); status.textContent = t("thinking_sr");
+    const tick = setInterval(() => {
+      const s = Math.round((Date.now() - t0) / 1000); row.txt.textContent = t("thinking_s", { n: s });
+      if (s >= 10) row.mark.classList.replace("pulse", "on");
+      if (s === 15) status.textContent = t("still_working");
+      if (s >= 20) row.long.hidden = false;
+    }, 1000);
+    try {
+      // Stop waiting aborts the browser's request only: the server may still finish and keep the answer in the history
+      const stop = new Promise((_, rej) => ac.signal.addEventListener("abort", () => rej(STOPPED), { once: true }));
+      const r = await Promise.race([api(O("/chat"), { ...J("POST", { message: text, page: pageName(), document_ids: Array.isArray(docId) ? docId : docId ? [docId] : [] }), signal: ac.signal }), stop]);
+      row.remove(); add("bot", r.answer || "", null, text); refreshView();
+    } catch (e) {
+      row.remove();
+      if (e === STOPPED) note(false, t("stopped"), text);
+      else if (!handleAuth(e)) note(true, t("chat_err", { e: errText(e) }), text);
+    } finally { clearInterval(tick); busy = null; setMode(false); status.textContent = ""; }
+    if (wrap.isConnected) ta.focus();
+  };
+  form.addEventListener("submit", (ev) => { ev.preventDefault(); if (busy) busy.abort(); else send(); });
+  ta.addEventListener("keydown", (ev) => { if (ev.key === "Enter" && !ev.shiftKey && !ev.isComposing && !coarse) { ev.preventDefault(); if (!busy) send(); } });
+  wrap.addEventListener("keydown", (ev) => { if (ev.key === "Escape" && busy) { ev.preventDefault(); ev.stopPropagation(); busy.abort(); } });
+  // arrows move between messages (each is focusable; Tab then reaches that message's actions)
+  msgs.addEventListener("keydown", (ev) => {
+    if (ev.key !== "ArrowUp" && ev.key !== "ArrowDown") return;
+    const arts = [...msgs.querySelectorAll("article.msg:not([hidden])")]; if (!arts.length) return;
+    const at = document.activeElement, cur = at && at.closest ? at.closest("article.msg") : null;
+    if (cur && at !== cur) return; // inside a message's buttons
+    const i = cur ? arts.indexOf(cur) + (ev.key === "ArrowDown" ? 1 : -1) : ev.key === "ArrowDown" ? 0 : arts.length - 1;
+    ev.preventDefault(); arts[Math.max(0, Math.min(arts.length - 1, i))].focus();
+  });
+  if (opts.page) { // the panel has its own drop zone; the page takes files anywhere on the chat
+    const files = (ev) => ev.dataTransfer && [...ev.dataTransfer.types].includes("Files");
+    wrap.addEventListener("dragover", (ev) => { if (!files(ev)) return; ev.preventDefault(); wrap.classList.add("drag"); });
+    wrap.addEventListener("dragleave", (ev) => { if (!wrap.contains(ev.relatedTarget)) wrap.classList.remove("drag"); });
+    wrap.addEventListener("drop", (ev) => { if (!files(ev)) return; ev.preventDefault(); wrap.classList.remove("drag"); attach(ev.dataTransfer.files); });
+  }
+  return { wrap, msgs, form, focus: () => ta.focus(), end, stop: () => live.end("now"), live, attach, send };
 }
+
+/* ---------- #/chat: the same chat as the panel, full width, with a history rail (search, jump to a day) ---------- */
+const chatPage = { w: null };
+VIEWS.chat = async (body, my) => {
+  const hist = await chatData(); if (stale(my)) return; done(body);
+  closePanel(); // the page is the chat: one live call and one composer at a time
+  const h1 = $("content").querySelector("h1"); if (h1) h1.classList.add("sr");
+  if (chatPage.w) chatPage.w.stop();
+  const w = chatWidget(hist, "c", { page: true }); chatPage.w = w;
+  const callB = el("button", { class: "livebtn", id: "chat-live", type: "button", onclick: () => w.live.toggle() });
+  const histB = el("button", { class: "btn ghost sm hist", type: "button", "aria-expanded": "false", onclick: () => { const open = page.classList.toggle("rail-open"); histB.setAttribute("aria-expanded", String(open)); if (open) search.focus(); } }, t("history"));
+  const search = el("input", { type: "search", placeholder: t("search_hist"), "aria-label": t("search_hist") });
+  const none = el("p", { class: "muted small", hidden: true, text: t("no_match") });
+  const days = el("div", { class: "days" });
+  const closeRail = () => { page.classList.remove("rail-open"); histB.setAttribute("aria-expanded", "false"); };
+  const fillDays = () => days.replaceChildren(...[...w.msgs.querySelectorAll(".day")].reverse().map((d) =>
+    el("button", { type: "button", class: "dayb", onclick: () => { d.scrollIntoView({ block: "start" }); closeRail(); } }, d.textContent)));
+  search.addEventListener("input", () => {
+    const qq = search.value.trim().toLowerCase(); let n = 0;
+    for (const m of w.msgs.querySelectorAll("article.msg")) { const hit = !qq || m.textContent.toLowerCase().includes(qq); m.hidden = !hit; if (hit) n++; }
+    for (const d of w.msgs.querySelectorAll(".day")) d.hidden = !!qq;
+    none.hidden = !qq || n > 0;
+  });
+  const rail = el("aside", { class: "rail", "aria-label": t("history") }, search, none, el("h2", { class: "rail-h", text: t("jump_day") }), days, el("a", { class: "small", href: "#/docs", text: t("files_sent") + " →" }));
+  const head = el("div", { class: "chat-head" }, el("span", { class: "mark", "aria-hidden": "true" }),
+    el("div", { class: "grow" }, el("strong", { text: t("dory_name") }), el("div", { class: "muted small", text: t("panel_p") })), histB, callB);
+  const page = el("div", { class: "chatpage" }, rail, el("section", { class: "convo", "aria-label": t("talk") }, head, w.wrap));
+  // F6 cycles the regions: rail -> messages -> composer
+  page.addEventListener("keydown", (ev) => {
+    if (ev.key === "Escape" && page.classList.contains("rail-open")) { ev.stopPropagation(); closeRail(); histB.focus(); return; }
+    if (ev.key !== "F6") return;
+    ev.preventDefault();
+    const stops = [search, w.msgs, w.wrap.querySelector("textarea")], i = stops.findIndex((x) => x.contains(document.activeElement));
+    stops[(i + (ev.shiftKey ? stops.length - 1 : 1) + stops.length) % stops.length].focus();
+  });
+  body.replaceChildren(page);
+  const fit = () => {
+    if (!page.isConnected) { removeEventListener("resize", fit); if (window.visualViewport) visualViewport.removeEventListener("resize", fit); return; }
+    const vh = window.visualViewport ? visualViewport.height : innerHeight;
+    page.style.height = Math.max(380, Math.floor(vh - page.getBoundingClientRect().top - 12)) + "px";
+  };
+  addEventListener("resize", fit); if (window.visualViewport) visualViewport.addEventListener("resize", fit); fit();
+  fillDays(); new MutationObserver(fillDays).observe(w.msgs, { childList: true });
+  liveLabel(); w.end(); w.focus();
+};
 const chatData = () => api(O("/chat/history")).catch(() => ({ turns: [] }));
 
 /* ---------- floating "Talk to Dory" panel (every page of the logged-in shell) ---------- */
@@ -3884,7 +4104,7 @@ function refreshView() {
     const editing = document.querySelector("dialog[open]") || (document.activeElement && $("content") && $("content").contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
     if (editing) { refreshView(); return; }
     try { const m = await api("/api/center/me"); m.orgs = items(m, "orgs"); me = m; renderNav(); } catch { /* keep the view */ }
-    route();
+    if (cur !== "chat") route(); // the chat page already shows the answer; a rebuild would move the conversation under the reader
   }, 600);
 }
 function openOrgDlg() { $("org-name").value = ""; note($("org-err"), ""); const d = $("org-dlg"); if (d.showModal) d.showModal(); else d.setAttribute("open", ""); $("org-name").focus(); }
@@ -3898,6 +4118,14 @@ $("new-org").addEventListener("click", openOrgDlg);
 $("org-switch").addEventListener("change", (ev) => { orgId = ev.target.value || null; route(); closeNav(); panelReset(); });
 $("burger").addEventListener("click", () => { const o = document.body.classList.toggle("nav-open"); $("burger").setAttribute("aria-expanded", String(o)); });
 document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeNav(); closePanel(); } });
+document.addEventListener("keydown", (ev) => {
+  if (ev.key !== "/" || ev.ctrlKey || ev.metaKey || ev.altKey) return;
+  const a = document.activeElement;
+  if (a && (a.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(a.tagName))) return;
+  const w = cur === "chat" && chatPage.w ? chatPage.w : panel.open ? panel.w : null;
+  if (w) { ev.preventDefault(); w.focus(); }
+});
+if (window.visualViewport) { const vv = () => document.documentElement.style.setProperty("--vvh", visualViewport.height + "px"); visualViewport.addEventListener("resize", vv); vv(); }
 $("who").addEventListener("click", closeNav);
 $("fab").addEventListener("click", () => (panel.open ? closePanel() : panelOpen()));
 $("panel-x").addEventListener("click", closePanel);
@@ -4225,8 +4453,9 @@ function mockApi(method, path, body) {
     return ok({ items: r.slice(0, lim), next_cursor: null, total: r.length }); }
   if ((m = sub.match(/^\/documents\/(.+)$/))) { const x = mockDocs.find((y) => y.id === decodeURIComponent(m[1])) || {}; return ok({ ...x, text: (x.preview || "") + "\n\n(ข้อความเต็ม ตัวอย่าง)", extra: {} }); }
   // chat: no workspace_id from the page; the company's workspace (its first connected Discord server) answers
-  if (!mockApi.chat) mockApi.chat = [{ role: "dory", text: "สวัสดีค่ะ ถามดอรี่ได้เลยนะคะ", at: d(0), workspace_id: "discord-1" }];
+  if (!mockApi.chat) mockApi.chat = [{ role: "user", text: "สรุปประชุมทีมขายเมื่อวานให้หน่อย", at: d(1), workspace_id: "discord-1" }, { role: "dory", text: "สรุปประชุมทีมขายค่ะ\n- ปิดดีลร้านกาแฟบางรักได้แล้ว\n- มะลิส่งใบเสนอราคาให้ลูกค้า X ภายในวันศุกร์", at: d(1), workspace_id: "discord-1" }, { role: "dory", text: "สวัสดีค่ะ ถามดอรี่ได้เลยนะคะ", at: d(0), workspace_id: "discord-1" }];
   if (sub === "/chat/history") return ok({ turns: mockApi.chat });
+  if (sub === "/chat" && /\berror\b/i.test((body && body.message) || "")) return new Promise((_, rej) => setTimeout(() => rej(new ApiError("mock failure", 502)), 900));
   if (sub === "/chat") { const ans = "ยอดใบเสร็จเดือนนี้รวม **48,570 บาท** ค่ะ\n- ร้านกาแฟบางรัก 420 บาท\n- ไทยซัพพลาย 48,150 บาท\nดูรายละเอียดที่ [เอกสาร](https://example.com)";
     mockApi.chat.push({ role: "user", text: (body && body.message) || "", at: d(0), workspace_id: "discord-1" }, { role: "dory", text: ans, at: d(0), workspace_id: "discord-1" });
     return new Promise((r) => setTimeout(() => r({ answer: ans, workspace_id: "discord-1", at: d(0) }), 1200)); }
