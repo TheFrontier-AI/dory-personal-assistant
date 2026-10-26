@@ -48,8 +48,9 @@ def test_landing_page_uses_the_real_invite_link(client, monkeypatch):
         "https://discord.com/oauth2/authorize?client_id=123456789012345678"
         f"&scope=bot+applications.commands&permissions={DORY_PERMISSIONS}"
     )
-    assert r.text.count(f'href="{url}" data-invite') == 1  # secondary CTA at the end
-    assert r.text.count('href="/start"') >= 6  # nav, hero, teams panel, plans, entry, final
+    assert r.text.count(f'href="{url}" data-invite') == 3  # nav, hero and final call to action
+    # the create-account fallbacks (nav, hero), "not on Discord?", plans, entry card, final CTA
+    assert r.text.count('href="/start"') >= 6
 
 
 def test_dictionary_has_same_keys_in_both_languages():
@@ -86,38 +87,98 @@ def test_language_is_english_by_default_and_a_saved_choice_wins():
     assert html.count('data-lang="th"') == 1 and html.count('data-lang="en"') == 1
 
 
-def test_hero_has_a_motion_safe_final_state_and_the_cat_stays_visible():
+def test_hero_is_the_deep_sea_with_a_rigged_fish_and_a_pause_control():
+    """Lantern Deep: a dark hero, Dory as an inline SVG rig, motion that can always be stopped."""
     _, html = _dict_and_html()
-    assert 'data-stage="idle"' in html  # final state is the markup default (no JS / errors)
-    assert "prefers-reduced-motion" in html
-    for stage in ("a", "e", "idle"):
-        assert f'[data-stage="{stage}"]' in html, stage
-    # The official still sits under the film, so the cat is visible whatever the film does.
-    assert '<img class="still" src="/static/dory/cat-hero.webp"' in html
-    video_tag = re.search(r"<video[^>]*>", html).group(0)
-    assert "muted" in video_tag and "playsinline" in video_tag
-    assert "autoplay" not in video_tag  # the script starts it, so reduced motion can opt out
-    assert 'poster="/static/dory/cat-portal.webp"' in html
-    for name in ("cat-hero.webp", "cat-portal.webp"):
-        assert (PAGE.parent / "dory" / name).stat().st_size > 0, name
+    hero = html.split('id="hero"', 1)[1].split("</section>", 1)[0]
+    assert 'data-theme="deep"' in re.search(r'<section[^>]*id="hero"[^>]*>', html).group(0)
+    assert '<g class="dory-fish' in hero and 'class="df-pupil"' in hero
+    # gradients live in ONE rendered (never display:none) defs svg, shared by every fish
+    defs = re.search(r'<svg class="fish-defs"[^>]*>', html).group(0)
+    assert 'width="0" height="0"' in defs and "display:none" not in defs
+    assert html.count('id="df-iris"') == 1
+    # a visible pause control (WCAG 2.2.2), remembered, and the OS setting respected
+    assert "data-motion-toggle" in hero and 'MOTION_KEY = "dory-motion"' in html
+    assert "prefers-reduced-motion" in html and ".motion-off" in html
+    # loops sleep off-screen and in hidden tabs; reveal hides content only when JS runs
+    assert "IntersectionObserver" in html and "visibilitychange" in html
+    assert ".js .reveal" in html and 'classList.add("js")' in html
+    assert "<video" not in html and "autoplay" not in html
 
 
 def test_mascot_assets_are_served_but_not_the_page_templates(client):
-    r = client.get("/static/dory/cat-hero.webp")
-    assert r.status_code == 200 and r.headers["content-type"] == "image/webp"
+    for name in ("dory.svg", "dory-mark.svg"):
+        r = client.get(f"/static/dory/{name}")
+        assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml"), name
     assert client.get("/static/dory/../hub.html").status_code == 404
     assert client.get("/static/hub.html").status_code == 404
+    _, html = _dict_and_html()
+    assert "cat-" not in html  # the fish replaced the cats
 
 
-def test_callouts_name_only_shipped_features():
+def test_sections_name_only_shipped_features():
     from dory.guild_settings import FEATURES
 
     for flag in ("voice_meetings", "receipts", "followups", "documents", "wiki"):
         assert flag in FEATURES
     _, html = _dict_and_html()
-    assert html.count('class="callout c') == 4
-    for href in ("#platforms", "#features", "#plans", "#teams", "/hub", "/recorder"):
-        assert f'href="{href}"' in html
+    assert html.count('class="card feat') == 8
+    for section in ("hero", "preview", "features", "how", "roles", "trust", "plans", "start"):
+        assert f'id="{section}"' in html, section
+    for href in (
+        "#features",
+        "#how",
+        "#trust",
+        "#plans",
+        "/hub",
+        "/recorder",
+        "/privacy",
+        "/terms",
+    ):
+        assert f'href="{href}"' in html, href
+
+
+def test_preview_is_example_html_in_accessible_tabs():
+    """No recordings exist: the preview says it is an example, uses made-up names, and is text."""
+    d, html = _dict_and_html()
+    preview = html.split('id="preview"', 1)[1].split("</section>", 1)[0]
+    assert preview.count('role="tab"') == 4 and preview.count('role="tabpanel"') == 4
+    assert 'role="tablist"' in preview and "aria-selected" in preview
+    assert "example" in d["pv_p"]["en"].lower() and "record" not in d["pv_p"]["en"].lower()
+    for real in ("Peat", "Toey", "Jems"):
+        assert real not in html, real
+    roles = html.split('id="roles"', 1)[1].split("</section>", 1)[0]
+    assert roles.count('role="tab"') == 4
+
+
+def test_hero_primary_is_the_invite_with_a_create_account_fallback():
+    """Add Dory to Discord leads; with no invite link the hero still has a primary: Create account."""
+    _, html = _dict_and_html()
+    hero = html.split('id="hero"', 1)[1].split("</section>", 1)[0]
+    invite = hero.index('data-invite data-i18n="cta_add"')
+    fallback = hero.index('href="/start" data-invite-fallback')
+    assert invite < fallback < hero.index('href="#preview"')
+    assert 'href="/start" data-i18n="not_discord_link"' in hero
+    assert "a.hidden = !ok;" in html and "a.hidden = ok;" in html
+    nav = html.split('id="nav"', 1)[1].split("</header>", 1)[0]
+    assert 'href="/center" data-i18n="nav_login"' in nav and "data-invite" in nav
+
+
+def test_landing_page_names_the_models_from_the_live_config(client, monkeypatch):
+    """Trust: which AI runs Dory comes from the settings, escaped, and never carries a key."""
+    from dory.config import Settings as DorySettings
+
+    monkeypatch.setenv("DORY_NEBIUS_API_KEY", "secret-key-value")
+    monkeypatch.setenv("DORY_NEMOTRON_VISION_MODEL", "<b>vision</b>")
+    r = client.get("/")
+    d = DorySettings.from_env()
+    text_model = getattr(d, "brain_model", "") or d.nemotron_model  # either config
+    assert text_model in r.text
+    assert "&lt;b&gt;vision&lt;/b&gt;" in r.text and "secret-key-value" not in r.text
+    assert "__DORY_MODELS__" not in r.text
+    monkeypatch.setenv("DORY_NEBIUS_API_KEY", "")
+    monkeypatch.setenv("DORY_GEMINI_MODEL", "gemini-test")
+    assert 'id="models">gemini-test<' in client.get("/").text
 
 
 def test_landing_page_routes_visitors_to_every_service():
@@ -125,19 +186,8 @@ def test_landing_page_routes_visitors_to_every_service():
     _, html = _dict_and_html()
     entry = html.split('id="start"', 1)[1].split("</section>", 1)[0]
     assert 'href="/start"' in entry and 'href="/center"' in entry and 'href="/recorder"' in entry
-    for section in ("platforms", "plans"):
+    for section in ("how", "plans"):  # "Where Dory works" lives inside "How it works"
         assert f'id="{section}"' in html, section
-
-
-def test_hero_offers_sign_up_then_login_then_a_divider_before_explore():
-    """Hero order: create account (/start), log in (/center), a separator, then explore."""
-    d, html = _dict_and_html()
-    hero = html.split('class="copy"', 1)[1].split('class="stage"', 1)[0]
-    signup, login = hero.index('href="/start"'), hero.index('href="/center"')
-    sep, explore = hero.index('role="separator"'), hero.index('data-i18n="cta_explore"')
-    assert signup < login < sep < explore
-    assert 'data-i18n="cta_login"' in hero
-    assert d["cta_login"]["en"].startswith("Log in") and "เข้าสู่ระบบ" in d["cta_login"]["th"]
 
 
 START = PAGE.parent / "start.html"

@@ -3,370 +3,537 @@
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
-<title>Dory · A little magic. A lot more done.</title>
-<meta name="description" content="Dory is the AI assistant for everyday work in Discord: meeting notes, receipts, task follow-up and documents.">
+<title>Dory · The AI coworker that remembers, files and follows up</title>
+<meta name="description" content="Dory is an AI coworker who lives in your team's Discord: meeting notes, receipts, task follow-up and answers from your company's own documents, in Thai or English.">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@600;700&amp;family=IBM+Plex+Mono:wght@500&amp;family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;display=swap">
+<link rel="icon" type="image/svg+xml" href="/static/dory/dory-mark.svg">
 <link rel="icon" type="image/png" href="/static/dory/favicon.png">
 <link rel="stylesheet" href="/static/dory/theme.css">
 <style>
-  /* 70% milky white, 20% soft cosmic colour, 10% luminous accents (see the creative brief). */
-  * { box-sizing: border-box; }
-  html { scroll-behavior: smooth; }
-  body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.6;
-    font-family: "IBM Plex Sans Thai", "Noto Sans Thai", "Segoe UI", Tahoma, sans-serif;
-    -webkit-font-smoothing: antialiased; overflow-x: hidden; }
-  a { color: var(--indigo-2); }
-  [hidden] { display: none !important; }
-  h1, h2, h3, p { margin: 0; }
-  button { font: inherit; cursor: pointer; }
-  :focus-visible { outline: 3px solid var(--indigo-2); outline-offset: 3px; border-radius: 8px; }
-  .wrap { width: min(1120px, 100% - 32px); margin: 0 auto; }
-  .sr { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); }
+  /* Lantern Deep homepage: the page descends from the abyss (hero) through lighter blues and
+     surfaces into the light Sand theme at the final call to action. Text always sits on solid
+     colour. Page-specific rules only; tokens come from theme.css. */
+  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
+  body { background: var(--ocean-950); }
+  .skip { position: absolute; left: 16px; top: -80px; z-index: 50; padding: 10px 16px; border-radius: 10px; background: var(--ocean-50);
+    color: var(--ocean-950); font-weight: 600; text-decoration: none; }
+  .skip:focus { top: 12px; }
 
-  /* ---------- navigation ---------- */
-  .nav { position: sticky; top: 0; z-index: 20; background: rgba(250,249,246,.82);
-    backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid transparent; }
-  .nav.scrolled { border-bottom-color: var(--line); }
-  .nav .wrap { display: flex; align-items: center; gap: 24px; min-height: 64px; }
-  .logo { display: flex; align-items: center; gap: 10px; color: var(--indigo); text-decoration: none; font-weight: 700; font-size: 18px; }
-  .logo .mark { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center;
-    background: linear-gradient(135deg, var(--indigo-2), #7A6CF0); color: #fff; font-size: 15px; box-shadow: 0 4px 12px rgba(74,79,191,.3); }
-  .links { display: flex; gap: 4px; margin-left: auto; }
-  .links a { color: var(--indigo); text-decoration: none; padding: 8px 12px; border-radius: 8px; font-weight: 500; font-size: 15px; }
-  .links a:hover { background: rgba(74,79,191,.08); }
-  .langsw { display: flex; border: 1px solid var(--line); border-radius: 99px; padding: 2px; background: #fff; }
-  .langsw button { border: 0; background: none; padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--muted); }
-  .langsw button[aria-pressed="true"] { background: var(--indigo); color: #fff; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border-radius: 12px;
-    font-weight: 600; font-size: 15px; text-decoration: none; border: 1px solid transparent;
-    transition: transform .15s var(--ease), box-shadow .15s var(--ease), background .15s; }
-  .btn.primary { background: var(--indigo); color: #fff; box-shadow: 0 6px 18px rgba(43,47,122,.25); }
-  .btn.primary:hover { background: #22265F; transform: translateY(-1px); box-shadow: 0 10px 24px rgba(43,47,122,.3); }
-  .btn.primary:active { transform: translateY(0); box-shadow: 0 3px 10px rgba(43,47,122,.25); }
-  .btn.primary[aria-disabled="true"] { background: #C9CBE0; box-shadow: none; cursor: not-allowed; pointer-events: none; }
-  .btn.ghost { color: var(--indigo); border-color: var(--line); background: #fff; }
-  .btn.ghost:hover { border-color: var(--lavender); background: #FBFAFF; }
-  .btn.small { padding: 8px 14px; font-size: 14px; border-radius: 10px; }
-  .menu-btn { display: none; margin-left: auto; border: 1px solid var(--line); background: #fff; border-radius: 10px; width: 40px; height: 40px; }
-  .menu-btn span { display: block; width: 18px; height: 2px; background: var(--indigo); margin: 3px auto; border-radius: 2px; }
-  @media (max-width: 760px) {
-    .links { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; padding: 12px 16px 16px;
-      background: var(--bg); border-bottom: 1px solid var(--line); box-shadow: var(--shadow); }
+  /* ---------- navigation (deep, transparent over the hero, solid once scrolled) ---------- */
+  .nav { background: transparent; border-bottom: 1px solid transparent; transition: background var(--dur-base), border-color var(--dur-base); }
+  .nav.scrolled { background: rgba(5, 11, 31, .9); border-bottom-color: var(--color-border); }
+  .nav .wrap { gap: 10px; }
+  .logo { color: var(--color-text); }
+  .logo:hover { color: var(--color-text); }
+  .links { display: flex; gap: 2px; margin-left: auto; }
+  .links a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; color: var(--color-text-muted);
+    text-decoration: none; font-weight: 500; font-size: 15px; }
+  .links a:hover { color: var(--color-text); background: rgba(234, 242, 255, .06); }
+  .links .only-m { display: none; }
+  .menu-btn { display: none; width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--color-border-control); background: transparent; }
+  .menu-btn span { display: block; width: 18px; height: 2px; margin: 4px auto; border-radius: 2px; background: var(--color-text); }
+  @media (max-width: 960px) {
+    .links { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; padding: 8px 16px 16px;
+      background: var(--ocean-900); border-bottom: 1px solid var(--color-border); }
     .links.open { display: flex; }
-    .nav .cta-top { display: none; }
+    .links .only-m { display: inline-flex; }
+    .nav .login { display: none; }
     .menu-btn { display: block; }
     .langsw { margin-left: auto; }
-    .menu-btn { margin-left: 0; }
   }
+  @media (max-width: 600px) { .nav .cta-top { display: none; } }
 
-  /* ---------- hero ---------- */
-  .hero { position: relative; padding: 48px 0 24px; overflow: hidden; }
-  .hero .wrap { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 32px; align-items: center; min-height: 520px; }
-  .copy { display: flex; flex-direction: column; gap: 20px; max-width: 520px; opacity: 0; transform: translateY(12px);
-    animation: rise .8s var(--ease) .2s forwards; }
-  .eyebrow { font-size: 13px; letter-spacing: .18em; font-weight: 600; color: var(--indigo-2); }
-  .copy h1 { font-size: clamp(34px, 5vw, 56px); line-height: 1.12; font-weight: 700; letter-spacing: -.01em; }
-  .copy p { font-size: 18px; color: var(--muted); max-width: 460px; }
-  .ctas { display: flex; flex-wrap: wrap; gap: 12px; margin-top: 4px; }
-  .or { margin: 6px 0 2px; max-width: 420px; }
-  .trust { font-size: 13px; color: var(--faint); }
-
-  /* The scene: the official rendered film (portal opens, the cat hops out, portal closes) with the
-     final still underneath, so a slow network, a failed file or reduced motion all show the cat. */
-  .stage { position: relative; width: 100%; max-width: 620px; margin: 0 auto; padding: 36px 0 44px; }
-  .scene { position: relative; aspect-ratio: 1812 / 840; border-radius: 22px; overflow: hidden; background: #EFEBE4;
-    box-shadow: 0 24px 60px rgba(43,47,122,.16), 0 2px 6px rgba(43,47,122,.08); transform: translateY(14px); opacity: 0;
-    animation: rise .9s var(--ease) .1s forwards; }
-  .scene img, .scene video { position: absolute; inset: 0; width: 100%; height: 100%; object-fit: cover; display: block; }
-  .scene video { opacity: 0; transition: opacity .4s; }
-  .scene.rolling video { opacity: 1; }
-  .scene::after { content: ""; position: absolute; inset: 0; border-radius: inherit; box-shadow: inset 0 0 0 1px rgba(255,255,255,.6); pointer-events: none; }
-  .halo { position: absolute; left: 50%; top: 50%; width: 80%; height: 80%; transform: translate(-50%,-50%); border-radius: 50%;
-    background: radial-gradient(ellipse, rgba(185,180,242,.35), rgba(191,214,246,.18) 45%, transparent 70%); filter: blur(28px); z-index: -1; }
-
-  /* callouts: small, light labels placed around the cat */
-  .callout { position: absolute; z-index: 2; display: flex; align-items: center; gap: 10px; padding: 10px 14px; border-radius: 14px; background: var(--surface);
-    border: 1px solid rgba(255,255,255,.9); box-shadow: var(--shadow); backdrop-filter: blur(6px); max-width: 220px;
-    opacity: 0; transform: translateY(10px); transition: opacity .6s var(--ease), transform .6s var(--ease); }
-  .callout svg { width: 22px; height: 22px; flex: none; color: var(--indigo-2); }
-  .callout strong { display: block; font-size: 14px; line-height: 1.3; }
-  .callout span { display: block; font-size: 12.5px; color: var(--muted); line-height: 1.35; }
-  /* corners of the scene, slightly outside it so nothing covers the cat */
-  .c1 { left: -16px; top: -18px; } .c2 { right: -16px; top: -10px; } .c3 { left: -8px; bottom: -14px; } .c4 { right: -8px; bottom: -18px; }
-
-  /* ----- the sequence: "a" while the film plays, "e" reveals the callouts, "idle" is the default
-     (no JS, reduced motion, a film that cannot play) ----- */
-  [data-stage="a"] .callout { opacity: 0; transform: translateY(10px); }
-  [data-stage="e"] .callout, [data-stage="idle"] .callout { opacity: 1; transform: none; }
-  [data-stage="e"] .c2 { transition-delay: .18s; } [data-stage="e"] .c3 { transition-delay: .36s; } [data-stage="e"] .c4 { transition-delay: .54s; }
-
-  @keyframes rise { to { opacity: 1; transform: none; } }
-
-  @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after { animation: none !important; transition: none !important; }
-    .copy, .scene, .callout { opacity: 1; transform: none; }
+  /* ---------- hero: the abyss, three depth planes, Dory ---------- */
+  .hero { position: relative; overflow: hidden; margin-top: -64px; padding: 112px 0 88px; min-height: 88svh; display: flex; align-items: center;
+    background: radial-gradient(110% 80% at 72% 0%, #0E1D45 0%, var(--ocean-950) 62%); --cap: 60; }
+  .hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 140px; z-index: 1; pointer-events: none;
+    background: linear-gradient(rgba(10, 21, 48, 0), var(--ocean-900)); }
+  .hero .wrap { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; }
+  .copy { display: flex; flex-direction: column; gap: 20px; max-width: 560px; }
+  .eyebrow { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--glow-300); }
+  :lang(th) .eyebrow { font-family: var(--font); font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; }
+  .hero h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(36px, 5vw, 60px); line-height: 1.08; letter-spacing: -.015em; }
+  :lang(th) .hero h1 { line-height: 1.3; letter-spacing: 0; }
+  .sub { font-size: 18px; color: var(--color-text-muted); max-width: 52ch; }
+  .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
+  .aside-line { font-size: 15px; color: var(--color-text-muted); }
+  .free { font-size: 14px; color: var(--color-text-subtle); }
+  .stage { position: relative; width: min(100%, 540px); aspect-ratio: 216 / 162; justify-self: center; }
+  .stage::before { content: ""; position: absolute; inset: 6% 4%; border-radius: 50%; filter: blur(24px);
+    background: radial-gradient(closest-side, rgba(95, 242, 224, .2), rgba(185, 180, 242, .12) 60%, rgba(5, 11, 31, 0)); }
+  .tilt { position: absolute; inset: 0; transform: rotate(calc(var(--tilt, 0) * 1deg)); transform-origin: 60% 55%; }
+  .fish-float { width: 100%; height: 100%; animation: dory-float 6s var(--ease-in-out) infinite; }
+  .hero-fish { display: block; width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 18px 36px rgba(0, 0, 0, .4)); }
+  @keyframes dory-float { 50% { transform: translateY(-8px); } }
+  .sea { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
+  .plane { position: absolute; inset: -40px;
+    transform: translate3d(calc(var(--px, 0) * var(--m) * -1px), calc(var(--py, 0) * var(--m) * -1px + min(var(--sy, 0) * var(--k), var(--cap)) * 1px), 0); }
+  .far { --m: 4; --k: .1; } .mid { --m: 10; --k: .2; } .near { --m: 18; --k: .4; }
+  .kelp { position: absolute; left: 0; right: 0; bottom: 40px; width: 100%; height: 34%; }
+  .kelp .bed { fill: var(--ocean-900); } .kelp .weed { stroke: var(--ocean-800); fill: none; stroke-width: 9; stroke-linecap: round; }
+  .ray { position: absolute; top: -20%; height: 130%; width: 140px; transform: rotate(22deg); transform-origin: top;
+    background: linear-gradient(180deg, rgba(95, 242, 224, .16), rgba(95, 242, 224, 0) 72%); filter: blur(10px);
+    animation: ray-breathe 9s var(--ease-in-out) infinite; }
+  .r1 { left: 14%; } .r2 { left: 36%; width: 70px; animation-delay: -3s; } .r3 { left: 64%; width: 190px; opacity: .6; animation-delay: -6s; }
+  @keyframes ray-breathe { 50% { opacity: .45; } }
+  .speck { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); border-radius: 50%; background: var(--ocean-50);
+    opacity: 0; animation: drift var(--d) linear var(--dl) infinite; }
+  @keyframes drift { 0% { transform: translateY(0); opacity: 0; } 15%, 85% { opacity: var(--o); } 100% { transform: translateY(-140px); opacity: 0; } }
+  .pause { position: absolute; right: 16px; bottom: 16px; z-index: 3; }
+  .hero.asleep * { animation-play-state: paused !important; }
+  .motion-off .hero *, .motion-off .speck { animation: none !important; }
+  .motion-off .speck { opacity: var(--o); }
+  @media (max-width: 900px) {
+    .hero { min-height: 0; padding: 104px 0 80px; }
+    .hero .wrap { grid-template-columns: minmax(0, 1fr); }
+    .stage { width: min(100%, 300px); }
   }
-  @media (max-width: 860px) {
-    .hero .wrap { grid-template-columns: 1fr; min-height: 0; }
-    .copy { max-width: none; }
-    .stage { max-width: 560px; padding: 28px 0 36px; }
-    .callout { max-width: 180px; padding: 8px 10px; }
-    .callout span { display: none; }
-  }
-  @media (max-width: 480px) {
-    .c1 { left: 0; top: 0; } .c2 { right: 0; top: 0; } .c3 { left: 0; bottom: 0; } .c4 { right: 0; bottom: 0; }
-    .callout { max-width: 150px; } .callout strong { font-size: 12.5px; }
-  }
+  @media (max-width: 700px) { .hero { --cap: 24; } }
 
   /* ---------- sections ---------- */
-  section { padding: 72px 0; }
-  .section-h { max-width: 620px; margin-bottom: 36px; display: flex; flex-direction: column; gap: 10px; }
-  .section-h h2 { font-size: clamp(26px, 3.4vw, 36px); line-height: 1.2; letter-spacing: -.01em; }
-  .section-h p { color: var(--muted); font-size: 17px; }
-  .steps { display: grid; grid-template-columns: repeat(auto-fit, minmax(240px, 1fr)); gap: 18px; }
-  .step { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 24px; display: flex; flex-direction: column; gap: 10px; }
-  .step .n { width: 34px; height: 34px; border-radius: 10px; display: grid; place-items: center; font-weight: 700; color: var(--indigo);
-    background: linear-gradient(135deg, #EEF0FF, #E6F0FF); }
-  .step h3 { font-size: 17px; } .step p { color: var(--muted); font-size: 15px; }
-  .step code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; background: #EEF0FF; color: var(--indigo); padding: 2px 7px; border-radius: 6px; }
-  .features { background: linear-gradient(180deg, var(--bg) 0%, var(--bg-2) 100%); }
-  .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(250px, 1fr)); gap: 16px; }
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 18px; padding: 22px; display: flex; flex-direction: column; gap: 8px;
-    transition: transform .2s var(--ease), box-shadow .2s var(--ease); }
-  .card:hover { transform: translateY(-2px); box-shadow: var(--shadow); }
-  .card .ic { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: var(--indigo-2);
-    background: linear-gradient(135deg, #EEF0FF, #F3F0FF); margin-bottom: 6px; }
-  .card .ic svg { width: 22px; height: 22px; }
-  .card h3 { font-size: 17px; } .card p { color: var(--muted); font-size: 14.5px; }
-  .teams .wrap { display: grid; grid-template-columns: minmax(0, 1.1fr) minmax(0, .9fr); gap: 40px; align-items: center; }
-  .teams ul { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 14px; }
-  .teams li { display: flex; gap: 12px; align-items: flex-start; font-size: 15.5px; }
-  .teams li svg { width: 20px; height: 20px; flex: none; color: var(--indigo-2); margin-top: 3px; }
-  .teams li span { color: var(--muted); }
-  .teams li b { color: var(--ink); font-weight: 600; }
-  .panel { background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 28px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 14px; }
-  .panel h3 { font-size: 20px; } .panel p { color: var(--muted); font-size: 15px; }
-  .panel .row { display: flex; flex-wrap: wrap; gap: 10px; }
-  .pill { font-size: 12.5px; padding: 4px 10px; border-radius: 99px; background: #EEF0FF; color: var(--indigo); font-weight: 500; }
-  @media (max-width: 860px) { .teams .wrap { grid-template-columns: 1fr; } }
-  .pill.ok { background: #DDF3E8; color: #0B6B45; }
-  .card .pill { align-self: flex-start; margin-bottom: 2px; }
-  .plans-s { background: var(--bg-2); }
-  .plan-c .price { font-weight: 600; color: var(--indigo); }
+  .sec { position: relative; padding: 112px 0; }
+  .sec-h { max-width: 660px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
+  .sec-h h2, .final h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3vw, 34px); line-height: 1.2; }
+  :lang(th) .sec-h h2, :lang(th) .final h2 { line-height: 1.35; }
+  .sec-h p { color: var(--color-text-muted); font-size: 17px; }
+  @media (max-width: 700px) { .sec { padding: 72px 0; } }
+  .js .reveal { opacity: 0; transform: translateY(12px); transition: opacity 320ms var(--ease-out-soft), transform 320ms var(--ease-out-soft); }
+  .js .reveal.in { opacity: 1; transform: none; }
+  .motion-off .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+
+  /* "See Dory at work": example conversations in a light chat card */
+  #preview { background: var(--ocean-900); }
+  .pv { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 32px; align-items: start; }
+  .tabs { display: flex; flex-direction: column; gap: 6px; }
+  .tab { min-height: 48px; padding: 10px 14px; border-radius: 12px; border: 1px solid transparent; background: transparent; text-align: left;
+    color: var(--color-text-muted); font-weight: 600; font-size: 15px; }
+  .tab:hover { color: var(--color-text); background: rgba(234, 242, 255, .04); }
+  .tab[aria-selected="true"] { color: var(--color-text); background: var(--ocean-800); border-color: var(--color-border); box-shadow: inset 3px 0 0 var(--glow-300); }
+  .chat { border-radius: var(--radius-xl); overflow: hidden; box-shadow: 0 24px 60px rgba(0, 0, 0, .45); }
+  .chat-h { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--color-bg-raised); border-bottom: 1px solid var(--color-border); }
+  .chat-h .mark, .m-dory .mark { border-radius: 50%; }
+  .chat-h strong { font-size: 15px; display: block; line-height: 1.2; }
+  .chat-h small { font-size: 13px; color: var(--color-text-muted); }
+  .chat-b { display: flex; flex-direction: column; gap: 16px; min-height: 340px; padding: 22px 18px 24px; }
+  .m-user { align-self: flex-end; max-width: 80%; padding: 10px 14px; border-radius: 18px 18px 6px 18px; background: var(--bubble-user-bg);
+    color: var(--bubble-user-text); font-size: 15px; }
+  .m-dory { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; font-size: 15px; }
+  .m-dory .who { display: block; font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
+  .m-dory ol { margin: 6px 0 0; padding-left: 20px; }
+  .att { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, .14);
+    font-size: 13px; }
+  .att svg { width: 14px; height: 14px; }
+  /* not yet "said": out of the layout but still read by screen readers, so the example is complete for them */
+  .step.pending { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  .step.shown { animation: msg-in var(--dur-base) var(--ease-out-soft); }
+  @keyframes msg-in { from { opacity: 0; transform: translateY(6px); } }
+  .motion-off .step.shown { animation: none; }
+  .think { color: var(--color-text-muted); font-size: 14px; align-items: center; }
+  .pv-note { margin-top: 2px; font-size: 13px; color: var(--color-text-muted); }
+  .pv-ctl { display: flex; gap: 8px; margin-top: 14px; }
+  .pv-ctl .btn[disabled] { opacity: .45; background: transparent; color: var(--color-text); border-color: var(--color-border-control); }
+  @media (max-width: 860px) {
+    .pv { grid-template-columns: minmax(0, 1fr); gap: 20px; }
+    .tabs { flex-direction: row; flex-wrap: wrap; }
+    .tab { flex: 1 1 auto; text-align: center; }
+    .tab[aria-selected="true"] { box-shadow: inset 0 -3px 0 var(--glow-300); }
+  }
+
+  /* capabilities */
+  #features { background: linear-gradient(180deg, var(--ocean-900), var(--ocean-800)); }
+  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
+  @media (max-width: 1040px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 560px) { .grid { grid-template-columns: minmax(0, 1fr); } }
+  .card { display: flex; flex-direction: column; gap: 8px; padding: 22px; transition: transform var(--dur-base) var(--ease), border-color var(--dur-base); }
+  [data-theme="deep"] .card { background: rgba(26, 47, 92, .45); }
+  .card.feat:hover { transform: translateY(-2px); border-color: rgba(95, 242, 224, .35); }
+  .card h3 { font-size: 17px; }
+  .card p { color: var(--color-text-muted); font-size: 15px; }
+  /* the icon sits beside its heading, in flow, with no tile of its own; the rest of the card spans the width */
+  .card:has(> .ic) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; align-content: start; column-gap: 12px; row-gap: 10px; }
+  .card:has(> .ic) > :not(.ic):not(h3) { grid-column: 1 / -1; }
+  .ic { display: grid; place-items: center; color: var(--glow-300); }
+  .ic svg { width: 24px; height: 24px; }
+  .card .pill { align-self: flex-start; }
+
+  /* how it works */
+  #how { background: var(--ocean-800); }
+  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; position: relative; }
+  .steps::before { content: ""; position: absolute; left: 22px; right: 22px; top: 22px; height: 1px;
+    background: linear-gradient(90deg, rgba(95, 242, 224, .5), rgba(185, 180, 242, .3)); }
+  .stp { position: relative; display: flex; flex-direction: column; gap: 10px; }
+  .stp .n { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: var(--ocean-950);
+    background: var(--glow-300); }
+  .stp p { color: var(--color-text-muted); }
+  .stp code, .roles code { font-family: var(--mono); font-size: 14px; padding: 2px 8px; border-radius: 6px; background: rgba(95, 242, 224, .12); color: var(--glow-300); }
+  .where { margin-top: 64px; }
+  .where h3 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin-bottom: 4px; }
+  .where > p { color: var(--color-text-muted); margin-bottom: 20px; }
+  @media (max-width: 760px) {
+    .steps { grid-template-columns: minmax(0, 1fr); }
+    .steps::before { left: 22px; right: auto; top: 22px; bottom: 22px; width: 1px; height: auto; }
+    .stp { padding-left: 60px; } .stp .n { position: absolute; left: 0; top: 0; }
+  }
+
+  /* use cases by role */
+  #roles { background: linear-gradient(180deg, var(--ocean-800), #142650); }
+  .tabs.row { flex-direction: row; flex-wrap: wrap; margin-bottom: 16px; }
+  .tabs.row .tab { border-radius: 99px; padding: 10px 18px; }
+  .tabs.row .tab[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--glow-300); }
+  .role { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding: 28px; border-radius: var(--radius-xl);
+    background: var(--ocean-900); border: 1px solid var(--color-border); }
+  .role .lbl { display: block; font-size: 13px; font-weight: 600; color: var(--glow-300); margin-bottom: 6px; }
+  .role q { font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 1.35; }
+  .role p { color: var(--color-text-muted); font-size: 16px; }
+  @media (max-width: 760px) { .role { grid-template-columns: minmax(0, 1fr); padding: 22px; } .role q { font-size: 19px; } }
+
+  /* trust and control */
+  #trust { background: linear-gradient(180deg, #142650, var(--ocean-700)); }
+  .trust { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 48px; align-items: start; }
+  .flow { display: flex; flex-direction: column; align-items: flex-start; gap: 0; margin-top: 8px; }
+  .flow span { padding: 10px 16px; border-radius: 12px; border: 1px solid var(--color-border-control); background: var(--ocean-800); font-weight: 600; font-size: 15px; }
+  .flow span:last-child { border-color: var(--glow-300); }
+  .flow i { display: block; width: 1px; height: 22px; margin-left: 28px; background: var(--ocean-300); }
+  .facts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 16px; }
+  .facts li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; font-size: 16px; }
+  .facts svg { width: 22px; height: 22px; color: var(--glow-300); margin-top: 2px; }
+  .facts b { font-weight: 600; } .facts span { color: var(--color-text-muted); }
+  .models { margin-top: 24px; padding: 14px 16px; border-radius: 12px; background: var(--ocean-800); color: var(--color-text-muted); font-size: 14px; }
+  .models code { font-family: var(--mono); color: var(--color-text); overflow-wrap: anywhere; }
+  @media (max-width: 860px) { .trust { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+
+  /* plans */
+  #plans { background: var(--ocean-700); }
+  #plans .grid { grid-template-columns: repeat(2, minmax(0, 360px)); }
+  @media (max-width: 760px) { #plans .grid { grid-template-columns: minmax(0, 1fr); } }
+  .price { font-weight: 600; color: var(--color-text); }
   .plan-c.soon { border-style: dashed; background: transparent; box-shadow: none; }
   .plan-c .btn { margin-top: auto; align-self: flex-start; }
-  .fine { margin-top: 18px; font-size: 13.5px; color: var(--faint); max-width: 720px; }
-  .entry { background: linear-gradient(180deg, var(--bg-2) 0%, var(--bg) 100%); }
-  .card.go { text-decoration: none; color: inherit; }
-  .card.go .more { margin-top: auto; padding-top: 10px; color: var(--indigo-2); font-size: 14.5px; }
-  .card.go:hover .more { text-decoration: underline; }
-  .final { text-align: center; padding: 80px 0 90px; }
+  .fine { margin-top: 18px; font-size: 14px; color: var(--color-text-muted); max-width: 720px; }
+
+  /* final call to action: Dory surfaces into the light */
+  .final { padding: 40px 0 96px; text-align: center;
+    background: linear-gradient(180deg, var(--ocean-700) 0, #4F6A9B 90px, #C9D3E4 180px, var(--sand-50) 250px); }
   .final .wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
-  .final h2 { font-size: clamp(28px, 4vw, 42px); line-height: 1.15; }
-  .final p { color: var(--muted); font-size: 17px; max-width: 520px; }
-  footer { border-top: 1px solid var(--line); padding: 24px 0 40px; color: var(--faint); font-size: 13.5px; }
-  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; align-items: center; }
-  footer a { color: var(--muted); text-decoration: none; } footer a:hover { color: var(--indigo); }
+  .surface-fish { width: 180px; height: auto; margin-bottom: 52px; }
+  .js .surface-fish.reveal { transform: translateY(48px); transition: opacity 600ms var(--ease-out-soft), transform 900ms var(--ease-buoy); }
+  .final > .wrap > p { color: var(--color-text-muted); font-size: 17px; max-width: 520px; }
+  .final .ctas { justify-content: center; }
+  .entry { width: 100%; margin-top: 56px; text-align: left; }
+  .entry h3.t { font-family: var(--font-display); font-weight: 600; font-size: 22px; text-align: center; }
+  .entry > p { color: var(--color-text-muted); text-align: center; margin: 6px 0 24px; }
+  .entry .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
+  @media (max-width: 860px) { .entry .grid { grid-template-columns: minmax(0, 1fr); } }
+  .card.go { text-decoration: none; color: inherit; }
+  .card.go:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
+  .card.go { grid-template-rows: auto 1fr auto; }
+  .card.go .ic { color: var(--glow-700); }
+  .card.go .more { margin-top: auto; padding-top: 10px; color: var(--color-link); font-size: 15px; }
+
+  /* footer */
+  .foot { background: var(--sand-100); border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--color-text-muted); font-size: 14px; }
+  .foot .wrap { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: center; }
+  .foot a { color: var(--color-text-muted); text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
+  .foot a:hover { color: var(--indigo); text-decoration: underline; }
+  .foot .btn { margin-left: auto; }
+  .foot .btn + .btn { margin-left: 0; }
+  @media (max-width: 600px) { .foot .btn { margin-left: 0; } }
 </style>
 </head>
 <body>
+<!-- One rendered (never display:none) defs block shared by every inline fish, so gradients always resolve. -->
+<svg class="fish-defs" width="0" height="0" aria-hidden="true" focusable="false" style="position:absolute"><defs><linearGradient id="df-fin" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#6A9BF5"/><stop offset=".5" stop-color="#B9B4F2"/><stop offset="1" stop-color="#FFDDB8"/></linearGradient><linearGradient id="df-dorsal" x1="0" y1="1" x2=".3" y2="0"><stop offset="0" stop-color="#5B8DF2"/><stop offset=".55" stop-color="#B9B4F2"/><stop offset="1" stop-color="#FFE4C8"/></linearGradient><linearGradient id="df-side" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#C9C4F7"/><stop offset="1" stop-color="#FFE0C2"/></linearGradient><radialGradient id="df-body" cx=".62" cy=".62" r=".7"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".7" stop-color="#F3F7FE"/><stop offset="1" stop-color="#D4E2F8"/></radialGradient><linearGradient id="df-back" x1=".2" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="#2140A8"/><stop offset="1" stop-color="#5F93F4"/></linearGradient><radialGradient id="df-iris" cx=".45" cy=".35" r=".75"><stop offset="0" stop-color="#5A93F7"/><stop offset="1" stop-color="#1A3484"/></radialGradient><clipPath id="df-clip"><path d="M64 104C64 74 100 50 142 50C186 50 210 78 210 106C210 138 182 160 140 160C100 160 64 134 64 104Z"/></clipPath><clipPath id="df-mouth-clip"><path d="M173 117Q187 120 200 114Q198 133 186 134Q175 133 173 117Z"/></clipPath><filter id="df-glow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="2.2"/></filter></defs></svg>
+<a class="skip" href="#main" data-i18n="skip"></a>
 
-<header class="nav" id="nav">
+<header class="nav" id="nav" data-theme="deep">
   <div class="wrap">
-    <a class="logo" href="#top" aria-label="Dory"><span class="mark" aria-hidden="true">S</span><span data-i18n="brand"></span></a>
+    <a class="logo" href="#main" aria-label="Dory"><span class="mark" aria-hidden="true">D</span><span data-i18n="brand"></span></a>
     <nav class="links" id="links" data-i18n-attr="aria-label:nav_aria">
-      <a href="#platforms" data-i18n="nav_explore"></a>
       <a href="#features" data-i18n="nav_features"></a>
+      <a href="#how" data-i18n="nav_how"></a>
+      <a href="#trust" data-i18n="nav_trust"></a>
       <a href="#plans" data-i18n="nav_plans"></a>
-      <a href="#teams" data-i18n="nav_teams"></a>
-      <a href="/hub" data-i18n="nav_hub"></a>
+      <a class="only-m" href="/center" data-i18n="nav_login"></a>
     </nav>
     <div class="langsw" role="group" data-i18n-attr="aria-label:lang_switch_aria">
       <button type="button" data-lang="th" data-i18n="lang_th"></button>
       <button type="button" data-lang="en" data-i18n="lang_en"></button>
     </div>
-    <a class="btn primary small cta-top" href="/start" data-i18n="cta_signup"></a>
+    <a class="btn ghost small login" href="/center" data-i18n="nav_login"></a>
+    <a class="btn primary small cta-top" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add_short"></a>
+    <a class="btn primary small cta-top" href="/start" data-invite-fallback hidden data-i18n="cta_create"></a>
     <button type="button" class="menu-btn" id="menu" aria-expanded="false" aria-controls="links" data-i18n-attr="aria-label:menu_aria"><span></span><span></span><span></span></button>
   </div>
 </header>
 
-<main id="top">
-  <section class="hero" id="hero" data-stage="idle">
+<main id="main" tabindex="-1">
+  <section class="hero" id="hero" data-theme="deep">
+    <div class="sea" aria-hidden="true">
+      <div class="plane far">
+        <svg class="kelp" viewBox="0 0 1200 240" preserveAspectRatio="none" focusable="false"><path class="bed" d="M0 240V172C80 152 140 192 220 177C320 158 380 122 470 142C560 162 620 202 720 188C820 174 880 132 980 144C1080 156 1140 192 1200 182V240Z"/><path class="weed" d="M96 236C102 196 74 166 88 128C102 90 80 66 92 34"/><path class="weed" d="M132 238C126 206 150 180 138 146"/><path class="weed" d="M1018 236C1010 198 1040 170 1026 130C1014 96 1036 74 1028 44"/><path class="weed" d="M1072 238C1080 210 1058 188 1068 160"/></svg>
+      </div>
+      <div class="plane mid"><span class="ray r1"></span><span class="ray r2"></span><span class="ray r3"></span></div>
+      <div class="plane near" id="specks"></div>
+    </div>
     <div class="wrap">
       <div class="copy">
-        <div class="eyebrow" data-i18n="eyebrow"></div>
+        <p class="eyebrow" data-i18n="eyebrow"></p>
         <h1 data-i18n="headline"></h1>
-        <p data-i18n="sub"></p>
+        <p class="sub" data-i18n="sub"></p>
         <div class="ctas">
-          <a class="btn primary" href="/start" data-i18n="cta_signup"></a>
-          <a class="btn secondary" href="/center" data-i18n="cta_login"></a>
+          <a class="btn primary" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add"></a>
+          <a class="btn primary" href="/start" data-invite-fallback hidden data-i18n="cta_create"></a>
+          <a class="btn ghost" href="#preview" data-i18n="cta_see"></a>
         </div>
-        <div class="or" role="separator"></div>
-        <div class="ctas">
-          <a class="btn ghost" href="#platforms" data-i18n="cta_explore"></a>
+        <p class="aside-line" data-invite-aside><span data-i18n="not_discord"></span> <a href="/start" data-i18n="not_discord_link"></a></p>
+        <p class="free" data-i18n="free"></p>
+      </div>
+      <div class="stage" id="stage" aria-hidden="true">
+        <div class="tilt"><div class="fish-float">
+          <svg class="hero-fish" id="fish" viewBox="2 6 216 162" focusable="false"><g class="dory-fish fish-alive"><g class="df-tail"><path d="M72 96C60 84 46 66 26 58C16 54 8 58 12 66C18 78 24 92 32 104C24 116 18 130 12 142C8 150 16 154 26 150C46 142 60 124 72 112Z" fill="url(#df-fin)"/><path d="M68 101Q42 80 20 64M68 104Q46 94 28 90M68 107Q46 116 28 120M68 110Q42 128 20 144" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="1.4" stroke-linecap="round" fill="none"/></g><g class="df-dorsal"><path d="M146 54C141 37 128 22 108 15C98 12 90 15 91 22C93 31 96 42 88 52C84 58 80 66 80 75Z" fill="url(#df-dorsal)"/><path d="M132 58Q122 36 106 22M116 63Q106 46 96 30M100 70Q94 58 90 48" fill="none" stroke="#FFFFFF" stroke-opacity=".4" stroke-width="1.2" stroke-linecap="round"/></g><g class="df-body"><path d="M64 104C64 74 100 50 142 50C186 50 210 78 210 106C210 138 182 160 140 160C100 160 64 134 64 104Z" fill="url(#df-body)"/><path clip-path="url(#df-clip)" d="M48 122C80 97 110 77 150 66C171 60 190 59 216 70V30H48Z" fill="url(#df-back)"/><path clip-path="url(#df-clip)" d="M48 122C80 97 110 77 150 66C171 60 190 59 216 70" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="1.6"/><path d="M206 122C198 146 176 159 140 159C104 159 76 141 67 118" fill="none" stroke="#9FF7EC" stroke-opacity=".45" stroke-width="1.6" stroke-linecap="round"/><g class="df-lights" fill="#9FF7EC"><g class="df-halo" filter="url(#df-glow)" opacity=".85"><circle cx="86" cy="96" r="3.4"/><circle cx="102" cy="86" r="3.6"/><circle cx="119" cy="77" r="3.8"/><circle cx="136" cy="70" r="3.8"/><circle cx="153" cy="65" r="3.6"/><circle cx="170" cy="62" r="3.2"/></g><circle cx="86" cy="96" r="2.2"/><circle cx="102" cy="86" r="2.4"/><circle cx="119" cy="77" r="2.6"/><circle cx="136" cy="70" r="2.6"/><circle cx="153" cy="65" r="2.4"/><circle cx="170" cy="62" r="2.1"/></g></g><path class="df-pectoral" d="M147 123C136 126 125 133 118 144C115 149 119 153 125 151C136 147 146 141 153 134Z" fill="url(#df-side)" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="1.2"/><g class="df-headset"><path d="M114 82C116 60 132 48 150 47C166 46 180 52 188 61" fill="none" stroke="#1A2F5C" stroke-width="5.6" stroke-linecap="round"/><path d="M116 79C119 61 133 51 150 50C163 49 174 54 182 60" fill="none" stroke="#5F93F4" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/><path d="M124 113Q133 133 154 135" fill="none" stroke="#1A2F5C" stroke-width="3.4" stroke-linecap="round"/><ellipse cx="158" cy="135" rx="6.2" ry="4.4" fill="#1A2F5C"/><circle cx="161.5" cy="135" r="2" fill="#5FF2E0"/><circle cx="114" cy="98" r="18.5" fill="#EEF3FB" stroke="#1A2F5C" stroke-width="3"/><circle cx="114" cy="98" r="12.5" fill="#10204A"/><g class="df-bars" fill="#5FF2E0"><rect x="107" y="94" width="3.2" height="8" rx="1.6"/><rect x="112.4" y="91.5" width="3.2" height="13" rx="1.6"/><rect x="117.8" y="94" width="3.2" height="8" rx="1.6"/></g></g><ellipse class="df-blush" cx="150" cy="121" rx="8.5" ry="4.8" fill="#FFB0B8" opacity=".55"/><g class="df-eyes"><g class="df-eye df-eye-near"><ellipse cx="164" cy="96" rx="15" ry="17" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1.2"/><circle cx="166.5" cy="98" r="11" fill="url(#df-iris)"/><circle class="df-pupil" cx="167.5" cy="99" r="5.8" fill="#0A1530"/><circle cx="162.5" cy="93" r="3.6" fill="#FFFFFF"/><circle cx="170.5" cy="103.5" r="1.6" fill="#FFFFFF"/></g><g class="df-eye df-eye-far"><ellipse cx="194" cy="94" rx="10" ry="13" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1"/><circle cx="195.6" cy="96" r="7.8" fill="url(#df-iris)"/><circle class="df-pupil" cx="196.4" cy="97" r="4.2" fill="#0A1530"/><circle cx="192.6" cy="92.2" r="2.6" fill="#FFFFFF"/></g><path class="df-brow" d="M152 74Q163 68 175 74M187 75Q194 71 201 76" fill="none" stroke="#1A2F5C" stroke-width="2.6" stroke-linecap="round"/></g><g class="df-mouth"><path d="M173 117Q187 120 200 114Q198 133 186 134Q175 133 173 117Z" fill="#1A2F5C"/><ellipse clip-path="url(#df-mouth-clip)" cx="187" cy="131" rx="8" ry="5" fill="#FF8A9A"/></g></g></svg>
+        </div></div>
+      </div>
+    </div>
+    <button type="button" class="btn ghost small pause" data-motion-toggle><span></span></button>
+  </section>
+
+  <section class="sec" id="preview" data-theme="deep">
+    <div class="wrap">
+      <div class="sec-h reveal"><h2 data-i18n="pv_h"></h2><p data-i18n="pv_p"></p></div>
+      <div class="pv">
+        <div class="tabs" role="tablist" id="pv-tabs" data-i18n-attr="aria-label:pv_tabs_aria">
+          <button type="button" class="tab" role="tab" id="pvt1" aria-selected="true" aria-controls="pvp1" data-i18n="pv_t1"></button>
+          <button type="button" class="tab" role="tab" id="pvt2" aria-selected="false" aria-controls="pvp2" tabindex="-1" data-i18n="pv_t2"></button>
+          <button type="button" class="tab" role="tab" id="pvt3" aria-selected="false" aria-controls="pvp3" tabindex="-1" data-i18n="pv_t3"></button>
+          <button type="button" class="tab" role="tab" id="pvt4" aria-selected="false" aria-controls="pvp4" tabindex="-1" data-i18n="pv_t4"></button>
         </div>
-        <div class="trust" data-i18n="trust"></div>
-      </div>
-
-      <div class="stage">
-        <div class="halo" aria-hidden="true"></div>
-        <!-- Official Dory assets live in static/dory/. The film (cat-portal.mp4 / .webm) plays once,
-             muted; the still underneath is the final frame, so the cat is there before, during and
-             after it, and whenever the film cannot play. -->
-        <div class="scene" id="scene">
-          <img class="still" src="/static/dory/cat-hero.webp" width="1400" height="649" data-i18n-attr="alt:cat_alt" fetchpriority="high">
-          <video id="film" muted playsinline preload="auto" poster="/static/dory/cat-portal.webp" aria-hidden="true" tabindex="-1">
-            <source src="/static/dory/cat-portal.webm" type="video/webm">
-            <source src="/static/dory/cat-portal.mp4" type="video/mp4">
-          </video>
+        <div>
+          <div role="tabpanel" id="pvp1" aria-labelledby="pvt1" tabindex="0">
+            <div class="chat" data-theme="surface">
+              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
+              <div class="chat-b">
+                <div class="m-user step" data-i18n="pv1_u"></div>
+                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n="pv1_d1"></span></div></div>
+                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n-html="pv1_d2"></span></div></div>
+                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
+              </div>
+            </div>
+          </div>
+          <div role="tabpanel" id="pvp2" aria-labelledby="pvt2" tabindex="0" hidden>
+            <div class="chat" data-theme="surface">
+              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
+              <div class="chat-b">
+                <div class="m-user step"><span class="att"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg><span data-i18n="pv2_file"></span></span><br><span data-i18n="pv2_u"></span></div>
+                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n-html="pv2_d"></span></div></div>
+                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
+              </div>
+            </div>
+          </div>
+          <div role="tabpanel" id="pvp3" aria-labelledby="pvt3" tabindex="0" hidden>
+            <div class="chat" data-theme="surface">
+              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
+              <div class="chat-b">
+                <div class="m-user step" data-i18n="pv3_u"></div>
+                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n-html="pv3_d"></span></div></div>
+                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
+              </div>
+            </div>
+          </div>
+          <div role="tabpanel" id="pvp4" aria-labelledby="pvt4" tabindex="0" hidden>
+            <div class="chat" data-theme="surface">
+              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
+              <div class="chat-b">
+                <div class="m-user step" lang="th" data-i18n="pv4_u"></div>
+                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span lang="th" data-i18n="pv4_d"></span><p class="pv-note" data-i18n="pv4_note"></p></div></div>
+                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
+              </div>
+            </div>
+          </div>
+          <div class="pv-ctl" role="group" data-i18n-attr="aria-label:pv_ctl_aria">
+            <button type="button" class="btn ghost small" id="pv-replay" data-i18n="pv_replay"></button>
+            <button type="button" class="btn ghost small" id="pv-pause"></button>
+          </div>
         </div>
-
-        <!-- Feature callouts: only capabilities present in the codebase (see dory/guild_settings.FEATURES). -->
-        <div class="callout c1"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg><div><strong data-i18n="co1_t"></strong><span data-i18n="co1_d"></span></div></div>
-        <div class="callout c2"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg><div><strong data-i18n="co2_t"></strong><span data-i18n="co2_d"></span></div></div>
-        <div class="callout c3"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/></svg><div><strong data-i18n="co3_t"></strong><span data-i18n="co3_d"></span></div></div>
-        <div class="callout c4"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4Z"/><path d="M8 9h8M8 13h5"/></svg><div><strong data-i18n="co4_t"></strong><span data-i18n="co4_d"></span></div></div>
       </div>
     </div>
   </section>
 
-  <section id="platforms">
+  <section class="sec" id="features" data-theme="deep">
     <div class="wrap">
-      <div class="section-h"><h2 data-i18n="pf_h"></h2><p data-i18n="pf_p"></p></div>
-      <div class="grid">
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7a3 3 0 0 1 3-3h10a3 3 0 0 1 3 3v8a3 3 0 0 1-3 3h-4l-4 3v-3H7a3 3 0 0 1-3-3Z"/><path d="M9 11h.01M15 11h.01"/></svg></div><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf1_t"></h3><p data-i18n="pf1_d"></p></div>
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="4" width="18" height="14" rx="2"/><path d="M8 21h8M12 18v3M3 9h18"/></svg></div><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf2_t"></h3><p data-i18n="pf2_d"></p></div>
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg></div><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf3_t"></h3><p data-i18n="pf3_d"></p></div>
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M8 3H5a2 2 0 0 0-2 2v3M16 3h3a2 2 0 0 1 2 2v3M8 21H5a2 2 0 0 1-2-2v-3M16 21h3a2 2 0 0 0 2-2v-3"/><path d="M9 12h6M12 9v6"/></svg></div><span class="pill" data-i18n="pf_org"></span><h3 data-i18n="pf4_t"></h3><p data-i18n="pf4_d"></p></div>
+      <div class="sec-h reveal"><h2 data-i18n="ft_h"></h2><p data-i18n="ft_p"></p></div>
+      <div class="grid reveal">
+        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg></div><h3 data-i18n="f1_t"></h3><p data-i18n="f1_d"></p></div>
+        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div><h3 data-i18n="f2_t"></h3><p data-i18n="f2_d"></p></div>
+        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/></svg></div><h3 data-i18n="f3_t"></h3><p data-i18n="f3_d"></p></div>
+        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4Z"/><path d="M8 9h8M8 13h5"/></svg></div><h3 data-i18n="f4_t"></h3><p data-i18n="f4_d"></p></div>
+        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3 data-i18n="f5_t"></h3><p data-i18n="f5_d"></p></div>
+        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h7"/><path d="m16 15 2 2 4-4"/></svg></div><h3 data-i18n="f6_t"></h3><p data-i18n="f6_d"></p></div>
+        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div><h3 data-i18n="f7_t"></h3><p data-i18n="f7_d"></p></div>
+        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H8l-4 4Z"/><path d="M8 9h8M8 12h5"/></svg></div><h3 data-i18n="f8_t"></h3><p data-i18n="f8_d"></p></div>
       </div>
     </div>
   </section>
 
-  <section id="explore">
+  <section class="sec" id="how" data-theme="deep">
     <div class="wrap">
-      <div class="section-h"><h2 data-i18n="ex_h"></h2><p data-i18n="ex_p"></p></div>
-      <div class="steps">
-        <div class="step"><div class="n">1</div><h3 data-i18n="ex1_t"></h3><p data-i18n="ex1_d"></p></div>
-        <div class="step"><div class="n">2</div><h3 data-i18n="ex2_t"></h3><p data-i18n-html="ex2_d"></p></div>
-        <div class="step"><div class="n">3</div><h3 data-i18n="ex3_t"></h3><p data-i18n="ex3_d"></p></div>
+      <div class="sec-h reveal"><h2 data-i18n="ex_h"></h2><p data-i18n="ex_p"></p></div>
+      <ol class="steps reveal" style="list-style:none;margin:0;padding:0">
+        <li class="stp"><span class="n" aria-hidden="true">1</span><h3 data-i18n="ex1_t"></h3><p data-i18n="ex1_d"></p></li>
+        <li class="stp"><span class="n" aria-hidden="true">2</span><h3 data-i18n="ex2_t"></h3><p data-i18n-html="ex2_d"></p></li>
+        <li class="stp"><span class="n" aria-hidden="true">3</span><h3 data-i18n="ex3_t"></h3><p data-i18n="ex3_d"></p></li>
+      </ol>
+      <div class="where reveal">
+        <h3 data-i18n="pf_h"></h3>
+        <p data-i18n="pf_p"></p>
+        <div class="grid">
+          <div class="card"><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf1_t"></h3><p data-i18n="pf1_d"></p></div>
+          <div class="card"><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf2_t"></h3><p data-i18n="pf2_d"></p></div>
+          <div class="card"><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf3_t"></h3><p data-i18n="pf3_d"></p></div>
+          <div class="card"><span class="pill" data-i18n="pf_org"></span><h3 data-i18n="pf4_t"></h3><p data-i18n="pf4_d"></p></div>
+        </div>
       </div>
     </div>
   </section>
 
-  <section class="features" id="features">
+  <section class="sec roles" id="roles" data-theme="deep">
     <div class="wrap">
-      <div class="section-h"><h2 data-i18n="ft_h"></h2><p data-i18n="ft_p"></p></div>
-      <div class="grid">
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg></div><h3 data-i18n="f1_t"></h3><p data-i18n="f1_d"></p></div>
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div><h3 data-i18n="f2_t"></h3><p data-i18n="f2_d"></p></div>
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/></svg></div><h3 data-i18n="f3_t"></h3><p data-i18n="f3_d"></p></div>
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4Z"/><path d="M8 9h8M8 13h5"/></svg></div><h3 data-i18n="f4_t"></h3><p data-i18n="f4_d"></p></div>
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3 data-i18n="f5_t"></h3><p data-i18n="f5_d"></p></div>
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h7"/><path d="m16 15 2 2 4-4"/></svg></div><h3 data-i18n="f6_t"></h3><p data-i18n="f6_d"></p></div>
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div><h3 data-i18n="f7_t"></h3><p data-i18n="f7_d"></p></div>
-        <div class="card"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H8l-4 4Z"/><path d="M8 9h8M8 12h5"/></svg></div><h3 data-i18n="f8_t"></h3><p data-i18n="f8_d"></p></div>
+      <div class="sec-h reveal"><h2 data-i18n="ro_h"></h2><p data-i18n="ro_p"></p></div>
+      <div class="tabs row" role="tablist" id="ro-tabs" data-i18n-attr="aria-label:ro_tabs_aria">
+        <button type="button" class="tab" role="tab" id="rot1" aria-selected="true" aria-controls="rop1" data-i18n="ro_t1"></button>
+        <button type="button" class="tab" role="tab" id="rot2" aria-selected="false" aria-controls="rop2" tabindex="-1" data-i18n="ro_t2"></button>
+        <button type="button" class="tab" role="tab" id="rot3" aria-selected="false" aria-controls="rop3" tabindex="-1" data-i18n="ro_t3"></button>
+        <button type="button" class="tab" role="tab" id="rot4" aria-selected="false" aria-controls="rop4" tabindex="-1" data-i18n="ro_t4"></button>
       </div>
+      <div class="role" role="tabpanel" id="rop1" aria-labelledby="rot1" tabindex="0"><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro1_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro1_a"></p></div></div>
+      <div class="role" role="tabpanel" id="rop2" aria-labelledby="rot2" tabindex="0" hidden><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro2_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro2_a"></p></div></div>
+      <div class="role" role="tabpanel" id="rop3" aria-labelledby="rot3" tabindex="0" hidden><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro3_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro3_a"></p></div></div>
+      <div class="role" role="tabpanel" id="rop4" aria-labelledby="rot4" tabindex="0" hidden><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro4_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro4_a"></p></div></div>
     </div>
   </section>
 
-  <section class="teams" id="teams">
-    <div class="wrap">
-      <div>
-        <div class="section-h"><h2 data-i18n="tm_h"></h2><p data-i18n="tm_p"></p></div>
-        <ul>
+  <section class="sec" id="trust" data-theme="deep">
+    <div class="wrap trust">
+      <div class="reveal">
+        <div class="sec-h"><h2 data-i18n="tm_h"></h2><p data-i18n="tm_p"></p></div>
+        <div class="flow" role="img" data-i18n-attr="aria-label:flow_aria">
+          <span data-i18n="flow1"></span><i></i><span data-i18n="flow2"></span><i></i><span data-i18n="flow3"></span>
+        </div>
+      </div>
+      <div class="reveal">
+        <ul class="facts">
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm1_t"></b> <span data-i18n="tm1_d"></span></div></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm2_t"></b> <span data-i18n="tm2_d"></span></div></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm5_t"></b> <span data-i18n="tm5_d"></span></div></li>
+          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm6_t"></b> <span data-i18n="tm6_d"></span></div></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm3_t"></b> <span data-i18n="tm3_d"></span></div></li>
           <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm4_t"></b> <span data-i18n="tm4_d"></span></div></li>
         </ul>
-      </div>
-      <div class="panel">
-        <h3 data-i18n="pn_h"></h3>
-        <p data-i18n="pn_p"></p>
-        <div class="row"><span class="pill" data-i18n="pn_pill1"></span><span class="pill" data-i18n="pn_pill2"></span><span class="pill" data-i18n="pn_pill3"></span></div>
-        <div class="row"><a class="btn primary small" href="/start" data-i18n="cta_signup"></a></div>
+        <p class="models" id="models-line"><span data-i18n="models_label"></span> <code id="models">__DORY_MODELS__</code></p>
       </div>
     </div>
   </section>
 
-  <section class="plans-s" id="plans">
+  <section class="sec" id="plans" data-theme="deep">
     <div class="wrap">
-      <div class="section-h"><h2 data-i18n="pr_h"></h2><p data-i18n="pr_p"></p></div>
-      <div class="grid">
-        <div class="card plan-c"><span class="pill ok" data-i18n="p_rec"></span><h3 data-i18n="pl_trial"></h3><div class="price" data-i18n="pl_trial_price"></div><p data-i18n="pl_trial_d"></p><a class="btn primary small" href="/start" data-i18n="pl_start"></a></div>
+      <div class="sec-h reveal"><h2 data-i18n="pr_h"></h2><p data-i18n="pr_p"></p></div>
+      <div class="grid reveal">
+        <div class="card plan-c"><span class="pill ok" data-i18n="p_rec"></span><h3 data-i18n="pl_trial"></h3><div class="price" data-i18n="pl_trial_price"></div><p data-i18n="pl_trial_d"></p><a class="btn ghost small" href="/start" data-i18n="pl_start"></a></div>
         <div class="card plan-c soon"><h3 data-i18n="pl_more"></h3><div class="price" data-i18n="pl_more_price"></div><p data-i18n="pl_more_d"></p></div>
       </div>
       <p class="fine" data-i18n="pr_note"></p>
     </div>
   </section>
 
-  <section class="entry" id="start">
-    <div class="wrap">
-      <div class="section-h"><h2 data-i18n="en_h"></h2><p data-i18n="en_p"></p></div>
-      <div class="grid">
-        <a class="card go" href="/start"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0M16 11a3 3 0 1 0 0-6M21 20a6 6 0 0 0-5-5.9"/></svg></span><h3 data-i18n="en1_t"></h3><p data-i18n="en1_d"></p><strong class="more" data-i18n="en1_b"></strong></a>
-        <a class="card go" href="/center"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"/></svg></span><h3 data-i18n="en2_t"></h3><p data-i18n="en2_d"></p><strong class="more" data-i18n="en2_b"></strong></a>
-        <a class="card go" href="/recorder"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg></span><h3 data-i18n="en3_t"></h3><p data-i18n="en3_d"></p><strong class="more" data-i18n="en3_b"></strong></a>
-      </div>
-    </div>
-  </section>
-
   <section class="final">
     <div class="wrap">
+      <img class="surface-fish reveal" src="/static/dory/dory.svg" alt="" width="180" height="135">
       <h2 data-i18n="fin_h"></h2>
       <p data-i18n="fin_p"></p>
-      <div class="ctas"><a class="btn primary" href="/start" data-i18n="cta_signup"></a><a class="btn ghost" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add"></a></div>
+      <div class="ctas">
+        <a class="btn primary" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add"></a>
+        <a class="btn ghost" href="/start" data-invite-alt data-i18n="cta_signup"></a>
+      </div>
+      <div class="entry" id="start">
+        <h3 class="t" data-i18n="en_h"></h3>
+        <p data-i18n="en_p"></p>
+        <div class="grid">
+          <a class="card go" href="/start"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0M16 11a3 3 0 1 0 0-6M21 20a6 6 0 0 0-5-5.9"/></svg></span><h3 data-i18n="en1_t"></h3><p data-i18n="en1_d"></p><strong class="more" data-i18n="en1_b"></strong></a>
+          <a class="card go" href="/center"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"/></svg></span><h3 data-i18n="en2_t"></h3><p data-i18n="en2_d"></p><strong class="more" data-i18n="en2_b"></strong></a>
+          <a class="card go" href="/recorder"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg></span><h3 data-i18n="en3_t"></h3><p data-i18n="en3_d"></p><strong class="more" data-i18n="en3_b"></strong></a>
+        </div>
+      </div>
     </div>
   </section>
 </main>
 
-<footer>
+<footer class="foot">
   <div class="wrap">
     <span data-i18n="foot_copy"></span>
+    <a href="/privacy" data-i18n="foot_privacy"></a>
+    <a href="/terms" data-i18n="foot_terms"></a>
     <a href="/hub" data-i18n="nav_hub"></a>
     <a href="/recorder" data-i18n="foot_recorder"></a>
+    <button type="button" class="btn ghost small" data-motion-toggle><span></span></button>
+    <button type="button" class="btn ghost small" id="lang-other" data-i18n="lang_other"></button>
   </div>
 </footer>
 
 <script type="application/json" id="i18n-data">
 {
-  "title": {"th": "ดอรี่ · เวทมนตร์เล็ก ๆ ที่ทำให้งานเสร็จมากขึ้น", "en": "Dory · A little magic. A lot more done."},
+  "title": {"th": "ดอรี่ · ผู้ช่วย AI ที่จำ จัดเก็บ และตามงานให้ทีม", "en": "Dory · The AI coworker that remembers, files and follows up"},
   "brand": {"th": "ดอรี่", "en": "Dory"},
+  "skip": {"th": "ข้ามไปยังเนื้อหา", "en": "Skip to content"},
   "nav_aria": {"th": "เมนูหลัก", "en": "Main navigation"},
   "menu_aria": {"th": "เปิดเมนู", "en": "Open menu"},
   "lang_switch_aria": {"th": "เลือกภาษา", "en": "Choose language"},
   "lang_th": {"th": "ไทย", "en": "ไทย"},
   "lang_en": {"th": "EN", "en": "EN"},
-  "nav_explore": {"th": "เริ่มใช้", "en": "Explore"},
+  "lang_other": {"th": "English", "en": "ไทย"},
   "nav_features": {"th": "ความสามารถ", "en": "Features"},
+  "nav_how": {"th": "วิธีเริ่มใช้", "en": "How it works"},
+  "nav_trust": {"th": "ความปลอดภัย", "en": "Trust"},
   "nav_plans": {"th": "แพ็กเกจ", "en": "Plans"},
-  "nav_teams": {"th": "สำหรับทีม", "en": "For Teams"},
+  "nav_login": {"th": "เข้าสู่ระบบ", "en": "Log in"},
   "nav_hub": {"th": "ศูนย์บัญชาการ", "en": "Command center"},
   "cta_add": {"th": "เพิ่มดอรี่เข้า Discord", "en": "Add Dory to Discord"},
-  "cta_unconfigured": {"th": "ยังไม่ได้ตั้งค่าลิงก์เชิญ (DORY_DISCORD_CLIENT_ID)", "en": "Invite link not configured (DORY_DISCORD_CLIENT_ID)"},
-  "cta_explore": {"th": "ดูว่าดอรี่ทำอะไรได้บ้าง", "en": "Explore what Dory can do"},
-  "cat_alt": {"th": "ดอรี่ แมวขาวอมม่วงในสูทสีกรมท่า มาสคอตของ Dory", "en": "Dory, a white-and-lavender cat in a navy suit, the Dory mascot"},
-  "eyebrow": {"th": "พบกับดอรี่", "en": "MEET DORY"},
-  "headline": {"th": "เวทมนตร์เล็ก ๆ ที่ทำให้งานเสร็จมากขึ้น", "en": "A little magic. A lot more done."},
-  "sub": {"th": "ดอรี่คือผู้ช่วย AI สำหรับงานประจำวันของทีมใน Discord ตั้งแต่จดประชุม ลงบัญชีใบเสร็จ ตามงาน ไปจนถึงค้นเอกสารของบริษัท", "en": "Dory is your team's AI assistant for everyday work in Discord — from meeting notes and receipts to task follow-up and company documents."},
-  "trust": {"th": "ไทยและอังกฤษ · แยกข้อมูลต่อเซิร์ฟเวอร์ · ไม่ต้องตั้งค่าก็เริ่มใช้ได้", "en": "Thai and English · data isolated per server · works with no setup"},
-  "co1_t": {"th": "จดประชุม", "en": "Meeting notes"},
-  "co1_d": {"th": "เข้าห้องเสียง ถอดเสียง สรุปให้", "en": "Joins the voice room, transcribes, summarizes."},
-  "co2_t": {"th": "ใบเสร็จลงบัญชี", "en": "Receipts to ledger"},
-  "co2_d": {"th": "ส่งรูปแล้วบันทึกค่าใช้จ่ายทันที", "en": "Send a photo, the expense is recorded."},
-  "co3_t": {"th": "ตามงานให้", "en": "Task follow-up"},
-  "co3_d": {"th": "เก็บงานจากที่ประชุมและเตือนทุกวัน", "en": "Tracks action items and checks in daily."},
-  "co4_t": {"th": "เอกสารอัจฉริยะ", "en": "Smart documents"},
-  "co4_d": {"th": "ค้นคำตอบจากไฟล์และ wiki ของบริษัท", "en": "Finds answers in your files and wiki."},
-  "ex_h": {"th": "เริ่มใช้ได้ใน 3 ขั้นตอน", "en": "Up and running in three steps"},
-  "ex_p": {"th": "ดอรี่ทำงานอยู่ใน Discord ของทีมคุณ ไม่ต้องติดตั้งแอปใหม่ ไม่ต้องย้ายข้อมูล", "en": "Dory lives inside your team's Discord. No new app to install, no data to migrate."},
-  "ex1_t": {"th": "เพิ่มดอรี่เข้าเซิร์ฟเวอร์", "en": "Add Dory to your server"},
-  "ex1_d": {"th": "กดปุ่มเชิญแล้วเลือกเซิร์ฟเวอร์ ดอรี่จะสร้างห้องคุยส่วนตัวให้สมาชิกเอง", "en": "Use the invite button and pick a server. Dory creates its own chat channel for members."},
-  "ex2_t": {"th": "พิมพ์ /ตั้งค่า หรือเรียกชื่อ", "en": "Type /setup or just say its name"},
-  "ex2_d": {"th": "พิมพ์ <code>/ตั้งค่า</code> เพื่อเปิดศูนย์บัญชาการ หรือพิมพ์ <code>@Dory</code> แล้วถามได้เลย", "en": "Type <code>/setup</code> to open the command center, or mention <code>@Dory</code> and ask away."},
-  "ex3_t": {"th": "ปล่อยให้ดอรี่ทำงาน", "en": "Let Dory work"},
-  "ex3_d": {"th": "ส่งใบเสร็จ เชิญเข้าประชุม หรือถามเรื่องค่าใช้จ่าย ดอรี่ตอบเป็นภาษาของห้องนั้น", "en": "Send a receipt, invite it to a meeting, or ask about expenses. Dory answers in the channel's language."},
+  "cta_add_short": {"th": "เพิ่มเข้า Discord", "en": "Add to Discord"},
+  "cta_create": {"th": "สร้างบัญชี", "en": "Create account"},
+  "cta_signup": {"th": "สร้างบัญชีด้วย Google", "en": "Create account with Google"},
+  "cta_see": {"th": "ดูดอรี่ทำงาน", "en": "See Dory at work"},
+  "not_discord": {"th": "ไม่ได้ใช้ Discord?", "en": "Not on Discord?"},
+  "not_discord_link": {"th": "สร้างบัญชีบนเว็บ", "en": "Create an account"},
+  "free": {"th": "ใช้ฟรีช่วงเปิดตัว", "en": "Free during launch"},
+  "pause": {"th": "หยุดภาพเคลื่อนไหว", "en": "Pause motion"},
+  "play": {"th": "เล่นภาพเคลื่อนไหว", "en": "Play motion"},
+  "eyebrow": {"th": "ผู้ช่วย AI ของทีมบน Discord", "en": "AI coworker for teams on Discord"},
+  "headline": {"th": "ถามครั้งเดียว ดอรี่จำ จัดเก็บ และตามงานให้", "en": "Ask once. Dory remembers, files and follows up."},
+  "sub": {"th": "ดอรี่อยู่ในแชตของทีมคุณ จดประชุม ลงบัญชีใบเสร็จ ตามงาน และตอบคำถามจากเอกสารของบริษัทคุณเอง ได้ทั้งภาษาไทยและอังกฤษ", "en": "Dory lives in your team's chat. She takes meeting notes, logs receipts, follows up on tasks and answers from your company's own documents, in Thai or English."},
+  "pv_h": {"th": "ดูดอรี่ทำงานในหนึ่งวัน", "en": "Watch Dory handle a working day"},
+  "pv_p": {"th": "ตัวอย่างบทสนทนา ชื่อและตัวเลขสมมติขึ้น แต่ทุกความสามารถที่เห็นมีอยู่จริงในเวอร์ชันปัจจุบัน", "en": "Example conversations. The names and numbers are made up; every feature shown is in the current build."},
+  "pv_tabs_aria": {"th": "ตัวอย่างบทสนทนา", "en": "Example conversations"},
+  "pv_ctl_aria": {"th": "ควบคุมตัวอย่าง", "en": "Example controls"},
+  "pv_t1": {"th": "จดประชุม", "en": "Meeting notes"},
+  "pv_t2": {"th": "ใบเสร็จ", "en": "A receipt"},
+  "pv_t3": {"th": "พลาดอะไรไปบ้าง", "en": "What did I miss?"},
+  "pv_t4": {"th": "คำถามภาษาไทย", "en": "A question in Thai"},
+  "pv_replay": {"th": "เล่นอีกครั้ง", "en": "Replay"},
+  "pv_pause": {"th": "หยุด", "en": "Pause"},
+  "pv_play": {"th": "เล่นต่อ", "en": "Play"},
+  "who_dory": {"th": "ดอรี่", "en": "Dory"},
+  "st_ready": {"th": "พร้อม", "en": "Ready"},
+  "st_thinking": {"th": "กำลังคิด…", "en": "Thinking…"},
+  "pv1_u": {"th": "@Dory เข้าประชุม", "en": "@Dory join the meeting"},
+  "pv1_d1": {"th": "เข้าห้อง Stand-up แล้วค่ะ จบประชุมแล้วจะสรุปให้นะคะ", "en": "Joined Stand-up. I'll post the minutes when you finish."},
+  "pv1_d2": {"th": "<b>สรุปประชุม · Stand-up</b><br>มติ: เริ่มโปรโมชันปลายปีวันที่ 1 ธ.ค.<br>งาน: สมชาย ทำรายการราคา ส่งวันศุกร์ · มะลิ ร่างโปสเตอร์ ส่งวันพุธ<br>ส่งการ์ดให้แต่ละคนกดยืนยันงานแล้วค่ะ", "en": "<b>Minutes · Stand-up</b><br>Decision: the year-end promotion starts on 1 Dec.<br>Tasks: Somchai, price list, due Friday · Mali, poster draft, due Wednesday.<br>I've sent each owner a card to confirm their task."},
+  "pv2_file": {"th": "receipt.jpg", "en": "receipt.jpg"},
+  "pv2_u": {"th": "ค่าอุปกรณ์สำนักงานสำหรับโต๊ะใหม่", "en": "Office supplies for the new desks"},
+  "pv2_d": {"th": "บันทึกลงบัญชีแล้วค่ะ: <b>Office Mate</b> · 1,250.00 บาท · อุปกรณ์สำนักงาน · 24 ต.ค. ถ้ามีคนส่งใบเดิมซ้ำ ดอรี่จะข้ามให้ค่ะ", "en": "Saved to the ledger: <b>Office Mate</b> · 1,250.00 THB · Office supplies · 24 Oct. If someone sends the same receipt again, I'll skip it."},
+  "pv3_u": {"th": "ตั้งแต่วันศุกร์ฉันพลาดอะไรไปบ้าง", "en": "What did I miss since Friday?"},
+  "pv3_d": {"th": "ตั้งแต่วันศุกร์มี 3 เรื่องค่ะ<ol><li>ประชุมงบประมาณย้ายไปวันพฤหัสบดี 14:00</li><li>สมชายมอบงาน “สไลด์ไตรมาส 4” ให้คุณ กำหนดส่งวันพุธ</li><li>มีคำขอเบิกค่าใช้จ่าย 2 รายการรอคุณอนุมัติ</li></ol>", "en": "Three things since Friday:<ol><li>The budget meeting moved to Thursday at 14:00.</li><li>Somchai assigned you “Q4 deck”, due Wednesday.</li><li>Two expense requests are waiting for your approval.</li></ol>"},
+  "pv4_u": {"th": "เดือนนี้ค่าการตลาดไปเท่าไรแล้ว", "en": "เดือนนี้ค่าการตลาดไปเท่าไรแล้ว"},
+  "pv4_d": {"th": "เดือนตุลาคมใช้ไปกับการตลาด 18,400 บาท จากใบเสร็จ 6 ใบค่ะ ก้อนใหญ่สุดคือค่าโฆษณาออนไลน์ 9,800 บาท", "en": "เดือนตุลาคมใช้ไปกับการตลาด 18,400 บาท จากใบเสร็จ 6 ใบค่ะ ก้อนใหญ่สุดคือค่าโฆษณาออนไลน์ 9,800 บาท"},
+  "pv4_note": {"th": "ดอรี่ตอบเป็นภาษาหลักที่บริษัทเลือก ทีมในตัวอย่างนี้เลือกภาษาไทย", "en": "“How much have we spent on marketing this month?” Dory replies in the language the company chose; this example team chose Thai."},
   "ft_h": {"th": "ความสามารถที่ใช้ได้จริงวันนี้", "en": "What Dory can do today"},
   "ft_p": {"th": "ทุกข้อด้านล่างมีอยู่ในดอรี่เวอร์ชันปัจจุบัน และผู้ดูแลเปิดปิดได้ทีละข้อจากศูนย์บัญชาการ", "en": "Everything below is in the current build, and admins can switch each one on or off from the command center."},
   "f1_t": {"th": "ประชุมเสียง", "en": "Voice meetings"},
@@ -385,23 +552,14 @@
   "f7_d": {"th": "ค้นทุกแหล่งของทีมพร้อมกัน ค้นเว็บพร้อมอ้างอิง และทำรายงานวิจัยเชิงลึกเป็น PDF", "en": "Searches every team source at once, searches the web with citations, and writes deep-research reports as PDF."},
   "f8_t": {"th": "เรียนรู้บริษัทของคุณ", "en": "Learns your company"},
   "f8_d": {"th": "สอนศัพท์เฉพาะ SOP และ FAQ ให้ดอรี่ พร้อม domain pack สำเร็จรูป 14 สาขา", "en": "Teach Dory your glossary, SOPs and FAQ, with 14 ready-made industry packs."},
-  "tm_h": {"th": "สร้างมาเพื่อองค์กรตั้งแต่วันแรก", "en": "Built for organizations from day one"},
-  "tm_p": {"th": "เซิร์ฟเวอร์แต่ละแห่งคือผู้เช่าแยกกัน ข้อมูลไม่ปะปน และสิทธิ์การเห็นข้อมูลเดินตามโครงสร้างของทีมบน Discord", "en": "Every server is its own tenant. Data never mixes, and who sees what follows your team's Discord structure."},
-  "tm1_t": {"th": "แยกข้อมูลต่อเซิร์ฟเวอร์", "en": "Isolated per server."},
-  "tm1_d": {"th": "บัญชี ความจำ เอกสาร และการตั้งค่าทั้งหมดผูกกับเซิร์ฟเวอร์ของคุณเท่านั้น", "en": "Ledger, memory, documents and settings belong to your server alone."},
-  "tm2_t": {"th": "สิทธิ์ตามห้องและตำแหน่ง", "en": "Permissions follow channels and roles."},
-  "tm2_d": {"th": "ดอรี่ตอบจากข้อมูลที่ผู้ถามเห็นได้อยู่แล้วเท่านั้น และผู้บริหารกำหนดได้ว่าใครคือผู้บริหาร", "en": "Dory only answers from what the asker can already read, and you decide who counts as an executive."},
-  "tm3_t": {"th": "สองภาษาทุกห้อง", "en": "Bilingual in every channel."},
-  "tm3_d": {"th": "ตั้งภาษาไทยหรืออังกฤษต่อห้องได้ หรือให้ดอรี่ตอบตามภาษาที่คุณพิมพ์", "en": "Set Thai or English per channel, or let Dory follow the language you write in."},
-  "tm4_t": {"th": "ศูนย์บัญชาการบนเว็บ", "en": "A web command center."},
-  "tm4_d": {"th": "ล็อกอินด้วย Google เพื่อเปิดปิดความสามารถ เลือกห้อง และดูกิจกรรมล่าสุดของแต่ละเซิร์ฟเวอร์", "en": "Sign in with Google to switch features, pick channels and review each server's recent activity."},
-  "pn_h": {"th": "เริ่มได้วันนี้ ใช้ฟรีช่วงเปิดตัว", "en": "Start today, free during launch"},
-  "pn_p": {"th": "สร้างบัญชีด้วย Google ตั้งชื่อองค์กร แล้วเชื่อมต่อ Discord ของทีม ทุกความสามารถเปิดให้ใช้ตั้งแต่วันแรก", "en": "Create an account with Google, name your organization and connect your team's Discord. Every feature is on from day one."},
-  "pn_pill1": {"th": "ไม่ต้องใช้บัตรเครดิต", "en": "No credit card"},
-  "pn_pill2": {"th": "สมัครใน 2 นาที", "en": "Two-minute sign-up"},
-  "pn_pill3": {"th": "ไทย / อังกฤษ", "en": "Thai / English"},
-  "cta_signup": {"th": "สร้างบัญชีด้วย Google", "en": "Create account with Google"},
-  "cta_login": {"th": "เข้าสู่ระบบบัญชีของคุณ", "en": "Log in to your account"},
+  "ex_h": {"th": "เริ่มใช้ได้ใน 3 ขั้นตอน", "en": "Up and running in three steps"},
+  "ex_p": {"th": "ดอรี่ทำงานอยู่ใน Discord ของทีมคุณ ไม่ต้องติดตั้งแอปใหม่ ไม่ต้องย้ายข้อมูล", "en": "Dory lives inside your team's Discord. No new app to install, no data to migrate."},
+  "ex1_t": {"th": "เพิ่มดอรี่เข้าเซิร์ฟเวอร์", "en": "Add Dory to your server"},
+  "ex1_d": {"th": "กดปุ่มเชิญแล้วเลือกเซิร์ฟเวอร์ ดอรี่จะสร้างห้องคุยส่วนตัวให้สมาชิกเอง", "en": "Use the invite button and pick a server. Dory creates a private chat channel for each member."},
+  "ex2_t": {"th": "พิมพ์ /ตั้งค่า หรือเรียกชื่อ", "en": "Type /setup or just say her name"},
+  "ex2_d": {"th": "พิมพ์ <code>/ตั้งค่า</code> เพื่อเปิดศูนย์บัญชาการ หรือพิมพ์ <code>@Dory</code> แล้วถามได้เลย", "en": "Type <code>/setup</code> to open the command center, or mention <code>@Dory</code> and ask away."},
+  "ex3_t": {"th": "ปล่อยให้ดอรี่ทำงาน", "en": "Let Dory work"},
+  "ex3_d": {"th": "ส่งใบเสร็จ เชิญเข้าประชุม หรือถามเรื่องค่าใช้จ่าย ดอรี่ตอบเป็นภาษาหลักของบริษัท", "en": "Send a receipt, invite her to a meeting, or ask about expenses. Dory answers in your company's language."},
   "pf_h": {"th": "ดอรี่อยู่ตรงไหนบ้าง", "en": "Where Dory works"},
   "pf_p": {"th": "เราให้บริการสองส่วน: บอตดอรี่ในแพลตฟอร์มที่ทีมคุยกันอยู่แล้ว และแพลตฟอร์มเว็บสำหรับดูแลองค์กร", "en": "Two parts: the Dory bot inside the platforms your team already talks on, and a web platform to run the organization."},
   "pf_now": {"th": "ใช้ได้แล้ว", "en": "Available now"},
@@ -414,6 +572,42 @@
   "pf3_d": {"th": "เครื่องอัดประชุมเปิดคู่กับ Meet ถอดเสียงไทยสด สรุปมติและงานส่งเข้า Discord", "en": "A recorder that runs beside Meet: live Thai transcript, then decisions and action items posted to Discord."},
   "pf4_t": {"th": "Slack และ ClickUp", "en": "Slack and ClickUp"},
   "pf4_d": {"th": "เชื่อมต่อผ่านศูนย์ควบคุมองค์กร เปิดให้ตามคำขอ ติดต่อเราเพื่อเปิดใช้", "en": "Connected through the organization center, switched on by request. Contact us to enable it."},
+  "ro_h": {"th": "แต่ละตำแหน่งถามดอรี่อย่างไร", "en": "What each role asks Dory"},
+  "ro_p": {"th": "ตัวอย่างคำถาม แต่ละคนได้คำตอบจากข้อมูลที่ตัวเองมีสิทธิ์เห็นเท่านั้น", "en": "Example asks. Each person gets answers only from what they are allowed to see."},
+  "ro_tabs_aria": {"th": "ตำแหน่ง", "en": "Roles"},
+  "ro_t1": {"th": "เจ้าของกิจการ", "en": "Owner"},
+  "ro_t2": {"th": "ผู้จัดการ", "en": "Manager"},
+  "ro_t3": {"th": "สมาชิกทีม", "en": "Team member"},
+  "ro_t4": {"th": "การเงิน", "en": "Finance"},
+  "ro_ask": {"th": "ถามว่า", "en": "They ask"},
+  "ro_get": {"th": "ดอรี่ตอบด้วย", "en": "Dory returns"},
+  "ro1_q": {"th": "สรุปค่าใช้จ่ายสัปดาห์นี้แยกตามหมวดให้หน่อย", "en": "Summarise this week's spending by category."},
+  "ro1_a": {"th": "ตารางยอดตามหมวด ร้านที่จ่ายมากที่สุด และสไลด์สรุปถ้าคุณขอ", "en": "A table by category, the biggest vendors, and a slide deck if you ask for one."},
+  "ro2_q": {"th": "โปรเจกต์เปิดตัวมีงานไหนเลยกำหนดบ้าง", "en": "What's overdue on the launch project?"},
+  "ro2_a": {"th": "งานที่เลยกำหนดพร้อมผู้รับผิดชอบ และภาพความคืบหน้าเทียบกับเวลาที่เหลือ", "en": "Overdue tasks with their owners, and a picture of progress against the time left."},
+  "ro3_q": {"th": "เตือนฉันทุกวันจันทร์ 9 โมงให้ส่งรายงานยอดขาย", "en": "Remind me every Monday at 9 to send the sales report."},
+  "ro3_a": {"th": "การเตือนซ้ำทุกสัปดาห์ ส่งเข้าห้องส่วนตัวของคุณกับดอรี่", "en": "A weekly reminder, delivered to your private Dory channel."},
+  "ro4_q": {"th": "รวมยอดในไฟล์ Excel นี้ตามผู้ขายให้หน่อย", "en": "Total this spreadsheet by vendor."},
+  "ro4_a": {"th": "ตารางยอดตามผู้ขายและกราฟ จากไฟล์ที่คุณแนบมา", "en": "A table by vendor and a chart, worked out from the file you attached."},
+  "tm_h": {"th": "สร้างมาเพื่อองค์กรตั้งแต่วันแรก", "en": "Built for organizations from day one"},
+  "tm_p": {"th": "เซิร์ฟเวอร์แต่ละแห่งคือผู้เช่าแยกกัน ข้อมูลไม่ปะปน และสิทธิ์การเห็นข้อมูลเดินตามโครงสร้างของทีมบน Discord", "en": "Every server is its own tenant. Data never mixes, and who sees what follows your team's Discord structure."},
+  "flow_aria": {"th": "ดอรี่ตอบจากห้องแชตให้เฉพาะคนที่อ่านห้องนั้นได้", "en": "Dory answers from a channel only for people who can read it"},
+  "flow1": {"th": "เซิร์ฟเวอร์ของคุณ", "en": "Your server"},
+  "flow2": {"th": "ห้องแชตในเซิร์ฟเวอร์", "en": "Its channels"},
+  "flow3": {"th": "เฉพาะคนที่อ่านห้องนั้นได้", "en": "Only people who can read them"},
+  "tm1_t": {"th": "แยกข้อมูลต่อเซิร์ฟเวอร์", "en": "Isolated per server."},
+  "tm1_d": {"th": "บัญชี ความจำ เอกสาร และการตั้งค่าทั้งหมดผูกกับเซิร์ฟเวอร์ของคุณเท่านั้น", "en": "Ledger, memory, documents and settings belong to your server alone."},
+  "tm2_t": {"th": "สิทธิ์ตามห้องและตำแหน่ง", "en": "Permissions follow channels and roles."},
+  "tm2_d": {"th": "ดอรี่ตอบจากข้อมูลที่ผู้ถามเห็นได้อยู่แล้วเท่านั้น และผู้บริหารกำหนดได้ว่าใครคือผู้บริหาร", "en": "Dory only answers from what the asker can already read, and you decide who counts as an executive."},
+  "tm3_t": {"th": "ภาษาหลักของบริษัท และภาษาของคุณเอง", "en": "One company language, plus your own."},
+  "tm3_d": {"th": "บริษัทเลือกภาษาที่ดอรี่ใช้ และแต่ละคนเพิ่มภาษาส่วนตัวได้", "en": "The company picks the language Dory uses, and each person can add a personal language."},
+  "tm4_t": {"th": "ศูนย์บัญชาการบนเว็บ", "en": "A web command center."},
+  "tm4_d": {"th": "ล็อกอินด้วย Google เพื่อเปิดปิดความสามารถ เลือกห้อง และดูกิจกรรมล่าสุดของแต่ละเซิร์ฟเวอร์", "en": "Sign in with Google to switch features, pick channels and review each server's recent activity."},
+  "tm5_t": {"th": "ทุกความสามารถมีสวิตช์", "en": "Every feature has a switch."},
+  "tm5_d": {"th": "ผู้ดูแลเปิดหรือปิดแต่ละความสามารถได้จากศูนย์บัญชาการ", "en": "Admins turn each feature on or off from the command center."},
+  "tm6_t": {"th": "บริษัทเป็นผู้กำหนดว่าจะเก็บอะไร", "en": "Your company decides what is kept."},
+  "tm6_d": {"th": "ความจำของทีมเก็บไว้เป็นข้อมูลของบริษัทโดยค่าเริ่มต้น และผู้ดูแลตั้งให้ลบเมื่อครบจำนวนวันที่กำหนดได้", "en": "Team memory is kept as the company's record by default, and an admin can set it to delete after a chosen number of days."},
+  "models_label": {"th": "โมเดล AI ที่ดอรี่ใช้อยู่ตอนนี้:", "en": "AI models running Dory right now:"},
   "pr_h": {"th": "แพ็กเกจ", "en": "Plans"},
   "pr_p": {"th": "ช่วงเปิดตัวมีแพ็กเกจเดียว ใช้ฟรีทุกความสามารถโดยไม่มีลิมิต", "en": "During launch there is one plan: every feature, free, with no limits."},
   "p_rec": {"th": "แนะนำ", "en": "Recommended"},
@@ -425,6 +619,8 @@
   "pl_more_d": {"th": "แพ็กเกจสำหรับทีมและองค์กรจะประกาศหลังช่วงเปิดตัว ผู้ใช้ช่วงทดลองจะได้รับแจ้งก่อน", "en": "Team and organization plans will be announced after launch. Trial users hear first."},
   "pl_start": {"th": "เริ่มทดลองใช้", "en": "Start the trial"},
   "pr_note": {"th": "ยังไม่มีการเก็บค่าบริการและไม่มีการชำระเงินในระบบ การสมัครไม่มีค่าใช้จ่ายใด ๆ", "en": "Nothing is charged and there is no payment in the system. Signing up is completely free."},
+  "fin_h": {"th": "พาดอรี่ไปช่วยทีมของคุณ", "en": "Bring Dory to your team."},
+  "fin_p": {"th": "เพิ่มดอรี่เข้าเซิร์ฟเวอร์ แล้วพิมพ์ @Dory เพื่อเริ่มคุยได้ทันที", "en": "Add her to your server, then mention @Dory to start right away."},
   "en_h": {"th": "เลือกทางเข้าของคุณ", "en": "Choose your way in"},
   "en_p": {"th": "ดอรี่มีสามบริการ แต่ละแบบเหมาะกับการใช้งานต่างกัน เลือกที่ตรงกับคุณได้เลย", "en": "Dory offers three services for different ways of working. Pick the one that fits you."},
   "en1_t": {"th": "ทีมเล็กและร้านค้า", "en": "Small teams and shops"},
@@ -436,15 +632,18 @@
   "en3_t": {"th": "ประชุมบน Google Meet", "en": "Meetings on Google Meet"},
   "en3_d": {"th": "เปิดเครื่องอัดคู่กับ Google Meet ถอดเสียงภาษาไทยสด แล้วสรุปมติและงานที่ต้องทำส่งเข้า Discord", "en": "Open the recorder beside Google Meet for a live Thai transcript, then decisions and action items posted to Discord."},
   "en3_b": {"th": "เปิดเครื่องอัดประชุม →", "en": "Open the meeting recorder →"},
-  "fin_h": {"th": "ให้ดอรี่ช่วยทีมของคุณตั้งแต่วันนี้", "en": "Let Dory help your team today"},
-  "fin_p": {"th": "เพิ่มเข้าเซิร์ฟเวอร์ แล้วพิมพ์ @Dory เพื่อเริ่มคุยได้ทันที", "en": "Add it to your server, then mention @Dory to start right away."},
   "foot_copy": {"th": "© 2026 The Frontier Company Limited", "en": "© 2026 The Frontier Company Limited"},
+  "foot_privacy": {"th": "ความเป็นส่วนตัว", "en": "Privacy"},
+  "foot_terms": {"th": "ข้อกำหนดการใช้งาน", "en": "Terms"},
   "foot_recorder": {"th": "เครื่องอัดประชุม Meeting Scribe", "en": "Meeting Scribe recorder"}
 }
 </script>
 <script>
+"use strict";
+document.documentElement.classList.add("js"); // reveal hides content only when this script runs
+
 // ---------- language (Thai / English) ----------
-// Priority: saved manual choice ("dory-language") -> browser primary subtag -> English.
+// Priority: saved manual choice ("dory-language") -> English. The browser language is not consulted.
 const LANG_KEY = "dory-language";
 const SUPPORTED = ["th", "en"];
 const $ = (id) => document.getElementById(id);
@@ -456,7 +655,6 @@ function readLang(op, v) {
     return SUPPORTED.includes(s) ? s : null;
   } catch { return null; } // storage blocked: the choice then lasts until reload
 }
-// Default is English for every visitor (the browser language is not consulted); a saved choice wins.
 let lang = readLang("get") || "en";
 function t(key) { const e = I18N[key]; return e ? (e[lang] ?? e.en) : key; }
 function applyStatic() {
@@ -468,60 +666,214 @@ function applyStatic() {
     for (const pair of el.dataset.i18nAttr.split(";")) { const [attr, key] = pair.split(":"); el.setAttribute(attr, t(key)); }
   }
   for (const el of document.querySelectorAll("[data-lang]")) el.setAttribute("aria-pressed", String(el.dataset.lang === lang));
+  $("lang-other").lang = lang === "th" ? "en" : "th";
   markInvite();
+  paintMotion();
+  pvButton();
 }
 function setLang(l) { if (!SUPPORTED.includes(l)) return; lang = l; readLang("set", l); applyStatic(); }
 for (const b of document.querySelectorAll("[data-lang]")) b.addEventListener("click", () => setLang(b.dataset.lang));
+$("lang-other").addEventListener("click", () => setLang(lang === "th" ? "en" : "th"));
 
-// The invite URL is filled in by the server from DORY_DISCORD_CLIENT_ID. Never fabricate one:
-// with no client id the invite buttons are hidden (sign-up still works; /start explains the next step).
+// The invite URL is filled in by the server from DORY_DISCORD_CLIENT_ID. Never fabricate one: with
+// no client id the invite buttons hide and "Create account" takes the primary place instead.
 function markInvite() {
+  let ok = false;
   for (const a of document.querySelectorAll("[data-invite]")) {
-    const ok = a.getAttribute("href").startsWith("https://discord.com/");
+    ok = a.getAttribute("href").startsWith("https://discord.com/");
     a.hidden = !ok;
-    a.setAttribute("aria-disabled", String(!ok));
-    if (ok) { a.target = "_blank"; a.rel = "noopener"; a.textContent = t("cta_add"); }
-    else { a.removeAttribute("target"); a.textContent = t("cta_unconfigured"); }
+    if (ok) { a.target = "_blank"; a.rel = "noopener"; }
   }
+  for (const a of document.querySelectorAll("[data-invite-fallback]")) a.hidden = ok;
+  for (const a of document.querySelectorAll("[data-invite-aside]")) a.hidden = !ok;
+  for (const a of document.querySelectorAll("[data-invite-alt]")) { a.classList.toggle("primary", !ok); a.classList.toggle("ghost", ok); }
 }
-applyStatic();
+
+// The server fills the model list; an empty list (or a page opened without the server) hides the line.
+const models = $("models");
+if (!models.textContent.trim() || models.textContent.startsWith("__")) $("models-line").hidden = true;
 
 // ---------- navigation ----------
 const nav = $("nav"), links = $("links"), menu = $("menu");
-addEventListener("scroll", () => nav.classList.toggle("scrolled", scrollY > 8), { passive: true });
-menu.addEventListener("click", () => {
-  const open = links.classList.toggle("open");
-  menu.setAttribute("aria-expanded", String(open));
-});
-links.addEventListener("click", (e) => { if (e.target.tagName === "A") { links.classList.remove("open"); menu.setAttribute("aria-expanded", "false"); } });
+const onScroll = () => nav.classList.toggle("scrolled", scrollY > 8);
+addEventListener("scroll", onScroll, { passive: true });
+onScroll();
+function closeMenu() { links.classList.remove("open"); menu.setAttribute("aria-expanded", "false"); }
+menu.addEventListener("click", () => menu.setAttribute("aria-expanded", String(links.classList.toggle("open"))));
+links.addEventListener("click", (e) => { if (e.target.tagName === "A") closeMenu(); });
+addEventListener("keydown", (e) => { if (e.key === "Escape" && links.classList.contains("open")) { closeMenu(); menu.focus(); } });
 
-// ---------- hero sequence: the film plays once ("a"), then the callouts appear ("e" -> "idle") ----------
-// The final state is the markup default, so the page is complete without JS, with reduced motion, or
-// when the film is missing or cannot autoplay. The copy and CTA never wait for the film.
-const hero = $("hero"), scene = $("scene"), film = $("film");
-let stage = "idle", revealed = false;
-function setStage(s) { stage = s; hero.dataset.stage = s; }
-function reveal() {
-  if (revealed) return;
-  revealed = true;
-  setStage("e");
-  setTimeout(() => setStage("idle"), 1200);
+// ---------- motion: one switch, remembered; the OS "reduce motion" setting always wins ----------
+const MOTION_KEY = "dory-motion";
+const reduce = matchMedia("(prefers-reduced-motion: reduce)");
+function savedMotion(v) {
+  try { if (v) localStorage.setItem(MOTION_KEY, v); return localStorage.getItem(MOTION_KEY); } catch { return null; }
 }
-function playFilm() {
-  setStage("a");
-  const guard = setTimeout(reveal, 2500); // nothing playing after 2.5 s: show the still and move on
-  film.addEventListener("playing", () => { clearTimeout(guard); scene.classList.add("rolling"); }, { once: true });
-  film.addEventListener("ended", reveal, { once: true });
-  film.addEventListener("error", reveal, { once: true });
-  film.querySelectorAll("source")[1].addEventListener("error", reveal, { once: true }); // no file at all
-  const p = film.play();
-  if (p && p.catch) p.catch(reveal); // autoplay blocked
+let motionOn = !reduce.matches && savedMotion() !== "off";
+const hero = $("hero"), stage = $("stage"), fish = $("fish");
+let heroVisible = true;
+const awake = () => motionOn && heroVisible && !document.hidden;
+function paintMotion() {
+  document.documentElement.classList.toggle("motion-off", !motionOn);
+  for (const b of document.querySelectorAll("[data-motion-toggle]")) {
+    b.hidden = reduce.matches; // nothing moves, so there is nothing to pause
+    b.querySelector("span").textContent = t(motionOn ? "pause" : "play");
+  }
 }
-if (matchMedia("(prefers-reduced-motion: reduce)").matches) {
-  setStage("idle");
-} else {
-  try { playFilm(); } catch (err) { reveal(); }
+function setMotion(on) {
+  motionOn = on; savedMotion(on ? "on" : "off"); paintMotion();
+  if (on) { wake(); blink(); pvPlay(); } else { rest(true); pvShowAll(); }
 }
+for (const b of document.querySelectorAll("[data-motion-toggle]")) b.addEventListener("click", () => setMotion(!motionOn));
+reduce.addEventListener("change", () => { motionOn = !reduce.matches && savedMotion() !== "off"; paintMotion(); if (!motionOn) rest(true); });
+
+// ---------- hero: Dory looks at the pointer (M1) and the sea moves in depth (M2) ----------
+const cur = { lx: 0, ly: 0, tilt: 0, glow: 0, px: 0, py: 0 }, tgt = { ...cur };
+let raf = 0;
+const clamp = (v) => Math.max(-1, Math.min(1, v));
+function paint() {
+  fish.style.setProperty("--look-x", cur.lx.toFixed(2) + "px");
+  fish.style.setProperty("--look-y", cur.ly.toFixed(2) + "px");
+  fish.style.setProperty("--glow", cur.glow.toFixed(3));
+  stage.style.setProperty("--tilt", cur.tilt.toFixed(2));
+  hero.style.setProperty("--px", cur.px.toFixed(3));
+  hero.style.setProperty("--py", cur.py.toFixed(3));
+}
+function frame() {
+  raf = 0;
+  let moving = false;
+  for (const k in cur) {
+    const d = tgt[k] - cur[k];
+    if (Math.abs(d) > .002) { cur[k] += d * (k === "px" || k === "py" ? .08 : .12); moving = true; } else cur[k] = tgt[k];
+  }
+  paint();
+  if (moving) wake(); // the loop stops itself once everything has settled
+}
+function wake() { if (!raf && awake()) raf = requestAnimationFrame(frame); }
+function aim(x, y) {
+  const r = fish.getBoundingClientRect();
+  const dx = x - (r.left + r.width * .8), dy = y - (r.top + r.height * .56); // between the eyes
+  const nx = clamp(dx / 400), ny = clamp(dy / 400);
+  Object.assign(tgt, { lx: nx * 3, ly: ny * 3, tilt: ny * 6, glow: 1 - Math.min(Math.hypot(dx, dy) / 200, 1),
+    px: clamp(x / innerWidth * 2 - 1), py: clamp(y / innerHeight * 2 - 1) });
+  wake();
+}
+function rest(now) {
+  for (const k in tgt) tgt[k] = 0;
+  if (now) { Object.assign(cur, tgt); paint(); hero.style.setProperty("--sy", "0"); } else wake();
+}
+let tapT = 0;
+hero.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") aim(e.clientX, e.clientY); }, { passive: true });
+hero.addEventListener("pointerleave", () => rest(false));
+hero.addEventListener("pointerdown", (e) => {
+  if (e.pointerType === "mouse") return;
+  aim(e.clientX, e.clientY); clearTimeout(tapT); tapT = setTimeout(() => rest(false), 1200); // a tap: look there, then back
+}, { passive: true });
+let sraf = 0;
+addEventListener("scroll", () => {
+  if (!sraf && awake()) sraf = requestAnimationFrame(() => { sraf = 0; hero.style.setProperty("--sy", String(Math.round(scrollY))); });
+}, { passive: true });
+let blinkT = 0;
+function blink() {
+  clearTimeout(blinkT);
+  blinkT = setTimeout(() => {
+    if (!awake()) return; // asleep: waking up starts the timer again
+    fish.classList.add("fish-blink"); setTimeout(() => fish.classList.remove("fish-blink"), 160);
+    blink();
+  }, 4000 + Math.random() * 3000);
+}
+new IntersectionObserver(([e]) => {
+  heroVisible = e.isIntersecting;
+  hero.classList.toggle("asleep", !heroVisible);
+  if (heroVisible) { wake(); blink(); }
+}).observe(hero);
+document.addEventListener("visibilitychange", () => { if (!document.hidden) { wake(); blink(); } });
+
+// drifting specks (decorative, <= 24): placed from a fixed sequence, so every visit looks the same
+const specks = $("specks");
+for (let i = 0; i < 20; i++) {
+  const r = (n) => { const v = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453; return v - Math.floor(v); };
+  const s = document.createElement("i");
+  s.className = "speck";
+  s.style.cssText = `--x:${(r(1) * 100).toFixed(1)}%;--y:${(25 + r(2) * 70).toFixed(1)}%;--s:${(1.5 + r(3) * 2.5).toFixed(1)}px;` +
+    `--o:${(.2 + r(4) * .45).toFixed(2)};--d:${(14 + r(5) * 16).toFixed(1)}s;--dl:-${(r(6) * 20).toFixed(1)}s`;
+  specks.append(s);
+}
+
+// ---------- reveal on entering view (M7), once ----------
+const seen = new IntersectionObserver((es) => {
+  for (const e of es) if (e.isIntersecting) { e.target.classList.add("in"); seen.unobserve(e.target); }
+}, { rootMargin: "0px 0px -8% 0px", threshold: .08 });
+for (const el of document.querySelectorAll(".reveal")) seen.observe(el);
+
+// ---------- ARIA tabs (preview and roles): arrows, Home and End move; selection follows focus ----------
+function tabs(list, onSelect) {
+  const ts = [...list.querySelectorAll('[role="tab"]')];
+  const select = (tab, focus) => {
+    for (const x of ts) {
+      const on = x === tab;
+      x.setAttribute("aria-selected", String(on)); x.tabIndex = on ? 0 : -1;
+      $(x.getAttribute("aria-controls")).hidden = !on;
+    }
+    if (focus) tab.focus();
+    if (onSelect) onSelect($(tab.getAttribute("aria-controls")));
+  };
+  list.addEventListener("click", (e) => { const tb = e.target.closest('[role="tab"]'); if (tb) select(tb); });
+  list.addEventListener("keydown", (e) => {
+    const i = ts.indexOf(document.activeElement);
+    if (i < 0) return;
+    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
+    if (step) { e.preventDefault(); select(ts[(i + step + ts.length) % ts.length], true); }
+    else if (e.key === "Home" || e.key === "End") { e.preventDefault(); select(ts.at(e.key === "Home" ? 0 : -1), true); }
+  });
+}
+
+// ---------- "See Dory at work": each example plays once in view; Replay and Pause; final state without motion ----------
+const pv = { panel: $("pvp1"), steps: [], i: 0, timer: 0, paused: false, thinking: false };
+function think(on) {
+  const p = pv.panel;
+  p.querySelector(".think").hidden = !on;
+  p.querySelector(".st").textContent = t(on ? "st_thinking" : "st_ready");
+  p.querySelector(".chat-h .lantern").classList.toggle("pulse", on);
+}
+function pvButton() {
+  const b = $("pv-pause"), done = pv.i >= pv.steps.length;
+  b.textContent = t(pv.paused ? "pv_play" : "pv_pause");
+  b.hidden = !motionOn; // without motion every example is shown whole: nothing to pause
+  b.disabled = done;
+}
+function pvShowAll() {
+  clearTimeout(pv.timer);
+  for (const s of pv.steps) s.classList.remove("pending");
+  pv.i = pv.steps.length; pv.paused = false; pv.thinking = false; think(false); pvButton();
+}
+function pvNext() {
+  if (pv.paused) return;
+  if (pv.i >= pv.steps.length) { think(false); pvButton(); return; }
+  const s = pv.steps[pv.i], dory = s.classList.contains("m-dory");
+  if (dory && !pv.thinking) { pv.thinking = true; think(true); pv.timer = setTimeout(pvNext, 1100); return; }
+  pv.thinking = false; think(false); s.classList.remove("pending"); s.classList.add("shown"); pv.i++;
+  pv.timer = setTimeout(pvNext, dory ? 900 : 500);
+  pvButton();
+}
+function pvPlay() {
+  clearTimeout(pv.timer);
+  pv.steps = [...pv.panel.querySelectorAll(".step")]; pv.i = 0; pv.paused = false; pv.thinking = false;
+  if (!motionOn) { pvShowAll(); return; }
+  for (const s of pv.steps) { s.classList.add("pending"); s.classList.remove("shown"); }
+  think(false); pvButton();
+  pv.timer = setTimeout(pvNext, 300);
+}
+tabs($("pv-tabs"), (panel) => { clearTimeout(pv.timer); think(false); pv.panel = panel; pvPlay(); });
+tabs($("ro-tabs"));
+$("pv-replay").addEventListener("click", pvPlay);
+$("pv-pause").addEventListener("click", () => { pv.paused = !pv.paused; if (pv.paused) clearTimeout(pv.timer); else pvNext(); pvButton(); });
+pv.steps = [...pv.panel.querySelectorAll(".step")]; pv.i = pv.steps.length; // complete until it scrolls into view
+const pvSeen = new IntersectionObserver(([e]) => { if (e.isIntersecting) { pvSeen.disconnect(); pvPlay(); } }, { threshold: .35 });
+pvSeen.observe($("preview"));
+
+applyStatic();
+blink();
 </script>
 </body>
 </html>
