@@ -60,6 +60,19 @@ class Settings(BaseSettings):
     answer_timeout_seconds: float = 120.0
     # Cheap model for the "is this addressed to Dory?" yes/no gates (see dory.gate).
     gate_model: str = "gemini-3.5-flash-lite"
+    # NVIDIA Nemotron on Nebius Token Factory (README "NVIDIA Nemotron on Nebius Token Factory"):
+    # with the key set, the chat agent and every text-only `llm.generate` call run on
+    # `nemotron_model`, calls with images (receipts, documents as images, image memory, plan
+    # imports, photos in chat) on `nemotron_vision_model`, and memory embeddings on
+    # `nebius_embed_model` (open Qwen3; Token Factory serves no NVIDIA embedding model). Audio,
+    # PDFs sent as bytes, TTS, live voice, image generation and grounded web search stay on
+    # Gemini: Token Factory has no open model for them. Empty key = Gemini only (tests, and any
+    # deployment without Token Factory).
+    nebius_api_key: str = Field(default="", repr=False)  # secret: never logged
+    nebius_base_url: str = "https://api.tokenfactory.nebius.com/v1/"
+    nemotron_model: str = "nvidia/nemotron-3-super-120b-a12b"
+    nemotron_vision_model: str = "nvidia/Nemotron-3.5-Super-VL"
+    nebius_embed_model: str = "Qwen/Qwen3-Embedding-8B"  # empty = embeddings stay on Gemini
     low_confidence: float = 0.7
     # Spoken replies in voice meetings (see dory.speech). The TTS call reuses the bot's Vertex
     # client, so it runs in `gemini_location` (global; the Gemini TTS models work there).
@@ -121,9 +134,7 @@ class Settings(BaseSettings):
     engaged_timeout_seconds: float = 300.0  # once called she stays in the exchange until told it is over; 5 min of silence toward her ends it (owner, 2026-10-18)
     # Engaged by the name alone (no question): back to listening after this long unless someone
     # addresses Dory (DORY_ENGAGED_BARE_TIMEOUT_SECONDS).
-    engaged_bare_timeout_seconds: float = (
-        300.0  # "Dory?" … thinking for minutes is fine, she waits
-    )
+    engaged_bare_timeout_seconds: float = 300.0  # "Dory?" … thinking for minutes is fine, she waits
     # "Be quiet" / "เงียบก่อน" (anyone): Dory says nothing and does not wake on a bare name until
     # someone says her name with words again, like a person would. No timer.
     # Every listening <-> engaged change (and the join) is shown as one short line in the meeting's

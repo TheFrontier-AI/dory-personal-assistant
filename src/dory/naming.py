@@ -4,11 +4,12 @@ from __future__ import annotations
 
 import re
 
-# Thai spellings of ดอรี่/สะลิด/สลิต..., "ซาลิด" and the Latin forms. "สลิป" (a payment slip) has a
-# different final consonant, so it never matches. Latin forms must not sit inside a longer word.
+# Thai spellings of ดอรี่ (ดอรี, โดรี่, ดอร์รี่, ดอหรี่ and the r/l swap ดอลี่ / โดลี่ that Thai speech
+# produces) and the Latin forms. "ดอลลี่" (Dolly) has a double ล, so it never matches here (it is a
+# risky mishearing below). Latin forms must not sit inside a longer word ("dorito").
 _WAKE_RE = re.compile(
-    r"(?:ส[ะั]?ห?ลิ[ดตทธ]ร?[์๊๋]?|สลิ[ดตท][ร]?|ซ[าะ]\s?ลิ[ดต]"
-    r"|(?<![a-z])(?:dory|saleed|salit|sa\s?lid)(?![a-z]))",
+    r"(?:(?:โด|ด[อ่]อ?|ดอร์|ดอห)\s?(?:ร|ล|หร)[ิี][่้]?"
+    r"|(?<![a-z])(?:dory|dori|dorie|doree|dorry|dorey|do\s?ry)(?![a-z]))",
     re.I,
 )
 # Custom emoji (<:dory:123>) and links carry names that are not people talking to Dory.
@@ -20,13 +21,13 @@ def mentions_name(text: str) -> bool:
     return _WAKE_RE.search(_NOISE_RE.sub(" ", text or "")) is not None
 
 
-# Misheard names in SPEECH transcripts: สนิท (also "close / intimate"), สิริ / ซิริ / Siri. They count
+# Misheard names in SPEECH transcripts: ดอลลี่ / Dolly, ทอรี่ / โทรี่ / Tory, ตอรี่. They count
 # only as an address: with a greeting, a politeness particle, "น้อง", or alone at the start / end
-# of the utterance, never in the middle of a sentence ("สนิทกันมาก").
-# "โซรี่ / ซิรี่" are how the speech model writes "Siri" after "เฮ้". They count only right
+# of the utterance, never in the middle of a sentence ("ตุ๊กตาดอลลี่ของผม").
+# "โดลลี่ / โทลี่" are how the speech model writes the name after "เฮ้". They count only right
 # after a greeting (below), never alone.
-_FUZZY = r"(?:สนิท|สิริ|ซิริ|ซีริ|siri)"
-_FUZZY_GREETED = r"(?:โซรี่|โซรี|ซิรี่|ซิริ|ซีริ)"
+_FUZZY = r"(?:ดอลลี่|ทอรี่|โทรี่|ตอรี่|dolly|tory)"
+_FUZZY_GREETED = r"(?:โดลลี่|โทลี่|ดอลลี่|ทอรี่|โทรี่)"
 _GREET = r"(?:หวัดดี|สวัสดี|ว่าไง|เฮ้|hey|hi|hello|ok)"
 _PART = r"(?:ครับ|ค่ะ|คะ|นะ|จ๋า|จ้า)"
 _FUZZY_RE = re.compile(
@@ -42,7 +43,7 @@ _FUZZY_RE = re.compile(
 
 def find_call(text: str) -> tuple[int, int] | None:
     """(start, end) of Dory's name in a spoken transcript, else None. The usual spellings always
-    count; the risky mishearings (สนิท, สิริ, Siri...) only when used as an address."""
+    count; the risky mishearings (ดอลลี่, ทอรี่, Dolly...) only when used as an address."""
     text = text or ""
     m = _WAKE_RE.search(text)
     if m is not None:

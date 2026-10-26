@@ -71,9 +71,7 @@ async def main() -> int:
     ok = sum(r["passed"] for r in rows)
     print(f"\n{ok}/{len(rows)} passed in {time.monotonic() - t0:.0f}s; live calls: {calls}")
     out = (
-        Path(a.out)
-        if a.out
-        else Path(tempfile.gettempdir()) / f"dory_eval_{int(time.time())}.json"
+        Path(a.out) if a.out else Path(tempfile.gettempdir()) / f"dory_eval_{int(time.time())}.json"
     )
     out.write_text(
         json.dumps({"rows": rows, "live_calls": calls}, ensure_ascii=False, indent=2, default=str)

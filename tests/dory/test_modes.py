@@ -54,8 +54,8 @@ def test_channels_merely_named_after_dory_are_no_longer_chat_channels(name):
 
 @pytest.mark.parametrize(
     "text",
-    ["ดอรี่ช่วยหน่อย", "ช่วยสรุปหน่อยดอรี่", "สะลิดอยู่ไหม", "สลิตๆ", "ซาลิด ยอดเท่าไร", "Dory ยอด?",
-     "hey DORY", "sa lid help", "ดอรี่ครับ"],
+    ["ดอรี่ช่วยหน่อย", "ช่วยสรุปหน่อยดอรี่", "โดรี่อยู่ไหม", "ดอลี่ๆ", "ดอรี ยอดเท่าไร", "Dory ยอด?",
+     "hey DORY", "do ry help", "ดอรี่ครับ", "ดอร์รี่ ขอยอดหน่อย"],
 )  # fmt: skip
 def test_name_detection_catches_misspellings(text):
     assert mentions_name(text)
@@ -63,8 +63,8 @@ def test_name_detection_catches_misspellings(text):
 
 @pytest.mark.parametrize(
     "text",
-    ["ส่งสลิปให้หน่อย", "สลิปโอนเงินนี้ยอดเท่าไร", "แนบสลิปแล้วนะ", "สลิปสลิป", "undoryated",
-     "usa lid", "<:dory:123456> ฮ่าๆ", "ดู https://x.example/dory ด้วย", "", "สลิ"],
+    ["ส่งสลิปให้หน่อย", "ตุ๊กตาดอลลี่น่ารัก", "โดราเอมอนมาแล้ว", "dorito time", "undoryated",
+     "usa lid", "<:dory:123456> ฮ่าๆ", "ดู https://x.example/dory ด้วย", "", "ดอ"],
 )  # fmt: skip
 def test_name_detection_has_no_false_positives(text):
     assert not mentions_name(text)
@@ -290,11 +290,11 @@ async def test_intake_quiet_adds_only_the_reaction(bot, world, monkeypatch):
 async def test_call_answers_tag_and_name_without_tag(bot, world):
     ch = world.gen
     await send(bot, world, ch, "ยอดเท่าไร", mention=True)
-    await send(bot, world, ch, "สะลิด ยอดวันนี้เท่าไร")
-    await send(bot, world, ch, "ช่วยสรุปหน่อยสลิตๆ")
-    await send(bot, world, ch, "ส่งสลิปให้แล้วนะ")  # a payment slip, not Dory
+    await send(bot, world, ch, "โดรี่ ยอดวันนี้เท่าไร")
+    await send(bot, world, ch, "ช่วยสรุปหน่อยดอลี่ๆ")
+    await send(bot, world, ch, "ตุ๊กตาดอลลี่มาแล้วนะ")  # a doll, not Dory
     await send(bot, world, ch, "ไปกินข้าวกัน")
-    assert [c[1] for c in bot.calls] == ["ยอดเท่าไร", "สะลิด ยอดวันนี้เท่าไร", "ช่วยสรุปหน่อยสลิตๆ"]
+    assert [c[1] for c in bot.calls] == ["ยอดเท่าไร", "โดรี่ ยอดวันนี้เท่าไร", "ช่วยสรุปหน่อยดอลี่ๆ"]
     assert bot.gate.window_calls == 2  # only the two plain messages after Dory spoke
 
 

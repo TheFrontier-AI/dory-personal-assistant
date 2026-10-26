@@ -38,7 +38,7 @@ from .gmaps import MAPS_PROMPT
 from .guild_settings import effective_retention_days
 from .i18n import EXTRA, base_lang, lang_name, reply_language_line, resolve_lang, t
 from .ideas import IDEAS_PROMPT
-from .llm import REQUEST_TIMEOUT_MS
+from .llm import REQUEST_TIMEOUT_MS, make_agent_model
 from .markets import MARKETS_PROMPT
 from .media import parse_message_ref
 from .memory_access import Visibility, hidden_but_askable, is_dm_scope, message_visible
@@ -1059,6 +1059,17 @@ def file_parts(files: list[FileInput]) -> tuple[list[types.Part], list[FileInput
     return parts, bad
 
 
+def attachment_kind(parts: list[types.Part]) -> str:
+    """ "" for text only, "images" when every binary part is an image, "other" when any part is
+    something else (PDF bytes): decides which model may read the turn (see build_agent)."""
+    kinds = {
+        (p.inline_data.mime_type or "").split("/")[0] for p in parts if p.inline_data is not None
+    }
+    if not kinds:
+        return ""
+    return "images" if kinds == {"image"} else "other"
+
+
 def skipped_note(skipped: list[FileInput]) -> str:
     return "\n".join(f"[file skipped: {f.filename}, {f.skip}]" for f in skipped)
 
@@ -1414,6 +1425,16 @@ CONCEPT_PROMPT = (
 )
 
 # Sent on the last allowed call, when the tools are taken away.
+# Nemotron with the full tool list answered "I'll set a reminder" / "let me fetch that" without
+# calling anything (25 Oct 2026, scripts/dory_tool_calls_probe.py); with reasoning on and this rule it
+# called set_reminder / spending_summary every time, and still greeted without a tool.
+NEMOTRON_TOOL_RULE = (
+    "Tool rule: when the person asks you to DO something (remind, schedule, record, assign, set, "
+    "search) or asks for a NUMBER or a FACT that a tool can fetch (spending, receipts, past chat, "
+    "tasks, files, people), call the matching tool in this turn and answer from its result. "
+    "Never say you did, will do, or found something unless a tool call returned it. If no tool "
+    "fits, say plainly that you cannot. Greetings and small talk need no tool."
+)
 ROUNDS_EXHAUSTED = (
     "Stop using tools now and answer from what you already found. Never mention a search limit, "
     "a tool limit or 'next chat'. If what was asked for did not turn up in the searches, say plainly "
@@ -2166,6 +2187,7 @@ def build_agent(
     memory: bool = False,
     interjection: bool = False,
     files: bool = False,
+    attachments: str = "",  # "" | "images" | "other" (PDF bytes): picks the Nemotron brain
     web: bool = False,
     secretary: bool = False,
     chat: bool = False,
@@ -2197,6 +2219,13 @@ def build_agent(
 ) -> LlmAgent:
     """One ADK LlmAgent per request. `model` is injectable so tests stay offline."""
     _ensure_vertex_env(settings)
+    # Nemotron on Token Factory when the key is set: the vision model when the message carries
+    # images; Gemini for this turn when it carries anything Token Factory cannot read (PDF bytes).
+    brain = (
+        model
+        if attachments == "other"
+        else model or make_agent_model(settings, vision=attachments == "images")
+    )
     prompt = system_prompt(
         settings,
         scoped=scoped,
@@ -2253,9 +2282,11 @@ def build_agent(
             return {"error": ROUNDS_EXHAUSTED}  # skip the call; the model must now just answer
         return None
 
+    if model is None and brain is not None:
+        prompt += "\n" + NEMOTRON_TOOL_RULE
     return LlmAgent(
         name="dory_qa",
-        model=model
+        model=brain
         or Gemini(
             model=settings.gemini_model,
             client_kwargs={"location": settings.gemini_location},
@@ -2425,6 +2456,7 @@ async def ask_async(
         memory=memory is not None,
         interjection=interjection,
         files=bool(usable or skipped),
+        attachments=attachment_kind(f_parts),
         web=web_client is not None,
         secretary=bool(secretary_tools),
         chat=bool(chat_tools),

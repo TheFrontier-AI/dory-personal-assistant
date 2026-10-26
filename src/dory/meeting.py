@@ -229,7 +229,7 @@ def parse_wake(text: str) -> str | None:
 
 # ---- hush: "be quiet" / "เงียบก่อน": silent listening until the name is called again
 _HUSH_LEAD_RE = re.compile(
-    r"^(?:[\s,.!?~ๆ]|ดอรี่|dory|ซาลิด|hey|เฮ้ย|เฮ้|โอเค|ok(?:ay)?|เออ|งั้น|ครับผม|ครับ|ค่ะ|คะ|นะ"
+    r"^(?:[\s,.!?~ๆ]|ดอรี่|ดอรี|โดรี่|dory|dori|hey|เฮ้ย|เฮ้|โอเค|ok(?:ay)?|เออ|งั้น|ครับผม|ครับ|ค่ะ|คะ|นะ"
     r"|please|ช่วย|ขอ|ก็)+",
     re.I,
 )
@@ -512,12 +512,12 @@ class Heard:
 
 
 # Neither prompt primes the name. A prompt that said "write ดอรี่ when you hear something like it"
-# turned one-word clips (so / sure / solid / slide / said, สลับ / สะดวก / สนิท) into a call.
+# turned one-word clips (door / story / glory / sorry, ดอลลี่ / โดราเอมอน / ทอรี่) into a call.
 TRANSCRIBE_PROMPT = (
     "ถอดเสียงพูดภาษาไทยหรือภาษาอังกฤษในคลิปนี้ (เสียงของคนคนเดียวในการประชุม) ตามที่พูดจริงทุกคำ "
     "ภาษาอังกฤษที่พูดให้คงเป็นภาษาอังกฤษ ไม่ต้องแปล ไม่ต้องใส่ชื่อผู้พูด อย่าตัดคำท้ายประโยคทิ้ง\n"
     "ผู้ช่วยในประชุมชื่อ “ดอรี่” (Dory) ให้เขียนว่า ดอรี่ เฉพาะเมื่อผู้พูดเรียกผู้ช่วยด้วยชื่อนี้ชัดเจนเท่านั้น "
-    "คำที่ออกเสียงคล้ายกัน (สลับ สะดวก สนิท สิริ ครับสิ, so sure solid slide salad said) ไม่ใช่ชื่อ "
+    "คำที่ออกเสียงคล้ายกัน (ดอลลี่ โดราเอมอน ทอรี่ ตอรี่ ดอกไม้, door story glory sorry Dolly Tory) ไม่ใช่ชื่อ "
     "ให้เขียนตามที่ได้ยินจริง คลิปที่มีคำเดียวสั้น ๆ แทบไม่เคยเป็นการเรียกชื่อ\n"
     "name_called เป็น true เฉพาะเมื่อผู้พูดใช้ชื่อดอรี่เรียกผู้ช่วยเพื่อคุยด้วย (ไม่ใช่พูดถึงเฉย ๆ) นอกนั้นเป็น false\n"
     "ถ้าไม่มีเสียงพูดชัดเจน (เงียบ เสียงรบกวน เสียงหายใจ) ให้ตอบ text เป็นสตริงว่าง ห้ามแต่งข้อความขึ้นเอง "
@@ -529,8 +529,8 @@ TRANSCRIBE_PROMPT_EN = (
     "exactly as spoken, verbatim, in its own script; never translate, and do not add a speaker "
     "name. Keep the end of the sentence.\n"
     'The meeting assistant is called "Dory" (Thai: ดอรี่). Write Dory (or ดอรี่) only when the '
-    "speaker clearly addresses the assistant by that name. Similar-sounding words (so, sure, "
-    "solid, slide, salad, said, สลับ, สะดวก, สนิท, สิริ, ครับสิ) are NOT the name: write what you "
+    "speaker clearly addresses the assistant by that name. Similar-sounding words (door, story, "
+    "glory, sorry, Dolly, Tory, ดอลลี่, โดราเอมอน, ทอรี่, ตอรี่, ดอกไม้) are NOT the name: write what you "
     "hear. A clip with one short word is almost never the name.\n"
     "name_called is true only when the name is used to address the assistant (not when someone "
     "just talks about it); otherwise false.\n"

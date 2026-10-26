@@ -39,9 +39,7 @@ def test_window_gate_uses_the_cheap_json_settings_and_logs_no_text(caplog):
 
 def test_window_gate_fails_quiet():
     for script in ([boom], [reply("not json")], [reply({"nope": 1})], [reply("")]):
-        assert (
-            gate.addressed_to_dory(FakeClient(script), "m", HISTORY, LINE, channel_id=1) is False
-        )
+        assert gate.addressed_to_dory(FakeClient(script), "m", HISTORY, LINE, channel_id=1) is False
     assert gate.addressed_to_dory(None, "m", HISTORY, LINE, channel_id=1) is False
 
 

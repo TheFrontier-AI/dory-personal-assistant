@@ -46,6 +46,45 @@ Diagrams (open in a browser): [architecture map](docs/diagrams/architecture.html
 - **IAM**: a runtime service account with least-privilege roles, and a separate pusher service account
   whose OIDC token the app verifies on `/pubsub/finalize`.
 
+## NVIDIA Nemotron on Nebius Token Factory
+
+Dory's brain is **NVIDIA Nemotron 3 Super** (`nvidia/nemotron-3-super-120b-a12b`, an open-weight
+hybrid Mamba-Transformer MoE) served by **Nebius Token Factory** (OpenAI-compatible API,
+`https://api.tokenfactory.nebius.com/v1/`). Set `DORY_NEBIUS_API_KEY` (an API key from
+https://tokenfactory.nebius.com/project/api-keys) and:
+
+- every chat and voice answer (`dory.qa`, the Google ADK agent with its ~140 tool declarations) runs
+  on Nemotron through ADK's `LiteLlm` adapter with reasoning ON plus a one-paragraph tool rule in the
+  prompt: with reasoning off, or without the rule, the model narrated actions ("I'll set a reminder")
+  instead of calling the tool once it saw the full tool list (measured live, 25 Oct 2026);
+- every text-only model call (`dory.llm.generate`: the yes/no gates, memory day summaries, task and
+  project listeners, translations, people dossiers, JSON extractions) goes to the same model with
+  reasoning off (`chat_template_kwargs.enable_thinking=false`, short JSON answers) and JSON-schema
+  outputs mapped to Token Factory's `response_format` with every property required;
+- every call that carries images (receipt photos into the ledger, documents sent as images, image
+  memory, Gantt-plan imports, a photo in a chat message) goes to **NVIDIA Nemotron 3.5 Super VL**
+  (`DORY_NEMOTRON_VISION_MODEL`), images inlined as data URLs; a chat turn with a photo also uses it
+  as the agent's brain;
+- memory embeddings (meaning-based search over the team memory) use the open **Qwen3-Embedding-8B**
+  on Token Factory (`DORY_NEBIUS_EMBED_MODEL`, 256 Matryoshka dimensions), since Token Factory
+  serves no NVIDIA embedding model;
+- audio (voice meetings, voice clips), PDF bytes in a chat message, text-to-speech, live voice,
+  image generation and Google-grounded web search stay on Gemini (Vertex AI): Token Factory has no
+  open model for them today.
+
+Without the key everything runs on Gemini as before. `scripts/dory_nemotron_probe.py` (model choice)
+and `scripts/dory_tool_calls_probe.py` (tool calling with the full bot) are the live probes that
+measured the models (billed).
+
+| Work | Model | Where |
+| --- | --- | --- |
+| Chat and voice answers (ADK agent, ~140 tools) | nvidia/nemotron-3-super-120b-a12b, reasoning on | Nebius Token Factory |
+| Chat answers when the message has a photo | nvidia/Nemotron-3.5-Super-VL | Nebius Token Factory |
+| Gates, summaries, listeners, extractions (text) | nvidia/nemotron-3-super-120b-a12b, reasoning off | Nebius Token Factory |
+| Receipts, documents as images, image memory | nvidia/Nemotron-3.5-Super-VL | Nebius Token Factory |
+| Memory embeddings | Qwen/Qwen3-Embedding-8B @ 256 | Nebius Token Factory |
+| Audio, PDF bytes, TTS, live voice, image generation, grounded search | Gemini | Vertex AI |
+
 ## Local development
 
 Requirements: Python 3.12+, [uv](https://docs.astral.sh/uv/), ffmpeg, and Application Default

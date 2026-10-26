@@ -420,9 +420,9 @@ from dory.naming import find_call  # noqa: E402
 
 @pytest.mark.parametrize(
     "text",
-    ["สวัสดีครับ ดอรี่", "หวัดดีครับ สนิท", "สวัสดีค่ะสะหลิด", "สลิตครับ", "ซาลิด ช่วยหน่อย",
-     "hey dory", "saleed how are you", "สวัสดีครับ ซะลิด", "ฮัลโหล สิริ ครับ", "Hey Siri",
-     "น้องสนิทเป็นไงบ้าง", "สนิท ช่วยสรุปหน่อย", "ช่วยหน่อยนะ สนิท"],
+    ["สวัสดีครับ ดอรี่", "หวัดดีครับ ดอลลี่", "สวัสดีค่ะโดรี่", "ดอลี่ครับ", "ดอรี ช่วยหน่อย",
+     "hey dory", "dori how are you", "สวัสดีครับ ดอหรี่", "ฮัลโหล ทอรี่ ครับ", "Hey Dolly",
+     "น้องดอลลี่เป็นไงบ้าง", "ทอรี่ ช่วยสรุปหน่อย", "ช่วยหน่อยนะ ดอลลี่"],
 )  # fmt: skip
 def test_the_name_in_every_spelling_is_a_call(text):
     assert find_call(text) is not None
@@ -430,7 +430,7 @@ def test_the_name_in_every_spelling_is_a_call(text):
 
 
 @pytest.mark.parametrize(
-    "text", ["สนิทกันมาก", "เขาเป็นคนสนิทของผม", "เราสนิทกันตั้งแต่เด็ก", "ผมชอบสลิปเงินเดือน"]
+    "text", ["ตุ๊กตาดอลลี่ของผมหาย", "เขาเป็นคนทอรี่ของพรรค", "โดราเอมอนมาแล้ว", "ผมชอบสลิปเงินเดือน"]
 )
 def test_risky_mishearings_in_the_middle_of_a_sentence_are_not_calls(text):
     assert find_call(text) is None

@@ -6,6 +6,7 @@
 #   --rotate-token  add a new Secret Manager version even if one exists
 #   --configure-hub ONLY update env vars on the existing meeting-scribe service (hub settings)
 # Reads from the local environment (never from .env, never echoed): DORY_DISCORD_TOKEN.
+# DORY_HUB_URL comes from the environment, else .env (the custom domain), so a redeploy keeps it.
 # Optional pass-through: DORY_RECEIPT_CHANNEL_IDS, DORY_ASK_CHANNEL_IDS, DORY_EXEC_ROLE_NAMES,
 # DORY_EXEC_USER_IDS, DORY_DIGEST_TIME, DORY_DIGEST_CHANNEL_ID, DORY_RECEIPT_BUCKET,
 # DORY_FIRESTORE_COLLECTION, DORY_GUILD_COLLECTION, DORY_HUB_URL, DORY_GEMINI_MODEL,
@@ -35,11 +36,12 @@ POOL="dory-bot"
 SA_NAME="dory-bot"
 SA="$SA_NAME@$PROJECT.iam.gserviceaccount.com"
 SECRET="dory-discord-token"
-AR_REPO="cloud-run-source-deploy"   # existing repo created by `gcloud run deploy --source`
+NEBIUS_SECRET="dory-nebius-api-key"   # shared with the web service (scripts/deploy.sh)
+AR_REPO="cloud-run-source-deploy"   # the repo `gcloud run deploy --source` uses; created when missing
 HUB_SERVICE="meeting-scribe"
 IMAGE_TAG="${IMAGE_TAG:-$(git rev-parse --short HEAD 2>/dev/null || date +%Y%m%d%H%M%S)}"
 IMAGE="$REGION-docker.pkg.dev/$PROJECT/$AR_REPO/$POOL:$IMAGE_TAG"
-BUCKET="${DORY_RECEIPT_BUCKET:-}"
+BUCKET="${DORY_RECEIPT_BUCKET:-$PROJECT-files}"   # documents, receipts, originals (web shares it)
 
 if $APPLY; then echo "MODE: APPLY (changes will be made in project $PROJECT)"
 else echo "MODE: DRY-RUN (nothing is changed; pass --apply to execute)"; fi
@@ -76,11 +78,23 @@ fi
 echo "==> Enabling APIs (only missing ones)"
 ENABLED="$(gc services list --enabled --format='value(config.name)' 2>/dev/null || true)"
 MISSING_APIS=()
-for api in run artifactregistry cloudbuild secretmanager firestore aiplatform; do
+for api in run artifactregistry cloudbuild secretmanager firestore iam compute; do  # no aiplatform: models run on Token Factory
   grep -qx "$api.googleapis.com" <<<"$ENABLED" || MISSING_APIS+=("$api.googleapis.com")
 done
 if [ ${#MISSING_APIS[@]} -gt 0 ]; then run gcloud services enable --project "$PROJECT" "${MISSING_APIS[@]}"
 else echo "    all enabled"; fi
+
+echo "==> Artifact Registry repo $AR_REPO and Cloud Build's identity"
+if gc artifacts repositories describe "$AR_REPO" --location "$REGION" >/dev/null 2>&1; then echo "    repo exists"
+else run gcloud artifacts repositories create "$AR_REPO" --project "$PROJECT" --location "$REGION" \
+       --repository-format docker; fi
+# A fresh project builds as the Compute Engine default service account, which needs the builder role.
+PROJECT_NUMBER="$(gc projects describe "$PROJECT" --format='value(projectNumber)' 2>/dev/null || echo "")"
+if [ -n "$PROJECT_NUMBER" ]; then
+  run gcloud projects add-iam-policy-binding "$PROJECT" \
+    --member "serviceAccount:$PROJECT_NUMBER-compute@developer.gserviceaccount.com" \
+    --role roles/cloudbuild.builds.builder --condition=None --quiet
+fi
 
 echo "==> Service account $SA"
 if gc iam service-accounts describe "$SA" >/dev/null 2>&1; then echo "    exists"
@@ -90,14 +104,15 @@ else run gcloud iam service-accounts create "$SA_NAME" --project "$PROJECT" \
     for _ in 1 2 3 4 5 6; do gc iam service-accounts describe "$SA" >/dev/null 2>&1 && break; sleep 5; done
   fi
 fi
-for role in roles/datastore.user roles/aiplatform.user roles/logging.logWriter; do
+for role in roles/datastore.user roles/logging.logWriter; do  # no aiplatform.user: Gemini is off
   run gcloud projects add-iam-policy-binding "$PROJECT" --member "serviceAccount:$SA" \
     --role "$role" --condition=None --quiet
 done
-if [ -n "$BUCKET" ]; then
-  run gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
-    --member "serviceAccount:$SA" --role roles/storage.objectAdmin
-else echo "    DORY_RECEIPT_BUCKET not set: no storage role granted (receipt archive off)"; fi
+if gc storage buckets describe "gs://$BUCKET" >/dev/null 2>&1; then echo "    bucket gs://$BUCKET exists"
+else run gcloud storage buckets create "gs://$BUCKET" --project "$PROJECT" --location "$REGION" \
+       --uniform-bucket-level-access; fi
+run gcloud storage buckets add-iam-policy-binding "gs://$BUCKET" \
+  --member "serviceAccount:$SA" --role roles/storage.objectAdmin
 
 echo "==> Secret $SECRET"
 if gc secrets describe "$SECRET" >/dev/null 2>&1; then echo "    exists"
@@ -122,15 +137,35 @@ else echo "    a version exists; keeping it (use --rotate-token to add a new one
 run gcloud secrets add-iam-policy-binding "$SECRET" --project "$PROJECT" \
   --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
 
+echo "==> Secret $NEBIUS_SECRET (Nemotron on Nebius Token Factory)"
+if gc secrets describe "$NEBIUS_SECRET" >/dev/null 2>&1; then echo "    exists"
+else run gcloud secrets create "$NEBIUS_SECRET" --project "$PROJECT" --replication-policy automatic; fi
+if ! gc secrets versions list "$NEBIUS_SECRET" --limit 1 --format='value(name)' 2>/dev/null | grep -q .; then
+  if [ -z "${DORY_NEBIUS_API_KEY:-}" ] && $APPLY; then
+    echo "ERROR: need DORY_NEBIUS_API_KEY in the environment to add the first secret version" >&2; exit 1
+  fi
+  echo '    $ printf %s "$DORY_NEBIUS_API_KEY" | gcloud secrets versions add' \
+       "$NEBIUS_SECRET --project $PROJECT --data-file=-   # value hidden"
+  if $APPLY; then
+    printf '%s' "$DORY_NEBIUS_API_KEY" | gcloud secrets versions add "$NEBIUS_SECRET" \
+      --project "$PROJECT" --data-file=- >/dev/null
+    echo "    stored the first version of $NEBIUS_SECRET"
+  fi
+else echo "    a version exists; keeping it"; fi
+run gcloud secrets add-iam-policy-binding "$NEBIUS_SECRET" --project "$PROJECT" \
+  --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
+
 echo "==> Building image $IMAGE (Cloud Build, Dockerfile.dory)"
 run gcloud builds submit . --project "$PROJECT" --region "$REGION" \
   --config cloudbuild.dory.yaml --substitutions "_IMAGE=$IMAGE"
 
 echo "==> Deploying Cloud Run worker pool $POOL (1 fixed instance)"
 ENV_PAIRS=("DORY_STORE=firestore" "DORY_GCP_PROJECT=$PROJECT"
-           "DORY_GEMINI_LOCATION=${DORY_GEMINI_LOCATION:-global}" "DORY_TZ=Asia/Bangkok")
+           "DORY_GEMINI_LOCATION=${DORY_GEMINI_LOCATION:-global}" "DORY_TZ=Asia/Bangkok"
+           "DORY_RECEIPT_BUCKET=$BUCKET")
+DORY_HUB_URL="${DORY_HUB_URL:-$(sed -n 's/^DORY_HUB_URL=//p' .env 2>/dev/null | head -n1 | tr -d '\r"' | tr -d "'")}"
 for k in DORY_RECEIPT_CHANNEL_IDS DORY_ASK_CHANNEL_IDS DORY_EXEC_ROLE_NAMES DORY_EXEC_USER_IDS \
-         DORY_DIGEST_TIME DORY_DIGEST_CHANNEL_ID DORY_RECEIPT_BUCKET DORY_FIRESTORE_COLLECTION \
+         DORY_DIGEST_TIME DORY_DIGEST_CHANNEL_ID DORY_FIRESTORE_COLLECTION \
          DORY_GUILD_COLLECTION DORY_HUB_URL DORY_GEMINI_MODEL DORY_DEEP_TASK_TIMEOUT \
          DORY_DEEP_TASK_MODEL; do
   [ -z "${!k:-}" ] || ENV_PAIRS+=("$k=${!k}")
@@ -141,7 +176,8 @@ ENV_JOINED="$(IFS='|'; echo "${ENV_PAIRS[*]}")"   # '|' delimiter: values contai
 # (Node) runs next to the Python bot during deep tasks.
 run gcloud run worker-pools deploy "$POOL" --project "$PROJECT" --region "$REGION" \
   --image "$IMAGE" --service-account "$SA" --instances 1 --cpu 1 --memory 2Gi \
-  --set-env-vars "^|^$ENV_JOINED" --set-secrets "DORY_DISCORD_TOKEN=$SECRET:latest" --quiet
+  --set-env-vars "^|^$ENV_JOINED" \
+  --set-secrets "DORY_DISCORD_TOKEN=$SECRET:latest,DORY_NEBIUS_API_KEY=$NEBIUS_SECRET:latest" --quiet
 
 echo
 if $APPLY; then echo "Deployed worker pool $POOL ($IMAGE)."

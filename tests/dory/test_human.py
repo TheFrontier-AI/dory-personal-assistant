@@ -10,9 +10,9 @@ import discord
 import pytest
 from conftest import GUILD, FakeClient
 from test_bot_multitenant import ME, member
+from test_dory_files import Agent, wire
 from test_memory_import import FakeAtt, att, iw, note_resp, send_images, set_llm, settle
 from test_modes import EXEC, STAFF, Sent, TMsg, bot, set_mode, world
-from test_dory_files import Agent, wire
 
 from dory import ack as ackmod
 from dory import bot as botmod

@@ -7,13 +7,13 @@ from types import SimpleNamespace
 import pytest
 from fastapi.testclient import TestClient
 
-from meeting_scribe import hub, pipeline
-from meeting_scribe.app import app
-from meeting_scribe.config import get_settings
 from dory import guild_settings as gs
 from dory.guild_settings import GuildSettingsUpdate, MemoryGuildStore
 from dory.models import Receipt
 from dory.store import SQLiteStore
+from meeting_scribe import hub, pipeline
+from meeting_scribe.app import app
+from meeting_scribe.config import get_settings
 
 CLIENT_ID = "123-abc.apps.googleusercontent.com"
 A, B = 1000, 2000  # two guilds

@@ -16,9 +16,6 @@ sys.path.insert(0, str(Path(__file__).parent / "dory"))
 
 from fake_firestore import FakeFirestore  # noqa: E402
 
-from meeting_scribe import center, hub, monitor_api  # noqa: E402
-from meeting_scribe.app import app  # noqa: E402
-from meeting_scribe.config import get_settings  # noqa: E402
 from dory import jobs, monitor, monitor_sources  # noqa: E402
 from dory.actions import ActionQueue  # noqa: E402
 from dory.change_outbox import KIND as OUTBOX  # noqa: E402
@@ -26,6 +23,9 @@ from dory.change_outbox import Change, Target, org_guild  # noqa: E402
 from dory.coo_store import FirestoreDocStore, SQLiteDocStore  # noqa: E402
 from dory.monitor import Audience, MonitorItem, Step  # noqa: E402
 from dory.orgs import License, Member, OrgStore, Workspace  # noqa: E402
+from meeting_scribe import center, hub, monitor_api  # noqa: E402
+from meeting_scribe.app import app  # noqa: E402
+from meeting_scribe.config import get_settings  # noqa: E402
 
 CLIENT_ID = "123-abc.apps.googleusercontent.com"
 GUILD = 1000

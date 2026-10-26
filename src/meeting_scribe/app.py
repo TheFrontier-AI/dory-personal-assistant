@@ -6,6 +6,7 @@ import json
 import logging
 import mimetypes
 import os
+from html import escape
 from pathlib import Path
 
 from fastapi import FastAPI, File, Form, HTTPException, Request, Response, UploadFile
@@ -138,7 +139,19 @@ def dory_invite_url(client_id: str) -> str:
 def index() -> HTMLResponse:
     """Dory's public landing page (bilingual, no auth, no API calls)."""
     url = dory_invite_url(get_settings().dory_discord_client_id)
-    return HTMLResponse(DORY_HTML.read_text(encoding="utf-8").replace("__DORY_INVITE_URL__", url))
+    html = DORY_HTML.read_text(encoding="utf-8").replace("__DORY_INVITE_URL__", url)
+    return HTMLResponse(html.replace("__DORY_MODELS__", dory_models()))
+
+
+def dory_models() -> str:
+    """Which AI runs Dory, for the landing page's trust section: model ids only, never a key."""
+    from dory.config import Settings as DorySettings
+
+    d = DorySettings.from_env()
+    # brain_model / fast_model replace nemotron_model in the GLM config: read whichever this build has
+    text = [getattr(d, k, "") for k in ("brain_model", "fast_model", "nemotron_model")]
+    names = (*text, d.nemotron_vision_model) if d.nebius_api_key else ()
+    return escape(", ".join(dict.fromkeys(n for n in names or (d.gemini_model,) if n)))
 
 
 @app.get("/start", include_in_schema=False)

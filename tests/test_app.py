@@ -114,7 +114,7 @@ def test_index_renders_dory_invite_link(env, client):
     env.setenv("DORY_DISCORD_CLIENT_ID", "123456789012345678")
     get_settings.cache_clear()
     r = client.get("/recorder")
-    from meeting_scribe.app import CREATE_EVENTS, MANAGE_EVENTS, DORY_PERMISSIONS
+    from meeting_scribe.app import CREATE_EVENTS, DORY_PERMISSIONS, MANAGE_EVENTS
 
     assert DORY_PERMISSIONS == 1166416 | (1 << 44) | (1 << 33) | (1 << 49)
     assert DORY_PERMISSIONS & CREATE_EVENTS and DORY_PERMISSIONS & MANAGE_EVENTS

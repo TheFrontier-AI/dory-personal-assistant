@@ -56,8 +56,8 @@ def main() -> None:
     icon = f"https://cdn.discordapp.com/icons/{a.guild}/{g['icon']}.png" if g.get("icon") else ""
     print(f"server: {g['name']} ({a.guild}) | text channels: {[c['name'] for c in chans]}")
 
-    from meeting_scribe import center, hub
     from dory.orgs import Workspace, stamp
+    from meeting_scribe import center, hub
 
     guilds, orgs = hub.get_guild_store(), center.get_orgs()
     existing = orgs.org_of_guild(a.guild)

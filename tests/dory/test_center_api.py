@@ -16,9 +16,6 @@ from conftest import FixedClockSettings
 from fake_firestore import FakeFirestore
 from fastapi.testclient import TestClient
 
-from meeting_scribe import center, hub, pipeline
-from meeting_scribe.app import app
-from meeting_scribe.config import get_settings
 from dory.connectors import ClickUpConnector, ConnectorConfig, DiscordConnector, SlackConnector
 from dory.coo_store import MINUTES, FirestoreDocStore, SQLiteDocStore
 from dory.guild_settings import MemoryGuildStore
@@ -29,6 +26,9 @@ from dory.orgs import License, Member, OrgStore, Workspace, stamp
 from dory.sharing import SHARED_DOCS_CHANNEL, WEB_DOCS_CHANNEL
 from dory.store import SQLiteStore
 from dory.wiki import WikiPage, WikiRepo
+from meeting_scribe import center, hub, pipeline
+from meeting_scribe.app import app
+from meeting_scribe.config import get_settings
 
 CLIENT_ID = "123-abc.apps.googleusercontent.com"
 A, B = 1000, 2000

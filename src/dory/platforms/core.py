@@ -865,9 +865,7 @@ class Assistant:
             author_id=ids.bot_user_id(msg.platform, msg.tenant)
             if mine
             else ids.user_id(msg.platform, msg.user),
-            author_name="Dory"
-            if mine
-            else stored_user_name(msg.platform, msg.user, msg.user_name),
+            author_name="Dory" if mine else stored_user_name(msg.platform, msg.user, msg.user_name),
             created_at=self._now() if mine else msg.at,
             text=body,
             kind="dory" if mine else "chat",

@@ -18,15 +18,15 @@ from dory.naming import find_call
 
 @pytest.mark.parametrize(
     "text",
-    ["เฮ้ โซรี่", "เฮ้ ซิรี่ วันนี้วันอะไร", "หวัดดีครับ สนิท", "เฮ้ Siri", "สวัสดีค่ะ ซิริ", "hey siri"],
+    ["เฮ้ โดลลี่", "เฮ้ โทลี่ วันนี้วันอะไร", "หวัดดีครับ ดอลลี่", "เฮ้ Dolly", "สวัสดีค่ะ ทอรี่", "hey dolly"],
 )
-def test_misheard_siri_after_a_greeting_is_a_call(text):
+def test_misheard_dolly_after_a_greeting_is_a_call(text):
     assert find_call(text) is not None
 
 
 @pytest.mark.parametrize(
     "text",
-    ["เรากับเขาสนิทกันมาก", "ซอรี่นะ ขอโทษที", "โซรี่ เป็นชื่อแมว", "ดูซีรี่เรื่องนี้ยัง", "เฮ้ย ไปกินข้าวกัน",
+    ["ตุ๊กตาดอลลี่ของน้องหาย", "ซอรี่นะ ขอโทษที", "โดลลี่ เป็นชื่อแมว", "ดูทอรี่เรื่องนี้ยัง", "เฮ้ย ไปกินข้าวกัน",
      "เมื่อวานกินข้าวที่ไหน"],
 )  # fmt: skip
 def test_chatter_is_not_a_call(text):
@@ -76,7 +76,7 @@ def test_force_cue_defaults_follow_the_voice_design():
 def test_live_prompt_keeps_quiet_for_chatter_and_lookalike_words():
     th = build_instruction(Settings(), "th")
     assert "คำพูดส่วนใหญ่เป็นการคุยกันระหว่างคน ไม่ใช่คุยกับคุณ" in th  # chatter: the model judges
-    assert "“สนิท” ใน “เขาสนิทกันมาก”" in th
+    assert "“ดอลลี่” ใน “ตุ๊กตาดอลลี่”" in th
 
 
 async def test_live_cue_carries_the_transcript_of_what_was_said(lv):

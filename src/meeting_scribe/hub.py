@@ -29,14 +29,14 @@ from fastapi.responses import HTMLResponse
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
-from meeting_scribe import pipeline
-from meeting_scribe.config import Settings, get_settings
 from dory.guild_settings import (
     GuildSettings,
     GuildSettingsUpdate,
     GuildStore,
     LinkError,
 )
+from meeting_scribe import pipeline
+from meeting_scribe.config import Settings, get_settings
 
 logger = logging.getLogger(__name__)
 

@@ -877,9 +877,7 @@ def command(text, who):
 
 def test_command_for_this_bot_addresses_it_and_loses_the_suffix():
     text = "/total@DoryBot this week"
-    out, me, others = strip_self_mentions(
-        text, [command(text, "/total@DoryBot")], BOT_ID, BOT_NAME
-    )
+    out, me, others = strip_self_mentions(text, [command(text, "/total@DoryBot")], BOT_ID, BOT_NAME)
     assert (out, me, others) == ("/total this week", True, False)
     text = "/total@dorybot"  # usernames are case-insensitive
     out, me, _o = strip_self_mentions(text, [command(text, text)], BOT_ID, BOT_NAME)
