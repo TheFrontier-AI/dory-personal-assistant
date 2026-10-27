@@ -15,7 +15,7 @@
      from /static/dory/theme.css. Light theme only on purpose. */
 
   /* ---------- login ---------- */
-  #login { min-height: 100vh; display: flex; flex-wrap: wrap;
+  #login { position: relative; min-height: 100vh; display: flex; flex-wrap: wrap;
     background: radial-gradient(60% 50% at 20% 20%, #EDEBFF 0%, transparent 60%),
       radial-gradient(50% 40% at 90% 80%, #E3EEFF 0%, transparent 60%), var(--bg); }
   #login .pitch { flex: 1 1 420px; padding: 48px 32px; display: flex; flex-direction: column; gap: 24px; }
@@ -26,14 +26,15 @@
   #login .pitch ul { margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; }
   #login .pitch li { list-style: none; display: flex; gap: 14px; align-items: baseline; font-size: 16px; color: var(--ink); }
   #login .pitch li span:first-child { font: 500 13px var(--mono); color: var(--indigo-2); letter-spacing: .04em; flex: none; }
-  #login .pitch .grow { flex: 1 1 auto; }
+  /* the language pill sits at the page's top right, level with the brand, like every other page */
+  #login > .langsw { position: absolute; top: 47px; right: 32px; }
   #login .panel { flex: 1 1 360px; display: grid; place-items: center; padding: 40px 16px; }
   #login .box { width: 100%; max-width: 400px; background: var(--card); border: 1px solid var(--line); border-radius: var(--radius-lg);
     box-shadow: var(--shadow-lg); padding: 32px 28px; display: flex; flex-direction: column; gap: 16px; }
   #login .box h2 { font-size: 24px; }
   #login .box p { font-size: 15px; color: var(--muted); }
   #login .box .fine { font-size: 13px; color: var(--faint); }
-  #login .box a.back { font-size: 14px; }
+  #login .box .links { display: flex; flex-wrap: wrap; gap: 8px 20px; font-size: 14px; }
   #gsi-button { min-height: 44px; display: flex; justify-content: center; }
   .notice.error { background: var(--err-bg); color: var(--err-ink); }
 
@@ -144,6 +145,7 @@
     section.card { padding: 18px 16px; }
     .cols { gap: 16px; }
     #login .pitch { padding: 32px 20px 8px; }
+    #login > .langsw { top: 31px; right: 20px; }
     #login .panel { padding: 16px 16px 40px; }
     #login .box { padding: 24px 20px; }
   }
@@ -158,8 +160,9 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
 <body>
 
 <div id="login" hidden>
+  <div class="langsw" role="group" data-i18n-attr="aria-label:lang_switch_aria"><button type="button" data-lang="th">TH</button><button type="button" data-lang="en">EN</button></div>
   <section class="pitch">
-    <div class="top"><span class="mark" aria-hidden="true" data-i18n="mark"></span><strong data-i18n="brand_name"></strong><div class="grow"></div><div class="langsw" role="group" data-i18n-attr="aria-label:lang_switch_aria"><button type="button" data-lang="th">TH</button><button type="button" data-lang="en">EN</button></div></div>
+    <div class="top"><span class="mark" aria-hidden="true" data-i18n="mark"></span><strong data-i18n="brand_name"></strong></div>
     <h1 data-i18n="login_h1"></h1>
     <p data-i18n="login_p"></p>
     <ul>
@@ -176,7 +179,7 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
       <div class="notice error" id="login-msg" role="alert" hidden></div>
       <div class="notice" id="not-configured" data-i18n="not_configured" hidden></div>
       <p class="fine" data-i18n-html="login_p3"></p>
-      <a href="/recorder" class="back" data-i18n="back_recorder"></a>
+      <p class="links"><a href="/" data-i18n="link_home"></a><a href="/center" data-i18n="link_center"></a><a href="/recorder" data-i18n="back_recorder"></a></p>
     </div>
   </section>
 </div>
@@ -358,8 +361,8 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Your team's secretary, working inside the chat your team already uses"
  },
  "login_p": {
-  "th": "เชื่อมต่อ Discord ครั้งเดียว แล้วเลือกว่าจะให้ดอรี่ทำอะไรให้ทีมจากหน้านี้ ทุกอย่างทำงานบน Google Cloud",
-  "en": "Connect Discord once, then choose from this page what Dory does for your team. Everything runs on Google Cloud."
+  "th": "เชื่อมต่อ Discord ครั้งเดียว แล้วเลือกว่าจะให้ดอรี่ทำอะไรให้ทีมจากหน้านี้",
+  "en": "Connect Discord once, then choose from this page what Dory does for your team."
  },
  "login_li1": {
   "th": "รับรูปใบเสร็จ ทำบัญชีให้อัตโนมัติ",
@@ -382,16 +385,24 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Use your Google account, then choose the Discord server you manage"
  },
  "not_configured": {
-  "th": "ระบบยังไม่ได้ตั้งค่าการเข้าสู่ระบบ (ต้องกำหนด HUB_GOOGLE_CLIENT_ID) กรุณาติดต่อผู้ดูแลระบบ",
-  "en": "Sign-in is not configured yet (HUB_GOOGLE_CLIENT_ID must be set). Please contact the administrator."
+  "th": "ตอนนี้ยังเข้าสู่ระบบไม่ได้ กรุณาลองใหม่ภายหลัง หรือติดต่อทีมดอรี่",
+  "en": "Sign-in isn't available yet. Please try again later or contact the Dory team."
  },
  "login_p3": {
   "th": "ยังไม่มีเซิร์ฟเวอร์? เข้าสู่ระบบแล้วกด <strong>เพิ่ม Dory เข้า Discord<\/strong> ไม่ต้องติดตั้งหรือเขียนโค้ด",
   "en": "No server yet? Sign in and press <strong>Add Dory to Discord<\/strong>. No installation or coding needed."
  },
+ "link_home": {
+  "th": "หน้าแรกดอรี่",
+  "en": "Dory home"
+ },
+ "link_center": {
+  "th": "ศูนย์ควบคุมองค์กร",
+  "en": "Organization center"
+ },
  "back_recorder": {
-  "th": "กลับหน้าอัดประชุม",
-  "en": "Back to the meeting recorder"
+  "th": "หน้าอัดประชุม",
+  "en": "Meeting recorder"
  },
  "lang_switch_aria": {
   "th": "ภาษา / Language",
