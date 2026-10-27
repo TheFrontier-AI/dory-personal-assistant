@@ -380,7 +380,10 @@ def test_live_button_is_flat_and_the_side_menu_floats_only_when_open():
     s = html()
     live = re.search(r"\.livebtn \{[^}]*\}", s).group(0)
     assert "gradient" not in live and "shadow" not in live
-    assert "body.nav-open #side { transform: none; box-shadow: var(--shadow-lg); }" in s
+    opened = re.search(r"body\.nav-open #side \{[^}]*\}", s).group(0)
+    assert "box-shadow: var(--shadow-lg)" in opened and "visibility: visible" in opened
+    # closed on a phone: hidden, so it is no Tab stop (visibility flips after the slide-out)
+    assert re.search(r"#side \{[^}]*transform: translateX\(-102%\); visibility: hidden;", s)
 
 
 def test_chat_page_has_a_visible_h1_and_a_sentence_case_rail_label():
@@ -445,3 +448,123 @@ def test_platform_tiles_are_the_official_app_icons():
         '"/static/dory/brands/" + BRAND[p] + ".svg"' in s and "const PLAT" not in s
     )  # no letter tiles
     assert "platBadge(c.platform)," in s  # Google apps show their own icons on Integrations
+
+
+HUB = PAGE.parent / "hub.html"
+
+
+def test_confirmations_are_the_page_dialog_never_native():
+    s = html()
+    script = s.split("<script>", 1)[1]
+    assert not re.search(r"(?<![\w.])(confirm|prompt|alert)\(", script)
+    # unlinking Discord says that "Sign in with Discord" goes with it
+    assert 'p === "discord" && cur.verified ? "unlink_discord_p"' in s
+    assert "sign in with Discord" in s.split("\nen: {", 1)[1].split("unlink_discord_p:", 1)[1][:120]
+
+
+def test_api_errors_read_as_plain_words_and_only_sign_in_reads_503_as_not_configured():
+    s = html()
+    assert (
+        'throw new AuthError("not_configured")' not in s
+    )  # api() no longer turns every 503 into a sign-out
+    assert 'e.status === 503) e = new AuthError("not_configured")' in s  # start() only
+    assert '" [" + e.message' not in s  # no "(400) [raw detail]"
+    th, en = s.split("\nen: {", 1)
+    for k in (
+        "err_400",
+        "err_403",
+        "err_404",
+        "err_409",
+        "err_503",
+        "err_5xx",
+        "err_code",
+        "conn_off",
+    ):
+        assert f"{k}:" in th and f"{k}:" in en, k
+
+
+def test_new_strings_exist_in_both_languages():
+    s = html()
+    th, en = s.split("\nen: {", 1)
+    for k in (
+        "pp_no_discord", "po_del_p", "live_no_org", "live_waking", "live_err_down", "acc_name_req",
+        "not_saved", "confirm_disc_p", "gc_confirm_p", "confirm_rm_p", "copy_manual", "inv_revoke_q",
+        "unlink_p", "unlink_discord_p", "si_unlink_q", "la_dc_change", "la_dc_how", "menu", "c_cat",
+        "linked_n_1", "ex_n_1", "po_people_n_1", "pp_count_1", "connected_n_1", "mon_notify_blocked",
+        "ts_open", "ts_overdue", "ts_done", "ts_other", "seats_unl", "lic_noend",
+    ):  # fmt: skip
+        assert re.search(rf"\b{k}:\"", th) and re.search(rf"\b{k}:\"", en), k
+    assert "Linked: {n} platforms" not in en and "Considered {n} people" in en  # plural via tn()
+    assert 'tn("linked_n", n)' in s and 'tn("ex_n", r.candidates)' in s
+
+
+def test_static_labels_are_translated_and_the_hidden_file_inputs_are_not_tab_stops():
+    s = html()
+    assert 'aria-label="Organization"' not in s and 'aria-label="Menu"' not in s
+    assert '$("burger").setAttribute("aria-label", t("menu"))' in s
+    assert '$("org-switch").setAttribute("aria-label", t("org"))' in s
+    assert len(re.findall(r'type: "file"[^\n]*?tabindex: "-1"', s)) == 2
+
+
+def test_my_tasks_and_members_tabs_follow_the_aria_tabs_pattern():
+    s = html()
+    assert "function tabKeys(list)" in s and "ArrowRight" in s and "Home" in s
+    assert 'role: "tabpanel", id: "mt-panel"' in s and '"aria-controls": "mt-panel"' in s
+    assert "redraw(); tabKeys(toggle);" in s and "drawTabs(); tabKeys(ktabs);" in s
+
+
+def test_raw_values_are_labels_and_the_trial_reads_unlimited():
+    s = html()
+    assert "text: pname(k.platform)" in s and '"ts_" + k.status' in s  # overview tasks
+    assert (
+        't("k_" + a.kind)' in s and 't("mon_err_" + actionErrCode(a.error))' in s
+    )  # actions table
+    assert "const SEATS_UNLIMITED = 10000;" in s and 't("seats_unl")' in s and 't("lic_noend")' in s
+
+
+def test_monitor_hides_the_priority_filter_and_says_why_notifications_are_off():
+    s = html()
+    assert 'field(t("mon_f_priority"), selPri)' not in s
+    assert '["priority", "mon_f_priority"' not in s
+    assert "notifyWhy.hidden = !notifyBtn.disabled" in s
+
+
+def test_company_values_are_never_cut_and_google_calendar_is_not_coming_soon():
+    s = html()
+    assert ".slice(0, 8)" not in s and "up to 8" not in s and "ไม่เกิน 8" not in s
+    assert "mc_gcal_soon" not in s
+    assert (
+        'coming_soon: ["google_drive", "gmail"]' in s
+    )  # the mock follows the server's COMING_SOON
+    assert 'platform: "google_calendar", name: "Google Calendar", enabled: true' in s
+
+
+def test_integrations_show_clickup_and_slack_like_the_other_connectors():
+    s = html()
+    assert (
+        '!["google_drive", "gmail"].includes(c.platform)' in s
+    )  # ClickUp is listed, like on Overview
+    assert "slack_off" not in s  # no live button that only says "not switched on"
+
+
+def test_linked_accounts_offer_the_member_discord_commands():
+    s = html()
+    assert "/setup" not in s.split("\nen: {", 1)[1].split("la_dc_how:", 1)[1][:80]
+    assert 'la_dc_how:"Type /linkaccount in Discord' in s and "la_ro" not in s
+    assert (
+        'me.discord_verify ? el("button", { class: "btn sm", type: "button", onclick: verifyDiscord }'
+        in s
+    )
+
+
+def test_settings_embed_hides_the_hub_chrome():
+    s, hub = html(), HUB.read_text(encoding="utf-8")
+    assert 'src: "/hub?embed=1"' in s
+    assert ".embed .links, .embed .langsw, .embed #signout { display: none !important; }" in hub
+    assert 'get("embed") === "1") document.documentElement.classList.add("embed")' in hub
+
+
+def test_mock_google_link_keeps_every_identity_and_overview_edit_opens_the_people_chart():
+    s = html()
+    assert "return ok(myIds()); } // every identity" in s
+    assert 'localStorage.setItem("dory_chart_view", "people")' in s
