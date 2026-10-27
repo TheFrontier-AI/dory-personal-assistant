@@ -752,6 +752,7 @@ details.sys > .inner { padding-top: 12px; }
 .mon-ops .mono { font-size: 12.5px; color: var(--muted); }
 .mon-toast { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
 #content:focus { outline: none; } /* route() focuses the page container for screen readers; it is not a control */
+#content > .stage { height: 0; overflow: hidden; visibility: hidden; } /* route(true) builds a refreshed page here */
 @media (min-width: 641px) { .mon-fsheet > summary { display: none; } }
 @media (max-width: 640px) {
   .mon-tiles { grid-template-columns: repeat(2, minmax(0, 1fr)); }
@@ -1675,7 +1676,8 @@ function renderNav() {
 }
 function closeNav() { document.body.classList.remove("nav-open"); $("burger").setAttribute("aria-expanded", "false"); }
 let navSeq = 0;
-function route() {
+// quiet === true: a refresh of the page on screen (tab return, after Dory changed something), see below
+function route(quiet) {
   if (!me) return;
   let id = (location.hash.match(/^#\/(\w+)/) || [])[1];
   if (!NAV.some((n) => n[0] === id) || !pageVisible(id)) { id = "overview"; history.replaceState(null, "", location.pathname + location.search + "#/overview"); }
@@ -1688,16 +1690,29 @@ function route() {
   $("topbar-title").textContent = t(nm[1]);
   const c = $("content");
   const inside = c.contains(document.activeElement); // read before the old page is removed
-  c.replaceChildren(el("h1", { text: t(nm[1]) }), id === "overview" ? el("p", { class: "sub", text: t(orgId ? "sub_overview" : "sub_noorg") }) : null);
-  const body = el("div", { "aria-busy": "true" }, loading()); c.append(body);
+  const head = [el("h1", { text: t(nm[1]) }), id === "overview" ? el("p", { class: "sub", text: t(orgId ? "sub_overview" : "sub_noorg") }) : null];
+  const body = el("div", { "aria-busy": "true" }, loading());
+  const noorg = !orgId && id !== "settings" && id !== "account";
+  // A refresh of the page on screen builds the new page out of sight (a zero-height, hidden, inert stage) and swaps it
+  // in once drawn: the old page stays readable meanwhile, so nothing flashes to a skeleton, the page never collapses
+  // to one screen and the scroll position stays. Moving to another page shows its loading state at once, as before.
+  const stage = quiet === true && !moved && !noorg && c.firstChild ? el("div", { class: "stage", "aria-hidden": "true", inert: "" }, ...head, body) : null;
+  if (stage) c.append(stage); else c.replaceChildren(...head, body);
   // a new page takes keyboard and screen-reader focus, and so does a re-render while focus was in the page (Retry, Save,
   // Delete: the control is gone, focus would drop to <body>); a re-render from outside (language, company) does not
-  if (moved || inside) c.focus({ preventScroll: true });
+  if (!stage && (moved || inside)) c.focus({ preventScroll: true });
   const my = ++navSeq;
   if (MONITOR) monBadgeStart();
-  if (!orgId && id !== "settings" && id !== "account") { body.replaceWith(noOrg(id === "overview")); return; }
-  Promise.resolve().then(() => VIEWS[id](body, my)).catch((e) => {
+  if (noorg) { body.replaceWith(noOrg(id === "overview")); return; }
+  const show = () => {
+    if (!stage || my !== navSeq) return;
+    const focusIn = c.contains(document.activeElement) && !stage.contains(document.activeElement);
+    c.replaceChildren(...stage.childNodes);
+    if (focusIn) c.focus({ preventScroll: true }); // the control that had focus went with the old page
+  };
+  Promise.resolve().then(() => VIEWS[id](body, my)).then(show, (e) => {
     if (my !== navSeq || handleAuth(e)) return;
+    show();
     body.replaceChildren(errBox(e, route));
   });
 }
@@ -1942,15 +1957,19 @@ const actionErrCode = (e) => { const x = String(e || "").trim().toLowerCase();
   return x.startsWith("missing permission") ? "missing_permission" : x.startsWith("expired") ? "expired" : x.startsWith("channel not found") ? "not_found" : x.startsWith("discord:") ? "discord_error" : x === "bad request" ? "bad_request" : "error"; };
 function actionsCard(my) {
   const card = el("div", { class: "card", id: "ov-actions" }), list = el("div"), msg = el("div", { role: "status" });
-  let timer = 0;
+  let timer = 0, shown = ""; // shown: the rows on screen, so an unchanged list is not drawn again every 5 s
   const shortArgs = (a) => Object.entries(a || {}).filter(([, v]) => v !== "" && v != null).map(([k, v]) => k + ": " + String(v).slice(0, 60)).join(" · ");
   const draw = async () => {
     clearTimeout(timer);
+    if (shown && document.hidden) { if (card.isConnected) timer = setTimeout(draw, 5000); return; } // asked again once seen
     let rows = null, noDiscord = false;
-    try { rows = items(await api(O("/actions")), "actions"); } catch (e) { if (handleAuth(e)) return; if (e instanceof ApiError && e.status === 404) noDiscord = true; else { list.replaceChildren(errBox(e, draw)); return; } }
+    try { rows = items(await api(O("/actions")), "actions"); } catch (e) { if (handleAuth(e)) return; if (e instanceof ApiError && e.status === 404) noDiscord = true; else { shown = ""; list.replaceChildren(errBox(e, draw)); return; } }
     if (stale(my)) return;
     if (noDiscord) { list.replaceChildren(el("div", { class: "notice", text: t("act_no_discord") })); return; }
     rows = (rows || []).slice().sort((a, b) => String(b.created_at || "").localeCompare(String(a.created_at || "")));
+    const key = JSON.stringify(rows);
+    if (key === shown) { if (rows.some((a) => a.status === "pending") && card.isConnected) timer = setTimeout(draw, 5000); return; }
+    shown = key;
     const badge = (st) => el("span", { class: "badge " + (st === "done" ? "ok" : st === "failed" ? "err" : "warn"), text: t("as_" + (["pending", "done", "failed"].includes(st) ? st : "pending")) });
     list.replaceChildren(rows.length ? el("div", { class: "tblwrap" }, el("table", { class: "tbl stack" },
       el("thead", {}, el("tr", {}, [t("act_kind"), t("act_by"), t("status"), t("act_result")].map((h) => el("th", { scope: "col", text: h })))),
@@ -2286,7 +2305,7 @@ VIEWS.docs = async (body, my) => {
   const syncNote = () => { gnote.hidden = kind !== "file"; viewBtn.hidden = kind !== "file"; drawCabinet(); };
   body.replaceChildren(el("div", { class: "card" }, el("div", { class: "pline" }, ktabs, viewBtn), gnote, cab, gbar, folders, tabs,
     el("div", { class: "row" }, field(t("f_ws"), wsSel), field(t("f_from"), from), field(t("f_to"), to), field(t("f_search"), search)), reidx, list), upBox);
-  draw(); syncNote(); loadCounts(); load(true);
+  draw(); syncNote(); loadCounts(); await load(true); // the view is drawn once its first list is (route(true) swaps then)
   ktabs.addEventListener("click", () => setTimeout(syncNote, 0));
 };
 
@@ -2907,8 +2926,10 @@ VIEWS.apps = async (body, my) => {
       isAdmin() ? el("button", { class: "btn" + (c.connected ? " ghost" : ""), type: "button", onclick: () => startConnector(c.platform) }, c.platform === "discord" ? t("add_discord") : c.platform === "slack" ? t("add_slack") : t("connect")) : null);
     return el("div", { class: "card" }, el("div", { class: "hd" }, platBadge(c.platform), el("div", {}, el("strong", { text: c.name }), el("div", { class: "muted small", text: t(names[c.platform] || "") }))), action);
   };
-  body.replaceChildren(el("div", { class: "wsgrid" }, items(cx).filter((c) => !["google_drive", "gmail"].includes(c.platform)).map((c) => c.platform === "google_calendar" ? calendarCard(c) : card(c))),
-    linkedCard(), isAdmin() ? attachCard() : null);
+  const grid = items(cx).filter((c) => !["google_drive", "gmail"].includes(c.platform)).map((c) => c.platform === "google_calendar" ? calendarCard(c) : card(c));
+  const linked = linkedCard();
+  body.replaceChildren(el("div", { class: "wsgrid" }, grid), linked, isAdmin() ? attachCard() : null);
+  await Promise.all([...grid, linked].map((x) => x.ready)); // drawn once the cards' own loads are (route(true) swaps then)
 };
 
 /* ---------- Google Calendar, linked accounts, bot attach (inside the apps view) ---------- */
@@ -2926,7 +2947,7 @@ function calendarCard(c) {
   };
   // a 503 here only means "not switched on"
   const fail = (e) => { if (e instanceof ApiError && e.status === 503) off(); else if (!handleAuth(e)) toast(errText(e), "error"); };
-  api(GC).then(draw).catch(fail);
+  card.ready = api(GC).then(draw).catch(fail); // the apps view waits for it
   return card;
 }
 function codeBox(r, onTick) {
@@ -2969,7 +2990,7 @@ function linkedCard() {
       return el("div", {}, row, slot);
     }));
   };
-  load().catch((e) => { if (!handleAuth(e)) list.replaceChildren(el("div", { class: "notice error", text: errText(e) })); });
+  card.ready = load().catch((e) => { if (!handleAuth(e)) list.replaceChildren(el("div", { class: "notice error", text: errText(e) })); }); // the apps view waits for it
   return card;
 }
 function attachCard() {
@@ -3426,7 +3447,7 @@ VIEWS.license = async (body, my) => {
         orgBox.replaceChildren(el("h2", { text: t("all_orgs") }), el("div", { class: "tblwrap" }, el("table", { class: "tbl" }, el("tbody", {}, items(og).map((o) => el("tr", {}, el("td", { text: o.name }), el("td", { text: o.owner_email }), el("td", { text: t("plan_" + o.license.plan) }), el("td", {}, licBadge(o.license))))))));
       } catch (e) { if (!handleAuth(e)) { reqBox.replaceChildren(errBox(e, loadAdmin)); orgBox.replaceChildren(); } }
     };
-    loadAdmin();
+    await loadAdmin(); // the view is drawn once these are (route(true) swaps then)
   }
   body.replaceChildren(...parts);
 };
@@ -4510,7 +4531,9 @@ function refreshView() {
     const editing = document.querySelector("dialog[open]") || (document.activeElement && $("content") && $("content").contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
     if (editing) { refreshView(); return; }
     await refreshMe();
-    if (cur !== "chat") route(); // the chat page already shows the answer; a rebuild would move the conversation under the reader
+    // the chat page already shows the answer (a rebuild would move the conversation under the reader); Server settings is
+    // the hub in a frame (a rebuild would reload it and drop what is being typed there)
+    if (cur !== "chat" && cur !== "settings") route(true);
   }, 600);
 }
 let hiddenAt = 0;
