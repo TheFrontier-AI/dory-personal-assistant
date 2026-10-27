@@ -211,9 +211,13 @@ def test_mark_done_assign_add_deadline_and_link(repo):
     r = c.contest_update("AI Innovation", "assign", "repo", "peer")
     assert r["checklist"][1] == "- [ ] Repo link (Peer)"
     assert c.contest_update("AI Innovation", "assign", "deck", "me")["status"] == "ok"
-    assert c.contest_update("AI Innovation", "assign", "d", "me")["status"] == "ambiguous"  # Demo/Deck
+    assert (
+        c.contest_update("AI Innovation", "assign", "d", "me")["status"] == "ambiguous"
+    )  # Demo/Deck
     assert c.contest_update("AI Innovation", "mark_done", "nothing")["status"] == "not_found"
-    assert c.contest_update("AI Innovation", "add_deadline", "Finals", "2026-11-20")["status"] == "ok"
+    assert (
+        c.contest_update("AI Innovation", "add_deadline", "Finals", "2026-11-20")["status"] == "ok"
+    )
     got = repo.get(GUILD, c0.id)
     assert any(d.label == "Finals" and d.at.startswith("2026-11-20T23:59") for d in got.deadlines)
     assert c.contest_update("AI Innovation", "add_deadline", "X", "someday")["status"] == "error"
@@ -235,7 +239,9 @@ def test_link_idea_uses_the_ideas_visibility_result(repo):
     c = ctx_for(repo, idea_get=lambda t_: ideas.get(t_, {"status": "use_private_chat"}))
     assert c.contest_update("AI Innovation", "link_idea", value="CCTV Watch")["status"] == "ok"
     assert repo.get(GUILD, c0.id).linked_idea == "CCTV Watch"
-    assert c.contest_update("AI Innovation", "link_idea", value="secret")["status"] == "idea_not_found"
+    assert (
+        c.contest_update("AI Innovation", "link_idea", value="secret")["status"] == "idea_not_found"
+    )
 
 
 def test_writes_need_owner_or_team_and_a_deliverable_owner_may_tick_their_own_item(repo):
@@ -247,7 +253,9 @@ def test_writes_need_owner_or_team_and_a_deliverable_owner_may_tick_their_own_it
     owner.contest_update("AI Innovation", "assign", "demo", "peer")
     assert stranger.contest_update("AI Innovation", "mark_done", "demo")["status"] == "ok"
     assert stranger.contest_update("AI Innovation", "mark_done", "repo")["status"] == "not_allowed"
-    assert stranger.contest_update("AI Innovation", "add_team", value="me")["status"] == "not_allowed"
+    assert (
+        stranger.contest_update("AI Innovation", "add_team", value="me")["status"] == "not_allowed"
+    )
     r = owner.contest_update("AI Innovation", "add_team", value="peer")
     assert "reminders only if" in r["note"]
     assert repo.get(GUILD, c0.id).team_user_ids == [PEER]
