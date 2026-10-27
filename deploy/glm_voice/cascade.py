@@ -113,11 +113,14 @@ class Engines:
     too). TTS: `kokoro` (hexgrad/Kokoro-82M, Apache-2.0, 24 kHz native) or `magpie`
     (nvidia/magpie_tts_multilingual_357m through NeMo, 22.05 kHz resampled to 24 kHz)."""
 
-    def __init__(self, asr: str = "parakeet", tts: str = "kokoro", voice: str = "af_heart",
-                 device: str = "cuda") -> None:  # fmt: skip
+    def __init__(self, asr: str = "parakeet", tts: str = "kokoro", voice: str = "af_heart,af_nicole",
+                 device: str = "cuda", speed: float = 0.95) -> None:  # fmt: skip
         import numpy as np
 
         self.np, self.asr_kind, self.tts_kind, self.voice, self.device = np, asr, tts, voice, device
+        self.speed = (
+            speed  # Kokoro only; 0.9-0.95 is calm, under 0.85 drags (voice-warmth research)
+        )
         t0 = time.monotonic()
         if asr == "parakeet":
             import nemo.collections.asr as nemo_asr
@@ -165,7 +168,8 @@ class Engines:
     def synth(self, sentence: str) -> Iterator[bytes]:
         np = self.np
         if self.tts_kind == "kokoro":
-            for r in self.tts(sentence, voice=self.voice, split_pattern=None):
+            # `voice` may be "a,b": kokoro averages the packs (a softer blend of the A-grade voice)
+            for r in self.tts(sentence, voice=self.voice, speed=self.speed, split_pattern=None):
                 if r.audio is not None:
                     yield (r.audio.clamp(-1, 1).numpy() * 32767).astype(np.int16).tobytes()
             return
@@ -180,9 +184,11 @@ class Engines:
 
 
 # ---- the socket -------------------------------------------------------------------------------
-def make_app(engines: Any, idle_shutdown_min: int = 0, max_calls: int = 4):
+def make_app(engines: Any, idle_shutdown_min: int = 0, max_calls: int = 4, gap_ms: int = 250):
     """`max_calls` concurrent sockets (the web call and a Discord room at the same time; the
-    engines are shared and fast), unlike GLM-4-Voice's one stream per GPU."""
+    engines are shared and fast), unlike GLM-4-Voice's one stream per GPU. `gap_ms` of silence
+    follows every sentence but the last of a say (kokoro inserts none), so a list of facts breathes."""
+    gap = bytes(int(OUT_RATE * gap_ms / 1000) * 2)
     from contextlib import asynccontextmanager
 
     from fastapi import FastAPI, WebSocket
@@ -244,13 +250,18 @@ def make_app(engines: Any, idle_shutdown_min: int = 0, max_calls: int = 4):
             ep = Endpointer()
             says: asyncio.Queue = asyncio.Queue()
             speaker: asyncio.Task | None = None
+            talking = {"now": False}  # a say is being synthesized or sent
 
             async def speak_loop() -> None:
                 """One say after another; each is synthesized sentence by sentence off the loop."""
                 while True:
                     text, final = await says.get()
+                    talking["now"] = True
                     t0 = time.monotonic()
-                    for sentence in split_sentences(text):
+                    sentences = split_sentences(text)
+                    for i, sentence in enumerate(sentences):
+                        if i and gap:
+                            await ws.send_bytes(gap)
                         for chunk in await asyncio.to_thread(
                             lambda s=sentence: list(engines.synth(s))
                         ):
@@ -264,16 +275,22 @@ def make_app(engines: Any, idle_shutdown_min: int = 0, max_calls: int = 4):
                     )
                     if final:
                         await ws.send_json({"type": "turn", "text": ""})
+                    talking["now"] = says.qsize() > 0
 
             async def interrupt() -> None:
                 """The person talks: drop what is queued, stop what is being spoken."""
                 nonlocal speaker
-                pending = not says.empty() or (speaker is not None and not speaker.done())
+                # only while she speaks or has a say queued: a voice in a quiet room is a new
+                # question, never a cancellation of the answer the brain is still writing
+                pending = not says.empty() or talking["now"]
+                if not pending:
+                    return
                 while not says.empty():
                     says.get_nowait()
                 if speaker is not None and not speaker.done():
                     speaker.cancel()
                     await asyncio.gather(speaker, return_exceptions=True)
+                talking["now"] = False
                 speaker = asyncio.create_task(speak_loop())
                 if pending:
                     await ws.send_json({"type": "interrupted", "text": ""})
@@ -342,7 +359,11 @@ def main() -> None:
     ap.add_argument(
         "--tts", default=os.environ.get("CASCADE_TTS", "kokoro"), choices=("kokoro", "magpie")
     )
-    ap.add_argument("--voice", default=os.environ.get("CASCADE_VOICE", "af_heart"))
+    ap.add_argument("--voice", default=os.environ.get("CASCADE_VOICE", "af_heart,af_nicole"))
+    ap.add_argument("--speed", type=float, default=float(os.environ.get("CASCADE_SPEED", "0.95")))
+    ap.add_argument(
+        "--gap-ms", type=int, default=int(os.environ.get("CASCADE_SENTENCE_GAP_MS", "250"))
+    )
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--idle-shutdown-min", type=int, default=0)
     ap.add_argument("--max-calls", type=int, default=int(os.environ.get("CASCADE_MAX_CALLS", "4")))
@@ -355,9 +376,9 @@ def main() -> None:
     import uvicorn
 
     logging.basicConfig(level=logging.INFO)
-    engines = Engines(a.asr, a.tts, a.voice, a.device)
+    engines = Engines(a.asr, a.tts, a.voice, a.device, a.speed)
     uvicorn.run(
-        make_app(engines, a.idle_shutdown_min, a.max_calls),
+        make_app(engines, a.idle_shutdown_min, a.max_calls, a.gap_ms),
         host=a.host,
         port=a.port,
         log_level="info",

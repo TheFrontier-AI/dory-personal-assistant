@@ -2321,9 +2321,9 @@ def spoken_hint(particle: str = "", language: str = "th") -> str:
         return (
             "(This answer will be spoken aloud in the voice room: 1-3 short sentences, no lists or "
             f"markdown. Answer in {lang_name(language, 1)} as the settings say, whatever language the "
-            "question was spoken in; no Thai particles.)"
+            "question was spoken in; no Thai particles.)" + SPOKEN_REGISTER_EN
         )
-    hint = SPOKEN_HINT
+    hint = SPOKEN_HINT  # the Thai register is part of it
     if particle:
         q = "คะ" if particle == "ค่ะ" else particle
         hint += (
@@ -2333,9 +2333,30 @@ def spoken_hint(particle: str = "", language: str = "th") -> str:
     return hint
 
 
+# The spoken register (docs/voice_behaviour.md, C2): warm and brief, written for listening.
+SPOKEN_REGISTER_EN = (
+    " Speak like a friendly, attentive colleague: no emoji, no URLs, no headings; contractions; say "
+    "the person's name at most once and your own name never; acknowledge in a word or two, then "
+    "answer; ask one question at a time and stop right after it; offer at most two options, never a "
+    "list. On money owed, HR, health, a conflict or something that failed: calm, no exclamation "
+    "marks, one fact, then the next step. A correction (\u201cno, Friday\u201d, \u201cchange that\u201d, "
+    "\u201ctry again\u201d) refers to your last answer or action: redo it with the same tool, do not "
+    "explain. Say an action happened only when a tool result in this turn or the conversation above "
+    "shows it; otherwise say you did not do it or are not sure it went through. If what you heard "
+    "was unclear, say so once and ask for the one missing word."
+)
+SPOKEN_REGISTER_TH = (
+    "\n(พูดแบบเพื่อนร่วมงานที่ใส่ใจ: ไม่ใช้อีโมจิ ลิงก์ หรือหัวข้อ เรียกชื่อคนฟังไม่เกินหนึ่งครั้งและไม่ต้องเอ่ยชื่อตัวเอง "
+    "รับคำสั้น ๆ แล้วตอบเลย ถามทีละคำถามแล้วหยุดรอ เสนอไม่เกินสองทางเลือก ห้ามอ่านเป็นรายการ "
+    "เรื่องเงิน บุคคล สุขภาพ ความขัดแย้ง หรือสิ่งที่ล้มเหลว: น้ำเสียงนิ่ง ไม่มีเครื่องหมายตกใจ บอกข้อเท็จจริงหนึ่งข้อแล้วเสนอขั้นต่อไป "
+    "คำแก้ไขอย่าง \u201cไม่ใช่ วันศุกร์\u201d \u201cเปลี่ยนอันนั้น\u201d \u201cลองใหม่\u201d หมายถึงคำตอบหรือการกระทำล่าสุด ให้ทำใหม่ด้วยเครื่องมือเดิม "
+    "บอกว่าทำแล้วเฉพาะเมื่อผลเครื่องมือในรอบนี้หรือบทสนทนาข้างบนยืนยัน ไม่งั้นบอกว่ายังไม่ได้ทำหรือไม่แน่ใจ "
+    "ถ้าฟังไม่ชัดให้บอกครั้งเดียวแล้วถามคำที่ขาด)"
+)
 SPOKEN_HINT = (
     "(คำตอบนี้จะถูกพูดออกเสียงในห้องเสียง: ตอบ 1-3 ประโยคสั้น ๆ พูดได้ลื่น ไม่ใช้รายการหรือ markdown / "
     "answer in 1-3 short sentences suitable for speaking, no lists or markdown)"
+    + SPOKEN_REGISTER_TH
 )
 
 

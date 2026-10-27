@@ -195,3 +195,117 @@ def test_glm_room_asks_the_same_agent_as_chat_and_rebinds_actions_to_the_speaker
         and kw["user_id"] == 0
     )
     assert kw["guild_id"] == 1
+
+
+def _room(monkeypatch, *, policy="strict", members=()):
+    """A room with a fake bot and session; the brain is a stub that records questions."""
+    monkeypatch.setattr(glm_room, "SEND_INTERVAL_S", 0.01)
+    asked, posted, spoken = [], [], []
+
+    class Team:
+        def enabled(self, gid, flag):
+            return True
+
+        def current(self, gid):
+            return SimpleNamespace(language_setting="en")
+
+        def wake_policy(self, gid):
+            return policy
+
+    bot = SimpleNamespace(
+        s=SimpleNamespace(
+            voice_mode="glm",
+            glm_voice_url="ws://x/voice",
+            glm_voice_token="t",
+            live_web_silence_ms=800,
+            live_voice="Leda",
+            live_model="m",
+            engaged_timeout_seconds=300.0,
+            name_min_rms=250.0,
+            now=lambda: datetime(2026, 10, 26, tzinfo=UTC),
+        ),  # fmt: skip
+        team=Team(),
+    )
+    channel = SimpleNamespace(members=list(members))
+
+    @contextlib.asynccontextmanager
+    async def connect():
+        yield FakeSocket([(lambda f: True, [json.dumps({"type": "ready"})])])
+
+    async def post(text):
+        posted.append(text)
+
+    session = SimpleNamespace(vc=FakeVC(), ending=False, loop=None, speaking=False,
+                              speaking_since=0.0, guild_id=1, voice_channel=channel,
+                              text_channel="text", language="en")  # fmt: skip
+    room = glm_room.GlmRoom(bot, session, connect=connect, post=post)
+    room._ask_blocking = lambda q, h="": asked.append((q, h)) or "answer"
+    room.voice.answer = lambda text, speaker="Person": asked.append((text, speaker))
+    room.voice.speak = lambda text: spoken.append(text)
+    return room, asked, spoken, posted
+
+
+def test_glm_room_answers_only_when_addressed_and_follows_up_without_the_name(monkeypatch):
+    mint = SimpleNamespace(id=2, bot=False, display_name="Mint")
+    boom = SimpleNamespace(id=3, bot=False, display_name="Boom")
+    room, asked, spoken, _ = _room(monkeypatch, members=[mint, boom])
+    room._last_speaker = 2
+    room._on_heard("Dory booked it yesterday, nice.")  # about her: nothing
+    room._on_heard("so what time is the kickoff?")  # not for her, nobody engaged: nothing
+    assert asked == [] and spoken == []
+    room._on_heard("Dory, book my trip for the Lumen kickoff.")  # addressed: the caller is Mint
+    assert asked == [("Dory, book my trip for the Lumen kickoff.", "Mint")]
+    room._on_heard("and a hotel near Marina Bay")  # Mint's follow-up: no name needed
+    assert asked[-1] == ("and a hotel near Marina Bay", "Mint")
+    room._last_speaker = 3
+    room._on_heard("I think it is Thursday")  # Boom, not engaged, no name: nothing
+    assert len(asked) == 2
+    room._on_heard("can Dory check that for us?")  # a mention shaped like a request: "Yes?"
+    assert spoken == ["Yes? Go ahead."] and len(asked) == 2
+    room._on_heard("Dory, who else is going?")  # Boom addresses her: he is the caller now
+    assert asked[-1] == ("Dory, who else is going?", "Boom") and room._caller == 3
+
+
+def test_glm_room_natural_policy_answers_an_unclear_mention_without_asking(monkeypatch):
+    room, asked, spoken, _ = _room(monkeypatch, policy="natural")
+    room._on_heard("can Dory check that for us?")
+    assert asked == [("can Dory check that for us?", "Person")] and spoken == []
+
+
+def test_glm_room_hush_stops_everything_until_the_name_with_words(monkeypatch):
+    room, asked, spoken, _ = _room(monkeypatch)
+    room._on_heard("Dory, what did we spend?")
+    assert len(asked) == 1
+    room._on_heard("Dory, be quiet")
+    assert room._hushed is True and room._engaged_until == 0.0
+    room._on_heard("what about the hotel?")  # the caller's follow-up: still silent
+    room._on_heard("Dory?")  # a bare name does not wake her
+    assert len(asked) == 1 and spoken == []
+    room._on_heard("Dory, book the hotel")  # her name WITH words: she is back
+    assert asked[-1] == ("Dory, book the hotel", "Person") and room._hushed is False
+
+
+def test_glm_room_holds_side_talk_while_she_speaks_and_echoes_answers(monkeypatch):
+    room, asked, spoken, posted = _room(monkeypatch)
+    fed = []
+    room.voice.feed = lambda chunk: fed.append(chunk)
+    room.session.speaking = True
+    loud, quiet = _frame48(3000), _frame48(0)
+    for _ in range(5):  # 100 ms of someone's voice while she speaks: held, not sent
+        room.feed(7, loud)
+    chunk = room.mixer.pop()
+    assert chunk and not room._talks_over(chunk) and fed == []
+    for _ in range(45):  # 0.9 s of continuous voice: the person takes the turn
+        room.feed(7, loud)
+    taken = False
+    while chunk := room.mixer.pop():
+        taken = taken or room._talks_over(chunk)
+    assert taken is True
+    room.session.speaking = False
+    assert room._talks_over(room.mixer.feed(7, quiet) or _frame48(0)) is False
+
+    async def echo():
+        await room._out("answer", "**Booked.** Reference ABC123")
+
+    asyncio.run(echo())
+    assert posted == ["💬 **Dory:** **Booked.** Reference ABC123"]
