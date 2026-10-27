@@ -70,7 +70,9 @@ RETRY_MAX = 180  # 30 min of trying, as long as the room or the call lives (`clo
 def error_code(e: BaseException) -> str:
     """What the person is told: `voice_server_down` for every "no server there" failure (the VM is
     stopped, still installing, or the port is wrong), the exception's name for anything else."""
-    if isinstance(e, DOWN_ERRORS):
+    if isinstance(e, DOWN_ERRORS) or type(e).__name__.startswith("ConnectionClosed"):
+        # websockets' ConnectionClosed*: the server closed an open call (a keepalive ping timed
+        # out while the bot's loop was busy, a restart): worth reconnecting, like a box that is off
         return "voice_server_down"
     status = getattr(e, "status_code", None) or getattr(
         getattr(e, "response", None), "status_code", None

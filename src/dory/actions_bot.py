@@ -18,6 +18,7 @@ error the web can show ("missing permission", "channel not found"...). Kinds:
 
 from __future__ import annotations
 
+import asyncio
 import logging
 from datetime import UTC, datetime, timedelta
 from typing import Any
@@ -49,24 +50,40 @@ class ActionsMixin:
         n = 0
         for guild in list(self.guilds):
             try:
-                self.actions.expire(guild.id)
-                for a in self.actions.pending(guild.id):
+                # store reads and writes off the loop: a slow Firestore query here blocked the
+                # voice heartbeat for 22 s and dropped the voice-box socket (28 Oct 2026)
+                await asyncio.to_thread(self.actions.expire, guild.id)
+                for a in await asyncio.to_thread(self.actions.pending, guild.id):
                     n += 1
                     try:
                         result = await self._perform_action(guild, a)
-                        self.actions.finish(guild.id, a["id"], result=result)
+                        await asyncio.to_thread(
+                            self.actions.finish, guild.id, a["id"], result=result
+                        )
                     except discord.Forbidden:
-                        self.actions.finish(guild.id, a["id"], error="missing permission")
+                        await asyncio.to_thread(
+                            self.actions.finish, guild.id, a["id"], error="missing permission"
+                        )
                     except (KeyError, ValueError) as e:
-                        self.actions.finish(guild.id, a["id"], error=str(e)[:200] or "bad request")
+                        await asyncio.to_thread(
+                            self.actions.finish,
+                            guild.id,
+                            a["id"],
+                            error=str(e)[:200] or "bad request",
+                        )
                     except discord.HTTPException as e:
-                        self.actions.finish(
-                            guild.id, a["id"], error=f"discord: {getattr(e, 'text', e)}"[:200]
+                        await asyncio.to_thread(
+                            self.actions.finish,
+                            guild.id,
+                            a["id"],
+                            error=f"discord: {getattr(e, 'text', e)}"[:200],
                         )
                     except Exception as e:  # never let one action stop the tick
                         logger.exception("action %s failed", a.get("id"))
-                        self.actions.finish(guild.id, a["id"], error=type(e).__name__)
-                self.actions.prune(guild.id)  # after the work: a store error never delays it
+                        await asyncio.to_thread(
+                            self.actions.finish, guild.id, a["id"], error=type(e).__name__
+                        )
+                await asyncio.to_thread(self.actions.prune, guild.id)  # after the work
             except Exception:
                 logger.exception("action queue of guild %s failed", guild.id)
         return n

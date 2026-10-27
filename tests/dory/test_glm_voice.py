@@ -122,6 +122,25 @@ def test_glm_voice_tells_once_then_keeps_trying_while_the_box_is_busy_or_off(mon
             raise ConnectionRefusedError("down")
         yield FakeSocket([(lambda f: True, [json.dumps({"type": "ready"})])])
 
+    class ConnectionClosedError(Exception):  # websockets' name: an open call the server closed
+        pass
+
+    class DroppingSocket(FakeSocket):
+        async def __anext__(self):
+            if not any(msgs for _, msgs in self.phases):  # nothing left to send: the server drops us
+                raise ConnectionClosedError("received 1011 (internal error) keepalive ping timeout")
+            return await super().__anext__()
+
+    dropped = {"n": 0}
+
+    @contextlib.asynccontextmanager
+    async def dropped_then_ready():
+        dropped["n"] += 1
+        if dropped["n"] == 1:
+            yield DroppingSocket([(lambda f: True, [json.dumps({"type": "ready"})])])
+            return
+        yield FakeSocket([(lambda f: True, [json.dumps({"type": "ready"})])])
+
     @contextlib.asynccontextmanager
     async def always_refused():
         raise ConnectionRefusedError("down")
@@ -141,6 +160,16 @@ def test_glm_voice_tells_once_then_keeps_trying_while_the_box_is_busy_or_off(mon
         await v.close()
         assert attempts["n"] == 3
         assert events == [("error", "busy"), ("ready", "")]  # told once, then it recovered
+        events.clear()
+        d = GlmVoice(_settings(), out=out, url="ws://x/voice", connect=dropped_then_ready)
+        d.start()
+        for _ in range(300):
+            if events.count(("ready", "")) >= 2:
+                break
+            await asyncio.sleep(0.01)
+        await d.close()
+        # a keepalive timeout mid-call (the server closed an open socket) reconnects: ready twice
+        assert events == [("ready", ""), ("error", "voice_server_down"), ("ready", "")]
         events.clear()
         w = GlmVoice(_settings(), out=out, url="ws://x/voice", connect=always_refused)
         await asyncio.wait_for(w.start(), 5)  # RETRY_MAX attempts, then it gives up
