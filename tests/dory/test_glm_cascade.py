@@ -86,7 +86,7 @@ def test_cascade_turn_heard_say_turn_and_barge_in(cascade):
 
 
 def test_cascade_refuses_a_bad_token_and_a_second_caller(cascade):
-    app = cascade.make_app(cascade.FakeEngines())
+    app = cascade.make_app(cascade.FakeEngines(), max_calls=1)  # default 4: web call + Discord room
     with TestClient(app) as client:
         with (
             pytest.raises(Exception),  # noqa: B017 - the server closes with 4401 before accepting

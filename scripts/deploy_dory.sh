@@ -74,6 +74,10 @@ configure_hub() {
     --update-env-vars "^|^$joined"
   echo "    meeting-scribe-run needs roles/datastore.user for Firestore (it already has it for meetings)."
 }
+has_version() {  # a secret container may exist with no version (deploy.sh makes one for an optional
+  # secret it has no value for); mounting `:latest` of such a secret fails the deploy with a 400
+  gc secrets versions list "$1" --filter=state:enabled --limit 1 --format='value(name)' 2>/dev/null | grep -q .
+}
 
 if $HUB; then configure_hub; echo "Done."; exit 0; fi
 
@@ -184,25 +188,25 @@ done
 # created from the VM (`gcloud secrets create dory-glm-voice-token --data-file=-`); mounted when it exists.
 SECRETS="DORY_DISCORD_TOKEN=$SECRET:latest,DORY_NEBIUS_API_KEY=$NEBIUS_SECRET:latest"
 GLM_SECRET="${GLM_SECRET:-dory-glm-voice-token}"
-if gc secrets describe "$GLM_SECRET" >/dev/null 2>&1; then
+if has_version "$GLM_SECRET"; then
   run gcloud secrets add-iam-policy-binding "$GLM_SECRET" --project "$PROJECT" \
     --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
   SECRETS+=",DORY_GLM_VOICE_TOKEN=$GLM_SECRET:latest"
 else echo "    secret $GLM_SECRET absent: no GLM-4-Voice token mounted (voice_mode glm needs it)"; fi
 # Scale-to-zero: the Nebius service-account private key (PEM) that lets Dory start the stopped GPU box.
 VM_KEY_SECRET="${VM_KEY_SECRET:-dory-nebius-vm-key}"
-if gc secrets describe "$VM_KEY_SECRET" >/dev/null 2>&1; then
+if has_version "$VM_KEY_SECRET"; then
   run gcloud secrets add-iam-policy-binding "$VM_KEY_SECRET" --project "$PROJECT" \
     --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
   SECRETS+=",DORY_NEBIUS_SA_PRIVATE_KEY=$VM_KEY_SECRET:latest"
 else echo "    secret $VM_KEY_SECRET absent: Dory cannot start a stopped GPU box (deploy/glm_voice/README.md)"; fi
 # Trips (flights + hotels, `trips.py`): the Amadeus test-env client secret; without it the sample provider answers.
 AMADEUS_SECRET="${AMADEUS_SECRET:-dory-amadeus-client-secret}"
-if gc secrets describe "$AMADEUS_SECRET" >/dev/null 2>&1; then
+if has_version "$AMADEUS_SECRET"; then
   run gcloud secrets add-iam-policy-binding "$AMADEUS_SECRET" --project "$PROJECT" \
     --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
   SECRETS+=",DORY_AMADEUS_CLIENT_SECRET=$AMADEUS_SECRET:latest"
-else echo "    secret $AMADEUS_SECRET absent: trips use the sample provider"; fi
+else echo "    secret $AMADEUS_SECRET has no version: trips use the sample provider"; fi
 ENV_JOINED="$(IFS='|'; echo "${ENV_PAIRS[*]}")"   # '|' delimiter: values contain commas
 # --instances=1 = manual scaling with a fixed count: the Discord gateway needs exactly one
 # always-on connection (two would answer every message twice). 1 vCPU / 2 GiB: the Gemini CLI

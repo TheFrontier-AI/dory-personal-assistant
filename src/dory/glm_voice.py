@@ -34,6 +34,8 @@ logger = logging.getLogger(__name__)
 ACKS = sorted(k for k in CATALOG if k.startswith("ack_voice_"))
 # the box is off, still booting, or not listening on that port: one code the pages can word
 DOWN_ERRORS = (ConnectionRefusedError, ConnectionResetError, TimeoutError, OSError)
+RETRY_S = 10.0  # between connection attempts while the box is off, booting or taken by another call
+RETRY_MAX = 180  # 30 min of trying, as long as the room or the call lives (`close` ends it sooner)
 
 
 def error_code(e: BaseException) -> str:
@@ -65,9 +67,14 @@ class GlmVoice(WebLive):
         waker: Any = None,
         ask: Callable[[str], str] | None = None,
         lang: str = "en",
+        path: str = "web",
     ):
         super().__init__(settings, None, instruction="", ask=ask or (lambda q: ""), out=out)
         self.url, self.lang = url, lang
+        if path != "web":  # a Discord room logs `voice_latency path=discord`, as LiveVoice does
+            from .voice_latency import StageTimer
+
+            self.timer = StageTimer(path)
         self.cascade = ask is not None  # a cascade server sends "heard": Dory's brain answers it
         self._answer: asyncio.Task | None = None
         self._connect = connect or (lambda: self._ws_connect(url, token))
@@ -83,27 +90,46 @@ class GlmVoice(WebLive):
         )
 
     async def run(self) -> None:
-        try:
-            if self.waker is not None and not await self.waker.healthy():
-                # the box stopped itself while idle: wake it and tell the person why they wait
-                await self.out("waking", "")
-                if not await self.waker.ensure_running():
-                    await self.out("error", "voice_server_down")
+        """One connection to the voice server; while the box is off, still booting or taken by
+        another call (`busy`) this keeps trying every RETRY_S, so a Discord room that started
+        before the GPU came up, or while the web call held the server, recovers by itself. The
+        person is told once (the first failure); nothing retries after `close`."""
+        failures = 0
+        while not self._closing:
+            code = ""
+            try:
+                if self.waker is not None and not await self.waker.healthy():
+                    # the box stopped itself while idle: wake it and tell the person why they wait
+                    await self.out("waking", "")
+                    if not await self.waker.ensure_running():
+                        await self.out("error", "voice_server_down")
+                        return
+                async with self._connect() as ws:
+                    sender = asyncio.create_task(self._send(ws))
+                    try:
+                        code = await self._receive(ws)
+                    finally:
+                        sender.cancel()
+                        self._cancel_answer()
+                        await asyncio.gather(sender, return_exceptions=True)
+                if code != "busy":
+                    return  # the server closed the call, or reported an error of its own
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                logger.warning("glm voice: session error: %s: %s", type(e).__name__, e)
+                code = error_code(e)
+                if code != "voice_server_down":
+                    with contextlib.suppress(Exception):
+                        await self.out("error", code)
                     return
-            async with self._connect() as ws:
-                sender = asyncio.create_task(self._send(ws))
-                try:
-                    await self._receive(ws)
-                finally:
-                    sender.cancel()
-                    self._cancel_answer()
-                    await asyncio.gather(sender, return_exceptions=True)
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            logger.warning("glm voice: session error: %s: %s", type(e).__name__, e)
-            with contextlib.suppress(Exception):
-                await self.out("error", error_code(e))
+            failures += 1
+            if failures == 1:
+                with contextlib.suppress(Exception):
+                    await self.out("error", code)
+            if failures > RETRY_MAX:
+                return
+            await asyncio.sleep(RETRY_S)
 
     async def _send(self, ws: Any) -> None:
         while not self._closing:
@@ -116,16 +142,19 @@ class GlmVoice(WebLive):
             act = self._gate.on_frame(item, time.monotonic())
             if act is Act.DROP:
                 continue
-            if act is Act.VOICE:
+            if act is Act.VOICE and self._answer is None:
+                # voiced frames while Dory already answers (echo, a cough) are not the question's end
                 self.timer.touch("speech_end")
             await ws.send(item)
             if act is Act.END:
                 await ws.send(json.dumps({"type": "end"}))
 
-    async def _receive(self, ws: Any) -> None:
+    async def _receive(self, ws: Any) -> str:
+        """Until the socket closes; returns "busy" when the server refused the call for another one
+        (worth retrying), "error" for the server's other errors, "" otherwise."""
         async for message in ws:
             if self._closing:
-                return
+                return ""
             if isinstance(message, bytes | bytearray):
                 self.timer.mark("first_audio")
                 await self.out("audio", bytes(message))
@@ -147,8 +176,11 @@ class GlmVoice(WebLive):
                 await self.out("turn", "")
                 self._end_turn()
             elif kind == "error":
+                if text == "busy":
+                    return "busy"
                 await self.out("error", text or "glm_voice")
-                return
+                return "error"
+        return ""
 
     # ---- cascade: the brain answers what the server heard
     def _start_answer(self, ws: Any, question: str) -> None:
