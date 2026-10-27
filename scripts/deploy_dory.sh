@@ -175,7 +175,8 @@ for k in DORY_RECEIPT_CHANNEL_IDS DORY_ASK_CHANNEL_IDS DORY_EXEC_ROLE_NAMES DORY
          DORY_DIGEST_TIME DORY_DIGEST_CHANNEL_ID DORY_FIRESTORE_COLLECTION \
          DORY_GUILD_COLLECTION DORY_HUB_URL DORY_GEMINI_MODEL DORY_DEEP_TASK_TIMEOUT \
          DORY_DEEP_TASK_MODEL DORY_VOICE_MODE DORY_GLM_VOICE_URL DORY_BRAIN_MODEL DORY_FAST_MODEL \
-         DORY_NEBIUS_VM_ID DORY_NEBIUS_SA_ID DORY_NEBIUS_SA_KEY_ID DORY_NEBIUS_PROJECT; do
+         DORY_NEBIUS_VM_ID DORY_NEBIUS_SA_ID DORY_NEBIUS_SA_KEY_ID DORY_NEBIUS_PROJECT \
+         DORY_AMADEUS_CLIENT_ID DORY_TRAVEL_PROVIDER; do
   v="${!k:-$(sed -n "s/^$k=//p" .env 2>/dev/null | head -n1 | tr -d '\r"' | tr -d "'")}"
   [ -z "$v" ] || ENV_PAIRS+=("$k=$v")
 done
@@ -195,6 +196,13 @@ if gc secrets describe "$VM_KEY_SECRET" >/dev/null 2>&1; then
     --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
   SECRETS+=",DORY_NEBIUS_SA_PRIVATE_KEY=$VM_KEY_SECRET:latest"
 else echo "    secret $VM_KEY_SECRET absent: Dory cannot start a stopped GPU box (deploy/glm_voice/README.md)"; fi
+# Trips (flights + hotels, `trips.py`): the Amadeus test-env client secret; without it the sample provider answers.
+AMADEUS_SECRET="${AMADEUS_SECRET:-dory-amadeus-client-secret}"
+if gc secrets describe "$AMADEUS_SECRET" >/dev/null 2>&1; then
+  run gcloud secrets add-iam-policy-binding "$AMADEUS_SECRET" --project "$PROJECT" \
+    --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
+  SECRETS+=",DORY_AMADEUS_CLIENT_SECRET=$AMADEUS_SECRET:latest"
+else echo "    secret $AMADEUS_SECRET absent: trips use the sample provider"; fi
 ENV_JOINED="$(IFS='|'; echo "${ENV_PAIRS[*]}")"   # '|' delimiter: values contain commas
 # --instances=1 = manual scaling with a fixed count: the Discord gateway needs exactly one
 # always-on connection (two would answer every message twice). 1 vCPU / 2 GiB: the Gemini CLI

@@ -36,8 +36,10 @@ the utterance into text, the text goes to Dory as `{"type": "heard"}`, Dory's ow
 answer comes back as `{"type": "say", "final": true}` for Kokoro-82M (Apache-2.0, 24 kHz) to speak
 sentence by sentence. `install.sh` builds its venv (`~/cascade/.venv`, Python 3.12, torch cu126,
 `nemo-toolkit[asr]`, `kokoro`; weights cached on the disk) and the unit `glm-cascade.service`.
-Point Dory at it with `DORY_GLM_VOICE_URL=ws://<ip>:8766/voice` (8765 = GLM-4-Voice small talk,
-no tools); the web call (`center.py`) and the Discord room (`glm_room.py`) both switch by URL.
+Point Dory at it with `DORY_GLM_VOICE_URL=ws://<ip>:8766/voice` in `.env` (8765 = GLM-4-Voice small
+talk, no tools); the web call (`center.py`) and the Discord room (`glm_room.py`) both switch by URL, and
+both deploy scripts carry the URL from `.env` and mount the token secret `dory-glm-voice-token`
+(`scripts/deploy.sh` for the website, `scripts/deploy_dory.sh` for the bot).
 Switches: `CASCADE_ASR=parakeet|whisper` (faster-whisper large-v3-turbo for Thai),
 `CASCADE_TTS=kokoro|magpie` (`nvidia/magpie_tts_multilingual_357m`), `CASCADE_VOICE` (Kokoro
 `af_heart`, Magpie `Sofia`), in `/etc/glm-voice.env`. Offline tests: `tests/dory/test_glm_cascade.py`
