@@ -64,7 +64,7 @@ def synth(text: str, voice: str = "A") -> bytes:
         json=body,
         headers={
             "Authorization": f"Bearer {creds.token}",
-            "x-goog-user-project": "meeting-scribe-hackathon",
+            "x-goog-user-project": "dory-personal-assistant",
         },
         timeout=30.0,
     )

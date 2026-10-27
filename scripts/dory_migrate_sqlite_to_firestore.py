@@ -35,7 +35,7 @@ def main() -> int:
     ap = argparse.ArgumentParser()
     ap.add_argument("--db", default=os.path.expanduser("~/.dory-dev/ledger.db"))
     ap.add_argument(
-        "--project", default=os.environ.get("DORY_GCP_PROJECT", "meeting-scribe-hackathon")
+        "--project", default=os.environ.get("DORY_GCP_PROJECT", "dory-personal-assistant")
     )
     ap.add_argument("--apply", action="store_true", help="write to Firestore (default: dry run)")
     ap.add_argument("--receipts-collection", default="dory_receipts")

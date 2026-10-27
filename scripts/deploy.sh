@@ -15,7 +15,7 @@ cd "$(dirname "$0")/.."
 # shellcheck disable=SC1090
 [ -f "$HOME/google-cloud-sdk/path.bash.inc" ] && source "$HOME/google-cloud-sdk/path.bash.inc"
 
-PROJECT="${GCP_PROJECT:-meeting-scribe-hackathon}"
+PROJECT="${GCP_PROJECT:-dory-personal-assistant}"
 REGION="${GCP_REGION:-asia-southeast1}"
 BUCKET="${AUDIO_BUCKET:-$PROJECT-audio}"          # Meeting Scribe audio chunks
 FILES_BUCKET="${DORY_RECEIPT_BUCKET:-$PROJECT-files}"  # Dory documents, receipts, originals

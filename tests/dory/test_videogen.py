@@ -889,15 +889,15 @@ def fake_key(tmp_path, project: str | None) -> Path:
 def test_probe_guard_reads_only_the_key_project(tmp_path):
     mod = load_probe()
     other = fake_key(tmp_path, "another-org-project")
-    problem = mod.credential_problem(str(other), "meeting-scribe-hackathon")
+    problem = mod.credential_problem(str(other), "dory-personal-assistant")
     assert "gcloud auth application-default login" in problem and "DORY_GCP_PROJECT" in problem
     assert "another-org-project" not in problem and "FAKE-PRIVATE-KEY" not in problem
-    same = fake_key(tmp_path, "meeting-scribe-hackathon")
-    assert mod.credential_problem(str(same), "meeting-scribe-hackathon") is None
-    assert mod.credential_problem(None, "meeting-scribe-hackathon") is None
-    assert mod.credential_problem("", "meeting-scribe-hackathon") is None
+    same = fake_key(tmp_path, "dory-personal-assistant")
+    assert mod.credential_problem(str(same), "dory-personal-assistant") is None
+    assert mod.credential_problem(None, "dory-personal-assistant") is None
+    assert mod.credential_problem("", "dory-personal-assistant") is None
     user = fake_key(tmp_path, None)  # an authorized-user file has no project_id
-    assert mod.credential_problem(str(user), "meeting-scribe-hackathon") is None
+    assert mod.credential_problem(str(user), "dory-personal-assistant") is None
     broken = tmp_path / "broken.json"
     broken.write_text("{not json")
     assert "application-default login" in mod.credential_problem(str(broken), "p")
@@ -907,7 +907,7 @@ def test_probe_guard_reads_only_the_key_project(tmp_path):
 def test_probe_refuses_another_projects_key_before_any_client(tmp_path, monkeypatch, capsys):
     mod = load_probe()
     monkeypatch.setenv("GOOGLE_APPLICATION_CREDENTIALS", str(fake_key(tmp_path, "other-org-x")))
-    monkeypatch.setenv("DORY_GCP_PROJECT", "meeting-scribe-hackathon")
+    monkeypatch.setenv("DORY_GCP_PROJECT", "dory-personal-assistant")
 
     def no_client(settings):
         raise AssertionError("no client may be made")
