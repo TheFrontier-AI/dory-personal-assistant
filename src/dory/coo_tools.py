@@ -167,6 +167,8 @@ class CooTools:
             out["asked_to_confirm"] = [
                 x.assignee_name for x in fresh if x.assignee_id and not x.confirm
             ]
+        else:  # the store merged it into an existing task: say so, never "created" twice
+            out["already_on_the_list"] = True
         return out
 
     def update_task(

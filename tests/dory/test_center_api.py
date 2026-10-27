@@ -1886,8 +1886,35 @@ def test_live_voice_socket_streams_audio_both_ways_and_answers_tools(w):
         assert sent["text"][0].startswith("(The person just opened voice chat")  # greet cue
         assert "answer" in sent["tools"][0]  # the text brain answered the tool call
         assert w.asks[-1][0] == "how much did we spend" and w.asks[-1][1]["language"] == "en"
+        # the call joins the person's thread, so typed chat afterwards knows what was said
+        thread = w.client.get(f"/api/center/orgs/{w.org.id}/chat/history", headers=H["boss"])
+        heard = [t for t in thread.json()["turns"] if t.get("via") == "voice"]
+        assert [t["role"] for t in heard] == ["user", "dory"]
+        assert heard[0]["text"] == "how much did we spend" and heard[1]["text"]
     finally:
         app.dependency_overrides.pop(center.get_live_connect, None)
+
+
+def test_a_call_never_reads_its_own_turns_twice_but_typed_chat_sees_them(w):
+    """Inside a call the brain gets that call's own rolling history, so its turns saved in the
+    thread are left out (never fed twice); a typed question after the call reads them."""
+    email = TOKENS["boss"]["email"]
+    voice = {"via": "voice", "call": "c1"}
+    w.orgs.append_chat(
+        w.org.id,
+        email,
+        [
+            {"role": "user", "text": "book the Singapore trip", **voice},
+            {"role": "dory", "text": "Booked, reference ABC123.", **voice},
+        ],
+    )
+    ctx = center.Ctx(email, False, w.org, "owner")
+    ask = app.dependency_overrides[center.get_ask]()
+    args = (ctx, w.orgs, w.lib, ask, w.guilds, w.org.workspaces[0], "and the hotel?")
+    center.answer_question(*args, spoken=True, voice_history="Person: hi", voice_call="c1")
+    assert "ABC123" not in w.asks[-1][1]["history"]
+    center.answer_question(*args)  # typed, after the call
+    assert "ABC123" in w.asks[-1][1]["history"]
 
 
 def test_live_voice_socket_rejects_bad_tokens_and_strangers(w):

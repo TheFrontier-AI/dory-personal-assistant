@@ -172,6 +172,20 @@ def test_set_once_and_the_stored_fields():
     assert tools_of(ctx)["set_reminder"]("อีกอัน", at="09:00")["id"] == "R-0002"
 
 
+def test_the_same_reminder_asked_twice_is_set_once():
+    """A repeated "yes", a voice retry or the model calling twice never makes two pings: the same
+    person, message and schedule (a relative time a few seconds later included) returns the first."""
+    ctx = make_ctx()
+    first = tools_of(ctx)["set_reminder"]("โทรหาลูกค้า", at="+30m")
+    later = make_ctx(docs=ctx.book.docs, now=NOW + timedelta(seconds=40))
+    again = tools_of(later)["set_reminder"]("โทรหาลูกค้า", at="+30m")
+    assert again["ok"] and again["already_set"] and again["id"] == first["id"] == "R-0001"
+    assert len(ctx.book.active(GUILD)) == 1
+    # a different message, time or schedule is a new reminder
+    assert tools_of(ctx)["set_reminder"]("โทรหาลูกค้า", at="+2h")["id"] == "R-0002"
+    assert "already_set" not in tools_of(ctx)["set_reminder"]("ส่งของ", at="+30m")
+
+
 def test_set_interval_defaults_quiet_and_first_fire_after_one_interval():
     ctx = make_ctx()
     out = tools_of(ctx)["set_reminder"]("ออกกำลังกาย", every="2h")
