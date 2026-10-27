@@ -4421,7 +4421,7 @@ async def live_voice(
 
     await websocket.accept()
     key = None
-    live: WebLive | None = None
+    live: Any = None  # WebLive, or GlmVoice when DORY_GLM_VOICE_URL is set
     try:
         hello = await asyncio.wait_for(websocket.receive_json(), 15)
         try:
@@ -4475,17 +4475,24 @@ async def live_voice(
             else:
                 await websocket.send_json({"type": kind, "text": payload})
 
-        from google import genai
+        if s.glm_voice_url:  # the owner's GLM-4-Voice server (deploy/glm_voice): English, no tools
+            from dory.glm_voice import GlmVoice
 
-        # the Live model is served from `live_location` (us-central1), not `global`: same client
-        # settings as the Discord room
-        # built on a worker thread: creating the client can look up credentials synchronously
-        live_client = await run_in_threadpool(
-            genai.Client, vertexai=True, project=s.gcp_project, location=s.live_location
-        )
-        live = WebLive(
-            s, live_client, instruction=instruction, ask=ask_fn, out=out, connect=connect
-        )
+            live = GlmVoice(
+                s, out=out, url=s.glm_voice_url, token=s.glm_voice_token, ask=ask_fn, lang=lang
+            )
+        else:
+            from google import genai
+
+            # the Live model is served from `live_location` (us-central1), not `global`: same client
+            # settings as the Discord room
+            # built on a worker thread: creating the client can look up credentials synchronously
+            live_client = await run_in_threadpool(
+                genai.Client, vertexai=True, project=s.gcp_project, location=s.live_location
+            )
+            live = WebLive(
+                s, live_client, instruction=instruction, ask=ask_fn, out=out, connect=connect
+            )
         task = live.start()
         if hello.get("greet", True):
             live.greet(lang)

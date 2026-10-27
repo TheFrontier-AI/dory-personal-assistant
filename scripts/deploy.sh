@@ -106,6 +106,11 @@ ensure_secret "$SECRET" DISCORD_WEBHOOK_URL optional
 ensure_secret dory-nebius-api-key DORY_NEBIUS_API_KEY required
 ensure_secret dory-session-secret DORY_SESSION_SECRET required
 ensure_secret dory-discord-client-secret DORY_DISCORD_CLIENT_SECRET optional  # Sign in with Discord
+# The website's Live call on the self-hosted voice box (deploy/glm_voice) and the trips sandbox: both
+# optional, the page falls back to Gemini Live / sample offers without them.
+ensure_secret dory-glm-voice-token DORY_GLM_VOICE_TOKEN optional
+ensure_secret dory-nebius-vm-key DORY_NEBIUS_SA_PRIVATE_KEY optional   # start a stopped GPU box
+ensure_secret dory-amadeus-client-secret DORY_AMADEUS_CLIENT_SECRET optional
 SECRETS_JOINED="$(IFS=,; echo "${SECRET_REFS[*]}")"
 
 # Expected Cloud Run URL, so the OIDC audience can be set in the same deploy.
@@ -119,7 +124,9 @@ ENV_PAIRS=("USE_PUBSUB=true" "PUBSUB_VERIFY_AUDIENCE=$URL/pubsub/finalize" "PUSH
            "GCP_PROJECT=$PROJECT" "AUDIO_BUCKET=$BUCKET" "DORY_STORE=firestore"
            "DORY_GCP_PROJECT=$PROJECT" "DORY_RECEIPT_BUCKET=$FILES_BUCKET"
            "DORY_HUB_URL=$HUB_URL")
-for k in HUB_GOOGLE_CLIENT_ID HUB_ADMIN_EMAILS DORY_DISCORD_CLIENT_ID; do
+for k in HUB_GOOGLE_CLIENT_ID HUB_ADMIN_EMAILS DORY_DISCORD_CLIENT_ID DORY_GLM_VOICE_URL \
+         DORY_BRAIN_MODEL DORY_FAST_MODEL DORY_NEBIUS_VM_ID DORY_NEBIUS_SA_ID DORY_NEBIUS_SA_KEY_ID \
+         DORY_NEBIUS_PROJECT DORY_AMADEUS_CLIENT_ID DORY_TRAVEL_PROVIDER; do
   v="$(from_env_file "$k")"; [ -z "$v" ] || ENV_PAIRS+=("$k=$v")   # environment, else .env
 done
 ENV_JOINED="$(IFS='|'; echo "${ENV_PAIRS[*]}")"   # '|' delimiter: HUB_ADMIN_EMAILS has commas

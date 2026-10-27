@@ -54,6 +54,7 @@ from .secretary import SecretaryContext, SecretaryTools, build_secretary_tools
 from .store import Store, duplicate_extras, is_active, pick_keep
 from .task_handshake import HANDSHAKE_PROMPT
 from .tone import DEFAULT_TONE, tone_block, tone_override
+from .trips import TRIPS_PROMPT
 from .web_read import make_read_web
 from .wiki import WIKI_PROMPT
 
@@ -1590,7 +1591,7 @@ def stable_prompt(
     if search:
         p += SEARCH_PROMPT
     if travel:
-        p += CURRENCY_PROMPT + FLIGHT_PROMPT
+        p += CURRENCY_PROMPT + FLIGHT_PROMPT + TRIPS_PROMPT
     if markets:
         p += MARKETS_PROMPT
     if reminders:
@@ -2541,6 +2542,13 @@ async def ask_async(
         )
     if not text and interjection:
         text = NO_REPLY  # an unprompted answer that failed is never worth posting
+    logger.info(  # the cost line per answer; `cached` = prefix tokens billed at the cached rate
+        "answer tokens in=%s cached=%s out=%s model_calls=%d",
+        tokens.get("tokens_in", 0),
+        tokens.get("tokens_cached", 0),
+        tokens.get("tokens_out", 0),
+        model_calls,
+    )
     return Answer(
         text or t("qa_failed", resolve_lang(language, question)),
         rounds,
