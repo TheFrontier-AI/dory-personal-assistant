@@ -5,6 +5,7 @@ import contextlib
 import json
 import logging
 import re
+import time
 from array import array
 from datetime import UTC, datetime
 from types import SimpleNamespace
@@ -200,15 +201,20 @@ def test_glm_voice_wakes_a_stopped_box_before_connecting():
     assert events == ["waking", "error"]  # the box never came up: an honest error, no hang
 
 
-def test_glm_voice_cascade_answers_what_the_server_heard_with_a_filler_first(caplog):
-    """The cascade server sends "heard"; GlmVoice speaks a filler at once, asks Dory's brain off the
-    loop and sends the answer as the final say; barge-in cancels a pending answer."""
-    caplog.set_level(logging.INFO, logger="dory.web_live")
-    asked, events = [], []
+def test_glm_voice_cascade_answers_what_the_server_heard_and_fills_only_when_slow(monkeypatch):
+    """The cascade server sends "heard"; a fast brain answer is spoken with no filler, a slow one
+    gets one filler line first; the answer is spoken in its plain form; what was heard and said
+    becomes the history of the next question; barge-in cancels a pending answer."""
+    import dory.glm_voice as gv
 
-    def ask(q: str) -> str:
-        asked.append(q)
-        return "Two in policy. Take the 08:00?"
+    monkeypatch.setattr(gv, "FILLER_AFTER_S", 0.05)
+    caplog_lines, asked, events = [], [], []
+
+    def ask(q: str, history: str) -> str:
+        asked.append((q, history))
+        if q == "and a hotel":
+            time.sleep(0.2)  # a slow brain: the filler comes first
+        return "**Two** in policy 🎉. Take the 08:00?"
 
     async def out(kind, payload):
         events.append((kind, payload))
@@ -238,7 +244,13 @@ def test_glm_voice_cascade_answers_what_the_server_heard_with_a_filler_first(cap
                 ],
             ),
             (lambda f: True, [json.dumps({"type": "heard", "text": "and a hotel"})]),
-            (lambda f: len(says(f)) >= 3, [json.dumps({"type": "interrupted"})]),
+            (
+                lambda f: len([s for s in says(f) if s.get("final")]) >= 2,
+                [
+                    json.dumps({"type": "heard", "text": "book it"}),
+                    json.dumps({"type": "interrupted"}),
+                ],
+            ),
         ]
     )
 
@@ -249,18 +261,95 @@ def test_glm_voice_cascade_answers_what_the_server_heard_with_a_filler_first(cap
     async def main():
         v = GlmVoice(_settings(), out=out, url="ws://x/voice", connect=connect, ask=ask, lang="en")
         v.start()
-        for _ in range(300):
+        for _ in range(400):
             if ("interrupted", "") in events:
                 break
             await asyncio.sleep(0.01)
         await v.close()
+        return v
 
-    asyncio.run(main())
-    first = says(fake)
-    assert first[0]["final"] is False and first[0]["text"]  # a filler line before the brain answers
-    assert first[1] == {"type": "say", "text": "Two in policy. Take the 08:00?", "final": True}
-    assert asked[0] == "book my trip"
+    v = asyncio.run(main())
+    said = says(fake)
+    assert said[0] == {
+        "type": "say",
+        "text": "Two in policy. Take the 08:00?",
+        "final": True,
+    }  # fast: no filler
+    assert said[1]["final"] is False and said[1]["text"]  # slow: a filler line first
+    assert said[2]["final"] is True
+    assert asked[0] == ("book my trip", "")
+    assert asked[1][0] == "and a hotel" and "Person: book my trip" in asked[1][1]
+    assert "Dory: **Two** in policy" in asked[1][1]  # the history keeps the brain's own words
     kinds = [k for k, _ in events]
     assert kinds[:3] == ["ready", "heard", "thinking"] and "audio" in kinds and "turn" in kinds
-    assert ("heard", "and a hotel") in events and "interrupted" in kinds
-    assert any("voice_latency path=web" in r.message for r in caplog.records)
+    assert (
+        "answer",
+        "**Two** in policy 🎉. Take the 08:00?",
+    ) in events  # the original, for the chat echo
+    assert "interrupted" in kinds
+
+
+def test_glm_voice_greets_with_a_fixed_line_and_a_bare_ok_is_not_a_question():
+    asked = []
+
+    async def out(kind, payload):
+        pass
+
+    def has_say(f):
+        return any(isinstance(x, str) and json.loads(x).get("type") == "say" for x in f.sent)
+
+    fake = FakeSocket(
+        [
+            (
+                lambda f: True,
+                [
+                    json.dumps({"type": "ready"}),
+                    json.dumps({"type": "heard", "text": "ok"}),
+                    json.dumps({"type": "heard", "text": "mm-hm"}),
+                ],
+            ),
+            (has_say, [json.dumps({"type": "heard", "text": "ok"})]),
+        ]
+    )
+
+    @contextlib.asynccontextmanager
+    async def connect():
+        yield fake
+
+    async def main():
+        v = GlmVoice(
+            _settings(),
+            out=out,
+            url="ws://x/voice",
+            connect=connect,
+            ask=lambda q, h: asked.append(q) or "x",
+            lang="en",
+        )
+        v.start()
+        await asyncio.sleep(0.1)  # "ok" and "mm-hm" arrive while nothing was asked
+        v.greet("en")
+        for _ in range(100):  # then an "ok" answers the greeting's question
+            if asked:
+                break
+            await asyncio.sleep(0.01)
+        await v.close()
+        return v
+
+    v = asyncio.run(main())
+    says_ = [
+        json.loads(x)
+        for x in fake.sent
+        if isinstance(x, str) and json.loads(x).get("type") == "say"
+    ]
+    assert says_[0] == {"type": "say", "text": "Hi! How can I help?", "final": True}
+    assert not any(isinstance(x, str) and json.loads(x).get("type") == "text" for x in fake.sent)
+    assert asked == ["ok"]  # the first "ok" / "mm-hm" had no question pending; the last one answers
+    assert "Dory: Hi! How can I help?" in v.history()
+
+
+def test_spoken_form_reads_markdown_money_and_percent_as_words():
+    from dory.glm_voice import spoken_form
+
+    assert spoken_form(
+        "**Booked!** 🎉 THB 13,700 total, 12% off. [map](http://x)\nAnything else?"
+    ) == ("Booked! 13,700 baht total, 12 percent off. map. Anything else?")

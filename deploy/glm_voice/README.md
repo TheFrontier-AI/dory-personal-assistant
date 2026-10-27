@@ -58,8 +58,12 @@ talk, no tools); the web call (`center.py`) and the Discord room (`glm_room.py`)
 both deploy scripts carry the URL from `.env` and mount the token secret `dory-glm-voice-token`
 (`scripts/deploy.sh` for the website, `scripts/deploy_dory.sh` for the bot).
 Switches: `CASCADE_ASR=parakeet|whisper` (faster-whisper large-v3-turbo for Thai),
-`CASCADE_TTS=kokoro|magpie` (`nvidia/magpie_tts_multilingual_357m`), `CASCADE_VOICE` (Kokoro
-`af_heart`, Magpie `Sofia`), in `/etc/glm-voice.env`. Offline tests: `tests/dory/test_glm_cascade.py`
+`CASCADE_TTS=kokoro|magpie` (`nvidia/magpie_tts_multilingual_357m`), `CASCADE_VOICE` (Kokoro: one
+voice or a comma blend, default `af_heart,af_nicole` = the A-grade voice softened; Magpie `Sofia`),
+`CASCADE_SPEED` (0.95; 0.9-0.95 is calm, under 0.85 drags), `CASCADE_SENTENCE_GAP_MS` (250 of silence
+after each sentence), `CASCADE_MAX_CALLS` (4), in `/etc/glm-voice.env`; restart `glm-cascade` after a change.
+The behaviour rules (who she answers in a room, follow-ups without the name, hush, barge-in, fillers,
+history) are in `docs/voice_behaviour.md`, section "Cascade path". Offline tests: `tests/dory/test_glm_cascade.py`
 (FastAPI test client + fake engines), `test_glm_voice.py`, `test_glm_room.py`;
 `python cascade.py --selftest` for the pure parts. Research: `docs/research/voice-cascade-asr-tts.md`.
 

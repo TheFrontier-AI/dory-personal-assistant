@@ -21,17 +21,46 @@ import contextlib
 import json
 import logging
 import random
+import re
 import time
 from collections.abc import Callable
+from datetime import UTC, datetime
 from typing import Any
 
 from .i18n import CATALOG, t
+from .meeting import MeetingManager, Transcript
 from .nebius_vm import make_waker
+from .speech import speakable
 from .voice_latency import Act
 from .web_live import TOOL_TIMEOUT_S, WebLive
 
 logger = logging.getLogger(__name__)
 ACKS = sorted(k for k in CATALOG if k.startswith("ack_voice_"))
+FILLER_AFTER_S = 1.0  # a fast answer needs no filler; a slow one gets one line (C8)
+FILLER_MEMORY = 3  # never the same canned line as the last three
+HISTORY_WINDOW_S, HISTORY_MAX_CHARS = 180.0, 3000  # as LiveVoice._ask_dory (C9)
+PERSON, DORY = "Person", "Dory"
+_CUR = {"THB": "baht", "฿": "baht", "USD": "dollars", "$": "dollars", "EUR": "euros", "€": "euros"}
+_CUR_RE = re.compile(r"(THB|USD|EUR|[฿$€])\s?(\d[\d,]*(?:\.\d+)?)")
+
+
+def spoken_form(text: str) -> str:
+    """What the TTS reads: `speech.speakable` (markdown, links, emoji, unspoken symbols gone), then
+    currencies and percentages as words; Kokoro reads a bare 4-digit number as a year, so the
+    thousands separators stay."""
+    s = re.sub(r"\s*\n+\s*", ". ", text).replace("..", ".")  # a line break is a sentence end
+    s = _CUR_RE.sub(lambda m: f"{m[2]} {_CUR[m[1]]}", speakable(s))
+    s = re.sub(r"(\d)\s?%", r"\1 percent", s)
+    return re.sub(r"\s+([.,!?])", r"\1", s).strip()  # a removed emoji leaves no gap before the stop
+
+
+def is_ack(text: str) -> bool:
+    """ "ok" / "got it" / "mm-hm" on its own (C5): not a question."""
+    return bool(MeetingManager._ACK_RE.match(text or "")) or (text or "").strip().lower() in (
+        "mm-hm", "mhm", "uh-huh", "mm", "hmm",
+    )  # fmt: skip
+
+
 # the box is off, still booting, or not listening on that port: one code the pages can word
 DOWN_ERRORS = (ConnectionRefusedError, ConnectionResetError, TimeoutError, OSError)
 RETRY_S = 10.0  # between connection attempts while the box is off, booting or taken by another call
@@ -65,18 +94,26 @@ class GlmVoice(WebLive):
         token: str = "",
         connect=None,
         waker: Any = None,
-        ask: Callable[[str], str] | None = None,
+        ask: Callable[[str, str], str] | None = None,
         lang: str = "en",
         path: str = "web",
+        on_heard: Callable[[str], None] | None = None,
     ):
-        super().__init__(settings, None, instruction="", ask=ask or (lambda q: ""), out=out)
-        self.url, self.lang = url, lang
+        """`ask(question, history)` is Dory's brain for a cascade server; `on_heard(text)`, when
+        given (a Discord room), decides what to do with an utterance and calls `answer` / `speak`
+        itself; without it everything heard is answered (the web call, C3)."""
+        super().__init__(settings, None, instruction="", ask=ask or (lambda q, h: ""), out=out)
+        self.url, self.lang, self.on_heard = url, lang, on_heard
+        self.transcript = Transcript()  # what this call heard and said, memory only (C9)
+        self._recent_fillers: list[str] = []
+        self.last_said = ""
         if path != "web":  # a Discord room logs `voice_latency path=discord`, as LiveVoice does
             from .voice_latency import StageTimer
 
             self.timer = StageTimer(path)
         self.cascade = ask is not None  # a cascade server sends "heard": Dory's brain answers it
         self._answer: asyncio.Task | None = None
+        self._ws: Any = None
         self._connect = connect or (lambda: self._ws_connect(url, token))
         # scale-to-zero: with the Nebius identity settings, a stopped GPU box is started on demand
         self.waker = waker if waker is not None else make_waker(settings, url)
@@ -105,6 +142,7 @@ class GlmVoice(WebLive):
                         await self.out("error", "voice_server_down")
                         return
                 async with self._connect() as ws:
+                    self._ws = ws
                     sender = asyncio.create_task(self._send(ws))
                     try:
                         code = await self._receive(ws)
@@ -166,7 +204,10 @@ class GlmVoice(WebLive):
             elif kind == "heard":
                 await self.out("heard", text)
                 if self.cascade and text:
-                    self._start_answer(ws, text)
+                    if self.on_heard is not None:
+                        self.on_heard(text)
+                    else:
+                        self.answer(text)
             elif kind == "interrupted":
                 self._cancel_answer()
                 await self.out("interrupted", "")
@@ -183,10 +224,39 @@ class GlmVoice(WebLive):
         return ""
 
     # ---- cascade: the brain answers what the server heard
-    def _start_answer(self, ws: Any, question: str) -> None:
+    def greet(self, lang: str = "en") -> None:
+        """A fixed warm line (C3), not a brain turn; the Gemini path keeps its cue."""
+        if self.cascade:
+            self.speak(t("meet_greet_spoken", lang))
+        else:
+            super().greet(lang)
+
+    def answer(self, question: str, speaker: str = PERSON) -> None:
+        """Dory's brain answers this utterance (a bare "ok" is only answered when she just asked
+        something). Called by the room's gate or, on the web, for everything heard."""
+        history = self.history()  # what came before this question
+        self.transcript.add(datetime.now(UTC), speaker, question)
+        if is_ack(question) and not self.last_said.rstrip().endswith("?"):
+            return
         self._cancel_answer()
         self.timer.mark("tool_call")
-        self._answer = asyncio.create_task(self._answer_turn(ws, question))
+        self._answer = asyncio.create_task(self._answer_turn(self._ws, question, history))
+
+    def speak(self, text: str) -> None:
+        """Say a line as it is (a greeting, "Yes?"), no brain."""
+        if self._ws is not None and not self._closing and text.strip():
+            self.last_said = text
+            self.transcript.add(datetime.now(UTC), DORY, text)
+            asyncio.ensure_future(self._say(self._ws, text, final=True))
+
+    async def _say(self, ws: Any, text: str, *, final: bool) -> None:
+        with contextlib.suppress(Exception):  # the socket may be gone: the retry loop handles it
+            await ws.send(json.dumps({"type": "say", "text": spoken_form(text), "final": final}))
+
+    def history(self) -> str:
+        return self.transcript.history(
+            datetime.now(UTC), window_s=HISTORY_WINDOW_S, max_chars=HISTORY_MAX_CHARS
+        )
 
     def _cancel_answer(self) -> None:
         if self._answer is not None and not self._answer.done():
@@ -194,16 +264,28 @@ class GlmVoice(WebLive):
         self._answer = None
 
     def filler(self) -> str:
-        return t(random.choice(ACKS), self.lang) if ACKS else ""
+        """One short line, never one of the last three."""
+        keys = [k for k in ACKS if k not in self._recent_fillers] or ACKS
+        if not keys:
+            return ""
+        key = random.choice(keys)
+        self._recent_fillers = (self._recent_fillers + [key])[-FILLER_MEMORY:]
+        return t(key, self.lang)
 
-    async def _answer_turn(self, ws: Any, question: str) -> None:
-        """A filler at once (the brain takes seconds), then Dory's answer as a final say."""
+    async def _answer_turn(self, ws: Any, question: str, history: str = "") -> None:
+        """The brain answers; a filler only when it takes longer than FILLER_AFTER_S (C8); the
+        answer is spoken in its plain form (C10) and remembered (C9)."""
         await self.out("thinking", question)
+        job = asyncio.ensure_future(asyncio.to_thread(self.ask, question, history))
         try:
-            if filler := self.filler():
-                await ws.send(json.dumps({"type": "say", "text": filler, "final": False}))
-            answer = await asyncio.wait_for(asyncio.to_thread(self.ask, question), TOOL_TIMEOUT_S)
+            try:
+                answer = await asyncio.wait_for(asyncio.shield(job), FILLER_AFTER_S)
+            except TimeoutError:
+                if filler := self.filler():
+                    await self._say(ws, filler, final=False)
+                answer = await asyncio.wait_for(job, TOOL_TIMEOUT_S - FILLER_AFTER_S)
         except asyncio.CancelledError:
+            job.cancel()
             raise
         except Exception as e:
             logger.warning("glm voice: ask failed (%s)", type(e).__name__)
@@ -211,4 +293,7 @@ class GlmVoice(WebLive):
         self.timer.mark("tool_result")
         if not self._closing:
             text = (answer or "").strip() or t("glm_answer_failed", self.lang)
-            await ws.send(json.dumps({"type": "say", "text": text, "final": True}))
+            self.last_said = text
+            self.transcript.add(datetime.now(UTC), DORY, text)
+            await self.out("answer", text)  # the original text, for the room's chat echo (C10)
+            await self._say(ws, text, final=True)

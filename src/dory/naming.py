@@ -91,3 +91,68 @@ def command_text(text: str) -> tuple[str, bool]:
     The bool says whether a leading name was present (an untagged command needs one)."""
     rest, named = strip_leading_name(text)
     return strip_trailing_polite(rest), named
+
+
+# ---- is an utterance FOR Dory, or ABOUT her? (the cascade voice path decides from the ASR text)
+_CUES = {"hey", "hi", "hello", "ok", "okay", "thanks", "thank", "please", "so", "um", "yo"}
+_MENTION_NEXT = {
+    "said",
+    "told",
+    "was",
+    "has",
+    "had",
+    "did",
+    "went",
+    "already",
+    "also",
+    "is",
+    "will",
+}
+_REQUEST_RE = re.compile(
+    r"\?|ไหม|มั้ย|หรือเปล่า|หรือไม่|ช่วย|ขอ|หน่อย|(?<![a-z])(?:what|who|when|where|why|how|which|can"
+    r"|could|would|please|tell|book|find|check|remind|send|show)(?![a-z])",
+    re.I,
+)
+_LATIN_TOKEN_RE = re.compile(r"[A-Za-z'-]+|[,?!.]")
+
+
+def _phonetic_key(word: str) -> str:
+    """dory / dori / dorie / dorey / dorry / doory / dora -> "d-r-"; story -> "st-r-"; door -> "d-r"."""
+    w = re.sub(r"[^a-z]", "", re.sub(r"'s$", "", word.lower()))
+    return re.sub(r"[aeiouy]+", "-", re.sub(r"(.)\1+", r"\1", w))
+
+
+def address_kind(text: str) -> str | None:
+    """None = her name is not in the utterance. "addressed" = said TO her (the name opens or closes
+    it, follows a cue word like "hey" / "ok", or stands before a comma or question mark; every
+    spelling `find_call` knows plus the phonetic key for Dori / Dorey / Doory / Dora). "mentioned" =
+    a sentence ABOUT her ("Dory booked it", "ask Dory later"). "unclear" = mentioned in a sentence
+    shaped like a request ("can Dory check that?"): worth a brief "Yes?", never an interruption."""
+    raw = _NOISE_RE.sub(" ", text or "").strip()
+    if not raw:
+        return None
+    found = [(m.group(), m.start()) for m in _LATIN_TOKEN_RE.finditer(raw)]
+    toks = [t for t, _ in found]
+    words = [t for t in toks if t[0].isalpha()]
+    hit = next(
+        (i for i, t in enumerate(toks) if t[0].isalpha() and _phonetic_key(t) == "d-r-"), None
+    )
+    span = find_call(raw) if hit is None else None
+    if hit is None and span is None:
+        return None
+    if hit is None:  # a spelling the key misses (Dolly after "hey"): the token under the span
+        hit = next((i for i, (_, at) in enumerate(found) if span[0] <= at < span[1]), None)
+    if hit is None or not words:  # Thai (no spaces): the name's place in the text decides
+        head, tail = raw[: span[0]], strip_trailing_polite(raw[span[1] :])
+        head = re.sub(r"(?:ครับ|ค่ะ|คะ|นะ|เฮ้|เฮ้ย|หวัดดี|สวัสดี|ว่าไง|น้อง|\W)+$", "", head)
+        if not head or not tail:
+            return "addressed"
+        return "unclear" if _REQUEST_RE.search(raw) else "mentioned"
+    prev = toks[hit - 1].lower() if hit else ""
+    nxt = toks[hit + 1].lower() if hit + 1 < len(toks) else ""
+    if nxt in _MENTION_NEXT or (nxt.endswith("ed") and nxt.isalpha()):
+        return "mentioned"
+    word_pos = sum(1 for t in toks[:hit] if t[0].isalpha())
+    if prev in _CUES or nxt in (",", "?", "!") or word_pos == 0 or word_pos >= len(words) - 2:
+        return "addressed"
+    return "unclear" if _REQUEST_RE.search(raw) else "mentioned"

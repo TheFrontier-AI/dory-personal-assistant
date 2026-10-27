@@ -27,10 +27,13 @@ from .live_voice import (
     LIVE_IN_RATE,
     PLAY_RETRIES,
     SEND_INTERVAL_S,
+    TALKOVER_S,
     LiveAudioSource,
     Mixer,
 )
-from .meeting import _connected, _stop_playback
+from .meeting import _connected, _stop_playback, is_hush, parse_wake
+from .naming import address_kind
+from .voice_latency import rms16
 from .web_live import TOOL_TIMEOUT_S
 
 logger = logging.getLogger(__name__)
@@ -54,8 +57,14 @@ class GlmRoom:
         self._pump: asyncio.Task | None = None
         self._closing = False
         self._last_speaker = 0
+        self._engaged_until, self._caller = 0.0, 0  # C5: the caller's follow-ups need no name
+        self._hushed = False  # C6: silent until her name comes with words
+        self._held: list[bytes] = []  # C7: room audio held while she speaks
+        self._talk_run = 0.0
         s = bot.s
         self.lang = _company_lang(bot, getattr(session, "guild_id", 0))
+        self.engaged_s = float(getattr(s, "engaged_timeout_seconds", 300.0))
+        self.rms_min = float(getattr(s, "name_min_rms", 250.0))
         self.voice = GlmVoice(
             s,
             out=self._out,
@@ -65,6 +74,7 @@ class GlmRoom:
             ask=self._ask_blocking,
             path="discord",
             lang=self.lang,
+            on_heard=self._on_heard,
         )
 
     def start(self) -> None:
@@ -74,7 +84,8 @@ class GlmRoom:
     def feed(self, user_id: int, pcm: bytes) -> None:
         """One 20 ms frame (48 kHz stereo) from a human, as the sink hands it over."""
         if not self._closing:
-            self._last_speaker = user_id
+            if rms16(pcm) >= self.rms_min:  # who spoke = the last voiced frame, not any noise
+                self._last_speaker = user_id
             self.mixer.feed(user_id, pcm)
 
     async def _pump_mixer(self) -> None:
@@ -88,9 +99,25 @@ class GlmRoom:
             now = time.monotonic()
             if chunk:
                 self._last_voice = now
+                if self.session.speaking and not self._talks_over(chunk):
+                    continue  # a cough or side talk while she speaks never reaches the server (C7)
+                for held in self._held:
+                    self.voice.feed(held)
+                self._held.clear()
                 self.voice.feed(chunk)
             elif now - self._last_voice < self.voice.mic_tail_s + SEND_INTERVAL_S:
                 self.voice.feed(silence)
+
+    def _talks_over(self, chunk: bytes) -> bool:
+        """While she speaks: only TALKOVER_S of continuous voiced audio counts as the person taking
+        the turn; the frames of that run are held and sent together so the transcript is whole."""
+        n = len(chunk) / (LIVE_IN_RATE * 2)
+        self._talk_run = self._talk_run + n if rms16(chunk) >= self.rms_min else 0.0
+        if self._talk_run >= TALKOVER_S:
+            self._talk_run = 0.0
+            return True
+        self._held = (self._held + [chunk])[-int(TALKOVER_S / SEND_INTERVAL_S) - 1 :]
+        return False
 
     # ---- what the server sends back
     async def _out(self, kind: str, payload: Any) -> None:
@@ -108,6 +135,10 @@ class GlmRoom:
         elif kind == "turn":
             if self._source is not None:
                 self._source.finish()
+        elif kind == "answer":  # rule 4: every spoken answer is also posted, as the brain wrote it
+            if self.post is not None:
+                with contextlib.suppress(Exception):
+                    await self.post(t("voice_answer_echo", self.lang, text=payload))
         elif kind == "waking":  # the GPU box stopped itself while idle and is starting (~2 min)
             logger.info("glm room: waking the voice server (guild %s)", getattr(s, "guild_id", "?"))
             if self.post is not None:
@@ -168,12 +199,53 @@ class GlmRoom:
         await self.voice.close()
         self.stop_playback()
 
-    # ---- the LiveVoice surface the room code calls in every mode: nothing to do on this backend
+    # ---- who she answers (docs/voice_behaviour.md, C4-C6): decided from the ASR text
+    def _on_heard(self, text: str) -> None:
+        now = time.monotonic()
+        speaker = self._last_speaker
+        if is_hush(text):
+            self.hush()
+            return
+        kind = address_kind(text)
+        engaged = now < self._engaged_until and speaker == self._caller
+        if self._hushed:
+            if kind != "addressed" or not (parse_wake(text) or ""):
+                return  # silent until her name comes WITH words
+            self.clear_hush()
+        if kind == "mentioned":
+            return
+        if kind == "unclear" and not engaged:
+            if self._wake_policy() != "natural":
+                self.voice.speak(t("meet_wake_spoken", self.lang))  # "Yes?", never an interruption
+                return
+        elif kind is None and not engaged:
+            return
+        self._engaged_until, self._caller = now + self.engaged_s, speaker
+        self.voice.answer(text, speaker=self._name_of(speaker))
+
+    def _wake_policy(self) -> str:
+        try:
+            return self.bot.team.wake_policy(self.session.guild_id)
+        except Exception:
+            return "strict"
+
+    def _name_of(self, user_id: int) -> str:
+        channel = getattr(self.session, "voice_channel", None)
+        for m in getattr(channel, "members", None) or ():
+            if m.id == user_id:
+                return getattr(m, "display_name", "") or "Person"
+        return "Person"
+
+    # ---- the LiveVoice surface the room code calls in every mode
     def hush(self, fresh: bool = True) -> None:
+        """ "Dory, be quiet": playback and the pending answer stop; nothing until her name with words."""
+        self._hushed = True
+        self._engaged_until = 0.0
+        self.voice._cancel_answer()
         self.stop_playback()
 
     def clear_hush(self) -> None:
-        pass
+        self._hushed = False
 
     def note_caller(self, name: str) -> None:
         pass
@@ -188,12 +260,12 @@ class GlmRoom:
         pass
 
     # ---- the brain (cascade server only: it sends "heard", GlmVoice asks, the answer is spoken)
-    def _ask_blocking(self, question: str) -> str:
+    def _ask_blocking(self, question: str, history: str = "") -> str:
         """Called by GlmVoice from a worker thread: the agent runs on the bot's loop."""
-        fut = asyncio.run_coroutine_threadsafe(self._ask(question), self.session.loop)
+        fut = asyncio.run_coroutine_threadsafe(self._ask(question, history), self.session.loop)
         return fut.result(timeout=TOOL_TIMEOUT_S)
 
-    async def _ask(self, question: str) -> str:
+    async def _ask(self, question: str, history: str = "") -> str:
         """The same text agent as a chat message from this room (`bot._agent_kwargs`), built for
         the lowest-ranked human present so every read is safe to say aloud; the outward actions
         are re-bound to whoever spoke last, as `LiveVoice._ask_dory` does."""
@@ -243,6 +315,7 @@ class GlmRoom:
             **kw,
             is_exec=everyone_exec,
             user_id=humans[0].id if (everyone_exec or len(humans) == 1) else 0,
+            history=history,
             spoken=True,
         )
         logger.info(
