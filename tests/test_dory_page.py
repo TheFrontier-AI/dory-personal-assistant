@@ -78,6 +78,19 @@ def test_dictionary_has_same_keys_in_both_languages():
         ), key
 
 
+def test_thai_never_breaks_inside_dorys_name():
+    """The browser's Thai dictionary does not know ดอรี่, so it may break the name ("ด / อรี่"). The page joins
+    its letters with word joiners (U+2060) once, as the dictionary is read, so every Thai string rendered from
+    it keeps the name whole. The browser test checks the rendered page at 360 and 390 px."""
+    d, html = _dict_and_html()
+    join = (
+        'for (const e of Object.values(I18N)) e.th = e.th.replaceAll("ดอรี่", "ด\\u2060อ\\u2060รี่");'
+    )
+    assert html.count(join) == 1
+    assert html.index("const I18N = JSON.parse(") < html.index(join) < html.index("function t(")
+    assert sum("ดอรี่" in e["th"] for e in d.values()) > 20  # the dictionary itself stays plain
+
+
 def test_every_used_key_exists_and_markup_has_no_hardcoded_thai():
     d, html = _dict_and_html()
     used = set(re.findall(r'data-i18n(?:-html)?="(\w+)"', html))
@@ -299,6 +312,7 @@ def test_the_introduction_film_waits_for_play_and_starts_fast():
         "film.showModal();" in html
         and 'film.addEventListener("close", () => intro.pause());' in html
     )
+    assert "intro.currentTime = 0;" in html  # every opening starts at the top, never mid-film
     mp4 = DORY / "meet-dory.mp4"
     assert mp4.stat().st_size < 5 * 1024 * 1024
     with mp4.open("rb") as f:
@@ -322,6 +336,7 @@ def test_the_live_thing_is_a_labelled_scripted_example():
     assert "สคริปต์" in d["tw_note_b"]["th"]
     assert html.count("function read(text)") == 1
     assert "Promise.resolve(read(msg.value))" in html  # read() may become a model call
+    assert 'F.where.hidden = kind === "empty";' in html  # no channel named before a card is caught
     # the real handshake: Accept / Edit / Decline, and the owner question when nobody is named
     for k, en in (
         ("b_ok", "Accept"),
