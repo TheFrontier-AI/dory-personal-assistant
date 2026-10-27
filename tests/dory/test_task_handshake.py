@@ -899,6 +899,12 @@ async def test_add_task_creates_a_task_for_the_giver_and_sends_the_card(hs, worl
     await settle(world.staff)
     assert len(world.staff.dms) == 1 and "ทำสไลด์นำเสนอ" in world.staff.dms[0][0]
     assert hs.tasks.get(GUILD, task.id).confirm == "pending"
+    # asked again (a repeated request, a voice retry): the same task, no second card, and Dory is
+    # told so (she says it is already on the list, never "created")
+    twice = await asyncio.to_thread(fns["add_task"], "ทำสไลด์นำเสนอ", "Somchai", "2026-10-23")
+    assert twice["task"]["id"] == task.id and twice["already_on_the_list"] is True
+    assert "asked_to_confirm" not in twice and len(world.staff.dms) == 1
+    assert "already_on_the_list" not in res
     # the passive summary pass later hears the same item: no second copy
     tr = TaskTracker(hs.tasks, hs.s, None, people_of=lambda gid: PEOPLE)
     again = tr.ingest(

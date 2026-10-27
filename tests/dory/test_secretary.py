@@ -291,6 +291,18 @@ def test_schedule_creates_a_voice_event_after_a_later_confirmation(w):
     assert w.org.sent == []  # the organiser is not DM'd about their own meeting
 
 
+def test_the_same_meeting_confirmed_again_is_not_created_twice(w):
+    """A second "yes" or a voice retry after the meeting exists: it is on the calendar already."""
+    propose_then_confirm(w, lambda tl: tl.schedule_meeting(**ARGS))
+    for _ in range(2):  # neither a fresh proposal nor a second confirmation makes a second event
+        r = w.tools().schedule_meeting(**ARGS)
+        assert r["status"] == "already_scheduled" and "Weekly sync" in str(r["meeting"])
+    assert len(w.guild.created) == 1 and len(w.store.list_meetings(GUILD)) == 1
+    # another title at that time is a different meeting
+    other = w.tools().schedule_meeting(**{**ARGS, "title": "Design review"})
+    assert other["status"] == "needs_confirmation"
+
+
 def test_changed_arguments_need_a_fresh_confirmation(w):
     w.tools().schedule_meeting(**ARGS)
     r = w.tools().schedule_meeting(**{**ARGS, "duration_minutes": 90})

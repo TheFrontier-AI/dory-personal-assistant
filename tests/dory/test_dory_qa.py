@@ -9,6 +9,7 @@ from pptx import Presentation
 
 from dory.digest import build_daily_digest
 from dory.qa import (
+    ACTION_RULE,
     CAPABILITIES_PROMPT,
     MAX_ROUNDS,
     MEMORY_PROMPT,
@@ -371,6 +372,24 @@ def test_prompt_prefix_is_identical_across_times_and_askers(settings, lang):
     assert stable.endswith(MEMORY_PROMPT) and CAPABILITIES_PROMPT in stable
     assert "2026-10-14" not in stable and a.index("2026-10-14") > len(stable)
     assert "ผู้ถามไม่ใช่ผู้บริหาร" in b[len(stable) :] and NO_REPLY in b[len(stable) :]
+
+
+def test_one_action_rule_for_every_language_and_the_statuses_it_names_exist():
+    """Text and voice share one rule for tools, failures, sources and suggestions; each "done
+    before" status it names is really returned by its tool (so the rule never drifts)."""
+    import importlib
+    import inspect
+
+    for lang in ("th", "en", "ja"):
+        assert ACTION_RULE in stable_prompt(lang, memory=False)
+    for status, module in (
+        ("already_set", "reminders"),
+        ("already_booked", "trips"),
+        ("already_scheduled", "secretary"),
+        ("already_on_the_list", "coo_tools"),
+    ):
+        assert status in ACTION_RULE
+        assert f'"{status}"' in inspect.getsource(importlib.import_module(f"dory.{module}"))
 
 
 # ------------------------------------------------------------------ slide decks

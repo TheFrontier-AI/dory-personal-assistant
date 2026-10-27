@@ -471,6 +471,11 @@ def _view(offer: FlightOffer | HotelOffer) -> dict:
     return offer.model_dump(exclude={"raw", "provider"}, exclude_defaults=True)
 
 
+def _item_key(offer: FlightOffer | HotelOffer) -> str:
+    """The same flight or hotel whatever search found it (offer ids restart with the process)."""
+    return fingerprint(offer.model_dump(exclude={"raw", "provider", "offer_id"}))
+
+
 def _bad_date(s: str, today: date, *, after: date | None = None) -> str | None:
     try:
         d = date.fromisoformat((s or "").strip())
@@ -599,6 +604,23 @@ def trips_tools(ctx: TripsCtx) -> list:
             hid and not isinstance(hotel, HotelOffer)
         ):
             return {"status": "expired", "reason": "that offer is no longer held; search again"}
+        # never the same flight or hotel twice for one person (by content: offer ids restart with the
+        # process): a second "yes", a voice retry or a new search of the same offer gets the trip
+        items = {k: _item_key(x) for k, x in (("flight", flight), ("hotel", hotel)) if x}
+        keys = set(items.values())
+
+        def mine(d: dict) -> bool:
+            return d.get("user_id") == ctx.asker_id and bool(
+                keys & set(d.get("items", {}).values())
+            )
+
+        if done := ctx.docs.find(TRIP_KIND, ctx.guild_id, mine):
+            t0 = done[-1]
+            booked = [k for k, v in items.items() if v in t0["items"].values()]
+            return {"status": "already_booked", "trip_id": t0["id"], "already": booked,
+                    "references": t0["references"], "totals": t0["totals"], "purpose": t0["purpose"],
+                    "instruction": "Already booked: never book it again; give the references. Book "
+                    "only what is new (call again without the already booked item)."}  # fmt: skip
         aid = (approval_id or "").strip()
         if aid:
             a = ctx.approvals.get(aid) if ctx.approvals is not None else None
@@ -634,7 +656,7 @@ def trips_tools(ctx: TripsCtx) -> list:
             return {"status": "failed", "error": "the booking service refused", "booked": refs}
         now = ctx.now()
         trip = {
-            "id": f"T-{new_id()[:8]}", "guild_id": ctx.guild_id, "user_id": ctx.asker_id,
+            "id": f"T-{new_id()[:8]}", "guild_id": ctx.guild_id, "user_id": ctx.asker_id, "items": items,
             "user_name": ctx.asker_name, "purpose": why, "references": refs,
             "flight": quote["flight"], "hotel": quote["hotel"], "totals": quote["totals"],
             "provider": (flight or hotel).provider, "approval_id": aid,

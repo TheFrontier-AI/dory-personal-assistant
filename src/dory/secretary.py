@@ -219,6 +219,20 @@ class SecretaryTools:
                 }
         lang = self._lang()
         zone = c.settings.zone
+        near = c.service.upcoming(
+            c.guild_id, start_dt - timedelta(minutes=1), start_dt + timedelta(minutes=1)
+        )
+        twin = [
+            m
+            for m in near
+            if m.get("organizer_id") == c.author_id and m["title"].casefold() == title.casefold()
+        ]
+        if twin:  # a second "yes" or a voice retry after it exists: never a second event
+            return {
+                "status": "already_scheduled",
+                "meeting": c.service.display(twin[0], lang),
+                "instruction": "It is on the calendar already: do not schedule it again.",
+            }
         key = (
             "schedule",
             c.guild_id,

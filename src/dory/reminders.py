@@ -424,6 +424,18 @@ def _target(ctx: ReminderCtx, for_user: str):
     return found[0].id, found[0].display_name
 
 
+SAME_WITHIN_S = 120  # "+30m" said again a few seconds later is the same reminder
+
+
+def _same_reminder(d: dict, uid: int, msg: str, where: str, plan: dict, first: datetime) -> bool:
+    """`d` is the reminder being asked for again: same person, words, place and schedule."""
+    if d["user_id"] != uid or d["message"] != msg or d.get("where") != where:
+        return False
+    if any(d.get(k) != v for k, v in plan.items()):
+        return False
+    return abs((_from_iso(d["next_at"]) - first).total_seconds()) <= SAME_WITHIN_S
+
+
 def reminder_tools(ctx: ReminderCtx) -> list:
     """`set_reminder`, `list_reminders`, `cancel_reminder` bound to one guild and one asker."""
 
@@ -472,6 +484,17 @@ def reminder_tools(ctx: ReminderCtx) -> list:
         except ReminderError as e:
             return _err(ctx, e)
         first = plan.pop("first")
+        twin = ctx.book.active(ctx.guild_id, lambda d: _same_reminder(d, uid, msg, wh, plan, first))
+        if twin:  # a repeated "yes", a voice retry or a second call: never two pings
+            rec, when = twin[0], fmt_next(first, now, ctx.lang)
+            summary = f"{rec['id']} · {msg} · {describe(rec, ctx.lang)} · {when}"
+            return {
+                "ok": True,
+                "already_set": True,
+                "id": rec["id"],
+                "next": when,
+                "summary": summary,
+            }
         rec = ctx.book.create(
             ctx.guild_id,
             {
