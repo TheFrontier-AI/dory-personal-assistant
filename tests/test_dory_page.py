@@ -583,7 +583,7 @@ def test_start_hands_the_credential_to_center_once_per_tab():
 
 def test_every_page_shares_the_dory_theme(client):
     """One design system: every page links the shared stylesheet, which is served as CSS."""
-    for name in ("dory.html", "start.html", "hub.html", "center.html", "index.html"):
+    for name in ("dory.html", "start.html", "hub.html", "center.html", "index.html", "pm.html"):
         html = (PAGE.parent / name).read_text("utf-8")
         assert '<link rel="stylesheet" href="/static/dory/theme.css">' in html, name
         assert '<link rel="icon" type="image/png" href="/static/dory/favicon.png">' in html, name
