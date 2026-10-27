@@ -137,8 +137,13 @@ class Engines:
         else:
             raise SystemExit(f"unknown asr {asr}")
         if tts == "kokoro":
+            from huggingface_hub import hf_hub_download
             from kokoro import KPipeline
 
+            for v in voice.split(
+                ","
+            ):  # fetched up front: the pipeline's own download hung (28 Oct)
+                hf_hub_download("hexgrad/Kokoro-82M", f"voices/{v.strip()}.pt")
             self.tts = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M", device=device)
         elif tts == "magpie":
             from nemo.collections.tts.models import MagpieTTSModel
