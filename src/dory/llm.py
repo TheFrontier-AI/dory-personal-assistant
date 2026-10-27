@@ -22,13 +22,31 @@ REQUEST_TIMEOUT_MS = 60_000
 # Nemotron 3 reasons by default and spends the whole max_tokens budget on it (probe, 25 Oct 2026: a
 # 50-token JSON gate came back empty); this request key is the one switch that turns it off.
 NO_THINK = {"chat_template_kwargs": {"enable_thinking": False}}
+# GLM-5.x has no off switch: `reasoning_effort` low / high / max (HF cards, 26 Oct 2026; default max,
+# and ANY other value, "none" included, also means max). Thinking tokens count against max_tokens, so
+# a short JSON call keeps at least this many. shortcut: a flat floor, not a per-call budget; measure
+# the gates' reasoning length before tuning it.
+GLM_MIN_TOKENS = 1024
 # Gemini model ids whose work a Token Factory text model cannot do (speech, images, embeddings, live).
 _NOT_TEXT = ("tts", "image", "banana", "embedding", "live", "omni")
 
 
+def _is_glm(model: str) -> bool:
+    return "glm" in model.lower()
+
+
+def reasoning(model: str, on: bool, effort: str = "low") -> dict:
+    """The request keys that set reasoning for this model family (see NO_THINK / GLM_MIN_TOKENS).
+    `effort` is GLM's level when on (`Settings.brain_effort`): lower = fewer billed thinking
+    tokens and a faster first token."""
+    if _is_glm(model):
+        return {"reasoning_effort": effort} if on else {**NO_THINK, "reasoning_effort": "low"}
+    return {"chat_template_kwargs": {"enable_thinking": on}}
+
+
 def make_client(s: Settings):
     """The Vertex Gemini client. With `DORY_NEBIUS_API_KEY` set it is wrapped in a `RoutedClient`
-    so that `generate` sends text-only calls to Nemotron on Nebius Token Factory."""
+    so that `generate` sends text-only calls to the open models on Nebius Token Factory."""
     client = genai.Client(
         vertexai=True,
         project=s.gcp_project,
@@ -38,29 +56,36 @@ def make_client(s: Settings):
     if not s.nebius_api_key:
         return client
     route = Nemotron(
-        s.nemotron_model, s.nebius_base_url, s.nebius_api_key, vision_model=s.nemotron_vision_model
+        s.brain_model,
+        s.nebius_base_url,
+        s.nebius_api_key,
+        vision_model=s.nemotron_vision_model,
+        fast_model=s.fast_model,
     )
     return RoutedClient(client, route)
 
 
 def make_agent_model(s: Settings, *, vision: bool = False):
-    """The ADK model for `qa.build_agent`: Nemotron on Token Factory through ADK's LiteLlm adapter
+    """The ADK model for `qa.build_agent`: the brain on Token Factory through ADK's LiteLlm adapter
     when the key is set, else None (the caller builds its Gemini model). `vision`: the message
     carries images, so the vision model (same tools, same price) is the brain for this turn.
-    Reasoning stays ON here: with the full bot's ~140 tool declarations the model narrated actions
-    instead of calling tools when it was off ("I'll set a reminder", no call;
-    scripts/dory_tool_calls_probe.py, 25 Oct 2026). The text route below keeps it off (short JSON
-    answers, no tools; the vision model returned nothing at all for a JSON schema with it on)."""
+    Reasoning stays ON here (Nemotron: its default; GLM: `reasoning_effort=high`): with the full
+    bot's ~140 tool declarations Nemotron narrated actions instead of calling tools when it was off
+    ("I'll set a reminder", no call; scripts/dory_tool_calls_probe.py, 25 Oct 2026). The text route
+    below keeps it off or low (short JSON answers, no tools; the vision model returned nothing at
+    all for a JSON schema with it on)."""
     if not s.nebius_api_key:
         return None
     from google.adk.models.lite_llm import LiteLlm  # heavy import, only when used
 
+    model = s.nemotron_vision_model if vision else s.brain_model
     return LiteLlm(
-        model=f"openai/{s.nemotron_vision_model if vision else s.nemotron_model}",
+        model=f"openai/{model}",
         api_base=s.nebius_base_url,
         api_key=s.nebius_api_key,
         timeout=REQUEST_TIMEOUT_MS / 1000,
         drop_params=True,
+        **(reasoning(model, True, s.brain_effort) if _is_glm(model) else {}),
     )
 
 
@@ -204,25 +229,36 @@ def _response_format(schema) -> dict:
 
 @dataclass
 class Nemotron:
-    """`generate` calls on NVIDIA Nemotron via Nebius Token Factory (OpenAI-compatible): text on
-    `model`, text + images on `vision_model` (empty = images stay on Gemini). `accepts` decides
-    per call; `complete` maps GenerateContentConfig to a chat completion; `embeddings` is the
-    `/embeddings` endpoint for dory.embed."""
+    """`generate` calls on the open models of Nebius Token Factory (OpenAI-compatible; the class
+    kept its first model's name): every text call on `fast_model` (one tenth of the brain's price;
+    `model`, the brain, is for the tool-calling agent in `make_agent_model` and is the fallback
+    when no fast model is set), text + images on `vision_model` (empty = images stay on Gemini).
+    `accepts` decides per call; `complete` maps GenerateContentConfig to a chat completion;
+    `embeddings` is the `/embeddings` endpoint for dory.embed."""
 
     model: str
     base_url: str
     api_key: str = field(repr=False)
     http: httpx.Client | None = None  # tests pass a client with a MockTransport
     vision_model: str = ""
+    fast_model: str = ""
 
     def __post_init__(self) -> None:
         if self.http is None:
             self.http = httpx.Client(base_url=self.base_url, timeout=REQUEST_TIMEOUT_MS / 1000)
         logger.info(
-            "text calls and the chat agent run on %s via Nebius Token Factory (images: %s)",
+            "text calls and the chat agent run on %s via Nebius Token Factory (fast: %s, images: %s)",
             self.model,
+            self.fast_model or self.model,
             self.vision_model or "Gemini",
         )
+
+    def pick(self, msgs) -> str:
+        """The Token Factory model for one `generate` call (cost rule, 26 Oct 2026: text never
+        needs the brain outside the agent)."""
+        if _has_image(msgs):
+            return self.vision_model
+        return self.fast_model or self.model
 
     def _post(self, path: str, body: dict) -> dict:
         auth = {"Authorization": f"Bearer {self.api_key}"}
@@ -258,8 +294,8 @@ class Nemotron:
 
     def complete(self, contents, config) -> TextResponse:
         msgs = _messages(contents)
-        model = self.vision_model if _has_image(msgs) else self.model
-        body: dict[str, Any] = {"model": model, "messages": msgs, **NO_THINK}
+        model = self.pick(msgs)
+        body: dict[str, Any] = {"model": model, "messages": msgs, **reasoning(model, False)}
         schema = None
         if config is not None:
             system = _text_of(config.system_instruction)
@@ -271,12 +307,22 @@ class Nemotron:
                 body["top_p"] = config.top_p
             if config.max_output_tokens:
                 body["max_tokens"] = config.max_output_tokens
+                if _is_glm(model):  # its thinking comes out of the same budget
+                    body["max_tokens"] = max(config.max_output_tokens, GLM_MIN_TOKENS)
             if config.stop_sequences:
                 body["stop"] = list(config.stop_sequences)
             if config.response_mime_type == "application/json":
                 schema = config.response_schema
                 body["response_format"] = _response_format(schema)
         data = self._post("chat/completions", body)
+        usage = data.get("usage") or {}
+        logger.info(  # the cost line: cached prefix tokens are billed at the cheaper cached rate
+            "token factory %s prompt=%s cached=%s completion=%s",
+            model,
+            usage.get("prompt_tokens"),
+            (usage.get("prompt_tokens_details") or {}).get("cached_tokens", 0),
+            usage.get("completion_tokens"),
+        )
         choice = data["choices"][0]
         text = choice["message"].get("content") or ""
         parsed = None
@@ -285,7 +331,7 @@ class Nemotron:
                 parsed = schema.model_validate_json(text)
             except Exception:  # noqa: BLE001  callers that need it re-parse resp.text themselves
                 parsed = None
-        return TextResponse(text, parsed, data.get("usage") or {}, choice.get("finish_reason"))
+        return TextResponse(text, parsed, usage, choice.get("finish_reason"))
 
 
 def media_http_options(**kw) -> types.HttpOptions:
