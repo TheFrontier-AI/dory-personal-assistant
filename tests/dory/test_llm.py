@@ -115,7 +115,8 @@ def test_without_a_nebius_key_the_client_is_the_plain_vertex_client():
 def test_the_routed_client_keeps_the_vertex_client_for_everything_else():
     s = Settings(_env_file=None, gcp_project="p", nebius_api_key="sekret-123")
     client = llm.make_client(s)
-    assert client.nemotron.model == "nvidia/nemotron-3-super-120b-a12b"
+    assert client.nemotron.model == "zai-org/GLM-5.3"
+    assert client.nemotron.fast_model == "zai-org/GLM-5.3-Flash"
     assert client._api_client._http_options.timeout == llm.REQUEST_TIMEOUT_MS  # delegated
     assert "sekret-123" not in repr(client.nemotron) and "sekret-123" not in repr(s)  # never logged
 
@@ -253,17 +254,49 @@ def test_nemotron_client_errors_raise_api_errors_without_retry():
     assert e.value.code == 400 and len(calls) == 1
 
 
-def test_agent_brain_is_nemotron_super_when_the_key_is_set():
+def test_glm_brains_get_the_fast_tier_low_effort_and_a_token_floor():
+    seen = []
+    http = httpx.Client(
+        base_url=TF, transport=httpx.MockTransport(lambda r: (seen.append(r), _reply("ok"))[1])
+    )
+    route = llm.Nemotron("zai-org/GLM-5.3", TF, "k", http=http, fast_model="zai-org/GLM-5.3-Flash")
+    client = llm.RoutedClient(SimpleNamespace(models=Models([])), route)
+    cfg = types.GenerateContentConfig(max_output_tokens=50, system_instruction="yes or no")
+    llm.generate(client, "gemini-3.5-flash-lite", "hi", cfg)
+    llm.generate(client, "gemini-3.5-flash", "hi", cfg)  # every text call: one tenth of the price
+    bodies = [json.loads(r.content) for r in seen]
+    assert [b["model"] for b in bodies] == ["zai-org/GLM-5.3-Flash", "zai-org/GLM-5.3-Flash"]
+    assert bodies[0]["reasoning_effort"] == "low"  # GLM has no off switch
+    assert bodies[0]["chat_template_kwargs"] == {"enable_thinking": False}
+    assert bodies[0]["max_tokens"] == llm.GLM_MIN_TOKENS  # thinking tokens count against it
+    route.fast_model = ""
+    llm.generate(client, "gemini-3.5-flash", "hi", cfg)
+    assert json.loads(seen[-1].content)["model"] == "zai-org/GLM-5.3"  # no fast model: the brain
+    assert llm.reasoning("nvidia/nemotron-3-super-120b-a12b", False) == llm.NO_THINK
+    assert llm.reasoning("zai-org/GLM-5.3", True) == {"reasoning_effort": "low"}  # the cost default
+    assert llm.reasoning("zai-org/GLM-5.3", True, "high") == {"reasoning_effort": "high"}
+
+
+def test_agent_brain_is_the_token_factory_brain_when_the_key_is_set():
     from dory.qa import build_agent
 
     agent = build_agent(Settings(_env_file=None, nebius_api_key="k"), [], scoped=False)
     m = agent.model
     assert type(m).__name__ == "LiteLlm"
-    assert m.model == "openai/nvidia/nemotron-3-super-120b-a12b"
+    assert m.model == "openai/zai-org/GLM-5.3"
     args = m._additional_args
     assert args["api_base"] == "https://api.tokenfactory.nebius.com/v1/" and args["api_key"] == "k"
-    assert "extra_body" not in args and args["drop_params"] is True  # reasoning stays on
+    assert args["reasoning_effort"] == "low" and args["drop_params"] is True  # on, low
+    assert "extra_body" not in args
     assert "Tool rule:" in agent.instruction(None)  # the rule that makes it call tools
+    nemotron = build_agent(
+        Settings(
+            _env_file=None, nebius_api_key="k", brain_model="nvidia/nemotron-3-super-120b-a12b"
+        ),
+        [],
+        scoped=False,
+    )
+    assert "reasoning_effort" not in nemotron.model._additional_args  # Nemotron: on by default
     gemini_agent = build_agent(Settings(_env_file=None, nebius_api_key=""), [], scoped=False)
     assert type(gemini_agent.model).__name__ == "Gemini"
     assert "Tool rule:" not in gemini_agent.instruction(None)

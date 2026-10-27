@@ -412,7 +412,7 @@ async def test_model_audio_plays_once_posts_the_transcript_and_updates_speaking(
     lv.vc.after(None)  # the player thread reports it is done
     await until(lambda: s.speaking is False)
     assert s.speaking_until > time.monotonic()
-    assert "live: user audio ended -> first audio" in caplog.text
+    assert "voice_latency path=discord e2e_ms=" in caplog.text
     await lv.mgr.end((1000, 77))
 
 

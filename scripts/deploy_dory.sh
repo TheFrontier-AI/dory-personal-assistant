@@ -15,6 +15,12 @@
 set -euo pipefail
 
 cd "$(dirname "$0")/.."
+# gcloud's bundled Python lacks `grpc`, which `run worker-pools` needs: use this repo's venv (with its
+# site-packages) when it exists. Relative CLOUDSDK_PYTHON paths break once gcloud changes directory.
+if [ -x "$PWD/.venv/bin/python" ]; then
+  export CLOUDSDK_PYTHON="${CLOUDSDK_PYTHON:-$PWD/.venv/bin/python}" CLOUDSDK_PYTHON_SITEPACKAGES=1
+  case "$CLOUDSDK_PYTHON" in /*) ;; *) CLOUDSDK_PYTHON="$PWD/$CLOUDSDK_PYTHON" ;; esac
+fi
 # shellcheck disable=SC1090
 [ -f "$HOME/google-cloud-sdk/path.bash.inc" ] && source "$HOME/google-cloud-sdk/path.bash.inc"
 
@@ -163,13 +169,40 @@ echo "==> Deploying Cloud Run worker pool $POOL (1 fixed instance)"
 ENV_PAIRS=("DORY_STORE=firestore" "DORY_GCP_PROJECT=$PROJECT"
            "DORY_GEMINI_LOCATION=${DORY_GEMINI_LOCATION:-global}" "DORY_TZ=Asia/Bangkok"
            "DORY_RECEIPT_BUCKET=$BUCKET")
-DORY_HUB_URL="${DORY_HUB_URL:-$(sed -n 's/^DORY_HUB_URL=//p' .env 2>/dev/null | head -n1 | tr -d '\r"' | tr -d "'")}"
+# Every key below comes from the environment, else .env (gitignored), so a redeploy keeps the voice
+# box, the models and the VM identity; `--set-env-vars` REPLACES the pool's whole set each time.
 for k in DORY_RECEIPT_CHANNEL_IDS DORY_ASK_CHANNEL_IDS DORY_EXEC_ROLE_NAMES DORY_EXEC_USER_IDS \
          DORY_DIGEST_TIME DORY_DIGEST_CHANNEL_ID DORY_FIRESTORE_COLLECTION \
          DORY_GUILD_COLLECTION DORY_HUB_URL DORY_GEMINI_MODEL DORY_DEEP_TASK_TIMEOUT \
-         DORY_DEEP_TASK_MODEL; do
-  [ -z "${!k:-}" ] || ENV_PAIRS+=("$k=${!k}")
+         DORY_DEEP_TASK_MODEL DORY_VOICE_MODE DORY_GLM_VOICE_URL DORY_BRAIN_MODEL DORY_FAST_MODEL \
+         DORY_NEBIUS_VM_ID DORY_NEBIUS_SA_ID DORY_NEBIUS_SA_KEY_ID DORY_NEBIUS_PROJECT \
+         DORY_AMADEUS_CLIENT_ID DORY_TRAVEL_PROVIDER; do
+  v="${!k:-$(sed -n "s/^$k=//p" .env 2>/dev/null | head -n1 | tr -d '\r"' | tr -d "'")}"
+  [ -z "$v" ] || ENV_PAIRS+=("$k=$v")
 done
+# Discord rooms on the GLM-4-Voice box (deploy/glm_voice): the bearer token is a secret the owner
+# created from the VM (`gcloud secrets create dory-glm-voice-token --data-file=-`); mounted when it exists.
+SECRETS="DORY_DISCORD_TOKEN=$SECRET:latest,DORY_NEBIUS_API_KEY=$NEBIUS_SECRET:latest"
+GLM_SECRET="${GLM_SECRET:-dory-glm-voice-token}"
+if gc secrets describe "$GLM_SECRET" >/dev/null 2>&1; then
+  run gcloud secrets add-iam-policy-binding "$GLM_SECRET" --project "$PROJECT" \
+    --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
+  SECRETS+=",DORY_GLM_VOICE_TOKEN=$GLM_SECRET:latest"
+else echo "    secret $GLM_SECRET absent: no GLM-4-Voice token mounted (voice_mode glm needs it)"; fi
+# Scale-to-zero: the Nebius service-account private key (PEM) that lets Dory start the stopped GPU box.
+VM_KEY_SECRET="${VM_KEY_SECRET:-dory-nebius-vm-key}"
+if gc secrets describe "$VM_KEY_SECRET" >/dev/null 2>&1; then
+  run gcloud secrets add-iam-policy-binding "$VM_KEY_SECRET" --project "$PROJECT" \
+    --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
+  SECRETS+=",DORY_NEBIUS_SA_PRIVATE_KEY=$VM_KEY_SECRET:latest"
+else echo "    secret $VM_KEY_SECRET absent: Dory cannot start a stopped GPU box (deploy/glm_voice/README.md)"; fi
+# Trips (flights + hotels, `trips.py`): the Amadeus test-env client secret; without it the sample provider answers.
+AMADEUS_SECRET="${AMADEUS_SECRET:-dory-amadeus-client-secret}"
+if gc secrets describe "$AMADEUS_SECRET" >/dev/null 2>&1; then
+  run gcloud secrets add-iam-policy-binding "$AMADEUS_SECRET" --project "$PROJECT" \
+    --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
+  SECRETS+=",DORY_AMADEUS_CLIENT_SECRET=$AMADEUS_SECRET:latest"
+else echo "    secret $AMADEUS_SECRET absent: trips use the sample provider"; fi
 ENV_JOINED="$(IFS='|'; echo "${ENV_PAIRS[*]}")"   # '|' delimiter: values contain commas
 # --instances=1 = manual scaling with a fixed count: the Discord gateway needs exactly one
 # always-on connection (two would answer every message twice). 1 vCPU / 2 GiB: the Gemini CLI
@@ -177,7 +210,7 @@ ENV_JOINED="$(IFS='|'; echo "${ENV_PAIRS[*]}")"   # '|' delimiter: values contai
 run gcloud run worker-pools deploy "$POOL" --project "$PROJECT" --region "$REGION" \
   --image "$IMAGE" --service-account "$SA" --instances 1 --cpu 1 --memory 2Gi \
   --set-env-vars "^|^$ENV_JOINED" \
-  --set-secrets "DORY_DISCORD_TOKEN=$SECRET:latest,DORY_NEBIUS_API_KEY=$NEBIUS_SECRET:latest" --quiet
+  --set-secrets "$SECRETS" --quiet
 
 echo
 if $APPLY; then echo "Deployed worker pool $POOL ($IMAGE)."

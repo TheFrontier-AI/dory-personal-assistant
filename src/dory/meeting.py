@@ -763,6 +763,8 @@ class MeetingSession:
     summary_url: str = ""  # jump link of the first summary message
     # "live": a Gemini Live session (live_voice.LiveVoice) talks; wake words are not answered by
     # the transcription pipeline. Falls back to "classic" when the Live session cannot connect.
+    # "glm": the self-hosted GLM-4-Voice server (glm_room.GlmRoom) talks and NOTHING in the room
+    # calls Google: no transcription, no minutes, no TTS lines (owner, 26 Oct 2026).
     voice_mode: str = "classic"
     live: Any = None
     body: Any = None  # the VoiceBody (main bot or helper) holding this session's voice connection
@@ -837,8 +839,9 @@ class MeetingSession:
 
     def on_pcm(self, user_id: int, pcm: bytes, now: float, is_bot: bool = False) -> None:
         if not self.ending:
-            self.enqueue(self.segmenter.feed(user_id, pcm, now))
-            if not is_bot and self.live is not None and self.voice_mode == "live":
+            if self.voice_mode != "glm":  # glm: no Gemini transcription of the room at all
+                self.enqueue(self.segmenter.feed(user_id, pcm, now))
+            if not is_bot and self.live is not None and self.voice_mode in ("live", "glm"):
                 self.live.feed(user_id, pcm)
 
     def enqueue(self, segments: list[Segment]) -> None:
@@ -1360,6 +1363,8 @@ class MeetingManager:
         """Say a short fixed line in the voice channel (TTS). Failures are logged, never raised."""
         if not self.bot.s.voice_reply or s.ending or not _connected(s.vc) or self._listen_only(s):
             return
+        if s.voice_mode == "glm":
+            return  # the TTS is Google's; GLM rooms speak through the server only
         try:
             pcm = self._ack_pcm.get(f"{s.lang}:{text}")
             if pcm is None:
@@ -1977,7 +1982,7 @@ class MeetingManager:
                     logger.warning("voice reconnect %d failed", attempt, exc_info=True)
                     continue
                 s.vc = vc
-                if s.live is not None and s.voice_mode == "live":
+                if s.live is not None and s.voice_mode in ("live", "glm"):
                     with contextlib.suppress(Exception):
                         s.live.stop_playback()
                 await self._notice(s, t("meet_reconnected", s.lang))
@@ -2041,10 +2046,23 @@ class MeetingManager:
         """Live voice mode: connect a Gemini Live session now (it takes ~2 s) so the first question
         is answered fast. If it cannot connect the meeting falls back to classic wake words."""
         s = self.bot.s
-        if not s.voice_reply or getattr(s, "voice_mode", "classic") != "live":
+        mode = getattr(s, "voice_mode", "classic")
+        if not s.voice_reply or mode not in ("live", "glm"):
             return
         if self._listen_only(session):
             return  # notes only: no Live session at all
+        if mode == "glm":
+            if not getattr(s, "glm_voice_url", ""):
+                logger.error("voice_mode glm needs DORY_GLM_VOICE_URL: the room stays silent")
+                return
+            from .glm_room import GlmRoom
+
+            session.voice_mode = "glm"
+            session.recording = "not_recording"  # nothing transcribed or summarised (no Google)
+            session.consent = "assumed"
+            session.live = GlmRoom(self.bot, session, post=lambda text: self._notice(session, text))
+            session.live.start()
+            return
         from .live_voice import LiveVoice
 
         session.voice_mode = "live"

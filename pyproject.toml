@@ -34,6 +34,7 @@ dependencies = [
     "xlrd>=2.0.2",
     "litellm>=1.106.4",
     "mcp>=2.3.0",
+    "nebius>=0.6.28",
 ]
 
 [build-system]
