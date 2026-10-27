@@ -57,7 +57,8 @@ def test_five_pages_and_bilingual_nav():
 def test_only_google_identity_script_and_no_secrets():
     src = html()
     scripts = re.findall(r"<script[^>]+src=[\"']([^\"']+)", src)
-    assert scripts == ["https://accounts.google.com/gsi/client"]
+    # hl=en like every page: Google otherwise picks the button language from the visitor's IP
+    assert scripts == ["https://accounts.google.com/gsi/client?hl=en"]
     assert "cdn." not in src and "unpkg" not in src and "jsdelivr" not in src
     assert not re.search(r"localStorage[^;\n]*token", src, re.I)  # token stays in memory
     assert not re.search(r"AIza|sk-[A-Za-z0-9]{20}|BEGIN (RSA )?PRIVATE", src)
@@ -191,9 +192,3 @@ def test_pm_reuses_the_dory_session_of_the_other_pages():
     assert 'session("get")' in boot or "session()" in boot
     to_login = src[src.index("function toLogin(") :]
     assert 'session("clear")' in to_login[: to_login.index("\n")]
-
-
-def test_google_button_follows_the_page_language_not_the_visitors_location():
-    """Like /center, /start and /hub: hl=en, then `locale: lang` switches it (Google otherwise guesses
-    from the visitor's IP, a Thai button on an English page)."""
-    assert 'src="https://accounts.google.com/gsi/client?hl=en"' in html()
