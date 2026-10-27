@@ -63,6 +63,7 @@ class GlmRoom:
             token=getattr(s, "glm_voice_token", ""),
             connect=connect,
             ask=self._ask_blocking,
+            path="discord",
             lang=self.lang,
         )
 

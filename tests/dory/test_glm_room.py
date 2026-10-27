@@ -170,6 +170,7 @@ def test_glm_room_asks_the_same_agent_as_chat_and_rebinds_actions_to_the_speaker
                                   voice_channel=channel, text_channel="text", language="en")  # fmt: skip
         room = glm_room.GlmRoom(bot, session, connect=connect)
         assert room.lang == "en" and room.voice.cascade is True
+        assert room.voice.timer.line().startswith("voice_latency path=discord")
         room.feed(2, _frame48(3000))  # Mint spoke last
         result = {}
 
