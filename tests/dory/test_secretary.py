@@ -5,6 +5,7 @@ objects are small fakes, the clock is a variable, email goes to LogOnlySender or
 import asyncio
 import base64
 import json
+import os
 import threading
 from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
@@ -713,7 +714,8 @@ def seed_receipts(store):
 
 
 def thai_font():
-    fonts = pdf_report.find_fonts()
+    # DORY_PDF_FONT: the Thai font CLAUDE.md says to set on macOS
+    fonts = pdf_report.find_fonts(os.environ.get("DORY_PDF_FONT", ""))
     if not fonts.thai:
         pytest.skip("no Thai-capable font installed")
     return fonts

@@ -556,7 +556,7 @@ def test_hackathon_block_edits(w):
     pid = make(w, name="Cup", kind="hackathon")["id"]
     url = f"/projects/{pid}/hackathon"
     r = call(w, "mem", "PATCH", url, {
-        "competition": "Demo Cup", "official_deadline": "2026-10-18T23:59", "rules": "# Rules",
+        "competition": "Innovation Cup", "official_deadline": "2026-10-18T23:59", "rules": "# Rules",
         "team_roles": [{"person": person("peat"), "role": "pitch"}],
         "deliverables": [
             {"id": "d1", "done": True, "url": "https://github.com/x/y"},
@@ -568,7 +568,7 @@ def test_hackathon_block_edits(w):
     assert r.status_code == 200, r.text
     h = r.json()["hackathon"]
     assert (
-        h["competition"] == "Demo Cup"
+        h["competition"] == "Innovation Cup"
         and h["team_roles"][0]["person"]["email"] == "peat@example.com"
     )
     assert [d["id"] for d in h["deliverables"]] == ["d1", "d3", "d4", "d5"]

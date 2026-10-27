@@ -40,7 +40,7 @@
   ul.gets { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; max-width: 60ch; }
   ul.gets li { display: flex; gap: 12px; align-items: flex-start; font-size: 17px; }
   ul.gets svg { width: 20px; height: 20px; flex: none; color: var(--color-action); margin-top: 4px; }
-  ul.gets b { font-weight: 600; }
+  ul.gets b { font-weight: 600; display: block; } /* the title on its own line, the description under it */
   #gsi-button { min-height: 44px; display: flex; }
   .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: 100%; max-width: 480px; }
   .plan { border: 2px solid var(--color-border-control); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px; background: var(--color-bg-raised); color: var(--color-text); text-align: left; }
@@ -189,13 +189,13 @@
   "w_p": {"th": "สร้างบัญชีด้วย Google แล้วเริ่มใช้ใน 4 ขั้น บัญชีหนึ่งดูแลได้หลายทีม และนี่คือสิ่งที่คุณได้ทันทีหลังสมัคร:", "en": "Create your account with Google and start in four steps. One account can run several teams, and this is what you get right after signing up:"},
   "hero_alt": {"th": "ดอรี่ ปลาตัวเล็กสีขาวฟ้าสวมหูฟัง กำลังยิ้มอยู่ใต้น้ำ", "en": "Dory, a small white-and-blue fish wearing a headset, smiling underwater"},
   "g1_t": {"th": "ใช้ฟรีช่วงเปิดตัว", "en": "Free during launch"},
-  "g1_d": {"th": "ทุกความสามารถ ไม่จำกัดเวลาและจำนวนคน ไม่ต้องใช้บัตรเครดิต", "en": "every feature, no time or seat limit, no credit card."},
+  "g1_d": {"th": "ทุกความสามารถ ไม่จำกัดเวลาและจำนวนคน ไม่ต้องใช้บัตรเครดิต", "en": "Every feature, no time or seat limit, no credit card."},
   "g2_t": {"th": "ศูนย์ควบคุมองค์กรของคุณเอง", "en": "Your own organization center"},
-  "g2_d": {"th": "สมาชิก คลังเอกสาร งาน และแชตกับดอรี่จากเว็บ", "en": "members, document library, tasks, and web chat with Dory."},
+  "g2_d": {"th": "สมาชิก คลังเอกสาร งาน และแชตกับดอรี่จากเว็บ", "en": "Members, document library, tasks, and web chat with Dory."},
   "g3_t": {"th": "ดอรี่ในแพลตฟอร์มที่ทีมใช้อยู่", "en": "Dory where your team already works"},
   "g3_d": {"th": "Discord ใช้ได้ทันที ส่วน Slack และ ClickUp สำหรับองค์กร", "en": "Discord right away; Slack and ClickUp for organizations."},
   "w_next": {"th": "ถัดไปคุณจะเลือกแพ็กเกจ ตั้งชื่อองค์กร และเชื่อมต่อ Discord ใช้เวลาประมาณ 2 นาที", "en": "Next you will pick a plan, name your organization and connect Discord. It takes about two minutes."},
-  "not_configured": {"th": "ระบบล็อกอินยังไม่ได้ตั้งค่า (HUB_GOOGLE_CLIENT_ID) กรุณาติดต่อผู้ดูแล", "en": "Sign-in is not configured yet (HUB_GOOGLE_CLIENT_ID). Please contact the administrator."},
+  "not_configured": {"th": "ตอนนี้ยังเข้าสู่ระบบด้วย Google ไม่ได้ กรุณาลองใหม่ภายหลัง หรือติดต่อทีมดอรี่", "en": "Google sign-in isn't available yet. Please try again later or contact the Dory team."},
   "login_failed": {"th": "เข้าสู่ระบบไม่สำเร็จ ({status}) ลองอีกครั้ง", "en": "Sign-in failed ({status}). Please try again."},
   "signup_discord": {"th": "หรือสมัครด้วย Discord", "en": "Or sign up with Discord"},
   "discord_no_email": {"th": "บัญชี Discord นี้ยังไม่มีอีเมลที่ยืนยันแล้ว กรุณาใช้ Google หรือยืนยันอีเมลใน Discord ก่อน", "en": "This Discord account has no verified email. Please use Google, or verify your email in Discord first."},
@@ -322,15 +322,22 @@ async function api(path, opts = {}) {
   return res.json();
 }
 function renderGoogleButton() {
-  if (!CLIENT_ID) { $("not-configured").hidden = false; return; }
+  if (!CLIENT_ID) { $("not-configured").hidden = false; $("gsi-button").hidden = true; return; }
   if (!window.google || !google.accounts) { setTimeout(renderGoogleButton, 200); return; }
   if (!gsiReady) { google.accounts.id.initialize({ client_id: CLIENT_ID, callback: async (r) => { token = r.credential; const s = await exchangeSession(token); if (s) token = s; signedIn(); } }); gsiReady = true; }
   $("gsi-button").replaceChildren();
   google.accounts.id.renderButton($("gsi-button"), { theme: "outline", size: "large", text: "signup_with", locale: lang, width: 300 });
 }
-async function signedIn() {
+async function signedIn(stored = false) {
   try { me = await api("/me"); }
-  catch (e) { note($("login-error"), () => t("login_failed", { status: e.status || "network" })); token = ""; return; }
+  catch (e) {
+    token = "";
+    // the server no longer accepts this session (expired, secret rotated): forget it so the next load starts clean
+    const rejected = [401, 403, 503].includes(e.status);
+    if (rejected) session("clear");
+    if (!(stored && rejected)) note($("login-error"), () => t("login_failed", { status: e.status || "network" }));
+    return;
+  }
   syncLang(me.language);
   $("who").textContent = me.email; $("who").hidden = false;
   show(me.orgs.length ? "existing" : "step2");
@@ -371,9 +378,10 @@ for (const a of document.querySelectorAll('a[href="/center"]')) a.addEventListen
 });
 applyStatic();
 // Back from "Sign up with Discord": the session arrives in the fragment.
+let fromDiscord = false;
 try {
   const m = /^#session=(ss1\.[A-Za-z0-9_.-]+)$/.exec(location.hash);
-  if (m) { session("set", m[1]); history.replaceState(null, "", location.pathname); }
+  if (m) { session("set", m[1]); fromDiscord = true; history.replaceState(null, "", location.pathname); }
   const u = new URLSearchParams(location.search);
   if (u.get("error") && u.get("platform") === "discord") {
     const er = u.get("error"); note($("login-error"), () => er === "discord_no_email" ? t("discord_no_email") : t("login_failed", { status: er }));
@@ -382,7 +390,7 @@ try {
 } catch { /* ignore */ }
 $("discord-signup").hidden = !DISCORD_LOGIN;
 $("discord-signup").addEventListener("click", () => { location.href = "/api/center/auth/discord/start?next=start"; });
-if (session("get")) { token = session("get"); signedIn(); } // already signed in on another page: skip the Google step
+if (session("get")) { token = session("get"); signedIn(!fromDiscord); } // already signed in on another page: skip the Google step
 </script>
 </body>
 </html>

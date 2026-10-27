@@ -116,6 +116,17 @@ def test_see_dory_at_work_opens_the_film_in_a_dialog(page):
     page.wait_for_function("document.getElementById('intro').paused", timeout=5000)
 
 
+def test_the_film_starts_from_the_top_every_time_it_opens(page):
+    page.goto("/")
+    see = page.get_by_role("link", name="See Dory at work")
+    see.click()
+    page.keyboard.press("Escape")
+    page.wait_for_function("document.getElementById('intro').paused", timeout=5000)
+    page.evaluate("document.getElementById('intro').currentTime = 9")  # closed mid-film
+    see.click()
+    assert page.evaluate("document.getElementById('intro').currentTime") < 1
+
+
 def test_live_thing_reads_a_message_in_english(page):
     page.goto("/")
     card = page.locator("#card")
@@ -133,6 +144,16 @@ def test_live_thing_reads_a_message_in_english(page):
     expect(card.locator("[data-f=kind]")).to_have_text("A question for Ben: who takes this?")
     expect(card.get_by_role("button", name="It's mine")).to_be_visible()
     expect(card.locator("[data-f=due]")).to_contain_text("three working days")
+
+
+def test_the_empty_card_names_no_channel(page):
+    page.goto("/")
+    card = page.locator("#card")
+    page.locator("#msg").fill("")
+    expect(card.locator("[data-f=kind]")).to_have_text("Nothing caught yet")
+    expect(card.locator("[data-f=where]")).to_be_hidden()
+    page.locator("#msg").fill("Arun, please book the venue by tomorrow")
+    expect(card.locator("[data-f=where]")).to_have_text("in Arun's private Dory channel")
 
 
 def test_live_thing_reads_thai_and_works_by_keyboard(page):
@@ -180,6 +201,45 @@ def test_the_page_switches_to_thai_and_back(page):
     page.locator("#lang-other").click()
     expect(page.locator("html")).to_have_attribute("lang", "en")
     expect(page.locator("h1")).to_contain_text("Ask once.")
+
+
+JOINED = (
+    "ด\u2060อ\u2060รี่"  # ดอรี่ with word joiners: the browser's Thai dictionary does not know the name
+)
+# every rendered ดอรี่ on the page whose letters land on more than one line
+BROKEN_NAMES = r"""() => {
+  const bad = [], walk = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
+  let seen = 0;
+  for (let n; (n = walk.nextNode()); ) {
+    for (const m of n.data.matchAll(/ด\u2060?อ\u2060?รี่/g)) {
+      const r = document.createRange();
+      r.setStart(n, m.index);
+      r.setEnd(n, m.index + m[0].length);
+      const rs = [...r.getClientRects()].filter((x) => x.width > 0);
+      if (!rs.length) continue; // not rendered (a closed dialog, a hidden state)
+      seen++;
+      if (rs.some((x) => x.top >= rs[0].bottom - 2)) bad.push(n.parentElement.dataset.i18n || n.data);
+    }
+  }
+  return { seen, bad };
+}"""
+
+
+def test_thai_never_breaks_inside_dorys_name(page):
+    page.emulate_media(reduced_motion="reduce")
+    page.add_init_script("try { localStorage.setItem('dory-language', 'th'); } catch (e) {}")
+    page.goto("/")
+    names = page.evaluate(
+        r"Object.values(I18N).flatMap((e) => e.th.match(/ด\u2060?อ\u2060?รี่/g) || [])"
+    )
+    assert len(names) > 20 and set(names) == {JOINED}  # every Thai string the page can render
+    page.evaluate("for (const d of document.querySelectorAll('details')) d.open = true")
+    for width in (360, 390):
+        page.set_viewport_size({"width": width, "height": 800})
+        for eg in ("eg1", "eg4"):  # a task for someone, then the question to Ben
+            page.locator(f'[data-eg="{eg}"]').click()
+            result = page.evaluate(BROKEN_NAMES)
+            assert result["seen"] > 20 and result["bad"] == [], (width, eg, result)
 
 
 def test_the_sign_up_step_hands_the_name_to_start(page):

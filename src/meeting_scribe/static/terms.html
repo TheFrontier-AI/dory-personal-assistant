@@ -4,16 +4,32 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dory Terms of Service</title>
+<link rel="stylesheet" href="/static/dory/theme.css">
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;600;700&amp;display=swap">
+<link rel="icon" type="image/png" href="/static/dory/favicon.png">
+<link rel="apple-touch-icon" href="/static/dory/apple-touch-icon.png">
 <style>
-  body { font-family: system-ui, -apple-system, "Segoe UI", sans-serif; max-width: 760px; margin: 2rem auto; padding: 0 1rem; line-height: 1.6; color: #2d3142; background: #f5f5f5; }
-  h1 { font-size: 1.8rem; } h2 { font-size: 1.15rem; margin-top: 2rem; }
-  a { color: #2e5aa8; } .muted { color: #4f5d75; font-size: .9rem; }
+  /* Page-specific rules only; tokens, base, .nav/.logo/.mark and .site-footer come from theme.css. */
+  .nav-link { color: var(--muted); text-decoration: none; font-size: 14px; font-weight: 600; padding: 8px 12px; border-radius: 10px; }
+  .nav-link:hover { color: var(--indigo); background: var(--nav-active); }
+  .legal { width: min(68ch, 100% - 32px); margin: 0 auto; padding: 40px 0 64px; font-size: 16px; }
+  .legal > * + * { margin-top: 12px; }
+  .legal > h2 { margin-top: 36px; font-size: 20px; }
+  .legal .updated { color: var(--muted); font-size: 14px; }
 </style>
 </head>
 <body>
-<main>
+<header class="nav">
+  <div class="wrap">
+    <a class="logo" href="/" aria-label="Dory"><span class="mark" aria-hidden="true">D</span>Dory</a>
+    <span class="grow"></span>
+    <a class="nav-link" href="/">Home</a>
+  </div>
+</header>
+<main class="legal">
 <h1>Dory Terms of Service</h1>
-<p class="muted">Last updated: 18 October 2026. Provided by The Frontier Company Limited.</p>
+<p class="updated">Last updated: 18 October 2026. Provided by The Frontier Company Limited.</p>
 <h2>1. The service</h2>
 <p>Dory is an AI assistant for teams. It is provided as is during its pilot, and features may change.</p>
 <h2>2. Your responsibilities</h2>
@@ -25,5 +41,8 @@
 <h2>5. Contact</h2>
 <p><a href="mailto:__CONTACT_EMAIL__">__CONTACT_EMAIL__</a></p>
 </main>
+<footer class="site-footer">
+  <div class="wrap"><span>© 2026 The Frontier Company Limited</span><a href="/">Dory home</a><a href="/privacy">Privacy Policy</a></div>
+</footer>
 </body>
 </html>

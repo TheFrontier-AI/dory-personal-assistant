@@ -5,7 +5,7 @@ from .clickup import ClickUpConnector
 from .discord import DiscordConnector
 from .slack import SlackConnector, verify_signature
 
-COMING_SOON = ("google_drive", "gmail", "google_calendar")
+COMING_SOON = ("google_drive", "gmail")  # Google Calendar is per member: google_oauth
 
 __all__ = [
     "COMING_SOON",
