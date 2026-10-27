@@ -191,3 +191,9 @@ def test_pm_reuses_the_dory_session_of_the_other_pages():
     assert 'session("get")' in boot or "session()" in boot
     to_login = src[src.index("function toLogin(") :]
     assert 'session("clear")' in to_login[: to_login.index("\n")]
+
+
+def test_google_button_follows_the_page_language_not_the_visitors_location():
+    """Like /center, /start and /hub: hl=en, then `locale: lang` switches it (Google otherwise guesses
+    from the visitor's IP, a Thai button on an English page)."""
+    assert 'src="https://accounts.google.com/gsi/client?hl=en"' in html()
