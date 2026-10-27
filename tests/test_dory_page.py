@@ -111,13 +111,11 @@ def test_the_introduction_video_waits_for_play_and_starts_fast():
     video = re.search(r"<video[^>]*>", meet).group(0)
     assert "controls" in video and "playsinline" in video and 'preload="none"' in video
     assert "autoplay" not in html and "muted" not in video
-    assert (
-        'poster="/static/dory/dory-introduction.webp"' in video and "aria-label:meet_aria" in video
-    )
-    assert '<source src="/static/dory/dory-introduction.mp4" type="video/mp4">' in meet
+    assert 'poster="/static/dory/meet-dory.webp"' in video and "aria-label:meet_aria" in video
+    assert '<source src="/static/dory/meet-dory.mp4" type="video/mp4">' in meet
     assert 'data-i18n="meet_cap"' in meet  # what the video shows, in words
     assert html.index('id="meet"') < html.index('id="preview"')  # right under the hero
-    mp4 = PAGE.parent / "dory" / "dory-introduction.mp4"
+    mp4 = PAGE.parent / "dory" / "meet-dory.mp4"
     assert mp4.stat().st_size < 5 * 1024 * 1024
     with mp4.open("rb") as f:
         top = []
@@ -135,12 +133,12 @@ def test_mascot_assets_are_served_but_not_the_page_templates(client):
     for name, kind in (
         ("dory.webp", "image/webp"),
         ("dory.jpg", "image/jpeg"),
-        ("dory-introduction.mp4", "video/mp4"),
+        ("meet-dory.mp4", "video/mp4"),
     ):
         r = client.get(f"/static/dory/{name}")
         assert r.status_code == 200 and r.headers["content-type"] == kind, name
     # Safari plays video only from servers that answer byte ranges
-    r = client.get("/static/dory/dory-introduction.mp4", headers={"Range": "bytes=0-99"})
+    r = client.get("/static/dory/meet-dory.mp4", headers={"Range": "bytes=0-99"})
     assert r.status_code == 206 and len(r.content) == 100
     assert client.get("/static/dory/../hub.html").status_code == 404
     assert client.get("/static/hub.html").status_code == 404
