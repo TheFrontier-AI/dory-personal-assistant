@@ -69,9 +69,11 @@ class Spy(LiteLlm):
 def model(think: bool) -> Spy:
     s = get_headless_bot().s
     kw = dict(api_base=s.nebius_base_url, api_key=s.nebius_api_key, timeout=120, drop_params=True)
-    if not think:
-        kw["extra_body"] = llm.NO_THINK
-    return Spy(model=f"openai/{s.nemotron_model}", **kw)
+    if think and llm._is_glm(s.brain_model):
+        kw.update(llm.reasoning(s.brain_model, True, s.brain_effort))  # as make_agent_model
+    elif not think:
+        kw["extra_body"] = llm.reasoning(s.brain_model, False)
+    return Spy(model=f"openai/{s.brain_model}", **kw)
 
 
 def ask(question: str, m: Spy, keep_tools=None):
@@ -150,7 +152,8 @@ for label, mk, mode in VARIANTS:
             resps = [e for e in TRACE if e["run"] == MODE["run"] and "fcs" in e]
             print(
                 f"  [{q[:38]}] {dt:.1f}s extra_tools={ntools} decls={reqs[0]['decls'] if reqs else '?'} "
-                f"rounds={ans.rounds} tools={[n for n, _ in ans.tool_calls]} tok={ans.tokens_in}/{ans.tokens_out}"
+                f"rounds={ans.rounds} tools={[n for n, _ in ans.tool_calls]} "
+                f"tok={ans.tokens_in}/{ans.tokens_out} cached={ans.tokens_cached}"
             )
             print(
                 f"     1st response fcs={resps[0]['fcs'] if resps else '?'} | final: {(ans.text or '')[:150]!r}"

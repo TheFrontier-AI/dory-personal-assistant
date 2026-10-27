@@ -60,17 +60,23 @@ class Settings(BaseSettings):
     answer_timeout_seconds: float = 120.0
     # Cheap model for the "is this addressed to Dory?" yes/no gates (see dory.gate).
     gate_model: str = "gemini-3.5-flash-lite"
-    # NVIDIA Nemotron on Nebius Token Factory (README "NVIDIA Nemotron on Nebius Token Factory"):
-    # with the key set, the chat agent and every text-only `llm.generate` call run on
-    # `nemotron_model`, calls with images (receipts, documents as images, image memory, plan
-    # imports, photos in chat) on `nemotron_vision_model`, and memory embeddings on
-    # `nebius_embed_model` (open Qwen3; Token Factory serves no NVIDIA embedding model). Audio,
-    # PDFs sent as bytes, TTS, live voice, image generation and grounded web search stay on
-    # Gemini: Token Factory has no open model for them. Empty key = Gemini only (tests, and any
-    # deployment without Token Factory).
+    # Open models on Nebius Token Factory (README "Open models on Nebius Token Factory"): with the
+    # key set, the chat agent and every text-only `llm.generate` call run on `brain_model`
+    # (GLM-5.3 since 26 Oct 2026, English first; Nemotron 3 Super before), calls made with a
+    # "lite" Gemini id (the yes/no gates) on `fast_model`, calls with images (receipts, documents
+    # as images, image memory, plan imports, photos in chat) on NVIDIA `nemotron_vision_model`,
+    # and memory embeddings on `nebius_embed_model` (open Qwen3). Audio, PDFs sent as bytes, TTS,
+    # live voice, image generation and grounded web search stay on Gemini: Token Factory has no
+    # open model for them. Empty key = Gemini only (tests, and any deployment without Token Factory).
     nebius_api_key: str = Field(default="", repr=False)  # secret: never logged
     nebius_base_url: str = "https://api.tokenfactory.nebius.com/v1/"
-    nemotron_model: str = "nvidia/nemotron-3-super-120b-a12b"
+    brain_model: str = "zai-org/GLM-5.3"
+    # GLM reasoning_effort for the agent: low | high | max. Probe 26 Oct 2026: at `low` the brain
+    # still called set_reminder / spending_summary first time, 5-9 s a turn, fewer billed tokens.
+    brain_effort: str = "low"
+    fast_model: str = (
+        "zai-org/GLM-5.3-Flash"  # EVERY text-only call (one tenth of the price); empty = brain
+    )
     nemotron_vision_model: str = "nvidia/Nemotron-3.5-Super-VL"
     nebius_embed_model: str = "Qwen/Qwen3-Embedding-8B"  # empty = embeddings stay on Gemini
     low_confidence: float = 0.7
@@ -88,13 +94,27 @@ class Settings(BaseSettings):
     # How Dory talks in a voice meeting (needs voice_reply). "live": a Gemini Live native-audio
     # session hears the room and answers ~1.5 s after someone stops talking (see dory.live_voice).
     # "classic": wake word -> transcription -> text answer -> spoken rewrite -> TTS (~11 s).
-    voice_mode: str = "live"  # live | classic
+    voice_mode: str = "live"  # live | classic | glm (rooms on the GLM-4-Voice server, no Google)
     live_model: str = "gemini-live-2.5-flash-native-audio"
     live_location: str = "us-central1"
     live_voice: str = "Leda"
     # Live turn-taking (automatic activity detection): short greetings are picked up quickly (start
     # sensitivity high), a pause is not an end of turn (end sensitivity low + silence_duration_ms).
     live_silence_ms: int = 1000  # she may answer after ~1 s of silence; if the person goes on, she yields (owner, 2026-10-18)
+    live_web_silence_ms: int = 800  # web call, one-to-one; 2000 until 2026-10-25 (Google: 500-800)
+    # Self-hosted GLM-4-Voice for the WEB call (deploy/glm_voice; owner, 26 Oct 2026, English first):
+    # with the URL set the Live panel runs on it instead of Gemini Live (English, no tools, no
+    # input transcript). ws(s)://host:8765/voice; the token is the server's GLM_VOICE_TOKEN.
+    glm_voice_url: str = ""
+    glm_voice_token: str = Field(default="", repr=False)  # secret: never logged
+    # Scale-to-zero (dory.nebius_vm): with ALL of these set, a voice call that finds the GPU box
+    # stopped starts it through the Nebius API and waits for the voice server (~2 min). The service
+    # account needs `compute.instance-power-operator` on the VM and an authorized key (the PEM).
+    nebius_vm_id: str = ""  # computeinstance-...
+    nebius_sa_id: str = ""  # serviceaccount-...
+    nebius_sa_key_id: str = ""  # publickey-... (the authorized key's id)
+    nebius_sa_private_key: str = Field(default="", repr=False)  # the PEM text; secret: never logged
+    nebius_project: str = ""  # the VM's project, optional (SDK parent id)
     live_prefix_padding_ms: int = 300
     live_start_sensitivity: str = "high"  # high | low
     live_end_sensitivity: str = "low"  # high | low
@@ -289,6 +309,12 @@ class Settings(BaseSettings):
     # Flights (dory.flights): live status/tracking only with one of these provider keys (secrets)
     aerodatabox_key: str = Field(default="", repr=False)  # RapidAPI key
     aviationstack_key: str = Field(default="", repr=False)
+    # Trips (flight + hotel booking, `trips.py`): "" = Amadeus test env when the client id is set,
+    # else deterministic sample data; "sample" forces the sample (dry runs)
+    travel_provider: str = ""
+    amadeus_client_id: str = Field(default="", repr=False)
+    amadeus_client_secret: str = Field(default="", repr=False)
+    amadeus_base: str = "https://test.api.amadeus.com"
     email_daily_limit: int = 20  # emails per guild per day
     # Briefings (dory.briefings): documents above this total (invoice / quotation) are "important",
     # an unanswered request to a member is reminded after this many hours.

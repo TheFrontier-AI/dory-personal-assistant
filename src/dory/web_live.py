@@ -11,7 +11,10 @@ and the transcripts come along as JSON so the panel can show them.
 
 `out(kind, payload)` is awaited for every event: ("audio", bytes) 24 kHz PCM16, ("heard", text)
 input transcript, ("said", text) output transcript, ("interrupted", ""), ("turn", "") turn done,
-("error", text). Audio is never stored or logged.
+("reconnecting", "") then "ready" again when the connection is reopened with the resumption
+handle, ("error", text). Audio is never stored or logged. Mic frames go up only while the person
+speaks (`voice_latency.MicGate`), `ask_dory` runs in the background (cancelled when the server
+withdraws the call), and every answered turn logs one `voice_latency path=web` line.
 """
 
 from __future__ import annotations
@@ -26,8 +29,9 @@ from typing import Any
 from google.genai import types
 
 from .i18n import lang_name
-from .live_voice import build_realtime_input
+from .live_voice import BACKOFF_S, MAX_FAILURES, STABLE_S, build_realtime_input
 from .qa import persona
+from .voice_latency import Act, MicGate, StageTimer
 
 logger = logging.getLogger(__name__)
 
@@ -35,7 +39,6 @@ LIVE_IN_RATE = 16_000
 LIVE_OUT_RATE = 24_000
 MAX_QUEUE = 200  # ~ 4 s of 20 ms frames: the browser is never allowed to run far ahead
 TOOL_TIMEOUT_S = 90
-WEB_SILENCE_MS = 2000  # how long the person may pause before Dory takes the turn (API max 2000)
 
 Out = Callable[[str, Any], Awaitable[None]]
 
@@ -93,9 +96,23 @@ class WebLive:
         )
         self._in: asyncio.Queue[bytes | tuple[str, str] | None] = asyncio.Queue(maxsize=MAX_QUEUE)
         self._task: asyncio.Task | None = None
+        self._tools: dict[str, asyncio.Task] = {}  # running ask_dory jobs by function-call id
+        self.handle: str | None = None  # the latest session-resumption handle
         self._closing = False
         self.started = time.monotonic()
         self.turns = 0
+        self.timer = StageTimer("web")
+        # Web calls are one-to-one: the person may pause `live_web_silence_ms` before Dory takes
+        # the turn (owner's knob; 2000 until 2026-10-25). Frames go up only while they speak.
+        self._gate = MicGate(
+            silence_ms=int(getattr(settings, "live_web_silence_ms", 800)),
+            rms_min=float(getattr(settings, "name_min_rms", 250.0)),
+        )
+
+    @property
+    def mic_tail_s(self) -> float:
+        """How long after the last voiced frame the mic gate keeps sending silence (the server VAD's)."""
+        return self._gate.tail_s
 
     # ---- lifecycle
     def start(self) -> asyncio.Task:
@@ -104,6 +121,8 @@ class WebLive:
 
     async def close(self) -> None:
         self._closing = True
+        for t in list(self._tools.values()):
+            t.cancel()
         with contextlib.suppress(asyncio.QueueFull):
             self._in.put_nowait(None)
         if self._task is not None and self._task is not asyncio.current_task():
@@ -169,15 +188,15 @@ class WebLive:
             input_audio_transcription={},
             output_audio_transcription={},
             realtime_input_config=build_realtime_input(self._patient_settings()),
+            session_resumption=types.SessionResumptionConfig(handle=self.handle),
             context_window_compression=types.ContextWindowCompressionConfig(
                 sliding_window=types.SlidingWindow()
             ),
         )
 
     def _patient_settings(self) -> Any:
-        """Web calls are one-to-one: give the person room to think. End-of-speech only after a
-        longer silence (at least WEB_SILENCE_MS), low end sensitivity; everything else as the
-        Discord room."""
+        """End of speech after `live_web_silence_ms` of silence (the mic gate's), low end
+        sensitivity; everything else as the Discord room."""
         from types import SimpleNamespace
 
         s = self.s
@@ -186,26 +205,49 @@ class WebLive:
             live_start_sensitivity=getattr(s, "live_start_sensitivity", "high"),
             live_end_sensitivity="low",
             live_prefix_padding_ms=int(getattr(s, "live_prefix_padding_ms", 300)),
-            live_silence_ms=max(int(getattr(s, "live_silence_ms", 1200)), WEB_SILENCE_MS),
+            live_silence_ms=self._gate.silence_ms,
         )
 
     # ---- the session
     async def run(self) -> None:
-        try:
-            async with self._connect(self.config()) as live:
-                await self.out("ready", "")
-                sender = asyncio.create_task(self._send(live))
-                try:
-                    await self._receive(live)
-                finally:
-                    sender.cancel()
-                    await asyncio.gather(sender, return_exceptions=True)
-        except asyncio.CancelledError:
-            raise
-        except Exception as e:
-            logger.warning("web live: session error: %s: %s", type(e).__name__, e)
+        """Connect, serve and reconnect with the resumption handle (the server's GoAway after its
+        connection limit, a dropped connection); the mic queue and the call survive. Gives up after
+        MAX_FAILURES failed connects in a row, as the Discord room does."""
+        failures = 0
+        while not self._closing:
+            err: Exception | None = None
+            t_conn: float | None = None
+            try:
+                async with self._connect(self.config()) as live:
+                    t_conn = time.monotonic()
+                    await self.out("ready", "")
+                    sender = asyncio.create_task(self._send(live))
+                    try:
+                        await self._receive(live)
+                    finally:
+                        sender.cancel()
+                        await asyncio.gather(sender, return_exceptions=True)
+            except asyncio.CancelledError:
+                raise
+            except Exception as e:
+                err = e
+                logger.warning("web live: session error: %s: %s", type(e).__name__, e)
+            if self._closing:
+                return
+            lived = time.monotonic() - t_conn if t_conn is not None else 0.0
+            if lived >= STABLE_S:
+                failures = 0
+            if err is not None or lived < STABLE_S:
+                failures += 1
+            if failures >= MAX_FAILURES:
+                logger.error("web live: giving up after %d failed connects", failures)
+                with contextlib.suppress(Exception):
+                    await self.out("error", type(err).__name__ if err else "go_away")
+                return
             with contextlib.suppress(Exception):
-                await self.out("error", type(e).__name__)
+                await self.out("reconnecting", "")
+            if failures:
+                await asyncio.sleep(BACKOFF_S[min(failures - 1, len(BACKOFF_S) - 1)])
 
     async def _send(self, live: Any) -> None:
         while not self._closing:
@@ -218,9 +260,16 @@ class WebLive:
                     turn_complete=True,
                 )
                 continue
+            act = self._gate.on_frame(item, time.monotonic())
+            if act is Act.DROP:  # quiet: no tokens, and the server VAD is not kept waiting
+                continue
+            if act is Act.VOICE:
+                self.timer.touch("speech_end")
             await live.send_realtime_input(
                 audio=types.Blob(data=item, mime_type=f"audio/pcm;rate={LIVE_IN_RATE}")
             )
+            if act is Act.END:
+                await live.send_realtime_input(audio_stream_end=True)
 
     async def _receive(self, live: Any) -> None:
         while not self._closing:
@@ -233,20 +282,32 @@ class WebLive:
                 await asyncio.sleep(0.05)
 
     async def _on_message(self, live: Any, msg: Any) -> str | None:
+        upd = getattr(msg, "session_resumption_update", None)
+        if upd is not None and getattr(upd, "new_handle", None):
+            self.handle = upd.new_handle
         if getattr(msg, "go_away", None) is not None:
-            await self.out("error", "go_away")
-            return "end"
+            logger.info("web live: server go_away, reconnecting with the resumption handle")
+            return "end"  # this connection is over; run() opens the next one
         if getattr(msg, "tool_call", None) is not None:
-            await self._tool_call(live, msg.tool_call)
+            await self._start_tool_call(live, msg.tool_call)
+        cancel = getattr(msg, "tool_call_cancellation", None)
+        if cancel is not None:  # the person spoke again: the server withdrew the call
+            for cid in cancel.ids or []:
+                task = self._tools.pop(cid, None)
+                if task is not None:
+                    task.cancel()
+                    logger.info("web live: tool call cancelled by the server")
         sc = getattr(msg, "server_content", None)
         if sc is None:
             return None
         if getattr(sc, "interrupted", False):
             await self.out("interrupted", "")
+            self._end_turn()
         if getattr(sc, "model_turn", None) is not None:
             for part in sc.model_turn.parts or []:
                 data = part.inline_data.data if part.inline_data is not None else None
                 if data:
+                    self.timer.mark("first_audio")
                     await self.out("audio", data)
         it = getattr(sc, "input_transcription", None)
         if it is not None and it.text:
@@ -257,7 +318,33 @@ class WebLive:
         if getattr(sc, "turn_complete", False):
             self.turns += 1
             await self.out("turn", "")
+            self._end_turn()
         return None
+
+    def _end_turn(self) -> None:
+        """One latency line per answered turn (a tool-call turn without audio keeps its marks)."""
+        if "first_audio" in self.timer.marks:
+            logger.info(self.timer.line())
+            self.timer.reset()
+
+    async def _start_tool_call(self, live: Any, tool_call: Any) -> None:
+        """ask_dory runs off the receive loop: audio, transcripts and the server's cancellation
+        keep flowing while the brain works."""
+        self.timer.mark("tool_call")
+        for fc in tool_call.function_calls or []:
+            question = str((fc.args or {}).get("question", "")).strip()
+            if fc.name == "ask_dory" and question:
+                await self.out("thinking", question)
+        ids = [fc.id for fc in tool_call.function_calls or [] if fc.id]
+        task = asyncio.create_task(self._tool_call(live, tool_call))
+        for cid in ids:
+            self._tools[cid] = task
+
+        def done(_: asyncio.Task) -> None:
+            for cid in ids:
+                self._tools.pop(cid, None)
+
+        task.add_done_callback(done)
 
     async def _tool_call(self, live: Any, tool_call: Any) -> None:
         responses = []
@@ -266,7 +353,6 @@ class WebLive:
             if fc.name != "ask_dory" or not question:
                 result = {"error": "unknown tool or empty question"}
             else:
-                await self.out("thinking", question)
                 try:
                     answer = await asyncio.wait_for(
                         asyncio.to_thread(self.ask, question), TOOL_TIMEOUT_S
@@ -276,5 +362,10 @@ class WebLive:
                     logger.warning("web live: ask_dory failed (%s)", type(e).__name__)
                     result = {"error": "could not get the answer right now"}
             responses.append(types.FunctionResponse(id=fc.id, name=fc.name, response=result))
-        if responses:
-            await live.send_tool_response(function_responses=responses)
+        if responses and not self._closing:
+            try:
+                await live.send_tool_response(function_responses=responses)
+            except Exception as e:  # the session is gone: nothing to answer any more
+                logger.warning("web live: tool response not sent (%s)", type(e).__name__)
+                return
+            self.timer.mark("tool_result")
