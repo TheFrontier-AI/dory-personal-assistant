@@ -221,12 +221,18 @@ async def test_book_trip_confirms_then_books_files_receipts_and_sets_the_reminde
     fid2 = tl2["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
     hid2 = tl2["search_hotels"]("SIN", DEP, RET)["hotels"][3]["offer_id"]
     assert (fid2, hid2) != (fid, hid)
+    # a re-search may quote another price or seat count for the same flight: still the same flight
+    redo = trips.OFFERS._items[fid2][0]
+    redo.price, redo.seats = redo.price + 850, 3
     assert tl2["book_trip"](fid2, hid2, "Lumen kickoff")["trip_id"] == done["trip_id"]
     alone = tl2["book_trip"](fid2)  # the flight alone: still that trip's flight
     assert alone["status"] == "already_booked" and alone["already"] == ["flight"]
-    other = tl2["search_hotels"]("SIN", DEP, RET)["hotels"][2]["offer_id"]  # another hotel
+    # only a new hotel: proposed, then booked on its own (the flight is not booked again)
+    other = tl2["search_hotels"]("SIN", DEP, RET)["hotels"][2]["offer_id"]
     assert tl2["book_trip"](hotel_offer_id=other)["status"] == "needs_confirmation"
-    assert tools(bot, world)["list_trips"](upcoming=False)["count"] == 1
+    hotel_only = tools(bot, world)["book_trip"](hotel_offer_id=other)
+    assert hotel_only["status"] == "booked" and list(hotel_only["references"]) == ["hotel"]
+    assert tools(bot, world)["list_trips"](upcoming=False)["count"] == 2
 
 
 async def test_book_trip_refuses_an_approval_that_is_not_approved_or_not_mine(bot, world):

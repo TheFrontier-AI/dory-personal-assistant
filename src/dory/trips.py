@@ -472,8 +472,14 @@ def _view(offer: FlightOffer | HotelOffer) -> dict:
 
 
 def _item_key(offer: FlightOffer | HotelOffer) -> str:
-    """The same flight or hotel whatever search found it (offer ids restart with the process)."""
-    return fingerprint(offer.model_dump(exclude={"raw", "provider", "offer_id"}))
+    """The same flight or hotel whatever search found it: identity only (offer ids restart with the
+    process, and a re-search may quote another price or seat count for the same flight)."""
+    if isinstance(offer, FlightOffer):
+        o = offer
+        return fingerprint(
+            "flight", o.flights, o.origin, o.destination, o.depart, o.return_depart, o.cabin
+        )
+    return fingerprint("hotel", offer.hotel_id, offer.check_in, offer.check_out)
 
 
 def _bad_date(s: str, today: date, *, after: date | None = None) -> str | None:
