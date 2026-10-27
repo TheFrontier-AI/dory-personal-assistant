@@ -9,10 +9,18 @@
   --ocean-950: #050B1F; --ocean-900: #0A1530; --ocean-800: #102044; --ocean-700: #1A2F5C;
   --ocean-500: #5A72A6; --ocean-400: #6F8CC4; --ocean-300: #A3B7DD; --ocean-50: #EAF2FF;
   --glow-300: #5FF2E0; --glow-700: #0B7A72;
-  --plankton-300: #B9B4F2; --plankton-600: #4A4FBF; --plankton-800: #2B2F7A;
+  --plankton-50: #EEF0FE; --plankton-100: #E2E5FC; --plankton-300: #B9B4F2; --plankton-600: #4A4FBF; --plankton-800: #2B2F7A;
+  /* the command center's cool ground (owner's reference, 27 Oct 2026): ink 15.0:1, muted 5.8:1, subtle 4.8:1, control
+     borders 3.4:1 on mist-50; plankton-800 text 10.4:1 on plankton-50 (the active nav row) */
+  --mist-50: #F5F7FC; --mist-100: #EEF1F9; --mist-200: #E1E5F2;
   --lantern-300: #FFC46B;
   --sand-0: #FFFFFF; --sand-50: #FAF9F6; --sand-100: #F3F1EC; --sand-150: #F0EDE6; --sand-200: #E6E3DC;
   --ink-900: #1B1F3B; --ink-600: #5B6078; --ink-500: #686D84; --ink-400: #7C86A3;
+  /* Dory Descent homepage (27 Oct 2026): the reef is sampled from the water in the owner's picture
+     (foam text 6.0:1); the mineral sands are the seabed chapter, darker as the days settle
+     (abyss text 13.2 / 11.5 / 9.8 / 8.1 / 6.6:1). */
+  --reef-600: #0A5BAA;
+  --sand-300: #DDD3C2; --sand-400: #D1C5AF; --sand-500: #C4B69C; --sand-600: #B6A587; --sand-700: #A69375;
 
   /* ---------- type, space, shape, motion ---------- */
   --font: "IBM Plex Sans Thai", "Noto Sans Thai", "Segoe UI", Tahoma, sans-serif;
@@ -109,11 +117,10 @@ button { cursor: pointer; }
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 .nav .wrap { display: flex; align-items: center; gap: 16px; min-height: 64px; }
 .logo { display: flex; align-items: center; gap: 10px; color: var(--indigo); text-decoration: none; font-weight: 700; font-size: 18px; }
-/* The brand mark is Dory herself (static/dory/dory-mark.svg); the letter inside stays for screen
-   readers and is hidden visually. */
-.mark, .logo .mark { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: transparent; font-weight: 700;
-  font-size: 15px; flex: none; overflow: hidden; background: var(--ocean-800) url("/static/dory/dory-mark.svg") center / cover no-repeat;
-  box-shadow: 0 4px 12px rgba(26, 47, 92, .25); }
+/* The brand mark is Dory herself: the round head from the owner's painting (static/dory/dory-mark.webp); the letter inside
+   stays for screen readers and is hidden visually. */
+.mark, .logo .mark { width: 32px; height: 32px; border-radius: 50%; display: grid; place-items: center; color: transparent; font-weight: 700;
+  font-size: 15px; flex: none; overflow: hidden; background: var(--ocean-50) url("/static/dory/dory-mark.webp") center / cover no-repeat; }
 .grow { flex: 1 1 auto; }
 .langsw { display: flex; border: 1px solid var(--line); border-radius: 99px; padding: 2px; background: var(--card); }
 .langsw button { border: 0; background: none; padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--muted); }
@@ -192,25 +199,6 @@ td { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); vertical-ali
 .lantern.on::before { opacity: 1; }
 .lantern.pulse::before { opacity: 1; animation: dory-lantern var(--dur-ambient) var(--ease-in-out) infinite; }
 
-/* ---------- the rigged fish (inline SVG, see static/dory/dory.svg); CSS variables drive it ---------- */
-.dory-fish .df-eyes { transform-box: fill-box; transform-origin: center; transition: transform var(--dur-gentle) var(--ease); }
-.dory-fish .df-eye { transform-box: fill-box; transform-origin: center; }
-.dory-fish .df-pupil { transform: translate(var(--look-x, 0px), var(--look-y, 0px)); transition: transform var(--dur-fast) var(--ease); }
-.dory-fish .df-mouth { transform-box: fill-box; transform-origin: 50% 0; transform: scaleY(calc(.85 + var(--mouth, 0) * .5)); }
-.dory-fish .df-bars rect { transform-box: fill-box; transform-origin: center; transform: scaleY(calc(.55 + var(--mouth, 0) * .9)); }
-.dory-fish .df-lights { opacity: calc(.6 + var(--glow, 0) * .4); transition: opacity var(--dur-gentle) var(--ease); }
-.dory-fish .df-tail, .dory-fish .df-dorsal { transform-box: fill-box; }
-.dory-fish .df-tail { transform-origin: 100% 50%; }
-.dory-fish .df-dorsal { transform-origin: 80% 100%; }
-.fish-blink .df-eye { animation: dory-blink 120ms var(--ease-in-out); }
-@keyframes dory-blink { 50% { transform: scaleY(.1); } }
-@keyframes dory-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
-.fish-alive .df-tail { animation: dory-sway 3s var(--ease-in-out) infinite; }
-.fish-alive .df-dorsal { animation: dory-sway 3.4s var(--ease-in-out) infinite reverse; }
-.fish-happy .df-eye { transform: scaleY(.82); }
-.fish-curious .df-brow { transform: translateY(-3px); }
-.fish-sorry .df-brow { transform: rotate(6deg); transform-box: fill-box; transform-origin: center; }
-.motion-off .fish-alive .df-tail, .motion-off .fish-alive .df-dorsal { animation: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
@@ -223,6 +211,6 @@ td { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); vertical-ali
   .lantern::before { display: none; }
 }
 
-/* The floating "talk to Dory" button on /center is Dory's face too (overrides the page's #fab). */
-body #fab { background: var(--ocean-800) url("/static/dory/dory-mark.svg") center / cover no-repeat; color: transparent;
+/* The floating "talk to Dory" button on /center is Dory's round face too (overrides the page's #fab). */
+body #fab { border-radius: 50%; background: var(--ocean-50) url("/static/dory/dory-mark.webp") center / cover no-repeat; color: transparent;
   box-shadow: 0 10px 24px rgba(26, 47, 92, .3); border: 3px solid #fff; }

@@ -5,497 +5,796 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dory · The AI coworker that remembers, files and follows up</title>
 <meta name="description" content="Dory is an AI coworker who lives in your team's Discord: meeting notes, receipts, task follow-up and answers from your company's own documents, in Thai or English.">
+<script>
+  // Before first paint: "js" lets entrances hide content (never without script); motion-off follows the
+  // saved Pause / Play choice, else the OS "reduce motion" setting (motion is off by default there).
+  (function () {
+    var d = document.documentElement, off = matchMedia("(prefers-reduced-motion: reduce)").matches, s = null;
+    try { s = localStorage.getItem("dory-motion"); } catch (e) {}
+    if (s === "off" || s === "on") off = s === "off";
+    d.classList.add("js");
+    if (off) d.classList.add("motion-off");
+  })();
+</script>
+<link rel="preload" as="image" media="(min-width: 700px)" fetchpriority="high" href="/static/dory/hero-reef-2400.webp"
+  imagesrcset="/static/dory/hero-reef-1280.webp 1280w, /static/dory/hero-reef-2400.webp 2400w" imagesizes="100vw">
+<link rel="preload" as="image" media="(max-width: 699px)" fetchpriority="high" href="/static/dory/hero-reef-phone.webp">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@600;700&amp;family=IBM+Plex+Mono:wght@500&amp;family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;display=swap">
-<link rel="icon" type="image/svg+xml" href="/static/dory/dory-mark.svg">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="font" type="font/woff2" crossorigin href="https://fonts.gstatic.com/s/anuphan/v6/2sDeZGxYgY7LkLT0mWoDam--C70.woff2">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@600;700&amp;family=IBM+Plex+Sans+Thai:wght@400;600&amp;display=swap">
 <link rel="icon" type="image/png" href="/static/dory/favicon.png">
+<link rel="apple-touch-icon" href="/static/dory/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/dory/theme.css">
 <style>
-  /* Lantern Deep homepage: the page descends from the abyss (hero) through lighter blues and
-     surfaces into the light Sand theme at the final call to action. Text always sits on solid
-     colour. Page-specific rules only; tokens come from theme.css. */
-  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
-  body { background: var(--ocean-950); }
-  .skip { position: absolute; left: 16px; top: -80px; z-index: 50; padding: 10px 16px; border-radius: 10px; background: var(--ocean-50);
-    color: var(--ocean-950); font-weight: 600; text-decoration: none; }
+  /* The homepage: Dory's painted reef, then the deep water under it. Every section is frosted glass over
+     deep blue light; tokens shared with the other pages come from theme.css, page rules live here. */
+
+  /* Fallback faces sized to Anuphan and IBM Plex Sans Thai (measured from the Latin subsets), so the
+     web fonts swap in without moving the layout. */
+  @font-face { font-family: "Anuphan Fallback"; src: local("Arial Bold"), local("Arial-BoldMT"), local("Arial");
+    font-weight: 600 700; size-adjust: 97.46%; ascent-override: 105.17%; descent-override: 28.22%; line-gap-override: 0%; }
+  @font-face { font-family: "Plex Fallback"; src: local("Arial"), local("ArialMT");
+    font-weight: 400; size-adjust: 100.4%; ascent-override: 111.15%; descent-override: 53.19%; line-gap-override: 0%; }
+  @font-face { font-family: "Plex Fallback"; src: local("Arial Bold"), local("Arial-BoldMT");
+    font-weight: 600 700; size-adjust: 96.19%; ascent-override: 116.02%; descent-override: 55.52%; line-gap-override: 0%; }
+
+  :root {
+    --font: "IBM Plex Sans Thai", "Plex Fallback", "Noto Sans Thai", "Segoe UI", Tahoma, sans-serif;
+    --font-display: "Anuphan", "Anuphan Fallback", var(--font);
+    --abyss: #040B22; --deep: #071637; --foam: #EAF2FF; --mist: #BFD0EE; --cyan: #5FF2E0; --blue: #3358F6;
+    /* the button gradient keeps white text at 4.7:1 or more at both ends */
+    --grad: linear-gradient(90deg, #3358F6 0%, #1F6FD8 55%, #0A78B8 100%);
+    --grad-text: linear-gradient(90deg, #4F7FFF 0%, #3AB4FF 52%, #5FF2E0 100%);
+    --grad-tile: linear-gradient(145deg, #7C9BFF 0%, #4A72F7 48%, #2391DF 100%);
+    --glass: rgba(12, 28, 72, .5);
+    --m: clamp(16px, 4.4vw, 64px);
+    --wrap: min(1320px, 100% - 2 * var(--m));
+    --hd: 76px;
+    --ease-out: cubic-bezier(.22, 1, .36, 1);
+    --s1: 16px; --s2: 18px; --s3: 20px; --s4: clamp(36px, 4.4vw, 60px);
+    --s5: clamp(44px, min(5.8vw, 9.2vh), 86px);
+  }
+  @media (max-width: 1279px) { :root { --hd: 68px; } }
+
+  html { scroll-padding-top: calc(var(--hd) + 8px); }
+  html:not(.motion-off) { scroll-behavior: smooth; }
+  html:has(dialog[open]) { overflow: hidden; }
+  body { background: var(--abyss); color: var(--foam); font-size: var(--s2); line-height: 1.6; }
+  :lang(th) body { line-height: 1.7; }
+  a, a:hover, [data-theme] a:hover { color: inherit; }
+  :focus-visible { outline: 3px solid var(--cyan); outline-offset: 3px; border-radius: 6px; }
+  .skip { position: absolute; left: 16px; top: -80px; z-index: 50; padding: 12px 18px; border-radius: 10px; background: var(--foam);
+    color: var(--abyss); font-weight: 600; font-size: var(--s1); text-decoration: none; }
   .skip:focus { top: 12px; }
+  .wrap { width: var(--wrap); margin-inline: auto; }
+  .sprite { position: absolute; width: 0; height: 0; overflow: hidden; }
+  .i { width: 24px; height: 24px; flex: none; fill: none; stroke: currentColor; stroke-width: 1.9; stroke-linecap: round; stroke-linejoin: round; }
+  .i-fill { fill: currentColor; stroke: none; }
 
-  /* ---------- navigation (deep, transparent over the hero, solid once scrolled) ---------- */
-  .nav { background: transparent; border-bottom: 1px solid transparent; transition: background var(--dur-base), border-color var(--dur-base); }
-  .nav.scrolled { background: rgba(5, 11, 31, .9); border-bottom-color: var(--color-border); }
-  .nav .wrap { gap: 10px; }
-  .logo { color: var(--color-text); }
-  .logo:hover { color: var(--color-text); }
-  .links { display: flex; gap: 2px; margin-left: auto; }
-  .links a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; color: var(--color-text-muted);
-    text-decoration: none; font-weight: 500; font-size: 15px; }
-  .links a:hover { color: var(--color-text); background: rgba(234, 242, 255, .06); }
-  .links .only-m { display: none; }
-  .menu-btn { display: none; width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--color-border-control); background: transparent; }
-  .menu-btn span { display: block; width: 18px; height: 2px; margin: 4px auto; border-radius: 2px; background: var(--color-text); }
-  @media (max-width: 960px) {
-    .links { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; padding: 8px 16px 16px;
-      background: var(--ocean-900); border-bottom: 1px solid var(--color-border); }
-    .links.open { display: flex; }
-    .links .only-m { display: inline-flex; }
-    .nav .login { display: none; }
-    .menu-btn { display: block; }
-    .langsw { margin-left: auto; }
-  }
-  @media (max-width: 600px) { .nav .cta-top { display: none; } }
+  /* ---------- type: five sizes ---------- */
+  h1, h2 { font-family: var(--font-display); font-weight: 700; text-wrap: balance; }
+  h1 { font-size: var(--s5); line-height: 1.04; letter-spacing: -.03em; }
+  h2 { font-size: var(--s4); line-height: 1.06; letter-spacing: -.025em; }
+  h3 { font-family: var(--font); font-weight: 600; font-size: var(--s3); line-height: 1.35; }
+  :lang(th) h1 { line-height: 1.3; letter-spacing: 0; }
+  :lang(th) h2 { line-height: 1.3; letter-spacing: 0; }
+  .lead { margin-top: 20px; max-width: 40em; font-size: var(--s3); line-height: 1.6; color: var(--mist); }
+  .small { font-size: var(--s1); }
+  .grad-text { background: var(--grad-text); -webkit-background-clip: text; background-clip: text; color: var(--cyan); -webkit-text-fill-color: transparent; }
 
-  /* ---------- hero: the abyss, three depth planes, Dory ---------- */
-  .hero { position: relative; overflow: hidden; margin-top: -64px; padding: 112px 0 88px; min-height: 88svh; display: flex; align-items: center;
-    background: radial-gradient(110% 80% at 72% 0%, #0E1D45 0%, var(--ocean-950) 62%); --cap: 60; }
-  .hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 140px; z-index: 1; pointer-events: none;
-    background: linear-gradient(rgba(10, 21, 48, 0), var(--ocean-900)); }
-  .hero .wrap { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; }
-  .copy { display: flex; flex-direction: column; gap: 20px; max-width: 560px; }
-  .eyebrow { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--glow-300); }
-  :lang(th) .eyebrow { font-family: var(--font); font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-  .hero h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(36px, 5vw, 60px); line-height: 1.08; letter-spacing: -.015em; }
-  :lang(th) .hero h1 { line-height: 1.3; letter-spacing: 0; }
-  .sub { font-size: 18px; color: var(--color-text-muted); max-width: 52ch; }
-  .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
-  .aside-line { font-size: 15px; color: var(--color-text-muted); }
-  .free { font-size: 14px; color: var(--color-text-subtle); }
-  .stage { position: relative; width: min(100%, 480px); aspect-ratio: 1; justify-self: center; }
-  .stage::before { content: ""; position: absolute; inset: 6% 4%; border-radius: 50%; filter: blur(24px);
-    background: radial-gradient(closest-side, rgba(95, 242, 224, .2), rgba(185, 180, 242, .12) 60%, rgba(5, 11, 31, 0)); }
-  .tilt { position: absolute; inset: 0; transform: rotate(calc(var(--tilt, 0) * 1deg)); transform-origin: 60% 55%; }
-  .fish-float { width: 100%; height: 100%; animation: dory-float 6s var(--ease-in-out) infinite; }
-  .hero-pic { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 40px;
-    border: 1px solid rgba(163, 183, 221, .22); box-shadow: 0 28px 70px rgba(0, 0, 0, .5); }
-  @keyframes dory-float { 50% { transform: translateY(-8px); } }
-  .sea { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-  .plane { position: absolute; inset: -40px;
-    transform: translate3d(calc(var(--px, 0) * var(--m) * -1px), calc(var(--py, 0) * var(--m) * -1px + min(var(--sy, 0) * var(--k), var(--cap)) * 1px), 0); }
-  .far { --m: 4; --k: .1; } .mid { --m: 10; --k: .2; } .near { --m: 18; --k: .4; }
-  .kelp { position: absolute; left: 0; right: 0; bottom: 40px; width: 100%; height: 34%; }
-  .kelp .bed { fill: var(--ocean-900); } .kelp .weed { stroke: var(--ocean-800); fill: none; stroke-width: 9; stroke-linecap: round; }
-  .ray { position: absolute; top: -20%; height: 130%; width: 140px; transform: rotate(22deg); transform-origin: top;
-    background: linear-gradient(180deg, rgba(95, 242, 224, .16), rgba(95, 242, 224, 0) 72%); filter: blur(10px);
-    animation: ray-breathe 9s var(--ease-in-out) infinite; }
-  .r1 { left: 14%; } .r2 { left: 36%; width: 70px; animation-delay: -3s; } .r3 { left: 64%; width: 190px; opacity: .6; animation-delay: -6s; }
-  @keyframes ray-breathe { 50% { opacity: .45; } }
-  .speck { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); border-radius: 50%; background: var(--ocean-50);
-    opacity: 0; animation: drift var(--d) linear var(--dl) infinite; }
-  @keyframes drift { 0% { transform: translateY(0); opacity: 0; } 15%, 85% { opacity: var(--o); } 100% { transform: translateY(-140px); opacity: 0; } }
-  .pause { position: absolute; right: 16px; bottom: 16px; z-index: 3; }
-  .hero.asleep * { animation-play-state: paused !important; }
-  .motion-off .hero *, .motion-off .speck { animation: none !important; }
-  .motion-off .speck { opacity: var(--o); }
-  @media (max-width: 900px) {
-    .hero { min-height: 0; padding: 104px 0 80px; }
-    .hero .wrap { grid-template-columns: minmax(0, 1fr); }
-    .stage { width: min(100%, 320px); }
-  }
-  @media (max-width: 700px) { .hero { --cap: 24; } }
+  /* ---------- glass: frost, a tint, a lit edge (a masked ring), no drop shadow ---------- */
+  .glass { position: relative; background: var(--glass); -webkit-backdrop-filter: blur(18px) saturate(150%); backdrop-filter: blur(18px) saturate(150%);
+    border-radius: 20px; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .1); }
+  .glass::before { content: ""; position: absolute; inset: 0; padding: 1px; border-radius: inherit; pointer-events: none;
+    background: linear-gradient(145deg, rgba(255, 255, 255, .5), rgba(255, 255, 255, .1) 38%, rgba(255, 255, 255, .04) 62%, rgba(140, 205, 255, .3));
+    -webkit-mask: linear-gradient(#000 0 0) content-box, linear-gradient(#000 0 0); -webkit-mask-composite: xor;
+    mask: linear-gradient(#000 0 0) content-box exclude, linear-gradient(#000 0 0); }
+  .tile { display: grid; place-items: center; width: 56px; height: 56px; flex: none; border-radius: 16px; background: var(--grad-tile); color: #fff;
+    box-shadow: inset 0 1px 0 rgba(255, 255, 255, .35); }
+  .tile .i { width: 28px; height: 28px; }
 
-  /* ---------- sections ---------- */
-  .sec { position: relative; padding: 112px 16px; }
-  .sec > .wrap { width: min(1120px, 100%); } /* the section owns the 16px gutter */
-  .sec-h { max-width: 660px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
-  .sec-h h2, .final h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3vw, 34px); line-height: 1.2; }
-  :lang(th) .sec-h h2, :lang(th) .final h2 { line-height: 1.35; }
-  .sec-h p { color: var(--color-text-muted); font-size: 17px; }
-  @media (max-width: 700px) { .sec { padding: 72px 16px; } }
-  .js .reveal { opacity: 0; transform: translateY(12px); transition: opacity 320ms var(--ease-out-soft), transform 320ms var(--ease-out-soft); }
-  .js .reveal.in { opacity: 1; transform: none; }
-  .motion-off .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
-
-  /* "Meet Dory": the introduction video (native controls, nothing loads before Play) */
-  .meet { background: linear-gradient(180deg, var(--ocean-900), var(--ocean-950)); padding-bottom: 64px; }
-  .film { margin: 0; }
-  .film video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: var(--radius-xl); background: var(--ocean-900);
-    border: 1px solid rgba(163, 183, 221, .22); box-shadow: 0 28px 70px rgba(0, 0, 0, .5); }
-  .film figcaption { margin-top: 12px; font-size: 14px; color: var(--color-text-muted); }
-
-  /* "See Dory at work": example conversations in a light chat card */
-  #preview { background: var(--ocean-900); }
-  .pv { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 32px; align-items: start; }
-  .tabs { display: flex; flex-direction: column; gap: 6px; }
-  .tab { min-height: 48px; padding: 10px 14px; border-radius: 12px; border: 1px solid transparent; background: transparent; text-align: left;
-    color: var(--color-text-muted); font-weight: 600; font-size: 15px; }
-  .tab:hover { color: var(--color-text); background: rgba(234, 242, 255, .04); }
-  .tab[aria-selected="true"] { color: var(--color-text); background: var(--ocean-800); border-color: var(--color-border); box-shadow: inset 3px 0 0 var(--glow-300); }
-  .chat { border-radius: var(--radius-xl); overflow: hidden; box-shadow: 0 24px 60px rgba(0, 0, 0, .45); }
-  .chat-h { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--color-bg-raised); border-bottom: 1px solid var(--color-border); }
-  .chat-h .mark, .m-dory .mark { border-radius: 50%; }
-  .chat-h strong { font-size: 15px; display: block; line-height: 1.2; }
-  .chat-h small { font-size: 13px; color: var(--color-text-muted); }
-  .chat-b { display: flex; flex-direction: column; gap: 16px; min-height: 340px; padding: 22px 18px 24px; }
-  .m-user { align-self: flex-end; max-width: 80%; padding: 10px 14px; border-radius: 18px 18px 6px 18px; background: var(--bubble-user-bg);
-    color: var(--bubble-user-text); font-size: 15px; }
-  .m-dory { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; font-size: 15px; }
-  .m-dory .who { display: block; font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
-  .m-dory ol { margin: 6px 0 0; padding-left: 20px; }
-  .att { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, .14);
-    font-size: 13px; }
-  .att svg { width: 14px; height: 14px; }
-  /* not yet "said": out of the layout but still read by screen readers, so the example is complete for them */
-  .step.pending { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .step.shown { animation: msg-in var(--dur-base) var(--ease-out-soft); }
-  @keyframes msg-in { from { opacity: 0; transform: translateY(6px); } }
-  .motion-off .step.shown { animation: none; }
-  .think { color: var(--color-text-muted); font-size: 14px; align-items: center; }
-  .pv-note { margin-top: 2px; font-size: 13px; color: var(--color-text-muted); }
-  .pv-ctl { display: flex; gap: 8px; margin-top: 14px; }
-  .pv-ctl .btn[disabled] { opacity: .45; background: transparent; color: var(--color-text); border-color: var(--color-border-control); }
-  @media (max-width: 860px) {
-    .pv { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-    .tabs { flex-direction: row; flex-wrap: wrap; }
-    .tab { flex: 1 1 auto; text-align: center; }
-    .tab[aria-selected="true"] { box-shadow: inset 0 -3px 0 var(--glow-300); }
+  /* ---------- buttons ---------- */
+  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 12px; min-height: 60px; padding: 0 28px; border: 2px solid transparent;
+    border-radius: 14px; font: 600 var(--s2)/1.2 var(--font); text-decoration: none; text-align: center; cursor: pointer;
+    transition: transform 160ms var(--ease-out), background-color 200ms ease, border-color 200ms ease, filter 200ms ease; }
+  .btn:active { transform: scale(.97); }
+  .btn .i { width: 26px; height: 26px; }
+  .btn-grad { background: var(--grad); color: #fff; box-shadow: inset 0 1px 0 rgba(255, 255, 255, .28); }
+  .btn-ghost { background: rgba(4, 11, 34, .45); color: #fff; border-color: rgba(234, 242, 255, .42); }
+  .btn-light { background: #EEF3FF; color: #2442C9; }
+  .btn-dark { background: rgba(4, 11, 34, .6); color: #fff; border-color: rgba(234, 242, 255, .34); }
+  .btn-sm { min-height: 48px; padding: 0 20px; border-radius: 12px; font-size: var(--s1); }
+  .btn-sm .i { width: 22px; height: 22px; }
+  @media (hover: hover) and (pointer: fine) {
+    .btn:hover { transform: translateY(-2px); }
+    .btn-grad:hover { filter: brightness(1.12); color: #fff; }
+    .btn-ghost:hover, .btn-dark:hover { background: rgba(234, 242, 255, .14); border-color: rgba(234, 242, 255, .7); color: #fff; }
+    .btn-light:hover { background: #fff; color: #2442C9; }
   }
 
-  /* capabilities */
-  #features { background: linear-gradient(180deg, var(--ocean-900), var(--ocean-800)); }
-  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-  @media (max-width: 1040px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 560px) { .grid { grid-template-columns: minmax(0, 1fr); } }
-  .card { display: flex; flex-direction: column; gap: 8px; padding: 22px; transition: transform var(--dur-base) var(--ease), border-color var(--dur-base); }
-  [data-theme="deep"] .card { background: rgba(26, 47, 92, .45); }
-  .card.feat:hover { transform: translateY(-2px); border-color: rgba(95, 242, 224, .35); }
-  .card h3 { font-size: 17px; }
-  .card p { color: var(--color-text-muted); font-size: 15px; }
-  /* the icon sits beside its heading, in flow, with no tile of its own; the rest of the card spans the width */
-  .card:has(> .ic) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; align-content: start; column-gap: 12px; row-gap: 10px; }
-  .card:has(> .ic) > :not(.ic):not(h3) { grid-column: 1 / -1; }
-  .ic { display: grid; place-items: center; color: var(--glow-300); }
-  .ic svg { width: 24px; height: 24px; }
-  .card .pill { align-self: flex-start; }
+  /* ---------- header: clear over the reef, frosted once the page moves ---------- */
+  .hd { position: fixed; inset: 0 0 auto; z-index: 30; height: var(--hd); color: #fff; transition: background-color 300ms ease; }
+  .hd.solid { background: rgba(4, 11, 34, .78); -webkit-backdrop-filter: blur(16px) saturate(140%); backdrop-filter: blur(16px) saturate(140%); }
+  .hd-in { width: var(--wrap); height: 100%; margin-inline: auto; display: flex; align-items: center; gap: 20px; white-space: nowrap; }
+  .logo { display: inline-flex; align-items: center; gap: 12px; min-height: 44px; color: #fff; font: 700 24px/1 var(--font-display); text-decoration: none; }
+  .logo .mark, .mark { width: 44px; height: 44px; border-radius: 50%; box-shadow: none; font-size: var(--s1); }
+  .hd-menu { display: contents; }
+  .hd-nav { order: 1; display: flex; margin-left: auto; }
+  .hd-nav a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; color: #fff; font-size: var(--s1);
+    font-weight: 600; text-decoration: none; transition: background-color 200ms ease; }
+  .hd-nav a:hover { background: rgba(234, 242, 255, .12); color: #fff; }
+  @media (max-width: 1439px) { .hd-in { gap: 16px; } .hd-nav a { padding: 0 10px; } }   /* Thai fits from 1280 up */
+  .lang { order: 2; display: flex; padding: 3px; border-radius: 999px; background: rgba(4, 11, 34, .5); box-shadow: inset 0 0 0 1px rgba(234, 242, 255, .2); }
+  .lang button { min-width: 48px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: #DCE6F8; font-weight: 600;
+    font-size: var(--s1); transition: background-color 200ms ease, color 200ms ease; }
+  .lang button[aria-pressed="true"] { background: var(--foam); color: #0B1D4A; }
+  .hd-act { order: 3; display: flex; align-items: center; gap: 12px; }
+  .menu-btn { order: 4; display: none; place-items: center; width: 48px; height: 48px; border: 0; border-radius: 12px; background: rgba(4, 11, 34, .5);
+    color: #fff; box-shadow: inset 0 0 0 1px rgba(234, 242, 255, .22); }
+  @media (max-width: 1279px) {
+    .hd-in { gap: 10px; }
+    .lang { margin-left: auto; }
+    .menu-btn { display: grid; }
+    .hd-menu { display: none; position: absolute; top: calc(var(--hd) - 4px); left: var(--m); right: var(--m); flex-direction: column; gap: 16px; padding: 16px;
+      border-radius: 20px; background: #06102E; box-shadow: inset 0 0 0 1px rgba(234, 242, 255, .16), 0 24px 60px rgba(0, 0, 0, .45); }
+    .hd.open .hd-menu { display: flex; }
+    .hd-nav { flex-direction: column; margin: 0; }
+    .hd-nav a { min-height: 48px; font-size: var(--s2); }
+    .hd-act { flex-wrap: wrap; }
+    .hd-act .btn { flex: 1 1 auto; }
+  }
+  @media (max-width: 380px) { .logo .wm { display: none; } }
 
-  /* how it works */
-  #how { background: var(--ocean-800); }
-  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; position: relative; }
-  .steps::before { content: ""; position: absolute; left: 22px; right: 22px; top: 22px; height: 1px;
-    background: linear-gradient(90deg, rgba(95, 242, 224, .5), rgba(185, 180, 242, .3)); }
-  .stp { position: relative; display: flex; flex-direction: column; gap: 10px; }
-  .stp .n { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: var(--ocean-950);
-    background: var(--glow-300); }
-  .stp p { color: var(--color-text-muted); }
-  .stp code, .roles code { font-family: var(--mono); font-size: 14px; padding: 2px 8px; border-radius: 6px; background: rgba(95, 242, 224, .12); color: var(--glow-300); }
-  .where { margin-top: 64px; }
-  .where h3 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin-bottom: 4px; }
-  .where > p { color: var(--color-text-muted); margin-bottom: 20px; }
-  @media (max-width: 760px) {
-    .steps { grid-template-columns: minmax(0, 1fr); }
-    .steps::before { left: 22px; right: auto; top: 22px; bottom: 22px; width: 1px; height: auto; }
-    .stp { padding-left: 60px; } .stp .n { position: absolute; left: 0; top: 0; }
+  /* ---------- entrances: heading, then text, then the rest; once; never without script or with motion off ---------- */
+  [data-rise] { transition: opacity 700ms var(--ease-out) calc(var(--i, 0) * 80ms), transform 800ms var(--ease-out) calc(var(--i, 0) * 80ms); }
+  .js:not(.motion-off) [data-group]:not(.in) [data-rise], .js:not(.motion-off) [data-group]:not(.in)[data-rise] { opacity: 0; transform: translateY(24px); }
+  .motion-off [data-rise] { transition: none; }
+
+  /* ---------- the hero: the painted reef, Dory, the copy, four frosted cards ---------- */
+  .hero { position: relative; isolation: isolate; display: flex; flex-direction: column; min-height: max(100svh, 760px); overflow: clip; color: #fff; background: var(--deep); }
+  .hero-bg { position: absolute; inset: -12px; z-index: -3; transform: translate3d(calc(var(--px, 0) * -10px), calc(var(--py, 0) * -6px), 0);
+    transition: transform 1200ms var(--ease-out); }
+  .hero-bg img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 60%; }
+  /* the scrim: the copy column stays at 4.5:1 or better over the brightest coral */
+  .hero::before { content: ""; position: absolute; inset: 0; z-index: -2; pointer-events: none;
+    background: linear-gradient(90deg, rgba(4, 11, 34, .9) 0%, rgba(4, 11, 34, .76) 30%, rgba(4, 11, 34, .32) 50%, rgba(4, 11, 34, 0) 64%),
+      linear-gradient(180deg, rgba(4, 11, 34, .6) 0, rgba(4, 11, 34, 0) 160px); }
+  .hero::after { content: ""; position: absolute; inset: auto 0 0; height: 140px; z-index: -1; pointer-events: none;
+    background: linear-gradient(0deg, var(--deep), rgba(7, 22, 55, 0)); }
+  .hero-main { position: relative; flex: 1 0 auto; width: var(--wrap); margin-inline: auto; display: grid; grid-template-columns: minmax(0, 11fr) minmax(0, 10fr);
+    align-items: center; column-gap: 24px; padding-top: calc(var(--hd) + 16px); }
+  .hero-copy { max-width: 660px; padding-block: 16px; }
+  .eyebrow { color: var(--cyan); font-size: 15px; font-weight: 600; line-height: 1.4; letter-spacing: .2em; text-transform: uppercase; }
+  :lang(th) .eyebrow { letter-spacing: .04em; }
+  .hero h1 { margin-top: 18px; }
+  .hero h1 span { display: block; }
+  .hero h1 .grad-text { padding-bottom: .06em; }
+  .sub { margin-top: 26px; max-width: 36em; font-size: var(--s3); line-height: 1.6; color: #E4ECFB; }
+  .acts { display: flex; flex-wrap: wrap; align-items: center; gap: 16px; margin-top: 36px; }
+  .checks { display: flex; flex-wrap: wrap; gap: 12px 28px; margin: 30px 0 0; padding: 0; list-style: none; font-size: var(--s1); color: #E4ECFB; }
+  .checks li { display: flex; align-items: center; gap: 10px; }
+  .checks .i { width: 22px; height: 22px; color: var(--cyan); }
+  .hero-dory { position: relative; justify-self: end; width: 100%; max-width: 680px; transform: translate3d(calc(var(--px, 0) * 22px), calc(var(--py, 0) * 14px), 0);
+    transition: transform 900ms var(--ease-out); }
+  .hero-dory img { display: block; width: 100%; height: auto; max-height: calc(100svh - var(--hd) - 230px); object-fit: contain; animation: bob 7s ease-in-out infinite; }
+  @keyframes bob { 0%, 100% { transform: translateY(0) rotate(-1.2deg); } 50% { transform: translateY(-16px) rotate(1deg); } }
+  .bubbles { position: absolute; inset: 0; pointer-events: none; }
+  .bubbles span { position: absolute; width: var(--s); height: var(--s); border-radius: 50%; opacity: .85;
+    background: radial-gradient(circle at 34% 30%, rgba(255, 255, 255, .95) 0 9%, rgba(255, 255, 255, .22) 16%, rgba(160, 215, 255, .06) 52%, rgba(205, 238, 255, .55) 70%, rgba(255, 255, 255, 0) 74%);
+    animation: rise var(--d) linear var(--w) infinite; }
+  @keyframes rise { 0% { transform: translate(0, 110px); opacity: 0; } 12% { opacity: .9; } 85% { opacity: .9; } 100% { transform: translate(var(--x, 12px), -240px); opacity: 0; } }
+  .motion-off .hero-dory img, .motion-off .bubbles span, .motion-off .sea-bubbles span { animation: none; }
+  .motion-off .hero-dory, .motion-off .hero-bg { transform: none; }
+  .pause { position: absolute; right: 0; bottom: 4px; display: inline-flex; align-items: center; gap: 8px; min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px;
+    background: rgba(4, 11, 34, .62); color: #fff; font-size: var(--s1); font-weight: 600; box-shadow: inset 0 0 0 1px rgba(234, 242, 255, .28); }
+  .pause:hover { background: rgba(4, 11, 34, .85); }
+  .pause .i { width: 18px; height: 18px; }
+  .pause .i-play, .motion-off .pause .i-pause { display: none; }
+  .motion-off .pause .i-play { display: block; }
+  .cards { width: var(--wrap); margin: 20px auto 36px; padding: 0; display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; list-style: none; }
+  .hcard { display: flex; align-items: flex-start; gap: 18px; padding: 22px; }
+  .hcard h3 { font-size: var(--s2); line-height: 1.35; }
+  .hcard p { margin-top: 6px; font-size: var(--s1); line-height: 1.5; color: #D9E4F8; }
+  @media (max-width: 1279px) and (min-width: 960px) { .hcard { flex-direction: column; gap: 14px; } }
+  @media (max-width: 959px) {
+    :root { --s5: clamp(32px, 10.5vw, 68px); }
+    .hero { min-height: 0; }
+    .hero-bg img { object-position: 50% 100%; }
+    .hero::before { background: linear-gradient(180deg, rgba(4, 11, 34, .86) 0%, rgba(4, 11, 34, .68) 42%, rgba(4, 11, 34, .14) 64%, rgba(4, 11, 34, .3) 100%); }
+    .hero-main { grid-template-columns: minmax(0, 1fr); padding-top: calc(var(--hd) + 28px); }
+    .hero-dory { justify-self: center; width: min(92%, 560px); margin-top: 12px; }
+    .hero-dory img { max-height: none; }
+    .pause { position: static; justify-self: end; margin-top: 8px; }
+    .cards { grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 12px; margin-top: 12px; }
+  }
+  @media (max-width: 599px) {
+    .eyebrow { letter-spacing: .1em; }
+    .sub { font-size: var(--s2); }
+    .acts { flex-direction: column; align-items: stretch; gap: 12px; margin-top: 28px; }
+    .acts .btn { min-height: 56px; }
+    .checks { flex-direction: column; gap: 10px; }
+    .hcard { flex-direction: column; gap: 12px; padding: 16px; }
+    .hcard .tile { width: 48px; height: 48px; border-radius: 14px; }
+    .hcard h3 { font-size: var(--s1); }
+    .hcard p { font-size: 15px; }
   }
 
-  /* use cases by role */
-  #roles { background: linear-gradient(180deg, var(--ocean-800), #142650); }
-  .tabs.row { flex-direction: row; flex-wrap: wrap; margin-bottom: 16px; }
-  .tabs.row .tab { border-radius: 99px; padding: 10px 18px; }
-  .tabs.row .tab[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--glow-300); }
-  .role { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding: 28px; border-radius: var(--radius-xl);
-    background: var(--ocean-900); border: 1px solid var(--color-border); }
-  .role .lbl { display: block; font-size: 13px; font-weight: 600; color: var(--glow-300); margin-bottom: 6px; }
-  .role q { font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 1.35; }
-  .role p { color: var(--color-text-muted); font-size: 16px; }
-  @media (max-width: 760px) { .role { grid-template-columns: minmax(0, 1fr); padding: 22px; } .role q { font-size: 19px; } }
+  /* the film: opens over the page, plays only when asked (it has sound) */
+  .film-dlg { width: min(1080px, 100% - 32px); max-height: calc(100svh - 32px); margin: auto; padding: 20px; border: 0; border-radius: 22px; color: #fff;
+    background: rgba(6, 16, 46, .92); box-shadow: inset 0 0 0 1px rgba(234, 242, 255, .18), 0 40px 90px rgba(0, 0, 0, .6); overflow: auto; }
+  .film-dlg::backdrop { background: rgba(2, 6, 20, .82); -webkit-backdrop-filter: blur(6px); backdrop-filter: blur(6px); }
+  .film-top { display: flex; align-items: flex-start; justify-content: space-between; gap: 16px; margin-bottom: 16px; }
+  .film-top h2 { font-size: clamp(26px, 3vw, 36px); }
+  .film-top p { margin-top: 4px; color: var(--mist); font-size: var(--s1); }
+  .x-btn { display: grid; place-items: center; width: 48px; height: 48px; flex: none; border: 0; border-radius: 12px; background: rgba(234, 242, 255, .1); color: #fff; }
+  .x-btn:hover { background: rgba(234, 242, 255, .2); }
+  #film-fig { margin: 0; }
+  #film-fig video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: 14px; background: var(--abyss); }
+  #film-fig figcaption { margin-top: 14px; max-width: 70ch; color: var(--mist); font-size: var(--s1); }
 
-  /* trust and control */
-  #trust { background: linear-gradient(180deg, #142650, var(--ocean-700)); }
-  .trust { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 48px; align-items: start; }
-  .flow { display: flex; flex-direction: column; align-items: flex-start; gap: 0; margin-top: 8px; }
-  .flow span { padding: 10px 16px; border-radius: 12px; border: 1px solid var(--color-border-control); background: var(--ocean-800); font-weight: 600; font-size: 15px; }
-  .flow span:last-child { border-color: var(--glow-300); }
-  .flow i { display: block; width: 1px; height: 22px; margin-left: 28px; background: var(--ocean-300); }
-  .facts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 16px; }
-  .facts li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; font-size: 16px; }
-  .facts svg { width: 22px; height: 22px; color: var(--glow-300); margin-top: 2px; }
-  .facts b { font-weight: 600; } .facts span { color: var(--color-text-muted); }
-  .models { margin-top: 24px; padding: 14px 16px; border-radius: 12px; background: var(--ocean-800); color: var(--color-text-muted); font-size: 14px; }
-  .models code { font-family: var(--mono); color: var(--color-text); overflow-wrap: anywhere; }
-  @media (max-width: 860px) { .trust { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+  /* ---------- the deep: each section a band of light pools, so the glass has something to frost ---------- */
+  main { background: linear-gradient(180deg, var(--deep) 0, #06122F 45%, var(--abyss) 100%); }
+  .sec { position: relative; isolation: isolate; padding-block: clamp(72px, 8vw, 120px); }
+  /* the pools run 200px past the section on both sides, so neighbours blend instead of meeting at a seam */
+  .sec::before { content: ""; position: absolute; inset: -200px 0; z-index: -1; pointer-events: none; }
+  .sec-head { max-width: 780px; }
+  .sec-head.split { max-width: none; display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 24px 48px; align-items: end; }
+  .sec-head.split .lead { margin-top: 0; }
+  @media (max-width: 899px) { .sec-head.split { grid-template-columns: minmax(0, 1fr); } }
+  .sea-bubbles { position: absolute; inset: 0; z-index: -1; overflow: hidden; pointer-events: none; }
+  .sea-bubbles span { position: absolute; bottom: -40px; width: var(--s); height: var(--s); border-radius: 50%; opacity: 0;
+    background: radial-gradient(circle at 34% 30%, rgba(255, 255, 255, .7) 0 9%, rgba(160, 215, 255, .05) 50%, rgba(205, 238, 255, .35) 70%, rgba(255, 255, 255, 0) 74%);
+    animation: drift var(--d) linear var(--w) infinite; }
+  @keyframes drift { 0% { transform: translateY(0); opacity: 0; } 10% { opacity: .7; } 90% { opacity: .5; } 100% { transform: translateY(-700px); opacity: 0; } }
 
-  /* plans */
-  #plans { background: var(--ocean-700); }
-  #plans .grid { grid-template-columns: repeat(2, minmax(0, 360px)); }
-  @media (max-width: 760px) { #plans .grid { grid-template-columns: minmax(0, 1fr); } }
-  .price { font-weight: 600; color: var(--color-text); }
-  .plan-c.soon { border-style: dashed; background: transparent; box-shadow: none; }
-  .plan-c .btn { margin-top: auto; align-self: flex-start; }
-  .fine { margin-top: 18px; font-size: 14px; color: var(--color-text-muted); max-width: 720px; }
+  /* features: eight frosted tiles */
+  .features::before { background: radial-gradient(44% 34% at 84% 30%, rgba(51, 88, 246, .38), transparent 70%),
+    radial-gradient(36% 30% at 8% 68%, rgba(35, 145, 223, .26), transparent 70%); }
+  /* the reef's sun shafts keep falling into the first deep section, fading as it gets darker */
+  .features::after { content: ""; position: absolute; inset: 0 0 auto; height: min(1000px, 100%); z-index: -1; pointer-events: none;
+    background: repeating-linear-gradient(100deg, rgba(140, 200, 255, 0) 0 6%, rgba(140, 200, 255, .08) 6% 9%, rgba(140, 200, 255, 0) 9% 17%);
+    -webkit-mask: radial-gradient(75% 80% at 70% 0%, #000, transparent 75%); mask: radial-gradient(75% 80% at 70% 0%, #000, transparent 75%); }
+  .feats { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 20px; margin: 56px 0 0; padding: 0; list-style: none; }
+  .feat { padding: 28px 26px 30px; }
+  .feat h3 { margin-top: 22px; }
+  .feat p { margin-top: 8px; font-size: var(--s1); color: var(--mist); }
+  @media (max-width: 1099px) { .feats { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+  @media (max-width: 599px) { .feats { grid-template-columns: minmax(0, 1fr); gap: 12px; } .feat { display: grid; grid-template-columns: 48px minmax(0, 1fr); gap: 4px 16px; padding: 20px; }
+    .feat .tile { width: 48px; height: 48px; grid-row: span 2; } .feat h3 { margin-top: 0; } .feat p { margin-top: 0; } }
 
-  /* final call to action: Dory surfaces into the light */
-  .final { padding: 40px 0 96px; text-align: center;
-    background: linear-gradient(180deg, var(--ocean-700) 0, #4F6A9B 90px, #C9D3E4 180px, var(--sand-50) 250px); }
-  .final .wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
-  .surface-fish { display: block; width: 160px; margin-bottom: 40px; }
-  .surface-fish img { display: block; width: 100%; height: auto; border-radius: 32px; box-shadow: 0 18px 44px rgba(0, 0, 0, .35); }
-  .js .surface-fish.reveal { transform: translateY(48px); transition: opacity 600ms var(--ease-out-soft), transform 900ms var(--ease-buoy); }
-  .final > .wrap > p { color: var(--color-text-muted); font-size: 17px; max-width: 520px; }
-  .final .ctas { justify-content: center; }
-  .entry { width: 100%; margin-top: 56px; text-align: left; }
-  .entry h3.t { font-family: var(--font-display); font-weight: 600; font-size: 22px; text-align: center; }
-  .entry > p { color: var(--color-text-muted); text-align: center; margin: 6px 0 24px; }
-  .entry .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  @media (max-width: 860px) { .entry .grid { grid-template-columns: minmax(0, 1fr); } }
-  .card.go { text-decoration: none; color: inherit; }
-  .card.go:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-  .card.go { grid-template-rows: auto 1fr auto; }
-  .card.go .ic { color: var(--glow-700); }
-  .card.go .more { margin-top: auto; padding-top: 10px; color: var(--color-link); font-size: 15px; }
+  /* how it works: the message, the card Dory makes of it, and her clock */
+  .how::before { background: radial-gradient(42% 30% at 14% 34%, rgba(51, 88, 246, .3), transparent 70%),
+    radial-gradient(38% 30% at 90% 62%, rgba(95, 242, 224, .13), transparent 70%); }
+  .demo { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; margin-top: 56px; }
+  .say, .catch { display: flex; flex-direction: column; gap: 20px; padding: clamp(24px, 3vw, 40px); }
+  .say label { display: block; font-size: var(--s1); font-weight: 600; color: var(--mist); }
+  #msg { display: block; width: 100%; margin-top: 10px; padding: 16px 18px; border: 2px solid rgba(163, 190, 235, .5); border-radius: 14px;
+    background: rgba(4, 11, 34, .6); color: #fff; font: 400 var(--s3)/1.45 var(--font); resize: vertical; }
+  #msg:hover { border-color: rgba(234, 242, 255, .75); }
+  #msg:focus { border-color: var(--cyan); box-shadow: none; outline: 3px solid var(--cyan); outline-offset: 2px; }
+  .egs { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+  .egs p { width: 100%; font-size: var(--s1); font-weight: 600; }
+  .chipb { display: inline-flex; align-items: center; min-height: 44px; padding: 0 16px; border: 0; border-radius: 999px; background: rgba(234, 242, 255, .1);
+    color: #fff; font-size: var(--s1); font-weight: 600; box-shadow: inset 0 0 0 1px rgba(234, 242, 255, .28); transition: background-color 200ms ease, transform 140ms var(--ease-out); }
+  .chipb:hover { background: rgba(234, 242, 255, .2); }
+  .chipb:active { transform: scale(.97); }
+  .note { font-size: var(--s1); color: var(--mist); }
+  .note b { color: #fff; }
+  .catch #card { margin-block: auto; }
+  .after { font-size: var(--s1); color: var(--mist); }
+  .follow { margin-top: 24px; padding: clamp(24px, 3vw, 40px); }
+  .follow > p { margin-top: 8px; max-width: 60ch; color: var(--mist); font-size: var(--s1); }
+  .bar { display: flex; gap: 10px; margin: 28px 0 0; padding: 0; list-style: none; }
+  .bar li { display: flex; flex-direction: column; gap: 14px; min-width: 0; flex: 1 1 0; }
+  .bar .s-sec { flex: 0 0 15%; }
+  .bar .s-3wd { flex-grow: 3; }
+  .bar .blk { display: flex; align-items: flex-end; min-height: 104px; padding: 16px 18px; border-radius: 14px; font: 700 var(--s3)/1.2 var(--font-display); }
+  .bar li p:last-child { max-width: 26ch; font-size: var(--s1); color: var(--mist); }
+  .s-sec .blk { background: var(--cyan); color: #04232A; }
+  .s-day .blk { background: #3E6BF5; color: #fff; }
+  .s-3wd .blk { background: #1C3E9E; color: #fff; }
+  .s-eve .blk { background: #0A78B8; color: #fff; }
+  @media (max-width: 899px) {
+    .demo { grid-template-columns: minmax(0, 1fr); }
+    .bar { flex-direction: column; }
+    .bar li, .bar .s-sec { flex: none; display: grid; grid-template-columns: minmax(0, 2fr) minmax(0, 3fr); align-items: center; gap: 16px; }
+    .bar .blk { min-height: 64px; align-items: center; }
+    .bar .s-3wd .blk { min-height: 132px; }
+  }
+  @media (max-width: 479px) { .bar li, .bar .s-sec { grid-template-columns: minmax(0, 1fr); gap: 8px; } .bar li p:last-child { margin-bottom: 10px; } }
 
-  /* footer */
-  .foot { background: var(--sand-100); border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--color-text-muted); font-size: 14px; }
-  .foot .wrap { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: center; }
-  .foot a { color: var(--color-text-muted); text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
-  .foot a:hover { color: var(--indigo); text-decoration: underline; }
-  .foot .btn { margin-left: auto; }
-  .foot .btn + .btn { margin-left: 0; }
-  @media (max-width: 600px) { .foot .btn { margin-left: 0; } }
+  /* the task card, as Dory sends it (an interface fragment: its own borders and radius) */
+  .tc[data-ui] { position: relative; overflow: hidden; padding: 22px 24px 24px 30px; border-radius: 16px; background: #FFFFFF; color: var(--ink-900);
+    font-size: var(--s1); line-height: 1.5; }
+  .tc[data-ui]::before { content: ""; position: absolute; left: 0; top: 0; bottom: 0; width: 6px; background: linear-gradient(180deg, #3358F6, #22B8E8); }
+  .tc[data-ui] .tc-top { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; color: var(--ink-600); }
+  .tc[data-ui] .tc-top b { color: var(--ink-900); }
+  .tc[data-ui] .lamp { width: 10px; height: 10px; flex: none; border-radius: 50%; background: #C9CFDB; transition: background-color 400ms ease, box-shadow 400ms ease; }
+  .tc[data-ui] .lamp.on { background: var(--lantern-300); box-shadow: 0 0 0 3px rgba(255, 196, 107, .35), 0 0 14px rgba(255, 196, 107, .9); }
+  .tc[data-ui] .tc-k { margin: 0; font-weight: 600; color: var(--ink-600); }
+  .tc[data-ui] .tc-t { margin: 4px 0 0; font-size: var(--s3); font-weight: 600; line-height: 1.35; }
+  .tc[data-ui] .tc-dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 16px 0 0; }
+  .tc[data-ui] .tc-dl div { display: contents; }
+  .tc[data-ui] dt { color: var(--ink-600); }
+  .tc[data-ui] dd { margin: 0; font-weight: 600; }
+  .tc[data-ui] .tc-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .tc[data-ui] .tb { min-height: 44px; padding: 8px 18px; border: 0; border-radius: 10px; background: #E6ECF7; color: var(--ink-900); font-weight: 600;
+    font-size: var(--s1); transition: background-color 160ms ease, transform 140ms var(--ease-out); }
+  .tc[data-ui] .tb:first-child { background: #1B2E7A; color: #fff; }
+  .tc[data-ui] .tb:hover { background: #D3DCEB; }
+  .tc[data-ui] .tb:first-child:hover { background: #2442C9; }
+  .tc[data-ui] .tb:active { transform: scale(.97); }
+  .tc[data-ui] .tb:focus-visible { outline-color: #2442C9; }
+  .tc[data-ui] .tb[aria-pressed="true"] { box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px #1B2E7A; }
+  .tc[data-ui] .tc-said:not(:empty) { margin: 14px 0 0; padding: 10px 12px; border-radius: 10px; background: #EEF3FA; }
+  .tc[data-ui] .tc-said:empty { display: none; }
+  .motion-off .tc[data-ui] .lamp { transition: none; }
+
+  /* for teams: who asks decides what she may use */
+  .teams::before { background: radial-gradient(40% 34% at 86% 50%, rgba(51, 88, 246, .32), transparent 70%),
+    radial-gradient(34% 30% at 6% 70%, rgba(35, 145, 223, .22), transparent 70%); }
+  .teams-grid { display: grid; grid-template-columns: minmax(0, 6fr) minmax(0, 5fr); gap: 24px 48px; align-items: center; margin-top: 56px; }
+  .ctl { padding: clamp(24px, 3vw, 36px); }
+  .ctl h3 + p { margin-top: 6px; font-size: var(--s1); color: var(--mist); max-width: 52ch; }
+  .ctl .blk2 { margin-top: 32px; }
+  .segs { margin: 16px 0 0; padding: 0; border: 0; }
+  .segs legend { margin-bottom: 10px; padding: 0; font-size: var(--s1); font-weight: 600; }
+  .seg-row { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 999px; background: rgba(4, 11, 34, .55); box-shadow: inset 0 0 0 1px rgba(234, 242, 255, .2); }
+  .segs input { position: absolute; width: 1px; height: 1px; opacity: 0; clip-path: inset(50%); }
+  .segs label { display: inline-flex; align-items: center; min-height: 44px; padding: 0 20px; border-radius: 999px; color: #DCE6F8; font-size: var(--s1); font-weight: 600;
+    cursor: pointer; transition: background-color 200ms ease, color 200ms ease; }
+  .segs input:checked + label { background: var(--foam); color: #0B1D4A; }
+  .segs input:focus-visible + label { outline: 3px solid var(--cyan); outline-offset: 2px; }
+  @media (hover: hover) and (pointer: fine) { .segs input:not(:checked) + label:hover { background: rgba(234, 242, 255, .12); } }
+  .ctl .note { margin-top: 24px; }
+  @media (max-width: 899px) { .teams-grid { grid-template-columns: minmax(0, 1fr); } }
+
+  /* the memory answer (an interface fragment, as in the web chat) */
+  .ans[data-ui] { padding: 26px; border-radius: 20px; background: #FFFFFF; color: var(--ink-900); font-size: var(--s1); line-height: 1.55; }
+  .ans[data-ui] .ans-q { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin: 0 0 20px; }
+  .ans[data-ui] .ans-who { color: var(--ink-600); font-weight: 600; }
+  .ans[data-ui] .ans-q span:last-child { max-width: 85%; padding: 10px 14px; border-radius: 16px 16px 4px 16px; background: #1B2E7A; color: #FFFFFF; }
+  .ans[data-ui] .ans-a { display: grid; grid-template-columns: 36px minmax(0, 1fr); gap: 12px; }
+  .ans[data-ui] .mark { width: 36px; height: 36px; }
+  .ans[data-ui] .ans-a p { margin: 0 0 10px; }
+  .ans[data-ui] .ans-a p[data-ans="a"], .ans[data-ui] .ans-a p[data-ans="x"] { font-size: var(--s2); line-height: 1.5; }
+  .ans[data-ui] .ans-src { color: var(--ink-600); }
+  .ans[data-ui] .ans-note { margin: 4px 0 0; padding: 10px 12px; border-radius: 10px; background: #EEF3FA; }
+
+  /* trust: five facts */
+  .trust::before { background: radial-gradient(40% 32% at 18% 40%, rgba(51, 88, 246, .28), transparent 70%),
+    radial-gradient(34% 30% at 92% 72%, rgba(95, 242, 224, .11), transparent 70%); }
+  .trust-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 40px 64px; align-items: start; }
+  .trust-grid .sec-head { position: sticky; top: calc(var(--hd) + 40px); }
+  .facts { display: flex; flex-direction: column; gap: 14px; margin: 0; padding: 0; list-style: none; }
+  .fact { display: grid; grid-template-columns: 56px minmax(0, 1fr); gap: 4px 22px; padding: 24px 28px; }
+  .fact .tile { grid-row: span 2; }
+  .fact p { font-size: var(--s1); color: var(--mist); }
+  #models { font: inherit; font-weight: 600; color: #fff; overflow-wrap: anywhere; }
+  @media (max-width: 899px) { .trust-grid { grid-template-columns: minmax(0, 1fr); } .trust-grid .sec-head { position: static; } }
+  @media (max-width: 599px) { .fact { grid-template-columns: 48px minmax(0, 1fr); gap: 4px 16px; padding: 20px; } .fact .tile { width: 48px; height: 48px; } }
+
+  /* pricing: one plan */
+  .pricing::before { background: radial-gradient(40% 34% at 22% 52%, rgba(35, 145, 223, .24), transparent 70%),
+    radial-gradient(36% 34% at 84% 56%, rgba(51, 88, 246, .32), transparent 70%); }
+  .plan { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 4fr); margin-top: 56px; }
+  .plan-main { padding: clamp(28px, 3.4vw, 48px); }
+  .plan-main > p { margin-top: 10px; max-width: 46ch; color: var(--mist); }
+  .terms { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 14px 28px; margin: 28px 0 0; padding: 0; list-style: none; font-weight: 600; }
+  .terms li { display: flex; align-items: center; gap: 10px; }
+  .terms .i { color: var(--cyan); }
+  .plan-side { display: flex; flex-direction: column; justify-content: center; gap: 20px; padding: clamp(28px, 3.4vw, 48px); border-radius: 0 20px 20px 0;
+    background: rgba(234, 242, 255, .07); }
+  .price { font: 700 var(--s5)/1 var(--font-display); letter-spacing: -.03em; }
+  .plan-side .btn { width: 100%; }
+  @media (max-width: 899px) { .plan { grid-template-columns: minmax(0, 1fr); } .plan-side { border-radius: 0 0 20px 20px; } }
+  @media (max-width: 599px) { .terms { grid-template-columns: minmax(0, 1fr); } }
+
+  /* faq */
+  .faq::before { background: radial-gradient(38% 32% at 10% 40%, rgba(51, 88, 246, .26), transparent 70%),
+    radial-gradient(34% 30% at 88% 60%, rgba(35, 145, 223, .16), transparent 70%); }
+  .faq-grid { display: grid; grid-template-columns: minmax(0, 4fr) minmax(0, 7fr); gap: 32px 64px; align-items: start; }
+  .qa { display: flex; flex-direction: column; gap: 14px; }
+  .qa details { border-radius: 18px; }
+  .qa summary { display: flex; align-items: center; justify-content: space-between; gap: 16px; min-height: 68px; padding: 18px 24px; border-radius: 18px;
+    font-weight: 600; font-size: var(--s3); line-height: 1.4; cursor: pointer; list-style: none; transition: background-color 200ms ease; }
+  .qa summary::-webkit-details-marker { display: none; }
+  .qa summary:hover { background: rgba(234, 242, 255, .06); }
+  .qa summary .i { color: var(--cyan); transition: transform 240ms var(--ease-out); }
+  .qa details[open] summary .i { transform: rotate(180deg); }
+  .qa .a { padding: 0 24px 24px; color: var(--mist); max-width: 64ch; }
+  .faq-dory { display: block; width: min(100%, 320px); height: auto; margin-top: 48px; animation: bob 8s ease-in-out -3s infinite; }
+  .motion-off .faq-dory { animation: none; }
+  @media (max-width: 899px) { .faq-grid { grid-template-columns: minmax(0, 1fr); } .faq-dory { display: none; } }
+
+  /* the close: back up to the reef, with the sign-up step already open */
+  .final { overflow: clip; padding-block: clamp(96px, 11vw, 168px); }
+  .final-bg { position: absolute; inset: 0; z-index: -2; }
+  .final-bg img { display: block; width: 100%; height: 100%; object-fit: cover; object-position: 50% 70%; }
+  .final::before { inset: 0; z-index: -1; background: linear-gradient(180deg, var(--abyss) 0%, rgba(4, 11, 34, .7) 30%, rgba(4, 11, 34, .55) 60%, rgba(4, 11, 34, .82) 100%),
+    linear-gradient(90deg, rgba(4, 11, 34, .75), rgba(4, 11, 34, 0) 70%); }
+  .final-grid { display: grid; grid-template-columns: minmax(0, 7fr) minmax(0, 5fr); gap: 40px 56px; align-items: center; }
+  .final-copy p { margin-top: 24px; max-width: 42ch; font-size: var(--s3); color: #E4ECFB; }
+  .final-copy .acts { margin-top: 32px; }
+  .dlg[data-ui] { width: 100%; max-width: 480px; justify-self: end; padding: 32px; border-radius: 20px; background: #FFFFFF; color: var(--ink-900); }
+  .dlg[data-ui] h3 { font-family: var(--font-display); font-weight: 700; }
+  .dlg[data-ui] p { margin: 8px 0 24px; color: var(--ink-600); font-size: var(--s1); }
+  .dlg[data-ui] label { display: block; margin-bottom: 8px; font-weight: 600; font-size: var(--s1); }
+  .dlg[data-ui] input { padding: 12px 14px; font-size: var(--s2); }
+  .dlg[data-ui] input:focus { border-color: #2442C9; box-shadow: none; outline: 3px solid #2442C9; outline-offset: 2px; }
+  .dlg[data-ui] button { width: 100%; min-height: 54px; margin-top: 16px; border: 0; border-radius: 12px; background: var(--grad); color: #fff; font-weight: 600;
+    font-size: var(--s2); transition: filter 200ms ease, transform 140ms var(--ease-out); }
+  .dlg[data-ui] button:hover { filter: brightness(1.12); }
+  .dlg[data-ui] button:active { transform: scale(.98); }
+  .dlg[data-ui] .have { margin: 16px 0 0; text-align: center; }
+  .dlg[data-ui] .have a { color: #2442C9; font-weight: 600; }
+  @media (max-width: 899px) { .final-grid { grid-template-columns: minmax(0, 1fr); } .dlg[data-ui] { justify-self: stretch; max-width: none; } }
+
+  /* ---------- footer ---------- */
+  .ft { padding-block: 56px 40px; background: #030819; font-size: var(--s1); }
+  .ft-grid { display: grid; grid-template-columns: minmax(0, 5fr) minmax(0, 7fr); gap: 32px 48px; }
+  .ft-note { margin-top: 16px; max-width: 40ch; color: var(--mist); }
+  .ft-nav { display: flex; flex-wrap: wrap; align-content: flex-start; gap: 0 24px; }
+  .ft-nav a, .ft-ctl a { display: inline-flex; align-items: center; min-height: 44px; color: #fff; text-underline-offset: .25em; }
+  .ft-ctl { grid-column: 1 / -1; display: flex; flex-wrap: wrap; align-items: center; gap: 12px 20px; padding-top: 24px; }
+  .ft-ctl .chipb { min-height: 44px; }
+  .ft-ctl a { margin-left: auto; }
+  @media (max-width: 899px) { .ft-grid { grid-template-columns: minmax(0, 1fr); } .ft-ctl a { margin-left: 0; } }
+
+  /* ---------- glass without the frost: reduced transparency, or no backdrop-filter at all ---------- */
+  @media (prefers-reduced-transparency: reduce) {
+    .glass, .hd.solid, .hd-menu, .film-dlg, .btn-ghost, .btn-dark, .lang, .pause, .seg-row { background: #0B1A44; -webkit-backdrop-filter: none; backdrop-filter: none; }
+    .glass::before { display: none; }
+  }
+  @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .glass, .hd.solid { background: rgba(9, 21, 56, .92); } }
+  @media (forced-colors: active) {
+    .glass, .btn, .lang, .pause, .chipb, .seg-row, .qa summary { border: 1px solid CanvasText; }
+    .grad-text { -webkit-text-fill-color: currentColor; background: none; }
+  }
 </style>
 </head>
 <body>
-<a class="skip" href="#main" data-i18n="skip"></a>
+<svg class="sprite" aria-hidden="true" focusable="false">
+  <symbol id="i-discord" viewBox="0 0 24 24"><path d="M20.32 4.37a19.8 19.8 0 0 0-4.89-1.52.07.07 0 0 0-.08.04c-.21.38-.44.87-.6 1.25a18.27 18.27 0 0 0-5.49 0 12.64 12.64 0 0 0-.62-1.25.08.08 0 0 0-.08-.04 19.74 19.74 0 0 0-4.88 1.52.07.07 0 0 0-.03.03C.53 9.05-.32 13.58.1 18.06a.08.08 0 0 0 .03.05 19.9 19.9 0 0 0 5.99 3.03.08.08 0 0 0 .08-.03c.46-.63.87-1.3 1.23-1.99a.08.08 0 0 0-.04-.11 13.1 13.1 0 0 1-1.87-.89.08.08 0 0 1-.01-.13l.37-.29a.07.07 0 0 1 .08-.01c3.93 1.79 8.18 1.79 12.06 0a.07.07 0 0 1 .08.01l.37.29a.08.08 0 0 1-.01.13c-.6.35-1.22.65-1.87.89a.08.08 0 0 0-.04.11c.36.7.77 1.36 1.22 1.99a.08.08 0 0 0 .09.03 19.84 19.84 0 0 0 6-3.03.08.08 0 0 0 .03-.06c.5-5.18-.84-9.67-3.55-13.66a.06.06 0 0 0-.03-.03ZM8.02 15.33c-1.18 0-2.16-1.09-2.16-2.42s.96-2.42 2.16-2.42c1.21 0 2.18 1.1 2.16 2.42 0 1.33-.96 2.42-2.16 2.42Zm7.97 0c-1.18 0-2.15-1.09-2.15-2.42s.95-2.42 2.15-2.42c1.21 0 2.18 1.1 2.16 2.42 0 1.33-.95 2.42-2.16 2.42Z"/></symbol>
+  <symbol id="i-play" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m10 8.5 5.5 3.5-5.5 3.5Z"/></symbol>
+  <symbol id="i-check" viewBox="0 0 24 24"><circle cx="12" cy="12" r="10"/><path d="m8 12.2 2.7 2.7L16.2 9.3"/></symbol>
+  <symbol id="i-mic" viewBox="0 0 24 24"><rect x="9" y="2.5" width="6" height="12" rx="3"/><path d="M18.5 10.5v.5a6.5 6.5 0 0 1-13 0v-.5M12 17.5v4M8.5 21.5h7"/></symbol>
+  <symbol id="i-doc" viewBox="0 0 24 24"><path d="M14 2.5H6.5a2 2 0 0 0-2 2v15a2 2 0 0 0 2 2h11a2 2 0 0 0 2-2V8Z"/><path d="M14 2.5V8h5.5M8.5 13h7M8.5 17h7M8.5 9h2"/></symbol>
+  <symbol id="i-list" viewBox="0 0 24 24"><path d="M9 6.5h11.5M9 12h11.5M9 17.5h11.5"/><circle cx="4.5" cy="6.5" r="1"/><circle cx="4.5" cy="12" r="1"/><circle cx="4.5" cy="17.5" r="1"/></symbol>
+  <symbol id="i-folder" viewBox="0 0 24 24"><path d="M10.5 20H4.5a2 2 0 0 1-2-2V5.5a2 2 0 0 1 2-2h4l2 2.5h8.5a2 2 0 0 1 2 2v3"/><circle cx="16.5" cy="16" r="3.5"/><path d="m21.5 21-2.5-2.5"/></symbol>
+  <symbol id="i-receipt" viewBox="0 0 24 24"><path d="M5 2.5v19l2.3-1.5 2.4 1.5 2.3-1.5 2.3 1.5 2.4-1.5 2.3 1.5v-19l-2.3 1.5-2.4-1.5L12 4l-2.3-1.5L7.3 4Z"/><path d="M8.5 8.5h7M8.5 12h7M8.5 15.5h4"/></symbol>
+  <symbol id="i-tasks" viewBox="0 0 24 24"><path d="m3.5 6.5 1.6 1.6 3-3M3.5 13l1.6 1.6 3-3M3.5 19.5l1.6 1.6 3-3M11.5 7h9M11.5 13.5h9M11.5 20h9"/></symbol>
+  <symbol id="i-sun" viewBox="0 0 24 24"><circle cx="12" cy="12" r="4"/><path d="M12 2.5v2M12 19.5v2M4.6 4.6 6 6M18 18l1.4 1.4M2.5 12h2M19.5 12h2M4.6 19.4 6 18M18 6l1.4-1.4"/></symbol>
+  <symbol id="i-approve" viewBox="0 0 24 24"><rect x="8" y="2.5" width="8" height="4" rx="1"/><path d="M16 4.5h2a2 2 0 0 1 2 2v13a2 2 0 0 1-2 2H6a2 2 0 0 1-2-2v-13a2 2 0 0 1 2-2h2"/><path d="m9 14 2 2 4-4.5"/></symbol>
+  <symbol id="i-search" viewBox="0 0 24 24"><circle cx="11" cy="11" r="7"/><path d="m20.5 20.5-4.3-4.3"/></symbol>
+  <symbol id="i-book" viewBox="0 0 24 24"><path d="M2.5 4.5h6a3.5 3.5 0 0 1 3.5 3.5v12.5a2.5 2.5 0 0 0-2.5-2.5h-7ZM21.5 4.5h-6A3.5 3.5 0 0 0 12 8v12.5a2.5 2.5 0 0 1 2.5-2.5h7Z"/></symbol>
+  <symbol id="i-server" viewBox="0 0 24 24"><rect x="3" y="3" width="18" height="7.5" rx="2"/><rect x="3" y="13.5" width="18" height="7.5" rx="2"/><path d="M7 6.8h.01M7 17.2h.01"/></symbol>
+  <symbol id="i-lock" viewBox="0 0 24 24"><rect x="4" y="10.5" width="16" height="11" rx="2"/><path d="M8 10.5V7a4 4 0 0 1 8 0v3.5"/></symbol>
+  <symbol id="i-memory" viewBox="0 0 24 24"><ellipse cx="12" cy="5.5" rx="8" ry="3"/><path d="M4 5.5v13c0 1.7 3.6 3 8 3s8-1.3 8-3v-13M4 12c0 1.7 3.6 3 8 3s8-1.3 8-3"/></symbol>
+  <symbol id="i-toggle" viewBox="0 0 24 24"><rect x="2" y="6.5" width="20" height="11" rx="5.5"/><circle cx="16" cy="12" r="2.8"/></symbol>
+  <symbol id="i-chip" viewBox="0 0 24 24"><rect x="5" y="5" width="14" height="14" rx="2"/><rect x="9" y="9" width="6" height="6" rx="1"/><path d="M9 2v3M15 2v3M9 19v3M15 19v3M2 9h3M2 15h3M19 9h3M19 15h3"/></symbol>
+  <symbol id="i-down" viewBox="0 0 24 24"><path d="m6 9 6 6 6-6"/></symbol>
+  <symbol id="i-menu" viewBox="0 0 24 24"><path d="M4 7h16M4 12h16M4 17h16"/></symbol>
+  <symbol id="i-x" viewBox="0 0 24 24"><path d="M18 6 6 18M6 6l12 12"/></symbol>
+  <symbol id="i-pause" viewBox="0 0 24 24"><path d="M9 5v14M15 5v14"/></symbol>
+  <symbol id="i-resume" viewBox="0 0 24 24"><path d="m7 4.5 12.5 7.5L7 19.5Z"/></symbol>
+</svg>
+<a class="skip" href="#main" data-i18n="skip">Skip to content</a>
 
-<header class="nav" id="nav" data-theme="deep">
-  <div class="wrap">
-    <a class="logo" href="#main" aria-label="Dory"><span class="mark" aria-hidden="true">D</span><span data-i18n="brand"></span></a>
-    <nav class="links" id="links" data-i18n-attr="aria-label:nav_aria">
-      <a href="#features" data-i18n="nav_features"></a>
-      <a href="#how" data-i18n="nav_how"></a>
-      <a href="#trust" data-i18n="nav_trust"></a>
-      <a href="#plans" data-i18n="nav_plans"></a>
-      <a class="only-m" href="/center" data-i18n="nav_login"></a>
-    </nav>
-    <div class="langsw" role="group" data-i18n-attr="aria-label:lang_switch_aria">
-      <button type="button" data-lang="th" data-i18n="lang_th"></button>
-      <button type="button" data-lang="en" data-i18n="lang_en"></button>
+<header class="hd" id="hd">
+  <div class="hd-in">
+    <a class="logo" href="#top"><span class="mark" aria-hidden="true">D</span><span class="wm" data-i18n="brand">Dory</span></a>
+    <div class="hd-menu" id="hd-menu">
+      <nav class="hd-nav" aria-label="Main navigation" data-i18n-attr="aria-label:nav_aria">
+        <a href="#features" data-i18n="nav_features">Features</a>
+        <a href="#how" data-i18n="nav_how">How it works</a>
+        <a href="#teams" data-i18n="nav_teams">For Teams</a>
+        <a href="#trust" data-i18n="nav_trust">Trust</a>
+        <a href="#pricing" data-i18n="nav_pricing">Pricing</a>
+        <a href="#faq" data-i18n="nav_faq">FAQ</a>
+      </nav>
+      <div class="hd-act">
+        <a class="btn btn-dark btn-sm" href="/center" data-i18n="nav_login">Log in</a>
+        <a class="btn btn-light btn-sm" href="__DORY_INVITE_URL__" data-invite><svg class="i i-fill"><use href="#i-discord"/></svg><span data-i18n="cta_add_short">Add to Discord</span></a>
+        <a class="btn btn-light btn-sm" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
+      </div>
     </div>
-    <a class="btn ghost small login" href="/center" data-i18n="nav_login"></a>
-    <a class="btn primary small cta-top" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add_short"></a>
-    <a class="btn primary small cta-top" href="/start" data-invite-fallback hidden data-i18n="cta_create"></a>
-    <button type="button" class="menu-btn" id="menu" aria-expanded="false" aria-controls="links" data-i18n-attr="aria-label:menu_aria"><span></span><span></span><span></span></button>
+    <div class="lang" role="group" aria-label="Choose language" data-i18n-attr="aria-label:lang_switch_aria">
+      <button type="button" data-lang="th">TH</button>
+      <button type="button" data-lang="en">EN</button>
+    </div>
+    <button type="button" class="menu-btn" aria-expanded="false" aria-controls="hd-menu"><svg class="i"><use href="#i-menu"/></svg><span class="sr" data-i18n="nav_menu">Menu</span></button>
   </div>
 </header>
 
 <main id="main" tabindex="-1">
-  <section class="hero" id="hero" data-theme="deep">
-    <div class="sea" aria-hidden="true">
-      <div class="plane far">
-        <svg class="kelp" viewBox="0 0 1200 240" preserveAspectRatio="none" focusable="false"><path class="bed" d="M0 240V172C80 152 140 192 220 177C320 158 380 122 470 142C560 162 620 202 720 188C820 174 880 132 980 144C1080 156 1140 192 1200 182V240Z"/><path class="weed" d="M96 236C102 196 74 166 88 128C102 90 80 66 92 34"/><path class="weed" d="M132 238C126 206 150 180 138 146"/><path class="weed" d="M1018 236C1010 198 1040 170 1026 130C1014 96 1036 74 1028 44"/><path class="weed" d="M1072 238C1080 210 1058 188 1068 160"/></svg>
-      </div>
-      <div class="plane mid"><span class="ray r1"></span><span class="ray r2"></span><span class="ray r3"></span></div>
-      <div class="plane near" id="specks"></div>
-    </div>
-    <div class="wrap">
-      <div class="copy">
-        <p class="eyebrow" data-i18n="eyebrow"></p>
-        <h1 data-i18n="headline"></h1>
-        <p class="sub" data-i18n="sub"></p>
-        <div class="ctas">
-          <a class="btn primary" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add"></a>
-          <a class="btn primary" href="/start" data-invite-fallback hidden data-i18n="cta_create"></a>
-          <a class="btn ghost" href="#preview" data-i18n="cta_see"></a>
+  <section class="hero" id="top" aria-labelledby="hero-h">
+    <picture class="hero-bg">
+      <source media="(max-width: 699px)" srcset="/static/dory/hero-reef-phone.webp">
+      <img src="/static/dory/hero-reef-2400.webp" srcset="/static/dory/hero-reef-1280.webp 1280w, /static/dory/hero-reef-2400.webp 2400w" sizes="100vw"
+        width="2400" height="1350" alt="" fetchpriority="high" decoding="async">
+    </picture>
+    <div class="hero-main">
+      <div class="hero-copy" data-group>
+        <p class="eyebrow" data-rise data-i18n="eyebrow">AI coworker for teams on Discord</p>
+        <h1 id="hero-h" data-rise style="--i:1"><span data-i18n="h1a">Ask once.</span> <span class="grad-text" data-i18n="h1b">Dory remembers.</span></h1>
+        <p class="sub" data-rise style="--i:2" data-i18n="sub">Dory lives in your team's Discord. She takes meeting notes, logs receipts, follows up on tasks and answers from your company's own documents, in Thai or English.</p>
+        <div class="acts" data-rise style="--i:3">
+          <a class="btn btn-grad" href="__DORY_INVITE_URL__" data-invite><svg class="i i-fill"><use href="#i-discord"/></svg><span data-i18n="cta_add">Add Dory to Discord</span></a>
+          <a class="btn btn-grad" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
+          <a class="btn btn-ghost" id="film-open" href="/static/dory/meet-dory.mp4" aria-haspopup="dialog"><svg class="i"><use href="#i-play"/></svg><span data-i18n="cta_film">See Dory at work</span></a>
         </div>
-        <p class="aside-line" data-invite-aside><span data-i18n="not_discord"></span> <a href="/start" data-i18n="not_discord_link"></a></p>
-        <p class="free" data-i18n="free"></p>
-      </div>
-      <div class="stage" id="stage" aria-hidden="true">
-        <div class="tilt"><div class="fish-float"><picture><source type="image/webp" srcset="/static/dory/dory.webp"><img class="hero-pic" id="fish" src="/static/dory/dory.jpg" width="777" height="779" alt="" fetchpriority="high"></picture></div></div>
-      </div>
-    </div>
-    <button type="button" class="btn ghost small pause" data-motion-toggle><span></span></button>
-  </section>
-
-  <section class="sec meet" id="meet" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="meet_h"></h2><p data-i18n="meet_p"></p></div>
-      <figure class="film reveal">
-        <video id="intro" controls playsinline preload="none" width="1920" height="1080" poster="/static/dory/meet-dory.webp" data-i18n-attr="aria-label:meet_aria">
-          <source src="/static/dory/meet-dory.mp4" type="video/mp4">
-        </video>
-        <figcaption data-i18n="meet_cap"></figcaption>
-      </figure>
-    </div>
-  </section>
-
-  <section class="sec" id="preview" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="pv_h"></h2><p data-i18n="pv_p"></p></div>
-      <div class="pv">
-        <div class="tabs" role="tablist" id="pv-tabs" data-i18n-attr="aria-label:pv_tabs_aria">
-          <button type="button" class="tab" role="tab" id="pvt1" aria-selected="true" aria-controls="pvp1" data-i18n="pv_t1"></button>
-          <button type="button" class="tab" role="tab" id="pvt2" aria-selected="false" aria-controls="pvp2" tabindex="-1" data-i18n="pv_t2"></button>
-          <button type="button" class="tab" role="tab" id="pvt3" aria-selected="false" aria-controls="pvp3" tabindex="-1" data-i18n="pv_t3"></button>
-          <button type="button" class="tab" role="tab" id="pvt4" aria-selected="false" aria-controls="pvp4" tabindex="-1" data-i18n="pv_t4"></button>
-        </div>
-        <div>
-          <div role="tabpanel" id="pvp1" aria-labelledby="pvt1" tabindex="0">
-            <div class="chat" data-theme="surface">
-              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
-              <div class="chat-b">
-                <div class="m-user step" data-i18n="pv1_u"></div>
-                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n="pv1_d1"></span></div></div>
-                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n-html="pv1_d2"></span></div></div>
-                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
-              </div>
-            </div>
-          </div>
-          <div role="tabpanel" id="pvp2" aria-labelledby="pvt2" tabindex="0" hidden>
-            <div class="chat" data-theme="surface">
-              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
-              <div class="chat-b">
-                <div class="m-user step"><span class="att"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg><span data-i18n="pv2_file"></span></span><br><span data-i18n="pv2_u"></span></div>
-                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n-html="pv2_d"></span></div></div>
-                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
-              </div>
-            </div>
-          </div>
-          <div role="tabpanel" id="pvp3" aria-labelledby="pvt3" tabindex="0" hidden>
-            <div class="chat" data-theme="surface">
-              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
-              <div class="chat-b">
-                <div class="m-user step" data-i18n="pv3_u"></div>
-                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n-html="pv3_d"></span></div></div>
-                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
-              </div>
-            </div>
-          </div>
-          <div role="tabpanel" id="pvp4" aria-labelledby="pvt4" tabindex="0" hidden>
-            <div class="chat" data-theme="surface">
-              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
-              <div class="chat-b">
-                <div class="m-user step" lang="th" data-i18n="pv4_u"></div>
-                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span lang="th" data-i18n="pv4_d"></span><p class="pv-note" data-i18n="pv4_note"></p></div></div>
-                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
-              </div>
-            </div>
-          </div>
-          <div class="pv-ctl" role="group" data-i18n-attr="aria-label:pv_ctl_aria">
-            <button type="button" class="btn ghost small" id="pv-replay" data-i18n="pv_replay"></button>
-            <button type="button" class="btn ghost small" id="pv-pause"></button>
-          </div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="sec" id="features" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="ft_h"></h2><p data-i18n="ft_p"></p></div>
-      <div class="grid reveal">
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg></div><h3 data-i18n="f1_t"></h3><p data-i18n="f1_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div><h3 data-i18n="f2_t"></h3><p data-i18n="f2_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/></svg></div><h3 data-i18n="f3_t"></h3><p data-i18n="f3_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4Z"/><path d="M8 9h8M8 13h5"/></svg></div><h3 data-i18n="f4_t"></h3><p data-i18n="f4_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3 data-i18n="f5_t"></h3><p data-i18n="f5_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h7"/><path d="m16 15 2 2 4-4"/></svg></div><h3 data-i18n="f6_t"></h3><p data-i18n="f6_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div><h3 data-i18n="f7_t"></h3><p data-i18n="f7_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H8l-4 4Z"/><path d="M8 9h8M8 12h5"/></svg></div><h3 data-i18n="f8_t"></h3><p data-i18n="f8_d"></p></div>
-      </div>
-    </div>
-  </section>
-
-  <section class="sec" id="how" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="ex_h"></h2><p data-i18n="ex_p"></p></div>
-      <ol class="steps reveal" style="list-style:none;margin:0;padding:0">
-        <li class="stp"><span class="n" aria-hidden="true">1</span><h3 data-i18n="ex1_t"></h3><p data-i18n="ex1_d"></p></li>
-        <li class="stp"><span class="n" aria-hidden="true">2</span><h3 data-i18n="ex2_t"></h3><p data-i18n-html="ex2_d"></p></li>
-        <li class="stp"><span class="n" aria-hidden="true">3</span><h3 data-i18n="ex3_t"></h3><p data-i18n="ex3_d"></p></li>
-      </ol>
-      <div class="where reveal">
-        <h3 data-i18n="pf_h"></h3>
-        <p data-i18n="pf_p"></p>
-        <div class="grid">
-          <div class="card"><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf1_t"></h3><p data-i18n="pf1_d"></p></div>
-          <div class="card"><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf2_t"></h3><p data-i18n="pf2_d"></p></div>
-          <div class="card"><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf3_t"></h3><p data-i18n="pf3_d"></p></div>
-          <div class="card"><span class="pill" data-i18n="pf_org"></span><h3 data-i18n="pf4_t"></h3><p data-i18n="pf4_d"></p></div>
-        </div>
-      </div>
-    </div>
-  </section>
-
-  <section class="sec roles" id="roles" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="ro_h"></h2><p data-i18n="ro_p"></p></div>
-      <div class="tabs row" role="tablist" id="ro-tabs" data-i18n-attr="aria-label:ro_tabs_aria">
-        <button type="button" class="tab" role="tab" id="rot1" aria-selected="true" aria-controls="rop1" data-i18n="ro_t1"></button>
-        <button type="button" class="tab" role="tab" id="rot2" aria-selected="false" aria-controls="rop2" tabindex="-1" data-i18n="ro_t2"></button>
-        <button type="button" class="tab" role="tab" id="rot3" aria-selected="false" aria-controls="rop3" tabindex="-1" data-i18n="ro_t3"></button>
-        <button type="button" class="tab" role="tab" id="rot4" aria-selected="false" aria-controls="rop4" tabindex="-1" data-i18n="ro_t4"></button>
-      </div>
-      <div class="role" role="tabpanel" id="rop1" aria-labelledby="rot1" tabindex="0"><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro1_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro1_a"></p></div></div>
-      <div class="role" role="tabpanel" id="rop2" aria-labelledby="rot2" tabindex="0" hidden><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro2_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro2_a"></p></div></div>
-      <div class="role" role="tabpanel" id="rop3" aria-labelledby="rot3" tabindex="0" hidden><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro3_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro3_a"></p></div></div>
-      <div class="role" role="tabpanel" id="rop4" aria-labelledby="rot4" tabindex="0" hidden><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro4_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro4_a"></p></div></div>
-    </div>
-  </section>
-
-  <section class="sec" id="trust" data-theme="deep">
-    <div class="wrap trust">
-      <div class="reveal">
-        <div class="sec-h"><h2 data-i18n="tm_h"></h2><p data-i18n="tm_p"></p></div>
-        <div class="flow" role="img" data-i18n-attr="aria-label:flow_aria">
-          <span data-i18n="flow1"></span><i></i><span data-i18n="flow2"></span><i></i><span data-i18n="flow3"></span>
-        </div>
-      </div>
-      <div class="reveal">
-        <ul class="facts">
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm1_t"></b> <span data-i18n="tm1_d"></span></div></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm2_t"></b> <span data-i18n="tm2_d"></span></div></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm5_t"></b> <span data-i18n="tm5_d"></span></div></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm6_t"></b> <span data-i18n="tm6_d"></span></div></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm3_t"></b> <span data-i18n="tm3_d"></span></div></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm4_t"></b> <span data-i18n="tm4_d"></span></div></li>
+        <ul class="checks" data-rise style="--i:4">
+          <li><svg class="i"><use href="#i-check"/></svg><span data-i18n="chk1">Works in Thai &amp; English</span></li>
+          <li><svg class="i"><use href="#i-check"/></svg><span data-i18n="chk2">Private to your team</span></li>
+          <li><svg class="i"><use href="#i-check"/></svg><span data-i18n="chk3">Free during launch</span></li>
         </ul>
-        <p class="models" id="models-line"><span data-i18n="models_label"></span> <code id="models">__DORY_MODELS__</code></p>
       </div>
+      <div class="hero-dory" id="dory">
+        <div class="bubbles" aria-hidden="true">
+          <span style="--s:22px; --d:9s; --w:-1s; left:6%; top:30%"></span>
+          <span style="--s:12px; --d:7s; --w:-4s; left:12%; top:52%; --x:-10px"></span>
+          <span style="--s:30px; --d:11s; --w:-6s; left:88%; top:22%"></span>
+          <span style="--s:14px; --d:8s; --w:-2s; left:80%; top:44%; --x:-14px"></span>
+          <span style="--s:18px; --d:10s; --w:-8s; left:24%; top:14%"></span>
+          <span style="--s:10px; --d:6.5s; --w:-3s; left:70%; top:8%"></span>
+          <span style="--s:26px; --d:12s; --w:-9s; left:94%; top:58%; --x:-18px"></span>
+          <span style="--s:16px; --d:9.5s; --w:-5s; left:2%; top:70%"></span>
+        </div>
+        <img src="/static/dory/dory-painted-1200.webp" srcset="/static/dory/dory-painted-700.webp 700w, /static/dory/dory-painted-1200.webp 1200w"
+          sizes="(min-width: 960px) min(46vw, 640px), min(92vw, 560px)" width="1200" height="1114" fetchpriority="high" decoding="async"
+          alt="Dory, a white fish with a blue back, big blue eyes and a headset" data-i18n-attr="alt:hero_alt">
+      </div>
+      <button type="button" class="pause" data-motion-toggle><svg class="i i-pause"><use href="#i-pause"/></svg><svg class="i i-play"><use href="#i-resume"/></svg><span data-motion-label>Pause motion</span></button>
+    </div>
+    <ul class="cards" aria-label="What Dory does" data-i18n-attr="aria-label:cards_aria" data-group>
+      <li class="hcard glass" data-rise><span class="tile"><svg class="i"><use href="#i-mic"/></svg></span><div><h3 data-i18n="c1_t">Meeting notes</h3><p data-i18n="c1_d">Joins voice, transcribes and summarizes.</p></div></li>
+      <li class="hcard glass" data-rise style="--i:1"><span class="tile"><svg class="i"><use href="#i-doc"/></svg></span><div><h3 data-i18n="c2_t">Receipts to ledger</h3><p data-i18n="c2_d">Send a photo, the expense is recorded.</p></div></li>
+      <li class="hcard glass" data-rise style="--i:2"><span class="tile"><svg class="i"><use href="#i-list"/></svg></span><div><h3 data-i18n="c3_t">Task follow-up</h3><p data-i18n="c3_d">Tracks action items and checks in.</p></div></li>
+      <li class="hcard glass" data-rise style="--i:3"><span class="tile"><svg class="i"><use href="#i-folder"/></svg></span><div><h3 data-i18n="c4_t">Smart documents</h3><p data-i18n="c4_d">Finds answers in your files and wiki.</p></div></li>
+    </ul>
+  </section>
+
+  <section class="sec features" id="features" aria-labelledby="features-h">
+    <div class="sea-bubbles" aria-hidden="true"><span style="--s:14px; --d:16s; --w:-3s; left:8%"></span><span style="--s:9px; --d:13s; --w:-9s; left:46%"></span><span style="--s:18px; --d:19s; --w:-12s; left:91%"></span></div>
+    <div class="wrap">
+      <div class="sec-head split" data-group>
+        <h2 id="features-h" data-rise data-i18n="ft_h">Everything Dory does today</h2>
+        <p class="lead" data-rise style="--i:1" data-i18n="ft_p">Every one of these is in the current build, and admins switch each one on or off from the command center.</p>
+      </div>
+      <ul class="feats" data-group>
+        <li class="feat glass" data-rise><span class="tile"><svg class="i"><use href="#i-mic"/></svg></span><h3 data-i18n="f1_t">Voice meetings</h3><p data-i18n="f1_d">Joins the voice room when invited, answers when called by name, and posts decisions and action items at the end.</p></li>
+        <li class="feat glass" data-rise style="--i:1"><span class="tile"><svg class="i"><use href="#i-receipt"/></svg></span><h3 data-i18n="f2_t">Receipts and expenses</h3><p data-i18n="f2_d">Reads receipt photos and PDFs into a ledger, drops duplicates, and lets executives ask about spending in plain language.</p></li>
+        <li class="feat glass" data-rise style="--i:2"><span class="tile"><svg class="i"><use href="#i-tasks"/></svg></span><h3 data-i18n="f3_t">Task follow-up and reports</h3><p data-i18n="f3_d">Turns action items into tasks, follows up with each owner, and sends an evening report.</p></li>
+        <li class="feat glass" data-rise style="--i:3"><span class="tile"><svg class="i"><use href="#i-doc"/></svg></span><h3 data-i18n="f4_t">Documents and wiki</h3><p data-i18n="f4_d">Remembers files the team shares, keeps a company wiki, and answers from documents each person is allowed to see.</p></li>
+        <li class="feat glass" data-rise style="--i:1"><span class="tile"><svg class="i"><use href="#i-sun"/></svg></span><h3 data-i18n="f5_t">Briefs and catch-up</h3><p data-i18n="f5_d">A personal morning and evening brief, and “what did I miss?” after a day away.</p></li>
+        <li class="feat glass" data-rise style="--i:2"><span class="tile"><svg class="i"><use href="#i-approve"/></svg></span><h3 data-i18n="f6_t">Approvals, polls and forms</h3><p data-i18n="f6_d">Expense, leave and purchase requests, votes and surveys, without leaving Discord.</p></li>
+        <li class="feat glass" data-rise style="--i:3"><span class="tile"><svg class="i"><use href="#i-search"/></svg></span><h3 data-i18n="f7_t">Search</h3><p data-i18n="f7_d">Searches every team source at once: chat, files, the wiki, tasks and meetings.</p></li>
+        <li class="feat glass" data-rise style="--i:4"><span class="tile"><svg class="i"><use href="#i-book"/></svg></span><h3 data-i18n="f8_t">Learns your company</h3><p data-i18n="f8_d">Teach her your glossary, SOPs and FAQ, with 14 ready-made industry packs.</p></li>
+      </ul>
     </div>
   </section>
 
-  <section class="sec" id="plans" data-theme="deep">
+  <section class="sec how" id="how" aria-labelledby="how-h">
     <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="pr_h"></h2><p data-i18n="pr_p"></p></div>
-      <div class="grid reveal">
-        <div class="card plan-c"><span class="pill ok" data-i18n="p_rec"></span><h3 data-i18n="pl_trial"></h3><div class="price" data-i18n="pl_trial_price"></div><p data-i18n="pl_trial_d"></p><a class="btn ghost small" href="/start" data-i18n="pl_start"></a></div>
-        <div class="card plan-c soon"><h3 data-i18n="pl_more"></h3><div class="price" data-i18n="pl_more_price"></div><p data-i18n="pl_more_d"></p></div>
+      <div class="sec-head split" data-group>
+        <h2 id="how-h" data-rise data-i18n="how_h">How Dory works</h2>
+        <p class="lead" data-rise style="--i:1" data-i18n="how_p">Someone hands out work in chat. Dory turns it into a card for its owner, then follows up on a real clock.</p>
       </div>
-      <p class="fine" data-i18n="pr_note"></p>
-    </div>
-  </section>
-
-  <section class="final">
-    <div class="wrap">
-      <picture class="surface-fish reveal"><source type="image/webp" srcset="/static/dory/dory.webp"><img src="/static/dory/dory.jpg" alt="" width="160" height="160" loading="lazy"></picture>
-      <h2 data-i18n="fin_h"></h2>
-      <p data-i18n="fin_p"></p>
-      <div class="ctas">
-        <a class="btn primary" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add"></a>
-        <a class="btn ghost" href="/start" data-invite-alt data-i18n="cta_signup"></a>
-      </div>
-      <div class="entry" id="start">
-        <h3 class="t" data-i18n="en_h"></h3>
-        <p data-i18n="en_p"></p>
-        <div class="grid">
-          <a class="card go" href="/start"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0M16 11a3 3 0 1 0 0-6M21 20a6 6 0 0 0-5-5.9"/></svg></span><h3 data-i18n="en1_t"></h3><p data-i18n="en1_d"></p><strong class="more" data-i18n="en1_b"></strong></a>
-          <a class="card go" href="/center"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"/></svg></span><h3 data-i18n="en2_t"></h3><p data-i18n="en2_d"></p><strong class="more" data-i18n="en2_b"></strong></a>
-          <a class="card go" href="/recorder"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg></span><h3 data-i18n="en3_t"></h3><p data-i18n="en3_d"></p><strong class="more" data-i18n="en3_b"></strong></a>
+      <div class="demo">
+        <div class="say glass" data-group>
+          <h3 data-rise data-i18n="tw_say_h">You say it.</h3>
+          <div data-rise style="--i:1">
+            <label for="msg" data-i18n="tw_label">A message from Ben in #finance</label>
+            <textarea id="msg" rows="3" spellcheck="false" data-i18n="tw_msg">Nok, can you send the Q3 receipts to accounting by Friday?</textarea>
+          </div>
+          <div class="egs" role="group" aria-labelledby="eg-h" data-rise style="--i:2">
+            <p id="eg-h" data-i18n="tw_try">Try an example</p>
+            <button type="button" class="chipb" data-eg="eg1" data-i18n="eg1_l">Due 3 Nov</button>
+            <button type="button" class="chipb" data-eg="eg2" data-i18n="eg2_l">Nobody named</button>
+            <button type="button" class="chipb" data-eg="eg3" data-i18n="eg3_l">In Thai</button>
+            <button type="button" class="chipb" data-eg="eg4" data-i18n="eg4_l">In Thai, nobody named</button>
+          </div>
+          <p class="note" data-rise style="--i:3"><b data-i18n="tw_note_b">A scripted example.</b> <span data-i18n="tw_note">A few simple rules stand in for Dory here, not the live AI. The names are made up; the card, its buttons and what each one does are the real task handshake.</span></p>
+        </div>
+        <div class="catch glass" data-group>
+          <h3 data-rise data-i18n="tw_catch_h">She catches it.</h3>
+          <div id="card" aria-live="polite" data-rise style="--i:1">
+            <article class="tc" data-ui aria-labelledby="tc-k">
+              <p class="tc-top"><span class="lamp" data-f="lamp" aria-hidden="true"></span><b data-i18n="who_dory">Dory</b> <span data-f="where">in Nok's private Dory channel</span></p>
+              <p class="tc-k" id="tc-k" data-f="kind">New task for Nok</p>
+              <p class="tc-t" data-f="title">Send the Q3 receipts to accounting</p>
+              <dl class="tc-dl" data-f="facts">
+                <div><dt data-i18n="card_due">Due</dt><dd data-f="due">Friday</dd></div>
+                <div><dt data-f="k2">From</dt><dd data-f="v2">Ben in #finance</dd></div>
+              </dl>
+              <div class="tc-acts" data-f="acts"><button type="button" class="tb" data-a="ok">Accept</button><button type="button" class="tb" data-a="edit">Edit</button><button type="button" class="tb" data-a="no">Decline</button></div>
+              <p class="tc-said" data-f="said"></p>
+            </article>
+          </div>
+          <p class="after" data-rise style="--i:2" data-i18n="tw_after">Each person gets their card in a private channel with Dory. Nobody else sees it.</p>
         </div>
       </div>
+      <div class="follow glass" data-group>
+        <h3 data-rise data-i18n="mid_h">Then she follows up.</h3>
+        <p data-rise style="--i:1" data-i18n="mid_p">Every task she hears runs on the same clock, and these are its real timings. Nobody has to remember to chase.</p>
+        <ol class="bar" aria-label="How Dory follows up a task" data-i18n-attr="aria-label:bar_aria">
+          <li class="s-sec" data-rise style="--i:2"><p class="blk" data-i18n="s1_d">Seconds</p><p data-i18n="s1_w">First, she hears the task in chat and sends its owner a card.</p></li>
+          <li class="s-day" data-rise style="--i:3"><p class="blk" data-i18n="s2_d">A day</p><p data-i18n="s2_w">Then, if nobody answers the card, she nudges once after 24 hours.</p></li>
+          <li class="s-3wd" data-rise style="--i:4"><p class="blk" data-i18n="s3_d">Three working days</p><p data-i18n="s3_w">Next, a task with no deadline gets one question: when is it due?</p></li>
+          <li class="s-eve" data-rise style="--i:5"><p class="blk" data-i18n="s4_d">Every evening</p><p data-i18n="s4_w">Last, the evening report lists what is still open.</p></li>
+        </ol>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec teams" id="teams" aria-labelledby="teams-h">
+    <div class="sea-bubbles" aria-hidden="true"><span style="--s:12px; --d:15s; --w:-5s; left:52%"></span><span style="--s:20px; --d:20s; --w:-14s; left:4%"></span></div>
+    <div class="wrap">
+      <div class="sec-head split" data-group>
+        <h2 id="teams-h" data-rise data-i18n="teams_h">Built for the whole team</h2>
+        <p class="lead" data-rise style="--i:1" data-i18n="sea_p">Ask what the team decided and she answers from the day it was said, with her sources.</p>
+      </div>
+      <div class="teams-grid" data-group>
+        <div class="ctl glass" data-rise>
+          <h3 data-i18n="ask_h">Ask as anyone on the team.</h3>
+          <p data-i18n="ask_p">A channel's memory is used only when the person asking, and everyone reading the answer, can read that channel.</p>
+          <fieldset class="segs">
+            <legend data-i18n="ask_legend">Ask as</legend>
+            <div class="seg-row">
+              <input type="radio" name="ask-as" id="as-owner" value="owner"><label for="as-owner" data-i18n="r_owner">Owner</label>
+              <input type="radio" name="ask-as" id="as-manager" value="manager"><label for="as-manager" data-i18n="r_manager">Manager</label>
+              <input type="radio" name="ask-as" id="as-staff" value="staff" checked><label for="as-staff" data-i18n="r_staff">Staff</label>
+            </div>
+          </fieldset>
+          <div class="blk2">
+            <h3 data-i18n="lang_h">She answers in your company's language.</h3>
+            <p data-i18n="lang_p">The company picks one language for everything Dory says, and each person can add their own.</p>
+            <fieldset class="segs">
+              <legend data-i18n="ans_legend">Answer in</legend>
+              <div class="seg-row">
+                <input type="radio" name="ans-lang" id="al-en" value="en" checked><label for="al-en" data-i18n="lang_en_full">English</label>
+                <input type="radio" name="ans-lang" id="al-th" value="th"><label for="al-th" lang="th" data-i18n="lang_th"></label>
+              </div>
+            </fieldset>
+          </div>
+          <p class="note" data-i18n="sea_note">A scripted example with made-up names. The rule for who may read what is the real one.</p>
+        </div>
+        <div class="ans" id="ans" data-ui aria-live="polite" lang="en" data-rise style="--i:1">
+          <p class="ans-q"><span class="ans-who" data-ans="who">Mai · Staff</span><span data-ans="q">What did we decide about the Q3 budget?</span></p>
+          <div class="ans-a"><span class="mark" aria-hidden="true">D</span><div>
+            <p><b data-i18n="who_dory">Dory</b></p>
+            <p data-ans="a">On 16 Oct the team agreed to cap Q3 travel at ฿40,000 and move the rest to the launch campaign.</p>
+            <p data-ans="x" hidden>In #management on 15 Oct, the owners also set aside ฿15,000 for the trade-fair booth.</p>
+            <p class="ans-src" data-ans="src">From #finance, 14 Oct · Weekly meeting minutes, 16 Oct</p>
+            <p class="ans-note" data-ans="note">One more source is in #management. Mai can't read that channel, so it is left out.</p>
+          </div></div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec trust" id="trust" aria-labelledby="trust-h">
+    <div class="wrap trust-grid">
+      <div class="sec-head" data-group>
+        <h2 id="trust-h" data-rise data-i18n="tm_h">Your server, your memory.</h2>
+        <p class="lead" data-rise style="--i:1" data-i18n="tm_p">Built for organizations from day one. Who sees what follows your team's own Discord.</p>
+      </div>
+      <ul class="facts" data-group>
+        <li class="fact glass" data-rise><span class="tile"><svg class="i"><use href="#i-server"/></svg></span><h3 data-i18n="tm1_t">Every server is its own tenant.</h3><p data-i18n="tm1_d">Ledger, memory, documents and settings belong to your server alone. Nothing mixes between companies.</p></li>
+        <li class="fact glass" data-rise style="--i:1"><span class="tile"><svg class="i"><use href="#i-lock"/></svg></span><h3 data-i18n="tm2_t">She answers only from what you can read.</h3><p data-i18n="tm2_d">Permissions follow your channels and roles, and you decide who counts as an executive.</p></li>
+        <li class="fact glass" data-rise style="--i:2"><span class="tile"><svg class="i"><use href="#i-memory"/></svg></span><h3 data-i18n="tm3_t">The memory is your company's.</h3><p data-i18n="tm3_d">What your team tells Dory is kept as the company's record, forever by default. An admin can choose to delete it after a set number of days.</p></li>
+        <li class="fact glass" data-rise style="--i:3"><span class="tile"><svg class="i"><use href="#i-toggle"/></svg></span><h3 data-i18n="tm4_t">Every feature has a switch.</h3><p data-i18n="tm4_d">Admins turn each feature on or off and pick channels from the web command center.</p></li>
+        <li class="fact glass" id="models-line" data-rise style="--i:4"><span class="tile"><svg class="i"><use href="#i-chip"/></svg></span><h3 data-i18n="tm5_t">The models are named.</h3><p><span data-i18n="models_label">AI models running Dory right now:</span> <code id="models">__DORY_MODELS__</code></p></li>
+      </ul>
+    </div>
+  </section>
+
+  <section class="sec pricing" id="pricing" aria-labelledby="pricing-h">
+    <div class="sea-bubbles" aria-hidden="true"><span style="--s:16px; --d:17s; --w:-7s; left:30%"></span><span style="--s:11px; --d:14s; --w:-2s; left:76%"></span></div>
+    <div class="wrap" data-group>
+      <div class="sec-head split">
+        <h2 id="pricing-h" data-rise data-i18n="pr_h">Free while Dory launches</h2>
+        <p class="lead" data-rise style="--i:1" data-i18n="pr_note">Nothing is charged and there is no payment in the system. Team and organization plans will be announced after launch, and trial users hear first.</p>
+      </div>
+      <div class="plan glass" data-rise style="--i:2">
+        <div class="plan-main">
+          <h3 data-i18n="pl_h">Launch plan</h3>
+          <p data-i18n="pl_p">One plan while Dory launches: every feature, free, with no limits.</p>
+          <ul class="terms" aria-label="What the plan includes" data-i18n-attr="aria-label:pl_terms_aria">
+            <li><svg class="i"><use href="#i-check"/></svg><span data-i18n="pl_1">Every feature</span></li>
+            <li><svg class="i"><use href="#i-check"/></svg><span data-i18n="pl_2">No time limit</span></li>
+            <li><svg class="i"><use href="#i-check"/></svg><span data-i18n="pl_3">No seat limit</span></li>
+            <li><svg class="i"><use href="#i-check"/></svg><span data-i18n="pl_4">No card, no payment</span></li>
+          </ul>
+        </div>
+        <div class="plan-side">
+          <p class="price" data-i18n="pl_price">Free</p>
+          <a class="btn btn-grad" href="__DORY_INVITE_URL__" data-invite><svg class="i i-fill"><use href="#i-discord"/></svg><span data-i18n="cta_add">Add Dory to Discord</span></a>
+          <a class="btn btn-grad" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec faq" id="faq" aria-labelledby="faq-h">
+    <div class="wrap faq-grid">
+      <div class="sec-head" data-group>
+        <h2 id="faq-h" data-rise data-i18n="faq_h">Questions, answered</h2>
+        <p class="lead" data-rise style="--i:1" data-i18n="faq_p">Straight answers to what teams ask before they add Dory.</p>
+        <img class="faq-dory" src="/static/dory/dory-painted-700.webp" width="700" height="650" alt="" loading="lazy" decoding="async" data-rise style="--i:2">
+      </div>
+      <div class="qa" data-group>
+        <details class="glass" data-rise open><summary><span data-i18n="q1">Which languages does Dory use?</span><svg class="i"><use href="#i-down"/></svg></summary><p class="a" data-i18n="a1">Thai and English. The company picks one language for everything Dory says, and each person can add their own; she understands both either way. Chinese, Hindi, Malay, Indonesian, Vietnamese, Korean and Japanese can be chosen too.</p></details>
+        <details class="glass" data-rise style="--i:1"><summary><span data-i18n="q2">Where does Dory work?</span><svg class="i"><use href="#i-down"/></svg></summary><p class="a" data-i18n="a2">In Discord, right away: add her to your server and mention @Dory. Organizations can also connect Slack and ClickUp, and every member can talk to her in the web command center.</p></details>
+        <details class="glass" data-rise style="--i:2"><summary><span data-i18n="q3">What does Dory keep, and who owns it?</span><svg class="i"><use href="#i-down"/></svg></summary><p class="a" data-i18n="a3">What your team tells Dory is kept as your company's own record, forever by default, and never mixes with another company's. An admin can choose to delete memory after a set number of days.</p></details>
+        <details class="glass" data-rise style="--i:3"><summary><span data-i18n="q4">How do we start?</span><svg class="i"><use href="#i-down"/></svg></summary><p class="a" data-i18n="a4">Add Dory to your Discord server and mention @Dory, or create an account and name your organization first. It takes about two minutes.</p></details>
+        <details class="glass" data-rise style="--i:4"><summary><span data-i18n="q5">What does it cost?</span><svg class="i"><use href="#i-down"/></svg></summary><p class="a" data-i18n="a5">Nothing during launch: every feature is free, and there is no payment in the system. Team and organization plans will be announced after launch, and trial users hear first.</p></details>
+      </div>
+    </div>
+  </section>
+
+  <section class="sec final" id="start" aria-labelledby="final-h">
+    <picture class="final-bg">
+      <source media="(max-width: 699px)" srcset="/static/dory/hero-reef-phone.webp">
+      <img src="/static/dory/hero-reef-2400.webp" srcset="/static/dory/hero-reef-1280.webp 1280w, /static/dory/hero-reef-2400.webp 2400w" sizes="100vw"
+        width="2400" height="1350" alt="" loading="lazy" decoding="async">
+    </picture>
+    <div class="wrap final-grid">
+      <div class="final-copy" data-group>
+        <h2 id="final-h" data-rise data-i18n="fin_h">Bring Dory to your team.</h2>
+        <p data-rise style="--i:1" data-i18n="fin_p">Add her to your Discord server and mention @Dory to start, or set up your organization center first. It takes about two minutes.</p>
+        <div class="acts" data-rise style="--i:2">
+          <a class="btn btn-grad" href="__DORY_INVITE_URL__" data-invite><svg class="i i-fill"><use href="#i-discord"/></svg><span data-i18n="cta_add">Add Dory to Discord</span></a>
+          <a class="btn btn-grad" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
+        </div>
+      </div>
+      <form class="dlg" data-ui action="/start" method="get" aria-labelledby="org-h">
+        <h3 id="org-h" data-i18n="org_h">Name your organization</h3>
+        <p id="org-p" data-i18n="org_p">Your company, shop or team. You can change it later.</p>
+        <label for="org" data-i18n="org_label">Organization name</label>
+        <input type="text" id="org" name="org" value="Baan Suan Coffee" required autocomplete="organization" aria-describedby="org-p" data-i18n-attr="value:org_eg">
+        <button type="submit" data-i18n="org_go">Continue</button>
+        <p class="have"><span data-i18n="org_have">Already have an account?</span> <a href="/center" data-i18n="nav_login">Log in</a></p>
+      </form>
     </div>
   </section>
 </main>
 
-<footer class="foot">
-  <div class="wrap">
-    <span data-i18n="foot_copy"></span>
-    <a href="/privacy" data-i18n="foot_privacy"></a>
-    <a href="/terms" data-i18n="foot_terms"></a>
-    <a href="/hub" data-i18n="nav_hub"></a>
-    <a href="/recorder" data-i18n="foot_recorder"></a>
-    <button type="button" class="btn ghost small" data-motion-toggle><span></span></button>
-    <button type="button" class="btn ghost small" id="lang-other" data-i18n="lang_other"></button>
+<footer class="ft">
+  <div class="wrap ft-grid">
+    <div>
+      <a class="logo" href="#top"><span class="mark" aria-hidden="true">D</span><span class="wm" data-i18n="brand">Dory</span></a>
+      <p class="ft-note"><span data-i18n="foot_note">Dory is an AI coworker for teams on Discord.</span> <span data-i18n="foot_copy">© 2026 The Frontier Company Limited</span></p>
+    </div>
+    <nav class="ft-nav" aria-label="Footer" data-i18n-attr="aria-label:foot_nav_aria">
+      <a href="/center" data-i18n="nav_login">Log in</a>
+      <a href="/hub" data-i18n="nav_hub">Command center</a>
+      <a href="/recorder" data-i18n="foot_recorder">Meeting Scribe recorder</a>
+      <a href="/privacy" data-i18n="foot_privacy">Privacy</a>
+      <a href="/terms" data-i18n="foot_terms">Terms</a>
+    </nav>
+    <div class="ft-ctl">
+      <button type="button" class="chipb" data-motion-toggle><span data-motion-label>Pause motion</span></button>
+      <button type="button" class="chipb" id="lang-other" data-i18n="lang_other"></button>
+      <a href="#top" data-i18n="foot_top">Back to the surface</a>
+    </div>
   </div>
 </footer>
+
+<dialog class="film-dlg" id="film" aria-labelledby="film-h">
+  <div class="film-top">
+    <div><h2 id="film-h" data-i18n="meet_h">Meet Dory</h2><p data-i18n="meet_p">Fifteen seconds in Dory's world. The film has sound.</p></div>
+    <button type="button" class="x-btn" data-close><svg class="i"><use href="#i-x"/></svg><span class="sr" data-i18n="close">Close</span></button>
+  </div>
+  <figure id="film-fig">
+    <video id="intro" controls playsinline preload="none" width="1920" height="1080" data-poster="/static/dory/meet-dory.webp" aria-label="Introduction video: Meet Dory" data-i18n-attr="aria-label:meet_aria">
+      <source src="/static/dory/meet-dory.mp4" type="video/mp4">
+    </video>
+    <figcaption data-i18n="meet_cap">Dory, a white fish with a blue back and a headset, hovers in a sunlit reef beside the words: Meet Dory. Ask once. Dory remembers, files and follows up. Then: Meeting notes, Receipts, Tasks, Answers, and Add Dory to Discord. 15 seconds.</figcaption>
+  </figure>
+</dialog>
 
 <script type="application/json" id="i18n-data">
 {
@@ -503,169 +802,210 @@
   "brand": {"th": "ดอรี่", "en": "Dory"},
   "skip": {"th": "ข้ามไปยังเนื้อหา", "en": "Skip to content"},
   "nav_aria": {"th": "เมนูหลัก", "en": "Main navigation"},
-  "menu_aria": {"th": "เปิดเมนู", "en": "Open menu"},
-  "lang_switch_aria": {"th": "เลือกภาษา", "en": "Choose language"},
-  "lang_th": {"th": "ไทย", "en": "ไทย"},
-  "lang_en": {"th": "EN", "en": "EN"},
-  "lang_other": {"th": "English", "en": "ไทย"},
+  "nav_menu": {"th": "เมนู", "en": "Menu"},
   "nav_features": {"th": "ความสามารถ", "en": "Features"},
-  "nav_how": {"th": "วิธีเริ่มใช้", "en": "How it works"},
-  "nav_trust": {"th": "ความปลอดภัย", "en": "Trust"},
-  "nav_plans": {"th": "แพ็กเกจ", "en": "Plans"},
+  "nav_how": {"th": "วิธีทำงาน", "en": "How it works"},
+  "nav_teams": {"th": "สำหรับทีม", "en": "For Teams"},
+  "nav_trust": {"th": "ความน่าเชื่อถือ", "en": "Trust"},
+  "nav_pricing": {"th": "ราคา", "en": "Pricing"},
+  "nav_faq": {"th": "คำถามที่พบบ่อย", "en": "FAQ"},
   "nav_login": {"th": "เข้าสู่ระบบ", "en": "Log in"},
   "nav_hub": {"th": "ศูนย์บัญชาการ", "en": "Command center"},
+  "lang_switch_aria": {"th": "เลือกภาษา", "en": "Choose language"},
+  "lang_th": {"th": "ไทย", "en": "ไทย"},
+  "lang_en_full": {"th": "English", "en": "English"},
+  "lang_other": {"th": "English", "en": "ไทย"},
   "cta_add": {"th": "เพิ่มดอรี่เข้า Discord", "en": "Add Dory to Discord"},
   "cta_add_short": {"th": "เพิ่มเข้า Discord", "en": "Add to Discord"},
   "cta_create": {"th": "สร้างบัญชี", "en": "Create account"},
-  "cta_signup": {"th": "สร้างบัญชีด้วย Google", "en": "Create account with Google"},
-  "cta_see": {"th": "ดูดอรี่ทำงาน", "en": "See Dory at work"},
-  "meet_h": {"th": "รู้จักดอรี่", "en": "Meet Dory"},
-  "meet_p": {"th": "สิบห้าวินาทีในโลกของดอรี่ กดเล่นได้เลย วิดีโอนี้มีเสียง", "en": "Fifteen seconds in Dory's world. Press play; the video has sound."},
-  "meet_aria": {"th": "วิดีโอแนะนำดอรี่", "en": "Introduction video: Meet Dory"},
-  "meet_cap": {"th": "ดอรี่ ปลาสีขาวหลังสีฟ้าที่สวมหูฟัง ลอยอยู่ในแนวปะการังข้างข้อความ (ภาษาอังกฤษ): Meet Dory. Ask once. Dory remembers, files and follows up. ตามด้วยบันทึกการประชุม ใบเสร็จ งาน คำตอบ และ Add Dory to Discord ยาว 15 วินาที", "en": "Dory, a white fish with a blue back and a headset, hovers in a sunlit reef beside the words: Meet Dory. Ask once. Dory remembers, files and follows up. Then: Meeting notes, Receipts, Tasks, Answers, and Add Dory to Discord. 15 seconds."},
-  "not_discord": {"th": "ไม่ได้ใช้ Discord?", "en": "Not on Discord?"},
-  "not_discord_link": {"th": "สร้างบัญชีบนเว็บ", "en": "Create an account"},
-  "free": {"th": "ใช้ฟรีช่วงเปิดตัว", "en": "Free during launch"},
+  "cta_film": {"th": "ดูดอรี่ทำงาน", "en": "See Dory at work"},
   "pause": {"th": "หยุดภาพเคลื่อนไหว", "en": "Pause motion"},
   "play": {"th": "เล่นภาพเคลื่อนไหว", "en": "Play motion"},
+  "close": {"th": "ปิด", "en": "Close"},
+
   "eyebrow": {"th": "ผู้ช่วย AI ของทีมบน Discord", "en": "AI coworker for teams on Discord"},
-  "headline": {"th": "ถามครั้งเดียว ดอรี่จำ จัดเก็บ และตามงานให้", "en": "Ask once. Dory remembers, files and follows up."},
-  "sub": {"th": "ดอรี่อยู่ในแชตของทีมคุณ จดประชุม ลงบัญชีใบเสร็จ ตามงาน และตอบคำถามจากเอกสารของบริษัทคุณเอง ได้ทั้งภาษาไทยและอังกฤษ", "en": "Dory lives in your team's chat. She takes meeting notes, logs receipts, follows up on tasks and answers from your company's own documents, in Thai or English."},
-  "pv_h": {"th": "ดูดอรี่ทำงานในหนึ่งวัน", "en": "Watch Dory handle a working day"},
-  "pv_p": {"th": "ตัวอย่างบทสนทนา ชื่อและตัวเลขสมมติขึ้น แต่ทุกความสามารถที่เห็นมีอยู่จริงในเวอร์ชันปัจจุบัน", "en": "Example conversations. The names and numbers are made up; every feature shown is in the current build."},
-  "pv_tabs_aria": {"th": "ตัวอย่างบทสนทนา", "en": "Example conversations"},
-  "pv_ctl_aria": {"th": "ควบคุมตัวอย่าง", "en": "Example controls"},
-  "pv_t1": {"th": "จดประชุม", "en": "Meeting notes"},
-  "pv_t2": {"th": "ใบเสร็จ", "en": "A receipt"},
-  "pv_t3": {"th": "พลาดอะไรไปบ้าง", "en": "What did I miss?"},
-  "pv_t4": {"th": "คำถามภาษาไทย", "en": "A question in Thai"},
-  "pv_replay": {"th": "เล่นอีกครั้ง", "en": "Replay"},
-  "pv_pause": {"th": "หยุด", "en": "Pause"},
-  "pv_play": {"th": "เล่นต่อ", "en": "Play"},
-  "who_dory": {"th": "ดอรี่", "en": "Dory"},
-  "st_ready": {"th": "พร้อม", "en": "Ready"},
-  "st_thinking": {"th": "กำลังคิด…", "en": "Thinking…"},
-  "pv1_u": {"th": "@Dory เข้าประชุม", "en": "@Dory join the meeting"},
-  "pv1_d1": {"th": "เข้าห้อง Stand-up แล้วค่ะ จบประชุมแล้วจะสรุปให้นะคะ", "en": "Joined Stand-up. I'll post the minutes when you finish."},
-  "pv1_d2": {"th": "<b>สรุปประชุม · Stand-up</b><br>มติ: เริ่มโปรโมชันปลายปีวันที่ 1 ธ.ค.<br>งาน: สมชาย ทำรายการราคา ส่งวันศุกร์ · มะลิ ร่างโปสเตอร์ ส่งวันพุธ<br>ส่งการ์ดให้แต่ละคนกดยืนยันงานแล้วค่ะ", "en": "<b>Minutes · Stand-up</b><br>Decision: the year-end promotion starts on 1 Dec.<br>Tasks: Somchai, price list, due Friday · Mali, poster draft, due Wednesday.<br>I've sent each owner a card to confirm their task."},
-  "pv2_file": {"th": "receipt.jpg", "en": "receipt.jpg"},
-  "pv2_u": {"th": "ค่าอุปกรณ์สำนักงานสำหรับโต๊ะใหม่", "en": "Office supplies for the new desks"},
-  "pv2_d": {"th": "บันทึกลงบัญชีแล้วค่ะ: <b>Office Mate</b> · 1,250.00 บาท · อุปกรณ์สำนักงาน · 24 ต.ค. ถ้ามีคนส่งใบเดิมซ้ำ ดอรี่จะข้ามให้ค่ะ", "en": "Saved to the ledger: <b>Office Mate</b> · 1,250.00 THB · Office supplies · 24 Oct. If someone sends the same receipt again, I'll skip it."},
-  "pv3_u": {"th": "ตั้งแต่วันศุกร์ฉันพลาดอะไรไปบ้าง", "en": "What did I miss since Friday?"},
-  "pv3_d": {"th": "ตั้งแต่วันศุกร์มี 3 เรื่องค่ะ<ol><li>ประชุมงบประมาณย้ายไปวันพฤหัสบดี 14:00</li><li>สมชายมอบงาน “สไลด์ไตรมาส 4” ให้คุณ กำหนดส่งวันพุธ</li><li>มีคำขอเบิกค่าใช้จ่าย 2 รายการรอคุณอนุมัติ</li></ol>", "en": "Three things since Friday:<ol><li>The budget meeting moved to Thursday at 14:00.</li><li>Somchai assigned you “Q4 deck”, due Wednesday.</li><li>Two expense requests are waiting for your approval.</li></ol>"},
-  "pv4_u": {"th": "เดือนนี้ค่าการตลาดไปเท่าไรแล้ว", "en": "เดือนนี้ค่าการตลาดไปเท่าไรแล้ว"},
-  "pv4_d": {"th": "เดือนตุลาคมใช้ไปกับการตลาด 18,400 บาท จากใบเสร็จ 6 ใบค่ะ ก้อนใหญ่สุดคือค่าโฆษณาออนไลน์ 9,800 บาท", "en": "เดือนตุลาคมใช้ไปกับการตลาด 18,400 บาท จากใบเสร็จ 6 ใบค่ะ ก้อนใหญ่สุดคือค่าโฆษณาออนไลน์ 9,800 บาท"},
-  "pv4_note": {"th": "ดอรี่ตอบเป็นภาษาหลักที่บริษัทเลือก ทีมในตัวอย่างนี้เลือกภาษาไทย", "en": "“How much have we spent on marketing this month?” Dory replies in the language the company chose; this example team chose Thai."},
-  "ft_h": {"th": "ความสามารถที่ใช้ได้จริงวันนี้", "en": "What Dory can do today"},
-  "ft_p": {"th": "ทุกข้อด้านล่างมีอยู่ในดอรี่เวอร์ชันปัจจุบัน และผู้ดูแลเปิดปิดได้ทีละข้อจากศูนย์บัญชาการ", "en": "Everything below is in the current build, and admins can switch each one on or off from the command center."},
+  "h1a": {"th": "ถามครั้งเดียว", "en": "Ask once."},
+  "h1b": {"th": "ดอรี่จำไว้ให้", "en": "Dory remembers."},
+  "sub": {"th": "ดอรี่อยู่ใน Discord ของทีมคุณ จดประชุม ลงบัญชีใบเสร็จ ตามงาน และตอบคำถามจากเอกสารของบริษัทคุณเอง ได้ทั้งภาษาไทยและอังกฤษ", "en": "Dory lives in your team's Discord. She takes meeting notes, logs receipts, follows up on tasks and answers from your company's own documents, in Thai or English."},
+  "chk1": {"th": "ใช้ได้ทั้งไทยและอังกฤษ", "en": "Works in Thai & English"},
+  "chk2": {"th": "เป็นส่วนตัวเฉพาะทีมคุณ", "en": "Private to your team"},
+  "chk3": {"th": "ใช้ฟรีช่วงเปิดตัว", "en": "Free during launch"},
+  "hero_alt": {"th": "ดอรี่ ปลาสีขาวหลังสีฟ้า ตาโตสีฟ้า สวมหูฟัง", "en": "Dory, a white fish with a blue back, big blue eyes and a headset"},
+  "cards_aria": {"th": "สิ่งที่ดอรี่ทำ", "en": "What Dory does"},
+  "c1_t": {"th": "บันทึกการประชุม", "en": "Meeting notes"},
+  "c1_d": {"th": "เข้าห้องเสียง ถอดความ แล้วสรุปให้", "en": "Joins voice, transcribes and summarizes."},
+  "c2_t": {"th": "ใบเสร็จเข้าบัญชี", "en": "Receipts to ledger"},
+  "c2_d": {"th": "ส่งรูปมา ค่าใช้จ่ายก็ถูกบันทึก", "en": "Send a photo, the expense is recorded."},
+  "c3_t": {"th": "ติดตามงาน", "en": "Task follow-up"},
+  "c3_d": {"th": "ติดตาม action item และคอยถามความคืบหน้า", "en": "Tracks action items and checks in."},
+  "c4_t": {"th": "เอกสารอัจฉริยะ", "en": "Smart documents"},
+  "c4_d": {"th": "หาคำตอบจากไฟล์และ wiki ของคุณ", "en": "Finds answers in your files and wiki."},
+  "meet_h": {"th": "รู้จักดอรี่", "en": "Meet Dory"},
+  "meet_p": {"th": "สิบห้าวินาทีในโลกของดอรี่ วิดีโอนี้มีเสียง", "en": "Fifteen seconds in Dory's world. The film has sound."},
+  "meet_aria": {"th": "วิดีโอแนะนำดอรี่", "en": "Introduction video: Meet Dory"},
+  "meet_cap": {"th": "ดอรี่ ปลาสีขาวหลังสีฟ้าที่สวมหูฟัง ลอยอยู่ในแนวปะการังข้างข้อความ (ภาษาอังกฤษ): Meet Dory. Ask once. Dory remembers, files and follows up. ตามด้วยบันทึกการประชุม ใบเสร็จ งาน คำตอบ และ Add Dory to Discord ยาว 15 วินาที", "en": "Dory, a white fish with a blue back and a headset, hovers in a sunlit reef beside the words: Meet Dory. Ask once. Dory remembers, files and follows up. Then: Meeting notes, Receipts, Tasks, Answers, and Add Dory to Discord. 15 seconds."},
+
+  "ft_h": {"th": "ทุกอย่างที่ดอรี่ทำได้วันนี้", "en": "Everything Dory does today"},
+  "ft_p": {"th": "ทุกข้อด้านล่างมีอยู่ในดอรี่เวอร์ชันปัจจุบัน และผู้ดูแลเปิดปิดได้ทีละข้อจากศูนย์บัญชาการ", "en": "Every one of these is in the current build, and admins switch each one on or off from the command center."},
   "f1_t": {"th": "ประชุมเสียง", "en": "Voice meetings"},
-  "f1_d": {"th": "เข้าห้องเสียงเมื่อถูกเชิญ ถอดเสียงทีละช่วง ตอบเมื่อถูกเรียกชื่อ และสรุปมติพร้อม action item ตอนจบ", "en": "Joins the voice room when invited, transcribes as it goes, answers when called by name, and posts decisions and action items at the end."},
+  "f1_d": {"th": "เข้าห้องเสียงเมื่อถูกเชิญ ตอบเมื่อถูกเรียกชื่อ และสรุปมติพร้อม action item ตอนจบ", "en": "Joins the voice room when invited, answers when called by name, and posts decisions and action items at the end."},
   "f2_t": {"th": "ใบเสร็จและค่าใช้จ่าย", "en": "Receipts and expenses"},
   "f2_d": {"th": "อ่านรูปใบเสร็จและ PDF ลงบัญชี ตัดใบซ้ำ และให้ผู้บริหารถามยอดค่าใช้จ่ายเป็นภาษาคน", "en": "Reads receipt photos and PDFs into a ledger, drops duplicates, and lets executives ask about spending in plain language."},
   "f3_t": {"th": "ติดตามงานและรายงาน", "en": "Task follow-up and reports"},
-  "f3_d": {"th": "เปลี่ยน action item เป็นงาน ตามความคืบหน้าทาง DM และส่งรายงานตอนเย็นให้ผู้บริหาร", "en": "Turns action items into tasks, follows up by DM, and sends executives an evening report."},
+  "f3_d": {"th": "เปลี่ยน action item เป็นงาน ตามกับผู้รับงานแต่ละคน และส่งรายงานตอนเย็น", "en": "Turns action items into tasks, follows up with each owner, and sends an evening report."},
   "f4_t": {"th": "เอกสารและ wiki", "en": "Documents and wiki"},
   "f4_d": {"th": "จำไฟล์ที่ทีมส่ง สร้างหน้า wiki ของบริษัท และตอบจากเอกสารตามสิทธิ์ที่แต่ละคนเห็นได้", "en": "Remembers files the team shares, keeps a company wiki, and answers from documents each person is allowed to see."},
   "f5_t": {"th": "สรุปเช้าเย็นและตามทัน", "en": "Briefs and catch-up"},
-  "f5_d": {"th": "สรุปประจำวันส่วนตัวทาง DM และ \"พลาดอะไรไปบ้าง\" หลังหายไปทั้งวัน", "en": "A personal morning and evening brief by DM, and \"what did I miss?\" after a day away."},
+  "f5_d": {"th": "สรุปประจำวันส่วนตัวตอนเช้าและเย็น และ “พลาดอะไรไปบ้าง” หลังหายไปทั้งวัน", "en": "A personal morning and evening brief, and “what did I miss?” after a day away."},
   "f6_t": {"th": "ขออนุมัติ โพลล์ และฟอร์ม", "en": "Approvals, polls and forms"},
-  "f6_d": {"th": "ขอเบิก ขอลา ขอซื้อ โหวต และแบบสอบถามทาง DM โดยไม่ต้องออกจาก Discord", "en": "Expense, leave and purchase requests, votes and DM surveys, all without leaving Discord."},
-  "f7_t": {"th": "ค้นหาและวิจัย", "en": "Search and research"},
-  "f7_d": {"th": "ค้นทุกแหล่งของทีมพร้อมกัน ค้นเว็บพร้อมอ้างอิง และทำรายงานวิจัยเชิงลึกเป็น PDF", "en": "Searches every team source at once, searches the web with citations, and writes deep-research reports as PDF."},
+  "f6_d": {"th": "ขอเบิก ขอลา ขอซื้อ โหวต และแบบสอบถาม โดยไม่ต้องออกจาก Discord", "en": "Expense, leave and purchase requests, votes and surveys, without leaving Discord."},
+  "f7_t": {"th": "ค้นหา", "en": "Search"},
+  "f7_d": {"th": "ค้นทุกแหล่งของทีมพร้อมกัน ทั้งแชต ไฟล์ wiki งาน และการประชุม", "en": "Searches every team source at once: chat, files, the wiki, tasks and meetings."},
   "f8_t": {"th": "เรียนรู้บริษัทของคุณ", "en": "Learns your company"},
-  "f8_d": {"th": "สอนศัพท์เฉพาะ SOP และ FAQ ให้ดอรี่ พร้อม domain pack สำเร็จรูป 14 สาขา", "en": "Teach Dory your glossary, SOPs and FAQ, with 14 ready-made industry packs."},
-  "ex_h": {"th": "เริ่มใช้ได้ใน 3 ขั้นตอน", "en": "Up and running in three steps"},
-  "ex_p": {"th": "ดอรี่ทำงานอยู่ใน Discord ของทีมคุณ ไม่ต้องติดตั้งแอปใหม่ ไม่ต้องย้ายข้อมูล", "en": "Dory lives inside your team's Discord. No new app to install, no data to migrate."},
-  "ex1_t": {"th": "เพิ่มดอรี่เข้าเซิร์ฟเวอร์", "en": "Add Dory to your server"},
-  "ex1_d": {"th": "กดปุ่มเชิญแล้วเลือกเซิร์ฟเวอร์ ดอรี่จะสร้างห้องคุยส่วนตัวให้สมาชิกเอง", "en": "Use the invite button and pick a server. Dory creates a private chat channel for each member."},
-  "ex2_t": {"th": "พิมพ์ /ตั้งค่า หรือเรียกชื่อ", "en": "Type /setup or just say her name"},
-  "ex2_d": {"th": "พิมพ์ <code>/ตั้งค่า</code> เพื่อเปิดศูนย์บัญชาการ หรือพิมพ์ <code>@Dory</code> แล้วถามได้เลย", "en": "Type <code>/setup</code> to open the command center, or mention <code>@Dory</code> and ask away."},
-  "ex3_t": {"th": "ปล่อยให้ดอรี่ทำงาน", "en": "Let Dory work"},
-  "ex3_d": {"th": "ส่งใบเสร็จ เชิญเข้าประชุม หรือถามเรื่องค่าใช้จ่าย ดอรี่ตอบเป็นภาษาหลักของบริษัท", "en": "Send a receipt, invite her to a meeting, or ask about expenses. Dory answers in your company's language."},
-  "pf_h": {"th": "ดอรี่อยู่ตรงไหนบ้าง", "en": "Where Dory works"},
-  "pf_p": {"th": "เราให้บริการสองส่วน: บอตดอรี่ในแพลตฟอร์มที่ทีมคุยกันอยู่แล้ว และแพลตฟอร์มเว็บสำหรับดูแลองค์กร", "en": "Two parts: the Dory bot inside the platforms your team already talks on, and a web platform to run the organization."},
-  "pf_now": {"th": "ใช้ได้แล้ว", "en": "Available now"},
-  "pf_org": {"th": "สำหรับองค์กร", "en": "For organizations"},
-  "pf1_t": {"th": "บอตใน Discord", "en": "Bot in Discord"},
-  "pf1_d": {"th": "เพิ่มเข้าเซิร์ฟเวอร์แล้วใช้ได้ทันที ใบเสร็จ ประชุมเสียง ตามงาน ถามตอบ ทุกอย่างอยู่ในห้องที่ทีมใช้อยู่", "en": "Add it to a server and it works at once: receipts, voice meetings, follow-ups and Q&A, all in the channels your team already uses."},
-  "pf2_t": {"th": "แพลตฟอร์มเว็บ", "en": "Web platform"},
-  "pf2_d": {"th": "ศูนย์ควบคุมองค์กร: สมาชิก คลังเอกสาร งาน แพ็กเกจ และคุยกับดอรี่จากเบราว์เซอร์ ล็อกอินด้วย Google", "en": "The organization center: members, document library, tasks, plan, and chat with Dory from the browser. Sign in with Google."},
-  "pf3_t": {"th": "Google Meet", "en": "Google Meet"},
-  "pf3_d": {"th": "เครื่องอัดประชุมเปิดคู่กับ Meet ถอดเสียงไทยสด สรุปมติและงานส่งเข้า Discord", "en": "A recorder that runs beside Meet: live Thai transcript, then decisions and action items posted to Discord."},
-  "pf4_t": {"th": "Slack และ ClickUp", "en": "Slack and ClickUp"},
-  "pf4_d": {"th": "เชื่อมต่อผ่านศูนย์ควบคุมองค์กร เปิดให้ตามคำขอ ติดต่อเราเพื่อเปิดใช้", "en": "Connected through the organization center, switched on by request. Contact us to enable it."},
-  "ro_h": {"th": "แต่ละตำแหน่งถามดอรี่อย่างไร", "en": "What each role asks Dory"},
-  "ro_p": {"th": "ตัวอย่างคำถาม แต่ละคนได้คำตอบจากข้อมูลที่ตัวเองมีสิทธิ์เห็นเท่านั้น", "en": "Example asks. Each person gets answers only from what they are allowed to see."},
-  "ro_tabs_aria": {"th": "ตำแหน่ง", "en": "Roles"},
-  "ro_t1": {"th": "เจ้าของกิจการ", "en": "Owner"},
-  "ro_t2": {"th": "ผู้จัดการ", "en": "Manager"},
-  "ro_t3": {"th": "สมาชิกทีม", "en": "Team member"},
-  "ro_t4": {"th": "การเงิน", "en": "Finance"},
-  "ro_ask": {"th": "ถามว่า", "en": "They ask"},
-  "ro_get": {"th": "ดอรี่ตอบด้วย", "en": "Dory returns"},
-  "ro1_q": {"th": "สรุปค่าใช้จ่ายสัปดาห์นี้แยกตามหมวดให้หน่อย", "en": "Summarise this week's spending by category."},
-  "ro1_a": {"th": "ตารางยอดตามหมวด ร้านที่จ่ายมากที่สุด และสไลด์สรุปถ้าคุณขอ", "en": "A table by category, the biggest vendors, and a slide deck if you ask for one."},
-  "ro2_q": {"th": "โปรเจกต์เปิดตัวมีงานไหนเลยกำหนดบ้าง", "en": "What's overdue on the launch project?"},
-  "ro2_a": {"th": "งานที่เลยกำหนดพร้อมผู้รับผิดชอบ และภาพความคืบหน้าเทียบกับเวลาที่เหลือ", "en": "Overdue tasks with their owners, and a picture of progress against the time left."},
-  "ro3_q": {"th": "เตือนฉันทุกวันจันทร์ 9 โมงให้ส่งรายงานยอดขาย", "en": "Remind me every Monday at 9 to send the sales report."},
-  "ro3_a": {"th": "การเตือนซ้ำทุกสัปดาห์ ส่งเข้าห้องส่วนตัวของคุณกับดอรี่", "en": "A weekly reminder, delivered to your private Dory channel."},
-  "ro4_q": {"th": "รวมยอดในไฟล์ Excel นี้ตามผู้ขายให้หน่อย", "en": "Total this spreadsheet by vendor."},
-  "ro4_a": {"th": "ตารางยอดตามผู้ขายและกราฟ จากไฟล์ที่คุณแนบมา", "en": "A table by vendor and a chart, worked out from the file you attached."},
-  "tm_h": {"th": "สร้างมาเพื่อองค์กรตั้งแต่วันแรก", "en": "Built for organizations from day one"},
-  "tm_p": {"th": "เซิร์ฟเวอร์แต่ละแห่งคือผู้เช่าแยกกัน ข้อมูลไม่ปะปน และสิทธิ์การเห็นข้อมูลเดินตามโครงสร้างของทีมบน Discord", "en": "Every server is its own tenant. Data never mixes, and who sees what follows your team's Discord structure."},
-  "flow_aria": {"th": "ดอรี่ตอบจากห้องแชตให้เฉพาะคนที่อ่านห้องนั้นได้", "en": "Dory answers from a channel only for people who can read it"},
-  "flow1": {"th": "เซิร์ฟเวอร์ของคุณ", "en": "Your server"},
-  "flow2": {"th": "ห้องแชตในเซิร์ฟเวอร์", "en": "Its channels"},
-  "flow3": {"th": "เฉพาะคนที่อ่านห้องนั้นได้", "en": "Only people who can read them"},
-  "tm1_t": {"th": "แยกข้อมูลต่อเซิร์ฟเวอร์", "en": "Isolated per server."},
-  "tm1_d": {"th": "บัญชี ความจำ เอกสาร และการตั้งค่าทั้งหมดผูกกับเซิร์ฟเวอร์ของคุณเท่านั้น", "en": "Ledger, memory, documents and settings belong to your server alone."},
-  "tm2_t": {"th": "สิทธิ์ตามห้องและตำแหน่ง", "en": "Permissions follow channels and roles."},
-  "tm2_d": {"th": "ดอรี่ตอบจากข้อมูลที่ผู้ถามเห็นได้อยู่แล้วเท่านั้น และผู้บริหารกำหนดได้ว่าใครคือผู้บริหาร", "en": "Dory only answers from what the asker can already read, and you decide who counts as an executive."},
-  "tm3_t": {"th": "ภาษาหลักของบริษัท และภาษาของคุณเอง", "en": "One company language, plus your own."},
-  "tm3_d": {"th": "บริษัทเลือกภาษาที่ดอรี่ใช้ และแต่ละคนเพิ่มภาษาส่วนตัวได้", "en": "The company picks the language Dory uses, and each person can add a personal language."},
-  "tm4_t": {"th": "ศูนย์บัญชาการบนเว็บ", "en": "A web command center."},
-  "tm4_d": {"th": "ล็อกอินด้วย Google เพื่อเปิดปิดความสามารถ เลือกห้อง และดูกิจกรรมล่าสุดของแต่ละเซิร์ฟเวอร์", "en": "Sign in with Google to switch features, pick channels and review each server's recent activity."},
-  "tm5_t": {"th": "ทุกความสามารถมีสวิตช์", "en": "Every feature has a switch."},
-  "tm5_d": {"th": "ผู้ดูแลเปิดหรือปิดแต่ละความสามารถได้จากศูนย์บัญชาการ", "en": "Admins turn each feature on or off from the command center."},
-  "tm6_t": {"th": "บริษัทเป็นผู้กำหนดว่าจะเก็บอะไร", "en": "Your company decides what is kept."},
-  "tm6_d": {"th": "ความจำของทีมเก็บไว้เป็นข้อมูลของบริษัทโดยค่าเริ่มต้น และผู้ดูแลตั้งให้ลบเมื่อครบจำนวนวันที่กำหนดได้", "en": "Team memory is kept as the company's record by default, and an admin can set it to delete after a chosen number of days."},
+  "f8_d": {"th": "สอนศัพท์เฉพาะ SOP และ FAQ ให้ดอรี่ พร้อม domain pack สำเร็จรูป 14 สาขา", "en": "Teach her your glossary, SOPs and FAQ, with 14 ready-made industry packs."},
+
+  "how_h": {"th": "ดอรี่ทำงานอย่างไร", "en": "How Dory works"},
+  "how_p": {"th": "มีคนมอบงานในแชต ดอรี่เปลี่ยนเป็นการ์ดงานส่งให้ผู้รับ แล้วตามงานต่อตามเวลาจริง", "en": "Someone hands out work in chat. Dory turns it into a card for its owner, then follows up on a real clock."},
+  "tw_say_h": {"th": "คุณพูดในแชต", "en": "You say it."},
+  "tw_catch_h": {"th": "ดอรี่รับงานไว้", "en": "She catches it."},
+  "tw_label": {"th": "ข้อความจากเบนในห้อง #finance", "en": "A message from Ben in #finance"},
+  "tw_msg": {"th": "นก ช่วยส่งใบเสร็จไตรมาส 3 ให้ฝ่ายบัญชีภายในวันศุกร์นะ", "en": "Nok, can you send the Q3 receipts to accounting by Friday?"},
+  "tw_try": {"th": "ลองตัวอย่าง", "en": "Try an example"},
+  "eg1_l": {"th": "ส่งภายใน 3 พ.ย.", "en": "Due 3 Nov"},
+  "eg1": {"th": "Ploy, please update the price list by 3 Nov", "en": "Ploy, please update the price list by 3 Nov"},
+  "eg2_l": {"th": "ไม่ระบุชื่อ", "en": "Nobody named"},
+  "eg2": {"th": "Can someone book the meeting room for tomorrow?", "en": "Can someone book the meeting room for tomorrow?"},
+  "eg3_l": {"th": "ภาษาไทย", "en": "In Thai"},
+  "eg3": {"th": "อรุณ ช่วยส่งสรุปยอดขายภายในพรุ่งนี้นะ", "en": "อรุณ ช่วยส่งสรุปยอดขายภายในพรุ่งนี้นะ"},
+  "eg4_l": {"th": "ภาษาไทย ไม่ระบุชื่อ", "en": "In Thai, nobody named"},
+  "eg4": {"th": "ใครก็ได้ช่วยจองห้องประชุมวันจันทร์หน่อย", "en": "ใครก็ได้ช่วยจองห้องประชุมวันจันทร์หน่อย"},
+  "tw_note_b": {"th": "ตัวอย่างแบบสคริปต์", "en": "A scripted example."},
+  "tw_note": {"th": "ใช้กฎง่าย ๆ ไม่กี่ข้อแทนดอรี่ ไม่ใช่ AI ตัวจริง ชื่อในตัวอย่างสมมติขึ้น ส่วนการ์ด ปุ่ม และผลของแต่ละปุ่มคือการส่งมอบงานที่ดอรี่ใช้จริง", "en": "A few simple rules stand in for Dory here, not the live AI. The names are made up; the card, its buttons and what each one does are the real task handshake."},
+  "tw_after": {"th": "แต่ละคนได้รับการ์ดในห้องส่วนตัวกับดอรี่ ไม่มีคนอื่นเห็น", "en": "Each person gets their card in a private channel with Dory. Nobody else sees it."},
+  "who_dory": {"th": "ดอรี่", "en": "Dory"},
+  "card_where": {"th": "ในห้องส่วนตัวของ{who}กับดอรี่", "en": "in {who}'s private Dory channel"},
+  "card_where_ben": {"th": "ในห้องส่วนตัวของเบนกับดอรี่", "en": "in Ben's private Dory channel"},
+  "card_new": {"th": "งานใหม่สำหรับ{who}", "en": "New task for {who}"},
+  "card_q": {"th": "คำถามถึงเบน: ใครรับงานนี้", "en": "A question for Ben: who takes this?"},
+  "card_due": {"th": "กำหนดส่ง", "en": "Due"},
+  "card_from": {"th": "จาก", "en": "From"},
+  "card_from_v": {"th": "เบนในห้อง #finance", "en": "Ben in #finance"},
+  "card_owner": {"th": "ผู้รับงาน", "en": "Owner"},
+  "card_owner_v": {"th": "ยังไม่มีใครถูกระบุ", "en": "Nobody named"},
+  "card_nodue": {"th": "ยังไม่มีกำหนด ดอรี่จะถามเมื่อครบสามวันทำการ", "en": "No date yet; Dory asks after three working days"},
+  "card_empty_k": {"th": "ยังไม่พบงาน", "en": "Nothing caught yet"},
+  "card_empty_t": {"th": "ลองพิมพ์ข้อความที่มอบงานให้ใครสักคน", "en": "Type a message that hands someone a piece of work."},
+  "b_ok": {"th": "ยอมรับ", "en": "Accept"},
+  "b_edit": {"th": "แก้ไข", "en": "Edit"},
+  "b_no": {"th": "ปฏิเสธ", "en": "Decline"},
+  "b_mine": {"th": "งานของฉัน", "en": "It's mine"},
+  "b_other": {"th": "เป็นของคนอื่น", "en": "Someone else"},
+  "b_none": {"th": "ไม่ใช่งาน", "en": "Not a task"},
+  "say_ok": {"th": "ยอมรับแล้ว เบนได้รับข้อความสั้น ๆ ว่า{who}รับงานนี้", "en": "Accepted. Ben gets one line: {who} accepted it."},
+  "say_edit": {"th": "ใน Discord ปุ่มแก้ไขจะเปิดฟอร์มให้แก้ชื่องาน วันส่ง และผู้รับงาน ในตัวอย่างนี้ลองแก้ข้อความ แล้วการ์ดจะเปลี่ยนตาม", "en": "In Discord, Edit opens a form for the title, date and owner. Here, change the message and the card follows."},
+  "say_no": {"th": "ปฏิเสธแล้ว ดอรี่แจ้งเบน และงานนี้จะยังไม่มีผู้รับ", "en": "Declined. Ben is told, and the task is left without an owner."},
+  "say_mine": {"th": "เบนรับงานนี้ไว้เอง และงานอยู่ในรายการของเขาแล้ว", "en": "Ben keeps the task. It is on his list now."},
+  "say_other": {"th": "ดอรี่ถามเบนว่าใครจะรับงาน แล้วส่งการ์ดให้คนนั้น", "en": "Dory asks Ben who takes it, then sends that person the card."},
+  "say_none": {"th": "ปิดไว้ว่าไม่ใช่งาน ไม่มีการมอบหมายให้ใคร", "en": "Closed as not a task. Nothing is assigned."},
+  "n_nok": {"th": "นก", "en": "Nok"},
+  "n_ploy": {"th": "พลอย", "en": "Ploy"},
+  "n_arun": {"th": "อรุณ", "en": "Arun"},
+  "n_mali": {"th": "มะลิ", "en": "Mali"},
+  "n_mai": {"th": "มาย", "en": "Mai"},
+  "mid_h": {"th": "แล้วดอรี่ก็ตามงานให้", "en": "Then she follows up."},
+  "mid_p": {"th": "ทุกงานที่ดอรี่ได้ยินเดินตามนาฬิกาเดียวกัน และนี่คือเวลาจริงของมัน ไม่ต้องมีใครคอยจำว่าต้องตามงาน", "en": "Every task she hears runs on the same clock, and these are its real timings. Nobody has to remember to chase."},
+  "bar_aria": {"th": "ขั้นตอนการตามงานของดอรี่", "en": "How Dory follows up a task"},
+  "s1_d": {"th": "ไม่กี่วินาที", "en": "Seconds"},
+  "s1_w": {"th": "แรกสุด ดอรี่ได้ยินงานในแชต แล้วส่งการ์ดให้ผู้รับงาน", "en": "First, she hears the task in chat and sends its owner a card."},
+  "s2_d": {"th": "หนึ่งวัน", "en": "A day"},
+  "s2_w": {"th": "ถ้าไม่มีใครตอบการ์ด ดอรี่เตือนหนึ่งครั้งเมื่อครบ 24 ชั่วโมง", "en": "Then, if nobody answers the card, she nudges once after 24 hours."},
+  "s3_d": {"th": "สามวันทำการ", "en": "Three working days"},
+  "s3_w": {"th": "งานที่ไม่มีกำหนดส่ง ดอรี่จะถามหนึ่งครั้งว่าจะส่งเมื่อไร", "en": "Next, a task with no deadline gets one question: when is it due?"},
+  "s4_d": {"th": "ทุกเย็น", "en": "Every evening"},
+  "s4_w": {"th": "สุดท้าย รายงานตอนเย็นสรุปงานที่ยังค้างอยู่", "en": "Last, the evening report lists what is still open."},
+
+  "teams_h": {"th": "สร้างมาเพื่อทั้งทีม", "en": "Built for the whole team"},
+  "sea_p": {"th": "ถามว่าทีมตัดสินใจอะไรไว้ ดอรี่ตอบจากวันที่คุยกันจริง พร้อมบอกแหล่งที่มา", "en": "Ask what the team decided and she answers from the day it was said, with her sources."},
+  "ask_h": {"th": "ลองถามในฐานะคนในทีม", "en": "Ask as anyone on the team."},
+  "ask_p": {"th": "ดอรี่ใช้ความจำของห้องไหนก็ต่อเมื่อคนถาม และทุกคนที่อ่านคำตอบ อ่านห้องนั้นได้", "en": "A channel's memory is used only when the person asking, and everyone reading the answer, can read that channel."},
+  "ask_legend": {"th": "ถามในฐานะ", "en": "Ask as"},
+  "r_owner": {"th": "เจ้าของ", "en": "Owner"},
+  "r_manager": {"th": "ผู้จัดการ", "en": "Manager"},
+  "r_staff": {"th": "พนักงาน", "en": "Staff"},
+  "lang_h": {"th": "ดอรี่ตอบเป็นภาษาของบริษัท", "en": "She answers in your company's language."},
+  "lang_p": {"th": "บริษัทเลือกภาษาหลักที่ดอรี่ใช้ และแต่ละคนเพิ่มภาษาส่วนตัวได้", "en": "The company picks one language for everything Dory says, and each person can add their own."},
+  "ans_legend": {"th": "ตอบเป็นภาษา", "en": "Answer in"},
+  "sea_note": {"th": "ตัวอย่างแบบสคริปต์ ชื่อสมมติขึ้น แต่กฎว่าใครอ่านอะไรได้คือกฎจริงของดอรี่", "en": "A scripted example with made-up names. The rule for who may read what is the real one."},
+  "ans_who": {"th": "{who} · {role}", "en": "{who} · {role}"},
+  "ans_q": {"th": "เราตัดสินใจเรื่องงบไตรมาส 3 ไว้ว่ายังไง", "en": "What did we decide about the Q3 budget?"},
+  "ans_a": {"th": "วันที่ 16 ต.ค. ทีมตกลงจำกัดงบเดินทางไตรมาส 3 ไว้ที่ 40,000 บาท และย้ายงบที่เหลือไปใช้กับแคมเปญเปิดตัวค่ะ", "en": "On 16 Oct the team agreed to cap Q3 travel at ฿40,000 and move the rest to the launch campaign."},
+  "ans_x": {"th": "และในห้อง #management วันที่ 15 ต.ค. ผู้บริหารกันงบ 15,000 บาทไว้สำหรับบูธงานแสดงสินค้าค่ะ", "en": "In #management on 15 Oct, the owners also set aside ฿15,000 for the trade-fair booth."},
+  "ans_src": {"th": "จาก #finance 14 ต.ค. · บันทึกประชุมประจำสัปดาห์ 16 ต.ค.", "en": "From #finance, 14 Oct · Weekly meeting minutes, 16 Oct"},
+  "ans_src_x": {"th": " · #management 15 ต.ค.", "en": " · #management, 15 Oct"},
+  "ans_hidden": {"th": "ยังมีอีกหนึ่งแหล่งในห้อง #management แต่{who}อ่านห้องนั้นไม่ได้ ดอรี่จึงไม่นำมาตอบ", "en": "One more source is in #management. {who} can't read that channel, so it is left out."},
+  "ans_all": {"th": "{who}อ่านได้ทุกแหล่งที่ใช้ตอบครั้งนี้", "en": "{who} can read every source used here."},
+
+  "tm_h": {"th": "เซิร์ฟเวอร์ของคุณ ความ⁠จำ⁠ของ⁠คุณ", "en": "Your server, your memory."},
+  "tm_p": {"th": "สร้างมาเพื่อองค์กรตั้งแต่วันแรก ใครเห็นอะไรเป็นไปตามโครงสร้าง Discord ของทีมคุณเอง", "en": "Built for organizations from day one. Who sees what follows your team's own Discord."},
+  "tm1_t": {"th": "แต่ละเซิร์ฟเวอร์แยกข้อมูลกันเด็ดขาด", "en": "Every server is its own tenant."},
+  "tm1_d": {"th": "บัญชี ความจำ เอกสาร และการตั้งค่า ผูกกับเซิร์ฟเวอร์ของคุณเท่านั้น ข้อมูลไม่ปะปนข้ามบริษัท", "en": "Ledger, memory, documents and settings belong to your server alone. Nothing mixes between companies."},
+  "tm2_t": {"th": "ดอรี่ตอบจากสิ่งที่คุณอ่านได้เท่านั้น", "en": "She answers only from what you can read."},
+  "tm2_d": {"th": "สิทธิ์เป็นไปตามห้องและตำแหน่งใน Discord และคุณกำหนดได้ว่าใครคือผู้บริหาร", "en": "Permissions follow your channels and roles, and you decide who counts as an executive."},
+  "tm3_t": {"th": "ความจำเป็นของบริษัทคุณ", "en": "The memory is your company's."},
+  "tm3_d": {"th": "สิ่งที่ทีมเล่าให้ดอรี่ฟังเก็บเป็นข้อมูลของบริษัทตลอดไปโดยค่าเริ่มต้น และผู้ดูแลตั้งให้ลบเมื่อครบจำนวนวันที่กำหนดได้", "en": "What your team tells Dory is kept as the company's record, forever by default. An admin can choose to delete it after a set number of days."},
+  "tm4_t": {"th": "ทุกความสามารถมีสวิตช์", "en": "Every feature has a switch."},
+  "tm4_d": {"th": "ผู้ดูแลเปิดปิดแต่ละความสามารถและเลือกห้องได้จากศูนย์บัญชาการบนเว็บ", "en": "Admins turn each feature on or off and pick channels from the web command center."},
+  "tm5_t": {"th": "บอกชัดว่าใช้โมเดลอะไร", "en": "The models are named."},
   "models_label": {"th": "โมเดล AI ที่ดอรี่ใช้อยู่ตอนนี้:", "en": "AI models running Dory right now:"},
-  "pr_h": {"th": "แพ็กเกจ", "en": "Plans"},
-  "pr_p": {"th": "ช่วงเปิดตัวมีแพ็กเกจเดียว ใช้ฟรีทุกความสามารถโดยไม่มีลิมิต", "en": "During launch there is one plan: every feature, free, with no limits."},
-  "p_rec": {"th": "แนะนำ", "en": "Recommended"},
-  "pl_trial": {"th": "ทดลองใช้งาน", "en": "Trial"},
-  "pl_trial_price": {"th": "ฟรี ไม่จำกัดเวลา", "en": "Free, no time limit"},
-  "pl_trial_d": {"th": "ทุกความสามารถ ไม่จำกัดจำนวนคน ไม่ต้องใช้บัตรเครดิต ตลอดช่วงเปิดตัว", "en": "Every feature, unlimited seats, no credit card, for the whole launch period."},
-  "pl_more": {"th": "แพ็กเกจอื่น", "en": "More plans"},
-  "pl_more_price": {"th": "เร็ว ๆ นี้", "en": "Coming soon"},
-  "pl_more_d": {"th": "แพ็กเกจสำหรับทีมและองค์กรจะประกาศหลังช่วงเปิดตัว ผู้ใช้ช่วงทดลองจะได้รับแจ้งก่อน", "en": "Team and organization plans will be announced after launch. Trial users hear first."},
-  "pl_start": {"th": "เริ่มทดลองใช้", "en": "Start the trial"},
-  "pr_note": {"th": "ยังไม่มีการเก็บค่าบริการและไม่มีการชำระเงินในระบบ การสมัครไม่มีค่าใช้จ่ายใด ๆ", "en": "Nothing is charged and there is no payment in the system. Signing up is completely free."},
-  "fin_h": {"th": "พาดอรี่ไปช่วยทีมของคุณ", "en": "Bring Dory to your team."},
-  "fin_p": {"th": "เพิ่มดอรี่เข้าเซิร์ฟเวอร์ แล้วพิมพ์ @Dory เพื่อเริ่มคุยได้ทันที", "en": "Add her to your server, then mention @Dory to start right away."},
-  "en_h": {"th": "เลือกทางเข้าของคุณ", "en": "Choose your way in"},
-  "en_p": {"th": "ดอรี่มีสามบริการ แต่ละแบบเหมาะกับการใช้งานต่างกัน เลือกที่ตรงกับคุณได้เลย", "en": "Dory offers three services for different ways of working. Pick the one that fits you."},
-  "en1_t": {"th": "ทีมเล็กและร้านค้า", "en": "Small teams and shops"},
-  "en1_d": {"th": "สร้างบัญชีด้วย Google เลือกทดลองใช้ฟรี แล้วเพิ่มดอรี่เข้า Discord ของทีม ใช้ได้ทันทีโดยไม่ต้องตั้งค่า", "en": "Create an account with Google, pick the free trial, then add Dory to your team's Discord. It works at once with no setup."},
-  "en1_b": {"th": "สร้างบัญชีและเริ่มใช้ →", "en": "Create an account and start →"},
-  "en2_t": {"th": "องค์กรหลายทีม", "en": "Organizations with many teams"},
-  "en2_d": {"th": "รวมหลายเซิร์ฟเวอร์และ workspace ไว้ในองค์กรเดียว จัดการสมาชิก คลังเอกสาร แพ็กเกจ และคุยกับดอรี่จากเว็บ", "en": "Bring several servers and workspaces under one organization: members, document library, plan, and chat with Dory from the web."},
-  "en2_b": {"th": "เปิดศูนย์ควบคุมองค์กร →", "en": "Open the organization center →"},
-  "en3_t": {"th": "ประชุมบน Google Meet", "en": "Meetings on Google Meet"},
-  "en3_d": {"th": "เปิดเครื่องอัดคู่กับ Google Meet ถอดเสียงภาษาไทยสด แล้วสรุปมติและงานที่ต้องทำส่งเข้า Discord", "en": "Open the recorder beside Google Meet for a live Thai transcript, then decisions and action items posted to Discord."},
-  "en3_b": {"th": "เปิดเครื่องอัดประชุม →", "en": "Open the meeting recorder →"},
+
+  "pr_h": {"th": "ใช้ฟรีตลอดช่วงเปิดตัว", "en": "Free while Dory launches"},
+  "pl_h": {"th": "แพ็กเกจช่วงเปิดตัว", "en": "Launch plan"},
+  "pl_p": {"th": "ช่วงเปิดตัวมีแพ็กเกจเดียว ใช้ฟรีทุกความสามารถโดยไม่มีลิมิต", "en": "One plan while Dory launches: every feature, free, with no limits."},
+  "pl_terms_aria": {"th": "สิ่งที่รวมในแพ็กเกจ", "en": "What the plan includes"},
+  "pl_1": {"th": "ทุกความสามารถ", "en": "Every feature"},
+  "pl_2": {"th": "ไม่จำกัดเวลา", "en": "No time limit"},
+  "pl_3": {"th": "ไม่จำกัดจำนวนคน", "en": "No seat limit"},
+  "pl_4": {"th": "ไม่ต้องใช้บัตร ไม่มีการชำระเงิน", "en": "No card, no payment"},
+  "pl_price": {"th": "ฟรี", "en": "Free"},
+  "pr_note": {"th": "ยังไม่มีการเก็บค่าบริการและไม่มีการชำระเงินในระบบ แพ็กเกจสำหรับทีมและองค์กรจะประกาศหลังช่วงเปิดตัว และผู้ใช้ช่วงทดลองจะได้รับแจ้งก่อน", "en": "Nothing is charged and there is no payment in the system. Team and organization plans will be announced after launch, and trial users hear first."},
+
+  "faq_h": {"th": "คำถามที่พบบ่อย", "en": "Questions, answered"},
+  "faq_p": {"th": "คำตอบตรง ๆ สำหรับสิ่งที่ทีมมักถามก่อนเพิ่มดอรี่", "en": "Straight answers to what teams ask before they add Dory."},
+  "q1": {"th": "ดอรี่ใช้ภาษาอะไรได้บ้าง", "en": "Which languages does Dory use?"},
+  "a1": {"th": "ภาษาไทยและภาษาอังกฤษ บริษัทเลือกภาษาหลักหนึ่งภาษาสำหรับทุกอย่างที่ดอรี่พูด และแต่ละคนเพิ่มภาษาส่วนตัวได้ ไม่ว่าจะเลือกภาษาไหน ดอรี่ก็เข้าใจทั้งไทยและอังกฤษ นอกจากนี้ยังเลือกภาษาจีน ฮินดี มลายู อินโดนีเซีย เวียดนาม เกาหลี และญี่ปุ่นได้ด้วย", "en": "Thai and English. The company picks one language for everything Dory says, and each person can add their own; she understands both either way. Chinese, Hindi, Malay, Indonesian, Vietnamese, Korean and Japanese can be chosen too."},
+  "q2": {"th": "ดอรี่ทำงานที่ไหนบ้าง", "en": "Where does Dory work?"},
+  "a2": {"th": "ใน Discord ใช้ได้ทันที เพิ่มดอรี่เข้าเซิร์ฟเวอร์แล้วพิมพ์ @Dory องค์กรเชื่อมต่อ Slack และ ClickUp ได้ด้วย และสมาชิกทุกคนคุยกับดอรี่ผ่านศูนย์บัญชาการบนเว็บได้", "en": "In Discord, right away: add her to your server and mention @Dory. Organizations can also connect Slack and ClickUp, and every member can talk to her in the web command center."},
+  "q3": {"th": "ดอรี่เก็บอะไรไว้ และใครเป็นเจ้าของ", "en": "What does Dory keep, and who owns it?"},
+  "a3": {"th": "สิ่งที่ทีมเล่าให้ดอรี่ฟังเก็บเป็นข้อมูลของบริษัทคุณเอง ตลอดไปโดยค่าเริ่มต้น และไม่ปะปนกับบริษัทอื่น ผู้ดูแลเลือกให้ลบความจำเมื่อครบจำนวนวันที่กำหนดได้", "en": "What your team tells Dory is kept as your company's own record, forever by default, and never mixes with another company's. An admin can choose to delete memory after a set number of days."},
+  "q4": {"th": "เริ่มใช้งานอย่างไร", "en": "How do we start?"},
+  "a4": {"th": "เพิ่มดอรี่เข้าเซิร์ฟเวอร์ Discord แล้วพิมพ์ @Dory หรือสร้างบัญชีและตั้งชื่อองค์กรก่อนก็ได้ ใช้เวลาประมาณสองนาที", "en": "Add Dory to your Discord server and mention @Dory, or create an account and name your organization first. It takes about two minutes."},
+  "q5": {"th": "มีค่าใช้จ่ายไหม", "en": "What does it cost?"},
+  "a5": {"th": "ช่วงเปิดตัวไม่มีค่าใช้จ่าย ใช้ได้ทุกความสามารถฟรี และไม่มีการชำระเงินในระบบ แพ็กเกจสำหรับทีมและองค์กรจะประกาศหลังช่วงเปิดตัว และผู้ใช้ช่วงทดลองจะได้รับแจ้งก่อน", "en": "Nothing during launch: every feature is free, and there is no payment in the system. Team and organization plans will be announced after launch, and trial users hear first."},
+
+  "fin_h": {"th": "พาดอรี่ไปช่วย ทีม⁠ของ⁠คุณ", "en": "Bring Dory to your team."},
+  "fin_p": {"th": "เพิ่มดอรี่เข้าเซิร์ฟเวอร์ Discord แล้วพิมพ์ @Dory เพื่อเริ่มได้ทันที หรือตั้งค่าศูนย์ควบคุมองค์กรก่อนก็ได้ ใช้เวลาประมาณสองนาที", "en": "Add her to your Discord server and mention @Dory to start, or set up your organization center first. It takes about two minutes."},
+  "org_h": {"th": "ตั้งชื่อองค์กรของคุณ", "en": "Name your organization"},
+  "org_p": {"th": "บริษัท ร้าน หรือทีมของคุณ เปลี่ยนภายหลังได้", "en": "Your company, shop or team. You can change it later."},
+  "org_label": {"th": "ชื่อองค์กร", "en": "Organization name"},
+  "org_eg": {"th": "บ้านสวนคอฟฟี่", "en": "Baan Suan Coffee"},
+  "org_go": {"th": "ต่อไป", "en": "Continue"},
+  "org_have": {"th": "มีบัญชีอยู่แล้ว?", "en": "Already have an account?"},
+
+  "foot_note": {"th": "ดอรี่คือผู้ช่วย AI ของทีมบน Discord", "en": "Dory is an AI coworker for teams on Discord."},
   "foot_copy": {"th": "© 2026 The Frontier Company Limited", "en": "© 2026 The Frontier Company Limited"},
+  "foot_nav_aria": {"th": "ส่วนท้าย", "en": "Footer"},
   "foot_privacy": {"th": "ความเป็นส่วนตัว", "en": "Privacy"},
   "foot_terms": {"th": "ข้อกำหนดการใช้งาน", "en": "Terms"},
-  "foot_recorder": {"th": "เครื่องอัดประชุม Meeting Scribe", "en": "Meeting Scribe recorder"}
+  "foot_recorder": {"th": "เครื่องอัดประชุม Meeting Scribe", "en": "Meeting Scribe recorder"},
+  "foot_top": {"th": "กลับขึ้นผิวน้ำ", "en": "Back to the surface"}
 }
 </script>
 <script>
 "use strict";
-document.documentElement.classList.add("js"); // reveal hides content only when this script runs
 
 // ---------- language (Thai / English) ----------
 // Priority: saved manual choice ("dory-language") -> English. The browser language is not consulted.
+// The markup carries the English words, so the page reads without script; the dictionary is the source.
 const LANG_KEY = "dory-language";
 const SUPPORTED = ["th", "en"];
 const $ = (id) => document.getElementById(id);
@@ -678,12 +1018,12 @@ function readLang(op, v) {
   } catch { return null; } // storage blocked: the choice then lasts until reload
 }
 let lang = readLang("get") || "en";
-function t(key) { const e = I18N[key]; return e ? (e[lang] ?? e.en) : key; }
+function t(key, l = lang) { const e = I18N[key]; return e ? (e[l] ?? e.en) : key; }
+const fill = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
 function applyStatic() {
   document.documentElement.lang = lang;
   document.title = t("title");
   for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
-  for (const el of document.querySelectorAll("[data-i18n-html]")) el.innerHTML = t(el.dataset.i18nHtml);
   for (const el of document.querySelectorAll("[data-i18n-attr]")) {
     for (const pair of el.dataset.i18nAttr.split(";")) { const [attr, key] = pair.split(":"); el.setAttribute(attr, t(key)); }
   }
@@ -691,14 +1031,15 @@ function applyStatic() {
   $("lang-other").lang = lang === "th" ? "en" : "th";
   markInvite();
   paintMotion();
-  pvButton();
+  readMessage(); // the example message follows the language until someone edits it
+  setAnswerLang(lang);
 }
 function setLang(l) { if (!SUPPORTED.includes(l)) return; lang = l; readLang("set", l); applyStatic(); }
 for (const b of document.querySelectorAll("[data-lang]")) b.addEventListener("click", () => setLang(b.dataset.lang));
 $("lang-other").addEventListener("click", () => setLang(lang === "th" ? "en" : "th"));
 
 // The invite URL is filled in by the server from DORY_DISCORD_CLIENT_ID. Never fabricate one: with
-// no client id the invite buttons hide and "Create account" takes the primary place instead.
+// no client id the invite buttons hide and "Create account" takes their place instead.
 function markInvite() {
   let ok = false;
   for (const a of document.querySelectorAll("[data-invite]")) {
@@ -707,178 +1048,183 @@ function markInvite() {
     if (ok) { a.target = "_blank"; a.rel = "noopener"; }
   }
   for (const a of document.querySelectorAll("[data-invite-fallback]")) a.hidden = ok;
-  for (const a of document.querySelectorAll("[data-invite-aside]")) a.hidden = !ok;
-  for (const a of document.querySelectorAll("[data-invite-alt]")) { a.classList.toggle("primary", !ok); a.classList.toggle("ghost", ok); }
 }
 
-// The server fills the model list; an empty list (or a page opened without the server) hides the line.
+// The server fills the model list; an empty list (or a page opened without the server) hides the fact.
 const models = $("models");
 if (!models.textContent.trim() || models.textContent.startsWith("__")) $("models-line").hidden = true;
 
-// ---------- navigation ----------
-const nav = $("nav"), links = $("links"), menu = $("menu");
-const onScroll = () => nav.classList.toggle("scrolled", scrollY > 8);
-addEventListener("scroll", onScroll, { passive: true });
-onScroll();
-function closeMenu() { links.classList.remove("open"); menu.setAttribute("aria-expanded", "false"); }
-menu.addEventListener("click", () => menu.setAttribute("aria-expanded", String(links.classList.toggle("open"))));
-links.addEventListener("click", (e) => { if (e.target.tagName === "A") closeMenu(); });
-addEventListener("keydown", (e) => { if (e.key === "Escape" && links.classList.contains("open")) { closeMenu(); menu.focus(); } });
-
-// ---------- motion: one switch, remembered; the OS "reduce motion" setting always wins ----------
+// ---------- motion: one switch, remembered; under the OS "reduce motion" setting it starts off ----------
 const MOTION_KEY = "dory-motion";
 const reduce = matchMedia("(prefers-reduced-motion: reduce)");
 function savedMotion(v) {
   try { if (v) localStorage.setItem(MOTION_KEY, v); return localStorage.getItem(MOTION_KEY); } catch { return null; }
 }
-let motionOn = !reduce.matches && savedMotion() !== "off";
-const hero = $("hero"), stage = $("stage"), fish = $("fish");
-let heroVisible = true;
-const awake = () => motionOn && heroVisible && !document.hidden;
+const motionWanted = () => { const s = savedMotion(); return s === "on" || s === "off" ? s === "on" : !reduce.matches; };
+let motionOn = motionWanted();
 function paintMotion() {
   document.documentElement.classList.toggle("motion-off", !motionOn);
-  for (const b of document.querySelectorAll("[data-motion-toggle]")) {
-    b.hidden = reduce.matches; // nothing moves, so there is nothing to pause
-    b.querySelector("span").textContent = t(motionOn ? "pause" : "play");
-  }
+  for (const el of document.querySelectorAll("[data-motion-label]")) el.textContent = t(motionOn ? "pause" : "play");
+  if (!motionOn) { hero.style.removeProperty("--px"); hero.style.removeProperty("--py"); }
 }
-function setMotion(on) {
-  motionOn = on; savedMotion(on ? "on" : "off"); paintMotion();
-  if (on) { wake(); pvPlay(); } else { rest(true); pvShowAll(); }
-}
+function setMotion(on) { motionOn = on; savedMotion(on ? "on" : "off"); paintMotion(); }
 for (const b of document.querySelectorAll("[data-motion-toggle]")) b.addEventListener("click", () => setMotion(!motionOn));
-reduce.addEventListener("change", () => { motionOn = !reduce.matches && savedMotion() !== "off"; paintMotion(); if (!motionOn) rest(true); });
+reduce.addEventListener("change", () => { motionOn = motionWanted(); paintMotion(); });
 
-// ---------- hero: Dory turns toward the pointer (M1) and the sea moves in depth (M2) ----------
-const cur = { tilt: 0, px: 0, py: 0 }, tgt = { ...cur };
-let raf = 0;
-const clamp = (v) => Math.max(-1, Math.min(1, v));
-function paint() {
-  stage.style.setProperty("--tilt", cur.tilt.toFixed(2));
-  hero.style.setProperty("--px", cur.px.toFixed(3));
-  hero.style.setProperty("--py", cur.py.toFixed(3));
+// Dory follows the pointer a little, and the reef behind her a little less (a mouse only, motion on).
+const hero = $("top");
+let px = 0, py = 0, praf = 0;
+hero.addEventListener("pointermove", (e) => {
+  if (!motionOn || e.pointerType !== "mouse") return;
+  const r = hero.getBoundingClientRect();
+  px = (e.clientX - r.left) / r.width - 0.5; py = (e.clientY - r.top) / r.height - 0.5;
+  if (!praf) praf = requestAnimationFrame(() => { praf = 0; hero.style.setProperty("--px", px.toFixed(3)); hero.style.setProperty("--py", py.toFixed(3)); });
+}, { passive: true });
+hero.addEventListener("pointerleave", () => { hero.style.setProperty("--px", "0"); hero.style.setProperty("--py", "0"); });
+
+// ---------- the header: frosted once the page moves; on small screens the links fold into a menu ----------
+const hd = $("hd"), menuBtn = hd.querySelector(".menu-btn");
+const paintHd = () => hd.classList.toggle("solid", scrollY > 8 || hd.classList.contains("open"));
+addEventListener("scroll", paintHd, { passive: true });
+paintHd();
+function setMenu(open) { hd.classList.toggle("open", open); menuBtn.setAttribute("aria-expanded", String(open)); paintHd(); }
+// the panel comes before its button in the DOM (on wide screens it is the header row), so opening it moves focus in
+menuBtn.addEventListener("click", () => { const open = !hd.classList.contains("open"); setMenu(open); if (open) hd.querySelector(".hd-nav a").focus(); });
+$("hd-menu").addEventListener("click", (e) => { if (e.target.closest("a")) setMenu(false); });
+document.addEventListener("click", (e) => { if (hd.classList.contains("open") && !hd.contains(e.target)) setMenu(false); });
+addEventListener("keydown", (e) => { if (e.key === "Escape" && hd.classList.contains("open")) { setMenu(false); menuBtn.focus(); } });
+
+// ---------- entrances: each group once, as it enters; content is never hidden without this ----------
+const rise = new IntersectionObserver((es) => {
+  for (const e of es) if (e.isIntersecting) { e.target.classList.add("in"); rise.unobserve(e.target); }
+}, { rootMargin: "0px 0px -10% 0px" });
+for (const g of document.querySelectorAll("[data-group]")) rise.observe(g);
+
+// ---------- the film: a dialog that plays when asked (a click, so sound is allowed) ----------
+// Without script, or without <dialog>, the link opens the MP4 itself.
+const film = $("film"), intro = $("intro");
+$("film-open").addEventListener("click", (e) => {
+  if (typeof film.showModal !== "function") return;
+  e.preventDefault();
+  intro.poster ||= intro.dataset.poster; // a poster loads even in a closed dialog, so it is set on first open
+  film.showModal();
+  intro.play().catch(() => {});
+});
+film.querySelector("[data-close]").addEventListener("click", () => film.close());
+film.addEventListener("click", (e) => { if (e.target === film) film.close(); }); // a click on the backdrop
+film.addEventListener("close", () => intro.pause());
+
+// ---------- how it works: the live thing ----------
+// read() is the ONE place that turns a message into a task. Here a few scripted rules stand in for Dory;
+// a model call can replace it later (it may return a promise; stale answers are dropped).
+const NAMES = ["nok", "ploy", "arun", "mali"];
+const WEEK = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const WEEK_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัส", "ศุกร์", "เสาร์"];
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const DUE = /(?:\b(?:by|on|before|due|for|until|this|next)\s+)*\b(today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|(\d{1,2})\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?)(?![a-z])|(?:ภายใน|ก่อน)?\s*(วันนี้|พรุ่งนี้|(?:วัน)?(?:จันทร์|อังคาร|พุธ|พฤหัสบดี|พฤหัส|ศุกร์|เสาร์|อาทิตย์))/i;
+function dueDate(m) {
+  if (!m) return null;
+  const now = new Date(), d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const w = (m[1] || m[4]).toLowerCase();
+  const plus = (n) => { d.setDate(d.getDate() + n); return d; };
+  if (w === "today" || w === "วันนี้") return d;
+  if (w === "tomorrow" || w === "พรุ่งนี้") return plus(1);
+  const day = Math.max(WEEK.indexOf(w), WEEK_TH.findIndex((x) => w.includes(x)));
+  if (day >= 0) return plus((day - d.getDay() + 7) % 7 || 7);
+  const x = new Date(d.getFullYear(), MONTHS.indexOf(m[3].toLowerCase()), Number(m[2]));
+  if (x < d) x.setFullYear(x.getFullYear() + 1);
+  return x;
 }
-function frame() {
-  raf = 0;
-  let moving = false;
-  for (const k in cur) {
-    const d = tgt[k] - cur[k];
-    if (Math.abs(d) > .002) { cur[k] += d * (k === "px" || k === "py" ? .08 : .12); moving = true; } else cur[k] = tgt[k];
+function read(text) {
+  let s = " " + text.replace(/\s+/g, " ").trim() + " ", who = null;
+  for (const k of NAMES) {
+    const { en, th } = I18N["n_" + k];
+    const named = new RegExp(`^ (?:(?:hey|hi) )?@?(?:${en}\\b[,:]?|(?:คุณ|น้อง|พี่)?${th}[,:]?)|@(?:${en}\\b|${th})|,? ${en}[?.!]* $`, "i");
+    if (named.test(s)) { who = k; s = s.replace(named, " "); break; }
   }
-  paint();
-  if (moving) wake(); // the loop stops itself once everything has settled
-}
-function wake() { if (!raf && awake()) raf = requestAnimationFrame(frame); }
-function aim(x, y) {
-  const r = fish.getBoundingClientRect();
-  const dy = y - (r.top + r.height * .48); // her eyes
-  Object.assign(tgt, { tilt: clamp(dy / 400) * 6, px: clamp(x / innerWidth * 2 - 1), py: clamp(y / innerHeight * 2 - 1) });
-  wake();
-}
-function rest(now) {
-  for (const k in tgt) tgt[k] = 0;
-  if (now) { Object.assign(cur, tgt); paint(); hero.style.setProperty("--sy", "0"); } else wake();
-}
-let tapT = 0;
-hero.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") aim(e.clientX, e.clientY); }, { passive: true });
-hero.addEventListener("pointerleave", () => rest(false));
-hero.addEventListener("pointerdown", (e) => {
-  if (e.pointerType === "mouse") return;
-  aim(e.clientX, e.clientY); clearTimeout(tapT); tapT = setTimeout(() => rest(false), 1200); // a tap: look there, then back
-}, { passive: true });
-let sraf = 0;
-addEventListener("scroll", () => {
-  if (!sraf && awake()) sraf = requestAnimationFrame(() => { sraf = 0; hero.style.setProperty("--sy", String(Math.round(scrollY))); });
-}, { passive: true });
-new IntersectionObserver(([e]) => {
-  heroVisible = e.isIntersecting;
-  hero.classList.toggle("asleep", !heroVisible);
-  if (heroVisible) wake();
-}).observe(hero);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
-
-// drifting specks (decorative, <= 24): placed from a fixed sequence, so every visit looks the same
-const specks = $("specks");
-for (let i = 0; i < 20; i++) {
-  const r = (n) => { const v = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453; return v - Math.floor(v); };
-  const s = document.createElement("i");
-  s.className = "speck";
-  s.style.cssText = `--x:${(r(1) * 100).toFixed(1)}%;--y:${(25 + r(2) * 70).toFixed(1)}%;--s:${(1.5 + r(3) * 2.5).toFixed(1)}px;` +
-    `--o:${(.2 + r(4) * .45).toFixed(2)};--d:${(14 + r(5) * 16).toFixed(1)}s;--dl:-${(r(6) * 20).toFixed(1)}s`;
-  specks.append(s);
+  const m = s.match(DUE);
+  if (m) s = s.replace(m[0], " ");
+  const title = s
+    .replace(/^[\s,:]+/, "")
+    .replace(/^(?:(?:hey|hi) )?(?:can|could|would|will) (?:you|someone|somebody|anyone) (?:please )?/i, "")
+    .replace(/^(?:someone|somebody|anyone) (?:needs to|should|must|has to|please) /i, "")
+    .replace(/^(?:please|pls) /i, "")
+    .replace(/^(?:ใครก็ได้|ใครสักคน)\s*/, "")
+    .replace(/^(?:ช่วย|รบกวน|ฝาก)\s*/, "")
+    .replace(/(?:\s*(?:please|thanks|thank you))?[\s?.!,]*$/i, "")
+    .replace(/\s*(?:ให้หน่อย|หน่อย|ด้วย)?\s*(?:นะ)?\s*(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const enough = /[฀-๿]/.test(title) ? title.length > 3 : title.split(" ").length > 1;
+  return { who, due: dueDate(m), title: enough ? title.charAt(0).toUpperCase() + title.slice(1) : "" };
 }
 
-// ---------- reveal on entering view (M7), once ----------
-const seen = new IntersectionObserver((es) => {
-  for (const e of es) if (e.isIntersecting) { e.target.classList.add("in"); seen.unobserve(e.target); }
-}, { rootMargin: "0px 0px -8% 0px", threshold: .08 });
-for (const el of document.querySelectorAll(".reveal")) seen.observe(el);
-
-// ---------- ARIA tabs (preview and roles): arrows, Home and End move; selection follows focus ----------
-function tabs(list, onSelect) {
-  const ts = [...list.querySelectorAll('[role="tab"]')];
-  const select = (tab, focus) => {
-    for (const x of ts) {
-      const on = x === tab;
-      x.setAttribute("aria-selected", String(on)); x.tabIndex = on ? 0 : -1;
-      $(x.getAttribute("aria-controls")).hidden = !on;
-    }
-    if (focus) tab.focus();
-    if (onSelect) onSelect($(tab.getAttribute("aria-controls")));
-  };
-  list.addEventListener("click", (e) => { const tb = e.target.closest('[role="tab"]'); if (tb) select(tb); });
-  list.addEventListener("keydown", (e) => {
-    const i = ts.indexOf(document.activeElement);
-    if (i < 0) return;
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    if (step) { e.preventDefault(); select(ts[(i + step + ts.length) % ts.length], true); }
-    else if (e.key === "Home" || e.key === "End") { e.preventDefault(); select(ts.at(e.key === "Home" ? 0 : -1), true); }
+const msg = $("msg"), F = {};
+for (const el of $("card").querySelectorAll("[data-f]")) F[el.dataset.f] = el;
+const ACTS = { task: ["ok", "edit", "no"], ask: ["mine", "other", "none"] };
+let reading = null, seq = 0, lampT = 0, typeT = 0;
+const fmtDate = (d) => d.toLocaleDateString(lang === "th" ? "th-TH" : "en-GB", { weekday: "short", day: "numeric", month: "short" });
+const whoName = () => (reading?.who ? t("n_" + reading.who) : "");
+function paintCard() {
+  const r = reading, kind = !r.title ? "empty" : r.who ? "task" : "ask", who = whoName();
+  F.where.textContent = kind === "task" ? fill(t("card_where"), { who }) : t("card_where_ben");
+  F.kind.textContent = kind === "empty" ? t("card_empty_k") : kind === "task" ? fill(t("card_new"), { who }) : t("card_q");
+  F.title.textContent = r.title || t("card_empty_t");
+  F.facts.hidden = F.acts.hidden = kind === "empty";
+  F.due.textContent = r.due ? fmtDate(r.due) : t("card_nodue");
+  F.k2.textContent = t(kind === "ask" ? "card_owner" : "card_from");
+  F.v2.textContent = t(kind === "ask" ? "card_owner_v" : "card_from_v");
+  const acts = ACTS[kind] || ACTS.task;
+  [...F.acts.children].forEach((b, i) => { b.dataset.a = acts[i]; b.textContent = t("b_" + acts[i]); b.setAttribute("aria-pressed", "false"); });
+  F.said.textContent = "";
+}
+function readMessage() {
+  const n = ++seq;
+  Promise.resolve(read(msg.value)).then((r) => {
+    if (n !== seq) return;
+    const changed = JSON.stringify(r) !== JSON.stringify(reading);
+    reading = r;
+    paintCard();
+    if (!changed) return;
+    F.lamp.classList.add("on"); // her light: she is working on it
+    clearTimeout(lampT); lampT = setTimeout(() => F.lamp.classList.remove("on"), 1400);
   });
 }
+msg.addEventListener("input", () => { clearTimeout(typeT); typeT = setTimeout(readMessage, 250); });
+for (const b of document.querySelectorAll("[data-eg]")) b.addEventListener("click", () => { msg.value = t(b.dataset.eg); readMessage(); });
+F.acts.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-a]");
+  if (!b) return;
+  for (const x of F.acts.children) x.setAttribute("aria-pressed", String(x === b));
+  F.said.textContent = fill(t("say_" + b.dataset.a), { who: whoName() });
+  if (b.dataset.a === "edit") msg.focus();
+});
 
-// ---------- "See Dory at work": each example plays once in view; Replay and Pause; final state without motion ----------
-const pv = { panel: $("pvp1"), steps: [], i: 0, timer: 0, paused: false, thinking: false };
-function think(on) {
-  const p = pv.panel;
-  p.querySelector(".think").hidden = !on;
-  p.querySelector(".st").textContent = t(on ? "st_thinking" : "st_ready");
-  p.querySelector(".chat-h .lantern").classList.toggle("pulse", on);
+// ---------- for teams: the answer follows who asks and the language (scripted example) ----------
+const ROLE_NAME = { owner: "arun", manager: "ploy", staff: "mai" };
+const ansCard = $("ans"), A = {};
+for (const el of ansCard.querySelectorAll("[data-ans]")) A[el.dataset.ans] = el;
+let ansLang = "en";
+function paintAnswer() {
+  const role = document.querySelector('input[name="ask-as"]:checked')?.value || "staff";
+  const tl = (k) => t(k, ansLang), who = tl("n_" + ROLE_NAME[role]), all = role !== "staff";
+  ansCard.lang = ansLang;
+  A.who.textContent = fill(tl("ans_who"), { who, role: tl("r_" + role) });
+  A.q.textContent = tl("ans_q");
+  A.a.textContent = tl("ans_a");
+  A.x.textContent = tl("ans_x");
+  A.x.hidden = !all; // #management is readable by the owner and the manager, not by staff
+  A.src.textContent = tl("ans_src") + (all ? tl("ans_src_x") : "");
+  A.note.textContent = fill(tl(all ? "ans_all" : "ans_hidden"), { who });
 }
-function pvButton() {
-  const b = $("pv-pause"), done = pv.i >= pv.steps.length;
-  b.textContent = t(pv.paused ? "pv_play" : "pv_pause");
-  b.hidden = !motionOn; // without motion every example is shown whole: nothing to pause
-  b.disabled = done;
+function setAnswerLang(l) {
+  ansLang = l;
+  const r = document.querySelector(`input[name="ans-lang"][value="${l}"]`);
+  if (r) r.checked = true;
+  paintAnswer();
 }
-function pvShowAll() {
-  clearTimeout(pv.timer);
-  for (const s of pv.steps) s.classList.remove("pending");
-  pv.i = pv.steps.length; pv.paused = false; pv.thinking = false; think(false); pvButton();
-}
-function pvNext() {
-  if (pv.paused) return;
-  if (pv.i >= pv.steps.length) { think(false); pvButton(); return; }
-  const s = pv.steps[pv.i], dory = s.classList.contains("m-dory");
-  if (dory && !pv.thinking) { pv.thinking = true; think(true); pv.timer = setTimeout(pvNext, 1100); return; }
-  pv.thinking = false; think(false); s.classList.remove("pending"); s.classList.add("shown"); pv.i++;
-  pv.timer = setTimeout(pvNext, dory ? 900 : 500);
-  pvButton();
-}
-function pvPlay() {
-  clearTimeout(pv.timer);
-  pv.steps = [...pv.panel.querySelectorAll(".step")]; pv.i = 0; pv.paused = false; pv.thinking = false;
-  if (!motionOn) { pvShowAll(); return; }
-  for (const s of pv.steps) { s.classList.add("pending"); s.classList.remove("shown"); }
-  think(false); pvButton();
-  pv.timer = setTimeout(pvNext, 300);
-}
-tabs($("pv-tabs"), (panel) => { clearTimeout(pv.timer); think(false); pv.panel = panel; pvPlay(); });
-tabs($("ro-tabs"));
-$("pv-replay").addEventListener("click", pvPlay);
-$("pv-pause").addEventListener("click", () => { pv.paused = !pv.paused; if (pv.paused) clearTimeout(pv.timer); else pvNext(); pvButton(); });
-pv.steps = [...pv.panel.querySelectorAll(".step")]; pv.i = pv.steps.length; // complete until it scrolls into view
-const pvSeen = new IntersectionObserver(([e]) => { if (e.isIntersecting) { pvSeen.disconnect(); pvPlay(); } }, { threshold: .35 });
-pvSeen.observe($("preview"));
+for (const i of document.querySelectorAll('input[name="ask-as"]')) i.addEventListener("change", paintAnswer);
+for (const i of document.querySelectorAll('input[name="ans-lang"]')) i.addEventListener("change", () => setAnswerLang(i.value));
 
 applyStatic();
 </script>
