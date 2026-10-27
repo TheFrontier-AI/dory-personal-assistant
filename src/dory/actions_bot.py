@@ -57,14 +57,19 @@ class ActionsMixin:
                     n += 1
                     try:
                         result = await self._perform_action(guild, a)
-                        await asyncio.to_thread(self.actions.finish, guild.id, a[\"id\"], result=result)
+                        await asyncio.to_thread(
+                            self.actions.finish, guild.id, a["id"], result=result
+                        )
                     except discord.Forbidden:
                         await asyncio.to_thread(
-                            self.actions.finish, guild.id, a[\"id\"], error=\"missing permission\"
+                            self.actions.finish, guild.id, a["id"], error="missing permission"
                         )
                     except (KeyError, ValueError) as e:
                         await asyncio.to_thread(
-                            self.actions.finish, guild.id, a[\"id\"], error=str(e)[:200] or \"bad request\"
+                            self.actions.finish,
+                            guild.id,
+                            a["id"],
+                            error=str(e)[:200] or "bad request",
                         )
                     except discord.HTTPException as e:
                         await asyncio.to_thread(
@@ -75,7 +80,9 @@ class ActionsMixin:
                         )
                     except Exception as e:  # never let one action stop the tick
                         logger.exception("action %s failed", a.get("id"))
-                        await asyncio.to_thread(self.actions.finish, guild.id, a[\"id\"], error=type(e).__name__)
+                        await asyncio.to_thread(
+                            self.actions.finish, guild.id, a["id"], error=type(e).__name__
+                        )
                 await asyncio.to_thread(self.actions.prune, guild.id)  # after the work
             except Exception:
                 logger.exception("action queue of guild %s failed", guild.id)
