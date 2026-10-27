@@ -155,8 +155,14 @@ class GlmVoice(WebLive):
             except asyncio.CancelledError:
                 raise
             except Exception as e:
-                logger.warning("glm voice: session error: %s: %s", type(e).__name__, e)
                 code = error_code(e)
+                # one warning per outage, then debug: a box that is off is retried for 30 minutes
+                logger.log(
+                    logging.DEBUG if failures and code == "voice_server_down" else logging.WARNING,
+                    "glm voice: session error: %s: %s",
+                    type(e).__name__,
+                    e,
+                )
                 if code != "voice_server_down":
                     with contextlib.suppress(Exception):
                         await self.out("error", code)
