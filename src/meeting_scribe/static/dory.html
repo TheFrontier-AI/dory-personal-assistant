@@ -1010,6 +1010,8 @@ const LANG_KEY = "dory-language";
 const SUPPORTED = ["th", "en"];
 const $ = (id) => document.getElementById(id);
 const I18N = JSON.parse($("i18n-data").textContent);
+// The browser's Thai dictionary does not know her name and may break it ("ด / อรี่"); word joiners keep it whole.
+for (const e of Object.values(I18N)) e.th = e.th.replaceAll("ดอรี่", "ด\u2060อ\u2060รี่");
 function readLang(op, v) {
   try {
     if (op === "set") { localStorage.setItem(LANG_KEY, v); return null; }
@@ -1108,6 +1110,7 @@ $("film-open").addEventListener("click", (e) => {
   e.preventDefault();
   intro.poster ||= intro.dataset.poster; // a poster loads even in a closed dialog, so it is set on first open
   film.showModal();
+  intro.currentTime = 0; // every opening starts at the top, never where it was closed or on its last frame
   intro.play().catch(() => {});
 });
 film.querySelector("[data-close]").addEventListener("click", () => film.close());
@@ -1168,6 +1171,7 @@ const whoName = () => (reading?.who ? t("n_" + reading.who) : "");
 function paintCard() {
   const r = reading, kind = !r.title ? "empty" : r.who ? "task" : "ask", who = whoName();
   F.where.textContent = kind === "task" ? fill(t("card_where"), { who }) : t("card_where_ben");
+  F.where.hidden = kind === "empty";
   F.kind.textContent = kind === "empty" ? t("card_empty_k") : kind === "task" ? fill(t("card_new"), { who }) : t("card_q");
   F.title.textContent = r.title || t("card_empty_t");
   F.facts.hidden = F.acts.hidden = kind === "empty";
