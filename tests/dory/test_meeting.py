@@ -170,11 +170,11 @@ ME = SimpleNamespace(id=999, mention="<@999>")
 class FakeVoiceChannel:
     def __init__(self, id=77, name="ห้องประชุม", connect=True):
         self.id, self.name, self.members, self.sent = id, name, [], []
-        self._connect = connect
+        self._connect, self._speak = connect, True
         self.guild = None
 
     def permissions_for(self, _):
-        return SimpleNamespace(connect=self._connect)
+        return SimpleNamespace(connect=self._connect, speak=self._speak)
 
     async def send(self, text, **_):
         self.sent.append(text)
@@ -271,6 +271,24 @@ async def test_join_needs_connect_permission(env):
     m = make_member(env.guild, 10, "แอน", env.chan)
     reply = await env.mgr.join(m, lang="th")
     assert "Connect" in reply and "Manage" not in reply and "ตอนนี้ดอรี่ยังขาดสิทธิ์" in reply
+
+
+async def test_join_without_speak_says_so_in_the_room(env):
+    """Muted by the server (no Speak): Dory still takes notes, and tells the room why she is quiet
+    and how to fix it, instead of joining silently."""
+    env.chan._speak = False
+    m = make_member(env.guild, 10, "แอน", env.chan)
+    assert "ห้องประชุม" in await env.mgr.join(m, lang="th")
+    assert (1000, 77) in env.mgr.sessions
+    assert [x for x in env.chan.sent if "Speak" in x and "Connect" not in x]
+    await env.mgr.end((1000, 77), "command")
+
+
+async def test_join_with_speak_posts_no_permission_line(env):
+    m = make_member(env.guild, 10, "แอน", env.chan)
+    await env.mgr.join(m, lang="th")
+    assert not [x for x in env.chan.sent if "Speak" in x]
+    await env.mgr.end((1000, 77), "command")
 
 
 async def test_join_respects_the_feature_toggle(env):

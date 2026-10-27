@@ -425,6 +425,27 @@ def test_link_discord_with_code(w):
     assert w.client.post(url, json={"code": "x" * 20}, headers=H["adm"]).status_code == 400
 
 
+def test_a_new_server_set_up_through_a_new_organization_is_licensed(w):
+    """The whole /setup path for a server added today: someone with no organization creates one
+    (the launch trial), links the server with the /setup code, and the bot's gate says yes."""
+    from dory.licensing import Licensing
+
+    lic = Licensing(w.orgs, w.guilds)
+    lic.epoch()  # licensing started earlier...
+    w.guilds.upsert_guild(5000, name="Joined Today", icon_url="", channels=[], installed=True)
+    w.guilds._ref(5000).set({"installed_at": "2099-01-01T00:00:00+00:00"}, merge=True)  # ...after
+    assert lic.is_licensed(5000) is False  # not grandfathered
+    r = w.client.post("/api/center/orgs", json={"name": "Stranger Co"}, headers=H["stranger"])
+    assert r.status_code == 200, r.text
+    org = r.json()["id"]
+    assert r.json()["license"]["status"] == "active"  # free during launch, no end date
+    code = w.guilds.create_link_code(5000, 9, "stranger#1")
+    url = f"/api/center/orgs/{org}/workspaces/discord/link"
+    assert w.client.post(url, json={"code": code}, headers=H["stranger"]).status_code == 200
+    lic.invalidate()  # (the bot re-reads a "no" within 15 s: test_orgs_licensing)
+    assert lic.is_licensed(5000) is True
+
+
 def test_link_discord_guild_in_another_org_is_409_and_code_survives(w):
     code = w.guilds.create_link_code(A, 1, "u")  # guild A belongs to org_t
     url = "/api/center/orgs/org_o/workspaces/discord/link"

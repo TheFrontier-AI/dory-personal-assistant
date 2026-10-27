@@ -1554,6 +1554,12 @@ class MeetingManager:
         if self._listen_only(session):
             hello += "\n" + t("voice_talk_listen", session.lang)
         await self._post_state(session, hello)
+        mute = channel_missing(hchan, hguild, ("speak",))
+        if mute and not self._listen_only(session):  # joined but muted: say why, and the fix
+            await self._post(session, permission_message(
+                mute, session.lang, getattr(body, "application_id", None) or
+                getattr(self.bot, "application_id", None), helper=body.index > 0,
+            ))  # fmt: skip
         await self._attend_start(session, self._humans(channel))
         logger.info(
             "meeting started in guild %s channel %s on voice body %d (%s)",

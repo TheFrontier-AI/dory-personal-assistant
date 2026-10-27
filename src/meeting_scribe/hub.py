@@ -4,9 +4,11 @@ Auth is stateless and needs no server secret. The page signs the user in with Go
 Services and sends the Google ID token as `Authorization: Bearer ...`. Every API call verifies
 the token against `HUB_GOOGLE_CLIENT_ID` (public OAuth client id); any verified Google account
 may sign in. Which guilds (Discord servers) it may manage is decided by the guild's
-`admin_emails` list in Firestore, filled in by the one-time `/ตั้งค่า` link flow
-(`POST /api/hub/link`). `HUB_ADMIN_EMAILS` is an optional list of super admins who see every
-guild. If `HUB_GOOGLE_CLIENT_ID` is empty every call fails closed with 503.
+`admin_emails` list in Firestore, filled in by the one-time `/setup` link flow (the command
+center's `POST /api/center/orgs/{id}/workspaces/discord/link`, which also attaches the server to
+the person's organization; `POST /api/hub/link` only makes them a server admin).
+`HUB_ADMIN_EMAILS` is an optional list of super admins who see every guild. If
+`HUB_GOOGLE_CLIENT_ID` is empty every call fails closed with 503.
 """
 
 from __future__ import annotations
@@ -23,9 +25,10 @@ from datetime import UTC, datetime, timedelta
 from functools import lru_cache
 from pathlib import Path
 from typing import Any
+from urllib.parse import urlencode
 
 from fastapi import APIRouter, Depends, Header, HTTPException
-from fastapi.responses import HTMLResponse
+from fastapi.responses import HTMLResponse, RedirectResponse, Response
 from pydantic import BaseModel, Field
 from starlette.concurrency import run_in_threadpool
 
@@ -289,7 +292,9 @@ def invite_url() -> str:
 
 
 @router.get("/hub", include_in_schema=False)
-def hub_page() -> HTMLResponse:
+def hub_page(link: str | None = None) -> Response:
+    if link:  # a `/setup` link: the center links the server to an organization (= licenses it)
+        return RedirectResponse(f"/center?{urlencode({'link': link})}", status_code=307)
     client_id = get_settings().hub_google_client_id
     if not CLIENT_ID_RE.match(client_id):
         client_id = ""
@@ -425,7 +430,9 @@ async def hub_link(
     email: str = Depends(require_user),
     guilds: GuildStore = Depends(get_guild_store),
 ) -> GuildInfo:
-    """Redeem a `/ตั้งค่า` code: the signed-in Google account becomes an admin of that guild."""
+    """Redeem a `/setup` code: the signed-in Google account becomes an admin of that guild.
+    It does NOT attach the guild to an organization (so it stays unlicensed): `/setup` links go
+    to the command center (`GET /hub?link=` redirects there), which does both."""
     try:
         gid, g = await run_in_threadpool(guilds.redeem_link_code, body.code.strip(), email)
     except LinkError as exc:

@@ -1886,7 +1886,7 @@ async def link_discord(
     guilds=Depends(hub.get_guild_store),
     lib: Library = Depends(get_library),
 ) -> WorkspaceView:
-    """Redeem a `/ตั้งค่า` code and attach that Discord server to this org. 409 when the server
+    """Redeem a `/setup` code and attach that Discord server to this org. 409 when the server
     already belongs to another org. The Google account also becomes a hub admin of the server."""
     code = body.code.strip()
 
@@ -2785,7 +2785,7 @@ def command_center_tools(ctx: Ctx, orgs: OrgStore, guilds: Any) -> list:
 
     def link_discord_server(code: str) -> dict:
         """Link a Discord server to the organization with the code Dory gave in that server
-        (/ตั้งค่า or /setup there, then paste the code here)."""
+        (/setup there, then paste the code here)."""
         try:
             body = LinkBody(code=(code or "").strip())
         except ValueError:
@@ -4842,7 +4842,7 @@ async def connector_start(
     orgs: OrgStore = Depends(get_orgs),
     connectors: dict = Depends(get_connectors),
 ) -> dict:
-    """JSON `{url}`: navigate the browser there. Discord: the bot invite (then `/ตั้งค่า` and the
+    """JSON `{url}`: navigate the browser there. Discord: the bot invite (then `/setup` and the
     link-code endpoint); Slack / ClickUp: the platform's OAuth consent page."""
     conn = connectors.get(platform)
     if conn is None:
@@ -4858,7 +4858,7 @@ async def connector_start(
     if not conn.enabled():
         raise HTTPException(503, f"{PLATFORM_NAMES[platform]} is not configured")
     if platform == "discord":
-        return {"url": conn.oauth_start(org), "kind": "invite", "next": "/ตั้งค่า"}
+        return {"url": conn.oauth_start(org), "kind": "invite", "next": "/setup"}
     state = secrets.token_urlsafe(24)
     exp = (datetime.now(UTC) + STATE_TTL).isoformat(timespec="seconds")
     await run_in_threadpool(
