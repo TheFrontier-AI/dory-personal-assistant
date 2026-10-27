@@ -13,6 +13,11 @@
   --lantern-300: #FFC46B;
   --sand-0: #FFFFFF; --sand-50: #FAF9F6; --sand-100: #F3F1EC; --sand-150: #F0EDE6; --sand-200: #E6E3DC;
   --ink-900: #1B1F3B; --ink-600: #5B6078; --ink-500: #686D84; --ink-400: #7C86A3;
+  /* Dory Descent homepage (27 Oct 2026): the reef is sampled from the water in the owner's picture
+     (foam text 6.0:1); the mineral sands are the seabed chapter, darker as the days settle
+     (abyss text 13.2 / 11.5 / 9.8 / 8.1 / 6.6:1). */
+  --reef-600: #0A5BAA;
+  --sand-300: #DDD3C2; --sand-400: #D1C5AF; --sand-500: #C4B69C; --sand-600: #B6A587; --sand-700: #A69375;
 
   /* ---------- type, space, shape, motion ---------- */
   --font: "IBM Plex Sans Thai", "Noto Sans Thai", "Segoe UI", Tahoma, sans-serif;

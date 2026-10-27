@@ -5,496 +5,675 @@
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <title>Dory · The AI coworker that remembers, files and follows up</title>
 <meta name="description" content="Dory is an AI coworker who lives in your team's Discord: meeting notes, receipts, task follow-up and answers from your company's own documents, in Thai or English.">
+<script>
+  // Before first paint: "js" lets entrances hide content (never without script); motion-off follows the
+  // saved Pause / Play choice, else the OS "reduce motion" setting (motion is off by default there).
+  (function () {
+    var d = document.documentElement, off = matchMedia("(prefers-reduced-motion: reduce)").matches, s = null;
+    try { s = localStorage.getItem("dory-motion"); } catch (e) {}
+    if (s === "off" || s === "on") off = s === "off";
+    d.classList.add("js");
+    if (off) d.classList.add("motion-off");
+  })();
+</script>
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@600;700&amp;family=IBM+Plex+Mono:wght@500&amp;family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;display=swap">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link rel="preload" as="font" type="font/woff2" crossorigin href="https://fonts.gstatic.com/s/anuphan/v6/2sDeZGxYgY7LkLT0mWoDam--C70.woff2">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@600;700&amp;family=IBM+Plex+Sans+Thai:wght@400;600&amp;display=swap">
 <link rel="icon" type="image/svg+xml" href="/static/dory/dory-mark.svg">
 <link rel="icon" type="image/png" href="/static/dory/favicon.png">
 <link rel="stylesheet" href="/static/dory/theme.css">
+<script src="/static/dory/water.js" defer></script>
+<script type="module" src="/static/dory/dory3d.js"></script>
 <style>
-  /* Lantern Deep homepage: the page descends from the abyss (hero) through lighter blues and
-     surfaces into the light Sand theme at the final call to action. Text always sits on solid
-     colour. Page-specific rules only; tokens come from theme.css. */
-  html { scroll-behavior: smooth; scroll-padding-top: 72px; }
-  body { background: var(--ocean-950); }
-  .skip { position: absolute; left: 16px; top: -80px; z-index: 50; padding: 10px 16px; border-radius: 10px; background: var(--ocean-50);
-    color: var(--ocean-950); font-weight: 600; text-decoration: none; }
+  /* Dory Descent: the page is a dive. Each chapter is one flat field (sunlight, twilight, midnight,
+     seabed, ascent, surface, lantern) with hard edges; the fixed header takes the ink of the field under
+     it and reads the depth. Tokens come from theme.css; only page rules live here. */
+
+  /* Fallback faces sized to Anuphan and IBM Plex Sans Thai (measured from the Latin subsets), so the
+     web fonts swap in without moving the layout. */
+  @font-face { font-family: "Anuphan Fallback"; src: local("Arial Bold"), local("Arial-BoldMT"), local("Arial");
+    font-weight: 600 700; size-adjust: 97.46%; ascent-override: 105.17%; descent-override: 28.22%; line-gap-override: 0%; }
+  @font-face { font-family: "Plex Fallback"; src: local("Arial"), local("ArialMT");
+    font-weight: 400; size-adjust: 100.4%; ascent-override: 111.15%; descent-override: 53.19%; line-gap-override: 0%; }
+  @font-face { font-family: "Plex Fallback"; src: local("Arial Bold"), local("Arial-BoldMT");
+    font-weight: 600 700; size-adjust: 96.19%; ascent-override: 116.02%; descent-override: 55.52%; line-gap-override: 0%; }
+
+  :root {
+    --font: "IBM Plex Sans Thai", "Plex Fallback", "Noto Sans Thai", "Segoe UI", Tahoma, sans-serif;
+    --font-display: "Anuphan", "Anuphan Fallback", var(--font);
+    --abyss: var(--ocean-950); --trench: var(--ocean-700); --reef: var(--reef-600); --foam: var(--ocean-50); --lamp: var(--lantern-300);
+    --m: clamp(16px, 2.2vw, 32px);     /* the one pair of page margins */
+    --gap: clamp(12px, 1.7vw, 24px);
+    --hd: 64px;
+    /* the five sizes: small, body, statement, chapter heading, the name in the footer */
+    --s1: 16px; --s2: 19px; --s3: clamp(22px, 1.9vw, 30px); --s4: clamp(52px, 5.8vw, 112px);
+    --s5: calc((100vw - 2 * var(--m)) / 2.14);
+    --edge-h: clamp(110px, 12vw, 200px);
+    --ease-out: cubic-bezier(.22, 1, .36, 1);
+  }
+  @media (max-width: 759px) { :root { --s4: clamp(34px, 11.2vw, 64px); --s3: 22px; --hd: 56px; } }
+
+  html { scroll-padding-top: var(--hd); }
+  html:not(.motion-off) { scroll-behavior: smooth; }
+  body { background: var(--abyss); color: var(--foam); font-size: var(--s2); line-height: 1.55; }
+  :lang(th) body { line-height: 1.7; }
+  a, a:hover, [data-theme] a:hover { color: inherit; }
+  label { font-size: var(--s1); }
+  [data-ink="light"] { color: var(--foam); --focus-ink: var(--foam); }
+  [data-ink="dark"] { color: var(--abyss); --focus-ink: var(--abyss); }
+  :focus-visible { outline: 3px solid var(--focus-ink, currentColor); outline-offset: 3px; border-radius: 0; }
+  .skip { position: absolute; left: 16px; top: -80px; z-index: 50; padding: 12px 18px; background: var(--foam); color: var(--abyss);
+    font-weight: 600; font-size: var(--s1); text-decoration: none; }
   .skip:focus { top: 12px; }
 
-  /* ---------- navigation (deep, transparent over the hero, solid once scrolled) ---------- */
-  .nav { background: transparent; border-bottom: 1px solid transparent; transition: background var(--dur-base), border-color var(--dur-base); }
-  .nav.scrolled { background: rgba(5, 11, 31, .9); border-bottom-color: var(--color-border); }
-  .nav .wrap { gap: 10px; }
-  .logo { color: var(--color-text); }
-  .logo:hover { color: var(--color-text); }
-  .links { display: flex; gap: 2px; margin-left: auto; }
-  .links a { display: inline-flex; align-items: center; min-height: 44px; padding: 0 12px; border-radius: 10px; color: var(--color-text-muted);
-    text-decoration: none; font-weight: 500; font-size: 15px; }
-  .links a:hover { color: var(--color-text); background: rgba(234, 242, 255, .06); }
-  .links .only-m { display: none; }
-  .menu-btn { display: none; width: 44px; height: 44px; border-radius: 12px; border: 1px solid var(--color-border-control); background: transparent; }
-  .menu-btn span { display: block; width: 18px; height: 2px; margin: 4px auto; border-radius: 2px; background: var(--color-text); }
-  @media (max-width: 960px) {
-    .links { display: none; position: absolute; top: 64px; left: 0; right: 0; flex-direction: column; padding: 8px 16px 16px;
-      background: var(--ocean-900); border-bottom: 1px solid var(--color-border); }
-    .links.open { display: flex; }
-    .links .only-m { display: inline-flex; }
-    .nav .login { display: none; }
-    .menu-btn { display: block; }
-    .langsw { margin-left: auto; }
-  }
-  @media (max-width: 600px) { .nav .cta-top { display: none; } }
+  /* the water layer (water.js): over the fields, under every word */
+  #water { position: fixed; inset: 0; width: 100%; height: 100%; z-index: 1; pointer-events: none; }
 
-  /* ---------- hero: the abyss, three depth planes, Dory ---------- */
-  .hero { position: relative; overflow: hidden; margin-top: -64px; padding: 112px 0 88px; min-height: 88svh; display: flex; align-items: center;
-    background: radial-gradient(110% 80% at 72% 0%, #0E1D45 0%, var(--ocean-950) 62%); --cap: 60; }
-  .hero::after { content: ""; position: absolute; left: 0; right: 0; bottom: 0; height: 140px; z-index: 1; pointer-events: none;
-    background: linear-gradient(rgba(10, 21, 48, 0), var(--ocean-900)); }
-  .hero .wrap { position: relative; z-index: 2; display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 32px; align-items: center; }
-  .copy { display: flex; flex-direction: column; gap: 20px; max-width: 560px; }
-  .eyebrow { font-family: var(--mono); font-size: 13px; font-weight: 500; letter-spacing: .08em; text-transform: uppercase; color: var(--glow-300); }
-  :lang(th) .eyebrow { font-family: var(--font); font-size: 14px; font-weight: 600; letter-spacing: 0; text-transform: none; }
-  .hero h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(36px, 5vw, 60px); line-height: 1.08; letter-spacing: -.015em; }
-  :lang(th) .hero h1 { line-height: 1.3; letter-spacing: 0; }
-  .sub { font-size: 18px; color: var(--color-text-muted); max-width: 52ch; }
-  .ctas { display: flex; flex-wrap: wrap; gap: 12px; }
-  .aside-line { font-size: 15px; color: var(--color-text-muted); }
-  .free { font-size: 14px; color: var(--color-text-subtle); }
-  .stage { position: relative; width: min(100%, 480px); aspect-ratio: 1; justify-self: center; }
-  .stage::before { content: ""; position: absolute; inset: 6% 4%; border-radius: 50%; filter: blur(24px);
-    background: radial-gradient(closest-side, rgba(95, 242, 224, .2), rgba(185, 180, 242, .12) 60%, rgba(5, 11, 31, 0)); }
-  .tilt { position: absolute; inset: 0; transform: rotate(calc(var(--tilt, 0) * 1deg)); transform-origin: 60% 55%; }
-  .fish-float { width: 100%; height: 100%; animation: dory-float 6s var(--ease-in-out) infinite; }
-  .hero-pic { display: block; width: 100%; height: 100%; object-fit: cover; border-radius: 40px;
-    border: 1px solid rgba(163, 183, 221, .22); box-shadow: 0 28px 70px rgba(0, 0, 0, .5); }
-  @keyframes dory-float { 50% { transform: translateY(-8px); } }
-  .sea { position: absolute; inset: 0; z-index: 0; pointer-events: none; }
-  .plane { position: absolute; inset: -40px;
-    transform: translate3d(calc(var(--px, 0) * var(--m) * -1px), calc(var(--py, 0) * var(--m) * -1px + min(var(--sy, 0) * var(--k), var(--cap)) * 1px), 0); }
-  .far { --m: 4; --k: .1; } .mid { --m: 10; --k: .2; } .near { --m: 18; --k: .4; }
-  .kelp { position: absolute; left: 0; right: 0; bottom: 40px; width: 100%; height: 34%; }
-  .kelp .bed { fill: var(--ocean-900); } .kelp .weed { stroke: var(--ocean-800); fill: none; stroke-width: 9; stroke-linecap: round; }
-  .ray { position: absolute; top: -20%; height: 130%; width: 140px; transform: rotate(22deg); transform-origin: top;
-    background: linear-gradient(180deg, rgba(95, 242, 224, .16), rgba(95, 242, 224, 0) 72%); filter: blur(10px);
-    animation: ray-breathe 9s var(--ease-in-out) infinite; }
-  .r1 { left: 14%; } .r2 { left: 36%; width: 70px; animation-delay: -3s; } .r3 { left: 64%; width: 190px; opacity: .6; animation-delay: -6s; }
-  @keyframes ray-breathe { 50% { opacity: .45; } }
-  .speck { position: absolute; left: var(--x); top: var(--y); width: var(--s); height: var(--s); border-radius: 50%; background: var(--ocean-50);
-    opacity: 0; animation: drift var(--d) linear var(--dl) infinite; }
-  @keyframes drift { 0% { transform: translateY(0); opacity: 0; } 15%, 85% { opacity: var(--o); } 100% { transform: translateY(-140px); opacity: 0; } }
-  .pause { position: absolute; right: 16px; bottom: 16px; z-index: 3; }
-  .hero.asleep * { animation-play-state: paused !important; }
-  .motion-off .hero *, .motion-off .speck { animation: none !important; }
-  .motion-off .speck { opacity: var(--o); }
-  @media (max-width: 900px) {
-    .hero { min-height: 0; padding: 104px 0 80px; }
-    .hero .wrap { grid-template-columns: minmax(0, 1fr); }
-    .stage { width: min(100%, 320px); }
-  }
-  @media (max-width: 700px) { .hero { --cap: 24; } }
+  /* ---------- type ---------- */
+  h1, h2, .s4 { font-family: var(--font-display); font-weight: 700; font-size: var(--s4); line-height: .98; letter-spacing: -.025em; text-wrap: pretty; }
+  h3, .s3 { font-family: var(--font-display); font-weight: 600; font-size: var(--s3); line-height: 1.22; letter-spacing: -.01em; }
+  :lang(th) h1, :lang(th) h2, :lang(th) .s4 { line-height: 1.3; letter-spacing: 0; }
+  :lang(th) h3, :lang(th) .s3 { line-height: 1.45; letter-spacing: 0; }
+  .small { font-size: var(--s1); }
+  .lead { max-width: 46ch; }
+  .tl { font-weight: 600; text-decoration: underline; text-decoration-thickness: 2px; text-underline-offset: .25em; transition: text-decoration-color 200ms ease; }
+  @media (hover: hover) and (pointer: fine) { .tl:hover { text-decoration-color: transparent; } }
 
-  /* ---------- sections ---------- */
-  .sec { position: relative; padding: 112px 16px; }
-  .sec > .wrap { width: min(1120px, 100%); } /* the section owns the 16px gutter */
-  .sec-h { max-width: 660px; display: flex; flex-direction: column; gap: 12px; margin-bottom: 40px; }
-  .sec-h h2, .final h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(26px, 3vw, 34px); line-height: 1.2; }
-  :lang(th) .sec-h h2, :lang(th) .final h2 { line-height: 1.35; }
-  .sec-h p { color: var(--color-text-muted); font-size: 17px; }
-  @media (max-width: 700px) { .sec { padding: 72px 16px; } }
-  .js .reveal { opacity: 0; transform: translateY(12px); transition: opacity 320ms var(--ease-out-soft), transform 320ms var(--ease-out-soft); }
-  .js .reveal.in { opacity: 1; transform: none; }
-  .motion-off .reveal { opacity: 1 !important; transform: none !important; transition: none !important; }
+  /* ---------- the grid: twelve columns inside one pair of margins ---------- */
+  .ch { position: relative; }   /* a field: never a stacking context, so the water draws over its colour */
+  .g { position: relative; z-index: 2; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gap); padding-inline: var(--m); }
+  .g > * { grid-column: 1 / -1; min-width: 0; }
 
-  /* "Meet Dory": the introduction video (native controls, nothing loads before Play) */
-  .meet { background: linear-gradient(180deg, var(--ocean-900), var(--ocean-950)); padding-bottom: 64px; }
-  .film { margin: 0; }
-  .film video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; border-radius: var(--radius-xl); background: var(--ocean-900);
-    border: 1px solid rgba(163, 183, 221, .22); box-shadow: 0 28px 70px rgba(0, 0, 0, .5); }
-  .film figcaption { margin-top: 12px; font-size: 14px; color: var(--color-text-muted); }
-
-  /* "See Dory at work": example conversations in a light chat card */
-  #preview { background: var(--ocean-900); }
-  .pv { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 32px; align-items: start; }
-  .tabs { display: flex; flex-direction: column; gap: 6px; }
-  .tab { min-height: 48px; padding: 10px 14px; border-radius: 12px; border: 1px solid transparent; background: transparent; text-align: left;
-    color: var(--color-text-muted); font-weight: 600; font-size: 15px; }
-  .tab:hover { color: var(--color-text); background: rgba(234, 242, 255, .04); }
-  .tab[aria-selected="true"] { color: var(--color-text); background: var(--ocean-800); border-color: var(--color-border); box-shadow: inset 3px 0 0 var(--glow-300); }
-  .chat { border-radius: var(--radius-xl); overflow: hidden; box-shadow: 0 24px 60px rgba(0, 0, 0, .45); }
-  .chat-h { display: flex; align-items: center; gap: 10px; padding: 14px 18px; background: var(--color-bg-raised); border-bottom: 1px solid var(--color-border); }
-  .chat-h .mark, .m-dory .mark { border-radius: 50%; }
-  .chat-h strong { font-size: 15px; display: block; line-height: 1.2; }
-  .chat-h small { font-size: 13px; color: var(--color-text-muted); }
-  .chat-b { display: flex; flex-direction: column; gap: 16px; min-height: 340px; padding: 22px 18px 24px; }
-  .m-user { align-self: flex-end; max-width: 80%; padding: 10px 14px; border-radius: 18px 18px 6px 18px; background: var(--bubble-user-bg);
-    color: var(--bubble-user-text); font-size: 15px; }
-  .m-dory { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 10px; font-size: 15px; }
-  .m-dory .who { display: block; font-size: 13px; font-weight: 600; color: var(--color-text-muted); }
-  .m-dory ol { margin: 6px 0 0; padding-left: 20px; }
-  .att { display: inline-flex; align-items: center; gap: 6px; margin-bottom: 6px; padding: 6px 10px; border-radius: 8px; background: rgba(255, 255, 255, .14);
-    font-size: 13px; }
-  .att svg { width: 14px; height: 14px; }
-  /* not yet "said": out of the layout but still read by screen readers, so the example is complete for them */
-  .step.pending { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
-  .step.shown { animation: msg-in var(--dur-base) var(--ease-out-soft); }
-  @keyframes msg-in { from { opacity: 0; transform: translateY(6px); } }
-  .motion-off .step.shown { animation: none; }
-  .think { color: var(--color-text-muted); font-size: 14px; align-items: center; }
-  .pv-note { margin-top: 2px; font-size: 13px; color: var(--color-text-muted); }
-  .pv-ctl { display: flex; gap: 8px; margin-top: 14px; }
-  .pv-ctl .btn[disabled] { opacity: .45; background: transparent; color: var(--color-text); border-color: var(--color-border-control); }
-  @media (max-width: 860px) {
-    .pv { grid-template-columns: minmax(0, 1fr); gap: 20px; }
-    .tabs { flex-direction: row; flex-wrap: wrap; }
-    .tab { flex: 1 1 auto; text-align: center; }
-    .tab[aria-selected="true"] { box-shadow: inset 0 -3px 0 var(--glow-300); }
+  /* ---------- buttons: square, flat, one fill ---------- */
+  .b { display: inline-flex; align-items: center; justify-content: center; min-height: 48px; padding: 12px 22px; border: 2px solid transparent;
+    border-radius: 0; font: 600 var(--s1)/1.2 var(--font); text-decoration: none; text-align: center; cursor: pointer;
+    transition: transform 140ms var(--ease-out), background-color 200ms ease, color 200ms ease, border-color 200ms ease; }
+  .b:active { transform: scale(.97); }
+  .b-sm { min-height: 44px; padding: 8px 16px; }
+  .b-lamp { background: var(--lamp); color: var(--abyss); }
+  .b-ink { background: var(--abyss); color: var(--foam); }
+  .b-line { background: transparent; color: inherit; border-color: currentColor; }
+  @media (hover: hover) and (pointer: fine) {
+    .b-lamp:hover { background: #FFD48F; color: var(--abyss); }
+    .b-ink:hover { background: var(--trench); color: var(--foam); }
+    .b-line:hover { background: color-mix(in srgb, currentColor 14%, transparent); }
   }
 
-  /* capabilities */
-  #features { background: linear-gradient(180deg, var(--ocean-900), var(--ocean-800)); }
-  .grid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; }
-  @media (max-width: 1040px) { .grid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-  @media (max-width: 560px) { .grid { grid-template-columns: minmax(0, 1fr); } }
-  .card { display: flex; flex-direction: column; gap: 8px; padding: 22px; transition: transform var(--dur-base) var(--ease), border-color var(--dur-base); }
-  [data-theme="deep"] .card { background: rgba(26, 47, 92, .45); }
-  .card.feat:hover { transform: translateY(-2px); border-color: rgba(95, 242, 224, .35); }
-  .card h3 { font-size: 17px; }
-  .card p { color: var(--color-text-muted); font-size: 15px; }
-  /* the icon sits beside its heading, in flow, with no tile of its own; the rest of the card spans the width */
-  .card:has(> .ic) { display: grid; grid-template-columns: auto minmax(0, 1fr); align-items: center; align-content: start; column-gap: 12px; row-gap: 10px; }
-  .card:has(> .ic) > :not(.ic):not(h3) { grid-column: 1 / -1; }
-  .ic { display: grid; place-items: center; color: var(--glow-300); }
-  .ic svg { width: 24px; height: 24px; }
-  .card .pill { align-self: flex-start; }
+  /* ---------- header: no bar of its own; it takes the field and the ink under it ---------- */
+  .hd { position: fixed; top: 0; left: 0; right: 0; z-index: 10; height: var(--hd); display: flex; align-items: center; gap: 28px;
+    padding-inline: var(--m); --hb-l: var(--reef); --hb-r: var(--reef); }
+  .hd::before, .hd::after { content: ""; position: absolute; top: 0; bottom: 0; width: 50%; z-index: -1; transition: background-color 300ms ease; }
+  .hd::before { left: 0; background: var(--hb-l); }
+  .hd::after { right: 0; background: var(--hb-r); }
+  .hd [data-probe] { display: flex; align-items: center; gap: 20px; transition: color 300ms ease; }
+  .logo { gap: 10px; font: 700 var(--s2)/1 var(--font-display); text-decoration: none; }
+  .mark, .logo .mark { font-size: var(--s1); }   /* the hidden letter inside the fish mark: no extra size */
+  .logo .mark { width: 32px; height: 32px; border-radius: 8px; box-shadow:none; }
+  .hd-links { margin-left: auto; }
+  .hd-links a { display: inline-flex; align-items: center; min-height: 44px; font-size: var(--s1); font-weight: 600; text-decoration: none;
+    text-decoration-thickness: 2px; text-underline-offset: .3em; }
+  .hd-links a:hover { text-decoration-line: underline; }
+  .hd-act { gap: 16px; }
+  .hd-links + .hd-act { margin-left: 0; }
+  .lang { display: flex; }
+  .lang button { min-height: 44px; padding: 0 6px; border: 0; background: none; color: inherit; font-weight: 600; font-size: var(--s1);
+    text-decoration-thickness: 2px; text-underline-offset: .3em; }
+  .lang button[aria-pressed="true"] { text-decoration-line: underline; }
+  .depth { min-width: 7ch; margin: 0; font-size: var(--s1); font-weight: 600; text-align: right; font-variant-numeric: tabular-nums; }
+  .b-hd { min-height: 40px; padding: 8px 14px; white-space: nowrap; }
+  .hd [data-ink="light"] .b-hd { background: var(--lamp); color: var(--abyss); }
+  .hd [data-ink="dark"] .b-hd { background: var(--abyss); color: var(--foam); }
+  @media (max-width: 899px) { .hd .hd-links { display: none; } .hd-act { margin-left: auto; } }
+  @media (max-width: 759px) { .hd { gap: 10px; } .hd-act { gap: 10px; } .b-hd { padding: 8px 12px; } }
+  @media (max-width: 419px) { .logo .wm { display: none; } }
+  @media (max-width: 379px) { .hd .lang { display: none; } }
 
-  /* how it works */
-  #how { background: var(--ocean-800); }
-  .steps { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 24px; position: relative; }
-  .steps::before { content: ""; position: absolute; left: 22px; right: 22px; top: 22px; height: 1px;
-    background: linear-gradient(90deg, rgba(95, 242, 224, .5), rgba(185, 180, 242, .3)); }
-  .stp { position: relative; display: flex; flex-direction: column; gap: 10px; }
-  .stp .n { width: 44px; height: 44px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: var(--ocean-950);
-    background: var(--glow-300); }
-  .stp p { color: var(--color-text-muted); }
-  .stp code, .roles code { font-family: var(--mono); font-size: 14px; padding: 2px 8px; border-radius: 6px; background: rgba(95, 242, 224, .12); color: var(--glow-300); }
-  .where { margin-top: 64px; }
-  .where h3 { font-family: var(--font-display); font-weight: 600; font-size: 22px; margin-bottom: 4px; }
-  .where > p { color: var(--color-text-muted); margin-bottom: 20px; }
-  @media (max-width: 760px) {
-    .steps { grid-template-columns: minmax(0, 1fr); }
-    .steps::before { left: 22px; right: auto; top: 22px; bottom: 22px; width: 1px; height: auto; }
-    .stp { padding-left: 60px; } .stp .n { position: absolute; left: 0; top: 0; }
+  /* ---------- entrances: heading, then text, then fragment; once; never without script or with motion off ---------- */
+  [data-rise] { transition: opacity 700ms var(--ease-out) calc(var(--i, 0) * 70ms), transform 800ms var(--ease-out) calc(var(--i, 0) * 70ms); }
+  .js:not(.motion-off) [data-group]:not(.in) [data-rise], .js:not(.motion-off) [data-group]:not(.in)[data-rise] { opacity: 0; transform: translateY(24px); }
+  .motion-off [data-rise] { transition: none; }
+
+  /* ---------- 0 m · sunlight: the reef, Dory, the film ---------- */
+  .hero { background: var(--reef); }
+  .hero-top { min-height: 100svh; align-items: center; align-content: center; row-gap: 32px; padding-top: calc(var(--hd) + 32px); padding-bottom: 24px; }
+  #dory3d { position: relative; grid-column: 1 / 7; width: min(100%, calc(100svh - var(--hd) - 140px)); min-width: min(100%, 420px); aspect-ratio: 1 / 1; }
+  #dory3d picture, #dory3d img { display: block; width: 100%; height: 100%; }
+  #dory3d img { object-fit: contain; }
+  #dory3d picture, #dory3d canvas { transition: opacity 600ms ease; }
+  #dory3d canvas { position: absolute; inset: 0; width: 100%; height: 100%; opacity: 0; }
+  #dory3d.is-3d canvas { opacity: 1; }
+  #dory3d.is-3d picture { opacity: 0; }
+  .motion-off #dory3d picture, .motion-off #dory3d canvas { transition: none; }
+  .hero-copy { grid-column: 7 / 13; }
+  .hero-copy .sub { margin-top: 36px; max-width: 44ch; }
+  .acts { display: flex; flex-wrap: wrap; align-items: center; gap: 16px 28px; margin-top: 36px; }
+  .aside { margin-top: 24px; }
+  .pause-row { grid-column: 1 / -1; justify-self: end; margin: 0; }
+  .film-block { align-items: end; row-gap: 32px; padding-block: clamp(96px, 10vw, 160px) clamp(120px, 12vw, 200px); }
+  .film-block h2 { grid-column: 1 / 7; }
+  .film-block .lead { grid-column: 7 / 13; }
+  #film { grid-column: 1 / -1; margin: 16px 0 0; }
+  #film video { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; background: var(--abyss); }
+  #film figcaption { margin-top: 16px; max-width: 60ch; font-size: var(--s1); }
+  @media (max-width: 959px) {
+    .hero-top { align-content: start; padding-top: calc(var(--hd) + 40px); }
+    .hero-copy { grid-column: 1 / -1; }
+    #dory3d { grid-column: 1 / -1; order: 2; width: 100%; min-width: 0; }   /* on a phone the picture moves under the text */
+    .pause-row { order: 3; }
+    .film-block h2, .film-block .lead { grid-column: 1 / -1; }
+  }
+  @media (max-width: 899px) {   /* one column below the tablet: every head spans the grid */
+    .g.mid-head > h2, .g.mid-head > .lead, .g.asc-head > h2, .g.asc-head > .lead, .g.sf-head > h2, .g.sf-head > .lead { grid-column: 1 / -1; }
   }
 
-  /* use cases by role */
-  #roles { background: linear-gradient(180deg, var(--ocean-800), #142650); }
-  .tabs.row { flex-direction: row; flex-wrap: wrap; margin-bottom: 16px; }
-  .tabs.row .tab { border-radius: 99px; padding: 10px 18px; }
-  .tabs.row .tab[aria-selected="true"] { box-shadow: inset 0 0 0 1px var(--glow-300); }
-  .role { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); gap: 24px; padding: 28px; border-radius: var(--radius-xl);
-    background: var(--ocean-900); border: 1px solid var(--color-border); }
-  .role .lbl { display: block; font-size: 13px; font-weight: 600; color: var(--glow-300); margin-bottom: 6px; }
-  .role q { font-family: var(--font-display); font-weight: 600; font-size: 22px; line-height: 1.35; }
-  .role p { color: var(--color-text-muted); font-size: 16px; }
-  @media (max-width: 760px) { .role { grid-template-columns: minmax(0, 1fr); padding: 22px; } .role q { font-size: 19px; } }
+  /* ---------- 200 m · twilight: what the team says, and the card Dory makes of it ---------- */
+  .tw { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr); }
+  .half { position: relative; display: flex; flex-direction: column; min-height: 92svh; }
+  .say { background: var(--trench); }
+  .catch { background: var(--foam); }
+  .half-in { position: relative; z-index: 2; display: flex; flex: 1 1 auto; flex-direction: column; gap: 28px;
+    padding: calc(var(--hd) + 9svh) var(--m) 40px; }
+  .half-in > .split-h { order: 9; margin-top: auto; padding-top: 48px; }
+  .catch .split-h { text-align: right; }
+  #msg { display: block; width: 100%; max-width: 30ch; margin-top: 12px; padding: 16px 18px; border: 2px solid var(--ocean-300); border-radius: 0;
+    background: transparent; color: inherit; font: 400 var(--s3)/1.35 var(--font); resize: vertical; }
+  #msg:hover { border-color: var(--foam); }
+  #msg:focus { border-color: var(--foam); box-shadow:none; outline: 3px solid var(--foam); outline-offset: 3px; }
+  .say-box label { font-weight: 600; }
+  .egs { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; max-width: 34em; margin-top: 24px; }
+  .egs p { margin: 0 6px 0 0; font-weight: 600; }
+  .note { max-width: 52ch; margin-top: 24px; }
+  .card-slot { width: min(100%, 500px); }
+  .after { max-width: 44ch; }
+  @media (max-width: 899px) {
+    .tw { grid-template-columns: minmax(0, 1fr); }
+    .half { min-height: 62svh; }
+    .half-in { padding-top: 72px; }
+    .catch .half-in > .split-h { order: 0; margin-top: 0; padding-top: 0; text-align: left; }
+  }
 
-  /* trust and control */
-  #trust { background: linear-gradient(180deg, #142650, var(--ocean-700)); }
-  .trust { display: grid; grid-template-columns: minmax(0, .9fr) minmax(0, 1.1fr); gap: 48px; align-items: start; }
-  .flow { display: flex; flex-direction: column; align-items: flex-start; gap: 0; margin-top: 8px; }
-  .flow span { padding: 10px 16px; border-radius: 12px; border: 1px solid var(--color-border-control); background: var(--ocean-800); font-weight: 600; font-size: 15px; }
-  .flow span:last-child { border-color: var(--glow-300); }
-  .flow i { display: block; width: 1px; height: 22px; margin-left: 28px; background: var(--ocean-300); }
-  .facts { margin: 0; padding: 0; list-style: none; display: flex; flex-direction: column; gap: 16px; }
-  .facts li { display: grid; grid-template-columns: 22px minmax(0, 1fr); gap: 12px; font-size: 16px; }
-  .facts svg { width: 22px; height: 22px; color: var(--glow-300); margin-top: 2px; }
-  .facts b { font-weight: 600; } .facts span { color: var(--color-text-muted); }
-  .models { margin-top: 24px; padding: 14px 16px; border-radius: 12px; background: var(--ocean-800); color: var(--color-text-muted); font-size: 14px; }
-  .models code { font-family: var(--mono); color: var(--color-text); overflow-wrap: anywhere; }
-  @media (max-width: 860px) { .trust { grid-template-columns: minmax(0, 1fr); gap: 32px; } }
+  /* the task card, as Dory sends it (an interface fragment: its own borders and radius) */
+  .tc[data-ui] { padding: 20px 22px 22px; border: 1px solid #C5D3EA; border-left: 6px solid var(--reef); border-radius: 12px; background: #FFFFFF;
+    color: var(--ink-900); font-size: var(--s1); line-height: 1.5; }
+  .tc[data-ui] .tc-top { display: flex; align-items: center; gap: 8px; margin: 0 0 14px; color: var(--ink-600); }
+  .tc[data-ui] .tc-top b { color: var(--ink-900); }
+  .tc[data-ui] .lamp { width: 10px; height: 10px; border-radius: 50%; background: #C9CFDB; flex: none; transition: background-color 400ms ease, box-shadow 400ms ease; }
+  .tc[data-ui] .lamp.on { background: var(--lamp); box-shadow: 0 0 0 3px rgba(255, 196, 107, .35), 0 0 14px rgba(255, 196, 107, .9); }
+  .tc[data-ui] .tc-k { margin: 0; font-weight: 600; color: var(--ink-600); }
+  .tc[data-ui] .tc-t { margin: 4px 0 0; font-size: var(--s2); font-weight: 600; line-height: 1.35; }
+  .tc[data-ui] .tc-dl { display: grid; grid-template-columns: auto 1fr; gap: 6px 16px; margin: 16px 0 0; }
+  .tc[data-ui] .tc-dl div { display: contents; }
+  .tc[data-ui] dt { color: var(--ink-600); }
+  .tc[data-ui] dd { margin: 0; font-weight: 600; }
+  .tc[data-ui] .tc-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 18px; }
+  .tc[data-ui] .tb { min-height: 40px; padding: 8px 16px; border: 0; border-radius: 8px; background: #E4EAF4; color: var(--ink-900); font-weight: 600;
+    font-size: var(--s1); transition: background-color 160ms ease, transform 140ms var(--ease-out); }
+  .tc[data-ui] .tb:first-child { background: var(--abyss); color: var(--foam); }
+  .tc[data-ui] .tb:hover { background: #D3DCEB; }
+  .tc[data-ui] .tb:first-child:hover { background: var(--trench); }
+  .tc[data-ui] .tb:active { transform: scale(.97); }
+  .tc[data-ui] .tb[aria-pressed="true"] { box-shadow: 0 0 0 2px #FFFFFF, 0 0 0 4px var(--abyss); }
+  .tc[data-ui] .tc-said:not(:empty) { margin: 14px 0 0; padding: 10px 12px; border-radius: 8px; background: #EEF3FA; }
+  .tc[data-ui] .tc-said:empty { display: none; }
+  .motion-off .tc[data-ui] .lamp { transition: none; }
 
-  /* plans */
-  #plans { background: var(--ocean-700); }
-  #plans .grid { grid-template-columns: repeat(2, minmax(0, 360px)); }
-  @media (max-width: 760px) { #plans .grid { grid-template-columns: minmax(0, 1fr); } }
-  .price { font-weight: 600; color: var(--color-text); }
-  .plan-c.soon { border-style: dashed; background: transparent; box-shadow: none; }
-  .plan-c .btn { margin-top: auto; align-self: flex-start; }
-  .fine { margin-top: 18px; font-size: 14px; color: var(--color-text-muted); max-width: 720px; }
+  /* ---------- 1,000 m · midnight: her clock, and the dark ---------- */
+  .midnight { background: var(--abyss); padding-block: calc(var(--hd) + clamp(72px, 9vw, 140px)) calc(var(--edge-h) + clamp(96px, 10vw, 160px)); }
+  .mid-head h2 { grid-column: 1 / 10; }
+  .mid-head .lead { grid-column: 1 / 8; margin-top: 32px; }
+  .bar { display: flex; gap: 6px; margin: 64px 0 0; padding: 0; list-style: none; }
+  .bar li { display: flex; flex-direction: column; gap: 16px; min-width: 0; flex: 1 1 0; }
+  .bar .s-sec { flex: 0 0 15%; }
+  .bar .s-3wd { flex-grow: 3; }
+  .bar .blk { height: max(150px, 22vh); margin: 0; padding: 18px 20px; font: 600 var(--s3)/1.2 var(--font-display); }
+  .bar li p:last-child { max-width: 24ch; margin: 0; }
+  .s-sec .blk { background: var(--foam); color: var(--abyss); }
+  .s-day .blk { background: var(--reef); color: var(--foam); }
+  .s-3wd .blk { background: var(--trench); color: var(--foam); }
+  .s-eve .blk { background: var(--lamp); color: var(--abyss); }
+  .photo { margin: clamp(120px, 13vw, 200px) 0 0; align-items: end; row-gap: 20px; }
+  .photo img { grid-column: 1 / 9; display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: var(--trench); }
+  .photo figcaption { grid-column: 9 / 13; font-size: var(--s1); }
+  .credit { display: block; margin-top: 12px; }
+  .credit a { text-underline-offset: .2em; }
+  @media (max-width: 899px) {
+    .bar { flex-direction: column; gap: 6px; }
+    .bar li, .bar .s-sec { flex: none; flex-direction: row; gap: 24px; }   /* the bar turns upright; heights keep the proportions */
+    .bar .blk { flex: 0 0 50%; height: auto; min-height: 72px; }
+    .bar .s-day .blk, .bar .s-eve .blk { min-height: 104px; }
+    .bar .s-3wd .blk { min-height: 240px; }
+    .bar li p:last-child { padding-top: 18px; }
+    .photo img, .photo figcaption { grid-column: 1 / -1; }
+    .photo figcaption { max-width: 60ch; }
+  }
+  @media (max-width: 559px) {
+    .bar li, .bar .s-sec { flex-direction: column; gap: 12px; }
+    .bar .blk { flex: none; }
+    .bar li p:last-child { padding-top: 0; margin-bottom: 16px; }
+  }
 
-  /* final call to action: Dory surfaces into the light */
-  .final { padding: 40px 0 96px; text-align: center;
-    background: linear-gradient(180deg, var(--ocean-700) 0, #4F6A9B 90px, #C9D3E4 180px, var(--sand-50) 250px); }
-  .final .wrap { display: flex; flex-direction: column; align-items: center; gap: 18px; }
-  .surface-fish { display: block; width: 160px; margin-bottom: 40px; }
-  .surface-fish img { display: block; width: 100%; height: auto; border-radius: 32px; box-shadow: 0 18px 44px rgba(0, 0, 0, .35); }
-  .js .surface-fish.reveal { transform: translateY(48px); transition: opacity 600ms var(--ease-out-soft), transform 900ms var(--ease-buoy); }
-  .final > .wrap > p { color: var(--color-text-muted); font-size: 17px; max-width: 520px; }
-  .final .ctas { justify-content: center; }
-  .entry { width: 100%; margin-top: 56px; text-align: left; }
-  .entry h3.t { font-family: var(--font-display); font-weight: 600; font-size: 22px; text-align: center; }
-  .entry > p { color: var(--color-text-muted); text-align: center; margin: 6px 0 24px; }
-  .entry .grid { grid-template-columns: repeat(3, minmax(0, 1fr)); }
-  @media (max-width: 860px) { .entry .grid { grid-template-columns: minmax(0, 1fr); } }
-  .card.go { text-decoration: none; color: inherit; }
-  .card.go:hover { transform: translateY(-2px); box-shadow: var(--shadow-lg); }
-  .card.go { grid-template-rows: auto 1fr auto; }
-  .card.go .ic { color: var(--glow-700); }
-  .card.go .more { margin-top: auto; padding-top: 10px; color: var(--color-link); font-size: 15px; }
+  /* ---------- 4,000 m · seabed: the sand, the pinned answer, the days as strata ---------- */
+  .seabed { background-color: var(--sand-300); padding-block: clamp(56px, 6vw, 96px) clamp(120px, 12vw, 200px);
+    background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='160' height='160'%3E%3Cg fill='%23A69375' fill-opacity='.32'%3E%3Ccircle cx='12' cy='18' r='1.2'/%3E%3Ccircle cx='47' cy='9' r='.9'/%3E%3Ccircle cx='83' cy='31' r='1.1'/%3E%3Ccircle cx='131' cy='14' r='1'/%3E%3Ccircle cx='152' cy='52' r='1.3'/%3E%3Ccircle cx='21' cy='64' r='1'/%3E%3Ccircle cx='64' cy='71' r='1.4'/%3E%3Ccircle cx='108' cy='58' r='.9'/%3E%3Ccircle cx='140' cy='96' r='1.1'/%3E%3Ccircle cx='37' cy='112' r='1.2'/%3E%3Ccircle cx='79' cy='124' r='1'/%3E%3Ccircle cx='118' cy='138' r='1.3'/%3E%3Ccircle cx='9' cy='149' r='.9'/%3E%3Ccircle cx='58' cy='152' r='1.1'/%3E%3Ccircle cx='99' cy='92' r='1'/%3E%3Ccircle cx='151' cy='131' r='.9'/%3E%3C/g%3E%3Cg fill='%23F4EFE6' fill-opacity='.7'%3E%3Ccircle cx='28' cy='39' r='1'/%3E%3Ccircle cx='71' cy='44' r='.8'/%3E%3Ccircle cx='121' cy='33' r='1'/%3E%3Ccircle cx='17' cy='96' r='.9'/%3E%3Ccircle cx='92' cy='108' r='1.1'/%3E%3Ccircle cx='133' cy='72' r='.8'/%3E%3Ccircle cx='46' cy='138' r='1'/%3E%3Ccircle cx='144' cy='156' r='.9'/%3E%3C/g%3E%3C/svg%3E"); }
+  .edge { position: absolute; left: 0; top: calc(1px - var(--edge-h)); display: block; width: 100%; height: var(--edge-h); }
+  .sea-split { align-items: stretch; }
+  .pin-col { grid-column: 1 / 7; padding-top: clamp(24px, 3vw, 48px); }
+  .sea-read { grid-column: 8 / 13; padding: 72px 0 8vh; }
+  .sea-read .lead { margin-top: 32px; }
+  .sea-read h3 { margin-bottom: 12px; }
+  .blk1 { margin-top: 14vh; }
+  .blk2 { margin-top: 24vh; }
+  .segs { display: flex; flex-wrap: wrap; margin: 20px 0 0; padding: 0; border: 0; }
+  .segs legend { float: left; width: 100%; margin-bottom: 10px; padding: 0; font-weight: 600; font-size: var(--s1); }
+  .segs input { position: absolute; width: 1px; height: 1px; opacity: 0; clip-path: inset(50%); }
+  .segs label { display: inline-flex; align-items: center; min-height: 44px; margin-right: -2px; padding: 8px 18px; border: 2px solid var(--abyss);
+    font-weight: 600; cursor: pointer; transition: background-color 200ms ease, color 200ms ease; }
+  .segs input:checked + label { background: var(--abyss); color: var(--sand-300); }
+  .segs input:focus-visible + label { outline: 3px solid var(--abyss); outline-offset: 3px; position: relative; }
+  @media (hover: hover) and (pointer: fine) { .segs input:not(:checked) + label:hover { background: var(--sand-400); } }
+  .strata-row { margin-top: clamp(120px, 12vw, 200px); row-gap: 32px; align-items: start; }
+  .strata-head { grid-column: 1 / 7; }
+  .strata-head p { margin-top: 16px; max-width: 52ch; }
+  .strata { grid-column: 1 / 7; margin: 8px 0 0; padding: 0; list-style: none; }
+  .strata li { display: grid; grid-template-columns: minmax(9ch, auto) 1fr auto; align-items: baseline; gap: 8px 24px; padding: 22px 24px; }
+  .strata li:nth-child(1) { background: var(--sand-400); padding-block: 18px; }
+  .strata li:nth-child(2) { background: var(--sand-500); padding-block: 22px; }
+  .strata li:nth-child(3) { background: var(--sand-600); padding-block: 26px; }
+  .strata li:nth-child(4) { background: var(--sand-700); padding-block: 30px; }
+  .strata li:nth-child(5) { background: #9A8769; padding-block: 34px; }
+  .strata .sd { font: 600 var(--s3)/1.2 var(--font); }
+  .sea-photo { grid-column: 7 / 13; grid-row: 1 / span 2; margin: 0; }
+  .sea-photo img { display: block; width: 100%; height: auto; aspect-ratio: 16 / 9; object-fit: cover; background: var(--sand-500); }
+  .sea-photo figcaption { margin-top: 16px; max-width: 60ch; font-size: var(--s1); }
+  @media (max-width: 899px) {
+    .pin-col, .sea-read, .strata-head, .strata, .sea-photo { grid-column: 1 / -1; grid-row: auto; }
+    .sea-read { order: -1; padding: 40px 0 32px; }
+    .blk1, .blk2 { margin-top: 40px; }
+    .strata li { grid-template-columns: 1fr auto; }
+    .strata li span:nth-child(2) { grid-row: 2; }
+  }
 
-  /* footer */
-  .foot { background: var(--sand-100); border-top: 1px solid var(--line); padding: 28px 0 40px; color: var(--color-text-muted); font-size: 14px; }
-  .foot .wrap { display: flex; flex-wrap: wrap; gap: 4px 20px; align-items: center; }
-  .foot a { color: var(--color-text-muted); text-decoration: none; display: inline-flex; align-items: center; min-height: 44px; }
-  .foot a:hover { color: var(--indigo); text-decoration: underline; }
-  .foot .btn { margin-left: auto; }
-  .foot .btn + .btn { margin-left: 0; }
-  @media (max-width: 600px) { .foot .btn { margin-left: 0; } }
+  /* the memory answer (an interface fragment, as in the web chat) */
+  .ans[data-ui] { position: sticky; top: calc(var(--hd) + 8vh); padding: 24px; border: 1px solid #CDBFA6; border-radius: 16px; background: #FFFFFF;
+    color: var(--ink-900); font-size: var(--s1); line-height: 1.55; }
+  .ans[data-ui] .ans-q { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin: 0 0 20px; }
+  .ans[data-ui] .ans-who { color: var(--ink-600); font-weight: 600; }
+  .ans[data-ui] .ans-q span:last-child { max-width: 85%; padding: 10px 14px; border-radius: 16px 16px 4px 16px; background: var(--trench); color: #FFFFFF; }
+  .ans[data-ui] .ans-a { display: grid; grid-template-columns: 32px minmax(0, 1fr); gap: 12px; }
+  .ans[data-ui] .mark { width: 32px; height: 32px; border-radius: 50%; box-shadow:none; }
+  .ans[data-ui] .ans-a p { margin: 0 0 10px; }
+  .ans[data-ui] .ans-a p[data-ans="a"], .ans[data-ui] .ans-a p[data-ans="x"] { font-size: var(--s2); line-height: 1.5; }
+  .ans[data-ui] .ans-src { color: var(--ink-600); }
+  .ans[data-ui] .ans-note { margin: 4px 0 0; padding: 10px 12px; border-radius: 8px; background: var(--sand-100); }
+  @media (max-width: 899px) { .ans[data-ui] { position: static; } }
+
+  /* ---------- 200 m · ascent: everything she does today ---------- */
+  .ascent { background: var(--trench); padding-block: calc(var(--hd) + clamp(72px, 9vw, 140px)) clamp(120px, 12vw, 200px); }
+  .asc-head h2 { grid-column: 1 / 10; }
+  .asc-head .lead { grid-column: 1 / 8; margin-top: 32px; }
+  .feats { display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gap); row-gap: clamp(40px, 4vw, 64px); margin: 80px 0 0; padding: 0; list-style: none; }
+  .feats li:nth-child(odd) { grid-column: 1 / 6; }
+  .feats li:nth-child(even) { grid-column: 7 / 12; }
+  .feats h3 { margin-bottom: 10px; }
+  @media (max-width: 759px) { .feats li:nth-child(n) { grid-column: 1 / -1; } }
+
+  /* ---------- 0 m · surface: trust, one band per fact, and the ticket ---------- */
+  .surface { background: var(--foam); padding-top: calc(var(--hd) + clamp(72px, 9vw, 140px)); }
+  .sf-head h2 { grid-column: 1 / 10; }
+  .sf-head .lead { grid-column: 1 / 8; margin-top: 32px; }
+  .bands { margin: clamp(56px, 6vw, 96px) 0 0; }
+  .band { position: relative; display: grid; grid-template-columns: repeat(12, minmax(0, 1fr)); column-gap: var(--gap); padding: 48px var(--m); }
+  .band:nth-child(odd) { background: #FFFFFF; }
+  .band:nth-child(even) { background: var(--foam); }
+  .band dt, .band dd { position: relative; z-index: 2; }
+  .band dt { grid-column: 1 / 6; }
+  .band dd { grid-column: 7 / 13; margin: 0; max-width: 56ch; }
+  #models { font: inherit; font-weight: 600; overflow-wrap: anywhere; }
+  .plans { row-gap: 32px; padding-block: clamp(96px, 10vw, 160px); }
+  .ticket { grid-column: 2 / 12; display: grid; grid-template-columns: 7fr 3fr; min-height: clamp(300px, 26vw, 420px); }
+  .t-main { display: flex; flex-direction: column; justify-content: space-between; gap: 40px; padding: clamp(28px, 3vw, 44px); background: var(--reef); color: var(--foam); }
+  .t-main p { margin-top: 20px; max-width: 40ch; }
+  .t-terms { display: grid; grid-template-columns: 1fr 1fr; gap: 8px 32px; margin: 0; padding: 0; list-style: none; font-weight: 600; }
+  .t-stub { position: relative; display: flex; flex-direction: column; justify-content: center; gap: 24px; padding: 40px 28px; background: var(--lamp);
+    color: var(--abyss); text-align: center; }
+  .t-stub .price { margin: 0; }
+  .t-stub .b { width: 100%; min-height: 56px; }
+  .notch { position: absolute; left: -14px; width: 28px; height: 28px; border-radius: 50%; background: var(--foam); }
+  .n1 { top: -14px; } .n2 { bottom: -14px; }
+  .perf { position: absolute; top: 24px; bottom: 24px; left: -3px; width: 6px;
+    background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='6' height='14'%3E%3Ccircle cx='3' cy='3' r='3' fill='%23EAF2FF'/%3E%3C/svg%3E") repeat-y center top; }
+  .fine { grid-column: 2 / 12; max-width: 60ch; }
+  @media (max-width: 759px) {
+    .band dt, .band dd { grid-column: 1 / -1; }
+    .band dd { margin-top: 12px; }
+    .ticket, .fine { grid-column: 1 / -1; }
+    .ticket { grid-template-columns: 1fr; }
+    .t-terms { grid-template-columns: 1fr; }
+    .notch { top: -14px; bottom: auto; }
+    .n1 { left: -14px; } .n2 { left: auto; right: -14px; }
+    .perf { top: -3px; bottom: auto; left: 24px; right: 24px; width: auto; height: 6px;
+      background: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='14' height='6'%3E%3Ccircle cx='3' cy='3' r='3' fill='%23EAF2FF'/%3E%3C/svg%3E") repeat-x left center; }
+  }
+
+  /* ---------- her light: the last chapter, with the sign-up step already open ---------- */
+  .lantern-ch { background: var(--lamp); }
+  .lantern-ch .g { min-height: 100svh; align-items: end; row-gap: 48px; padding-block: calc(var(--hd) + 64px) clamp(56px, 6vw, 96px); }
+  .ln-copy { grid-column: 1 / 7; }
+  .ln-copy p { margin-top: 32px; max-width: 42ch; }
+  .ln-copy .acts { margin-top: 32px; }
+  .dlg[data-ui] { grid-column: 8 / 13; align-self: start; width: 100%; max-width: 460px; justify-self: end; padding: 32px; border-radius: 16px;
+    background: #FFFFFF; color: var(--ink-900); box-shadow: 0 30px 70px rgba(5, 11, 31, .28), 0 2px 6px rgba(5, 11, 31, .12); }
+  .dlg[data-ui] h3 { margin: 0; }
+  .dlg[data-ui] p { margin: 8px 0 24px; color: var(--ink-600); font-size: var(--s1); }
+  .dlg[data-ui] label { display: block; margin-bottom: 8px; font-weight: 600; }
+  .dlg[data-ui] input { padding: 12px 14px; font-size: var(--s2); }
+  .dlg[data-ui] input:focus { border-color: var(--abyss); box-shadow:none; outline: 3px solid var(--abyss); outline-offset: 2px; }
+  .dlg[data-ui] button { width: 100%; min-height: 52px; margin-top: 16px; border: 0; border-radius: 10px; background: var(--abyss); color: var(--foam);
+    font-weight: 600; font-size: var(--s1); transition: background-color 200ms ease, transform 140ms var(--ease-out); }
+  .dlg[data-ui] button:hover { background: var(--trench); }
+  .dlg[data-ui] button:active { transform: scale(.98); }
+  .dlg[data-ui] .have { margin: 16px 0 0; text-align: center; }
+  .dlg[data-ui] .have a { color: var(--ink-900); font-weight: 600; }
+  @media (max-width: 899px) {
+    .lantern-ch .g { min-height: 0; align-content: start; align-items: start; }
+    .ln-copy, .dlg[data-ui] { grid-column: 1 / -1; justify-self: stretch; max-width: none; }
+  }
+
+  /* ---------- footer: the name returns at full width ---------- */
+  .ft { position: relative; overflow: hidden; background: var(--abyss); padding-top: clamp(56px, 6vw, 96px); }
+  .ft-top { row-gap: 24px; font-size: var(--s1); }
+  .ft-note { grid-column: 1 / 6; margin: 0; }
+  .ft-nav { grid-column: 7 / 13; display: flex; flex-wrap: wrap; gap: 0 24px; }
+  .ft-nav a, .ft-ctl a { display: inline-flex; align-items: center; min-height: 44px; text-underline-offset: .25em; }
+  .credits { grid-column: 1 / 9; max-width: 60ch; margin: 0; }
+  .credits a { text-underline-offset: .25em; }
+  .ft-ctl { grid-column: 9 / 13; display: flex; flex-wrap: wrap; justify-content: flex-end; align-items: center; gap: 12px 20px; }
+  .bigname { position: relative; z-index: 2; margin: clamp(56px, 7vw, 120px) 0 0; padding-inline: var(--m); font: 700 var(--s5)/1 var(--font-display);
+    letter-spacing: -.04em; white-space: nowrap; }
+  :lang(th) .bigname { font-size: calc((100vw - 2 * var(--m)) / 1.82); line-height: 1.05; letter-spacing: 0; }
+  @media (max-width: 899px) { .ft-note, .ft-nav, .credits, .ft-ctl { grid-column: 1 / -1; } .ft-ctl { justify-content: flex-start; } }
 </style>
 </head>
 <body>
-<a class="skip" href="#main" data-i18n="skip"></a>
+<canvas id="water" aria-hidden="true"></canvas>
+<a class="skip" href="#top" data-i18n="skip">Skip to content</a>
 
-<header class="nav" id="nav" data-theme="deep">
-  <div class="wrap">
-    <a class="logo" href="#main" aria-label="Dory"><span class="mark" aria-hidden="true">D</span><span data-i18n="brand"></span></a>
-    <nav class="links" id="links" data-i18n-attr="aria-label:nav_aria">
-      <a href="#features" data-i18n="nav_features"></a>
-      <a href="#how" data-i18n="nav_how"></a>
-      <a href="#trust" data-i18n="nav_trust"></a>
-      <a href="#plans" data-i18n="nav_plans"></a>
-      <a class="only-m" href="/center" data-i18n="nav_login"></a>
-    </nav>
-    <div class="langsw" role="group" data-i18n-attr="aria-label:lang_switch_aria">
-      <button type="button" data-lang="th" data-i18n="lang_th"></button>
-      <button type="button" data-lang="en" data-i18n="lang_en"></button>
+<header class="hd" id="hd">
+  <a class="logo" href="#top" data-probe data-ink="light"><span class="mark" aria-hidden="true">D</span><span class="wm" data-i18n="brand">Dory</span></a>
+  <nav class="hd-links" data-probe data-ink="light" aria-label="Main navigation" data-i18n-attr="aria-label:nav_aria">
+    <a href="#features" data-i18n="nav_features">What she does</a>
+    <a href="#plans" data-i18n="nav_plans">Plans</a>
+    <a href="/center" data-i18n="nav_login">Sign in</a>
+  </nav>
+  <div class="hd-act" data-probe data-ink="light">
+    <div class="lang" role="group" aria-label="Choose language" data-i18n-attr="aria-label:lang_switch_aria">
+      <button type="button" data-lang="th" lang="th" data-i18n="lang_th"></button>
+      <button type="button" data-lang="en" data-i18n="lang_en">EN</button>
     </div>
-    <a class="btn ghost small login" href="/center" data-i18n="nav_login"></a>
-    <a class="btn primary small cta-top" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add_short"></a>
-    <a class="btn primary small cta-top" href="/start" data-invite-fallback hidden data-i18n="cta_create"></a>
-    <button type="button" class="menu-btn" id="menu" aria-expanded="false" aria-controls="links" data-i18n-attr="aria-label:menu_aria"><span></span><span></span><span></span></button>
+    <p class="depth"><span class="sr" data-i18n="depth_label">Depth</span> <span id="depth">0 m</span></p>
+    <a class="b b-hd" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add_short">Add to Discord</a>
+    <a class="b b-hd" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
   </div>
 </header>
 
-<main id="main" tabindex="-1">
-  <section class="hero" id="hero" data-theme="deep">
-    <div class="sea" aria-hidden="true">
-      <div class="plane far">
-        <svg class="kelp" viewBox="0 0 1200 240" preserveAspectRatio="none" focusable="false"><path class="bed" d="M0 240V172C80 152 140 192 220 177C320 158 380 122 470 142C560 162 620 202 720 188C820 174 880 132 980 144C1080 156 1140 192 1200 182V240Z"/><path class="weed" d="M96 236C102 196 74 166 88 128C102 90 80 66 92 34"/><path class="weed" d="M132 238C126 206 150 180 138 146"/><path class="weed" d="M1018 236C1010 198 1040 170 1026 130C1014 96 1036 74 1028 44"/><path class="weed" d="M1072 238C1080 210 1058 188 1068 160"/></svg>
-      </div>
-      <div class="plane mid"><span class="ray r1"></span><span class="ray r2"></span><span class="ray r3"></span></div>
-      <div class="plane near" id="specks"></div>
-    </div>
-    <div class="wrap">
-      <div class="copy">
-        <p class="eyebrow" data-i18n="eyebrow"></p>
-        <h1 data-i18n="headline"></h1>
-        <p class="sub" data-i18n="sub"></p>
-        <div class="ctas">
-          <a class="btn primary" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add"></a>
-          <a class="btn primary" href="/start" data-invite-fallback hidden data-i18n="cta_create"></a>
-          <a class="btn ghost" href="#preview" data-i18n="cta_see"></a>
+<main id="top" tabindex="-1">
+  <!-- 0 m · sunlight -->
+  <section class="ch hero" id="sunlight" data-chapter="sunlight" data-depth="0" data-ink="light">
+    <div class="g hero-top" data-group>
+      <div id="dory3d"><picture><img src="/static/dory/dory3d-poster.webp" width="900" height="900" fetchpriority="high" alt="Dory, a white fish with a blue back, big blue eyes and a headset" data-i18n-attr="alt:hero_alt"></picture></div>
+      <div class="hero-copy">
+        <h1 data-rise data-i18n="headline">Ask once. Dory&nbsp;remembers.</h1>
+        <p class="sub" data-rise style="--i:1" data-i18n="sub">Dory lives in your team's chat. She takes meeting notes, logs receipts, follows up on tasks and answers from your company's own documents, in Thai or English.</p>
+        <div class="acts" data-rise style="--i:2">
+          <a class="b b-lamp" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add">Add Dory to Discord</a>
+          <a class="b b-lamp" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
+          <a class="tl" id="film-link" href="#film" data-i18n="cta_film">Watch the 15-second film</a>
         </div>
-        <p class="aside-line" data-invite-aside><span data-i18n="not_discord"></span> <a href="/start" data-i18n="not_discord_link"></a></p>
-        <p class="free" data-i18n="free"></p>
+        <p class="aside small" data-rise style="--i:3"><span data-invite-aside><span data-i18n="not_discord">Not on Discord?</span> <a href="/start" data-i18n="not_discord_link">Create an account</a></span> <span data-i18n="free">Free during launch.</span></p>
       </div>
-      <div class="stage" id="stage" aria-hidden="true">
-        <div class="tilt"><div class="fish-float"><picture><source type="image/webp" srcset="/static/dory/dory.webp"><img class="hero-pic" id="fish" src="/static/dory/dory.jpg" width="777" height="779" alt="" fetchpriority="high"></picture></div></div>
-      </div>
+      <p class="pause-row"><button type="button" class="b b-line b-sm" data-motion-toggle>Pause motion</button></p>
     </div>
-    <button type="button" class="btn ghost small pause" data-motion-toggle><span></span></button>
-  </section>
-
-  <section class="sec meet" id="meet" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="meet_h"></h2><p data-i18n="meet_p"></p></div>
-      <figure class="film reveal">
-        <video id="intro" controls playsinline preload="none" width="1920" height="1080" poster="/static/dory/meet-dory.webp" data-i18n-attr="aria-label:meet_aria">
+    <div class="g film-block" data-group>
+      <h2 data-rise data-i18n="meet_h">Meet Dory</h2>
+      <p class="lead" data-rise style="--i:1" data-i18n="meet_p">Fifteen seconds in Dory's world. Press play; the film has sound.</p>
+      <figure id="film" data-rise style="--i:2">
+        <video id="intro" controls playsinline preload="none" width="1920" height="1080" poster="/static/dory/meet-dory.webp" aria-label="Introduction video: Meet Dory" data-i18n-attr="aria-label:meet_aria">
           <source src="/static/dory/meet-dory.mp4" type="video/mp4">
         </video>
-        <figcaption data-i18n="meet_cap"></figcaption>
+        <figcaption data-i18n="meet_cap">Dory, a white fish with a blue back and a headset, hovers in a sunlit reef beside the words: Meet Dory. Ask once. Dory remembers, files and follows up. Then: Meeting notes, Receipts, Tasks, Answers, and Add Dory to Discord. 15 seconds.</figcaption>
       </figure>
     </div>
   </section>
 
-  <section class="sec" id="preview" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="pv_h"></h2><p data-i18n="pv_p"></p></div>
-      <div class="pv">
-        <div class="tabs" role="tablist" id="pv-tabs" data-i18n-attr="aria-label:pv_tabs_aria">
-          <button type="button" class="tab" role="tab" id="pvt1" aria-selected="true" aria-controls="pvp1" data-i18n="pv_t1"></button>
-          <button type="button" class="tab" role="tab" id="pvt2" aria-selected="false" aria-controls="pvp2" tabindex="-1" data-i18n="pv_t2"></button>
-          <button type="button" class="tab" role="tab" id="pvt3" aria-selected="false" aria-controls="pvp3" tabindex="-1" data-i18n="pv_t3"></button>
-          <button type="button" class="tab" role="tab" id="pvt4" aria-selected="false" aria-controls="pvp4" tabindex="-1" data-i18n="pv_t4"></button>
+  <!-- 200 m · twilight: the live thing (scripted rules, not the model) -->
+  <section class="ch tw" id="twilight" data-chapter="twilight" data-depth="200">
+    <div class="half say" data-ink="light">
+      <div class="half-in" data-group>
+        <h2 class="split-h" data-rise data-i18n="tw_say_h">You say it.</h2>
+        <div class="say-box" data-rise style="--i:1">
+          <label for="msg" data-i18n="tw_label">A message from Ben in #finance</label>
+          <textarea id="msg" rows="3" spellcheck="false" data-i18n="tw_msg">Nok, can you send the Q3 receipts to accounting by Friday?</textarea>
+          <div class="egs" role="group" aria-labelledby="eg-h">
+            <p id="eg-h" data-i18n="tw_try">Try an example</p>
+            <button type="button" class="b b-line b-sm" data-eg="eg1" data-i18n="eg1_l">Due 3 Nov</button>
+            <button type="button" class="b b-line b-sm" data-eg="eg2" data-i18n="eg2_l">Nobody named</button>
+            <button type="button" class="b b-line b-sm" data-eg="eg3" data-i18n="eg3_l">In Thai</button>
+            <button type="button" class="b b-line b-sm" data-eg="eg4" data-i18n="eg4_l">In Thai, nobody named</button>
+          </div>
+          <p class="note small"><b data-i18n="tw_note_b">A scripted example.</b> <span data-i18n="tw_note">A few simple rules stand in for Dory here, not the live AI. The names are made up; the card, its buttons and what each one does are the real task handshake.</span></p>
         </div>
-        <div>
-          <div role="tabpanel" id="pvp1" aria-labelledby="pvt1" tabindex="0">
-            <div class="chat" data-theme="surface">
-              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
-              <div class="chat-b">
-                <div class="m-user step" data-i18n="pv1_u"></div>
-                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n="pv1_d1"></span></div></div>
-                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n-html="pv1_d2"></span></div></div>
-                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
-              </div>
-            </div>
-          </div>
-          <div role="tabpanel" id="pvp2" aria-labelledby="pvt2" tabindex="0" hidden>
-            <div class="chat" data-theme="surface">
-              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
-              <div class="chat-b">
-                <div class="m-user step"><span class="att"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="3" width="18" height="18" rx="2"/><circle cx="9" cy="9" r="2"/><path d="m21 15-5-5L5 21"/></svg><span data-i18n="pv2_file"></span></span><br><span data-i18n="pv2_u"></span></div>
-                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n-html="pv2_d"></span></div></div>
-                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
-              </div>
-            </div>
-          </div>
-          <div role="tabpanel" id="pvp3" aria-labelledby="pvt3" tabindex="0" hidden>
-            <div class="chat" data-theme="surface">
-              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
-              <div class="chat-b">
-                <div class="m-user step" data-i18n="pv3_u"></div>
-                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span data-i18n-html="pv3_d"></span></div></div>
-                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
-              </div>
-            </div>
-          </div>
-          <div role="tabpanel" id="pvp4" aria-labelledby="pvt4" tabindex="0" hidden>
-            <div class="chat" data-theme="surface">
-              <div class="chat-h"><span class="mark lantern" aria-hidden="true">D</span><div><strong data-i18n="who_dory"></strong><small class="st" data-i18n="st_ready"></small></div></div>
-              <div class="chat-b">
-                <div class="m-user step" lang="th" data-i18n="pv4_u"></div>
-                <div class="m-dory step"><span class="mark" aria-hidden="true">D</span><div><b class="who" data-i18n="who_dory"></b><span lang="th" data-i18n="pv4_d"></span><p class="pv-note" data-i18n="pv4_note"></p></div></div>
-                <div class="m-dory think" hidden><span class="mark lantern pulse" aria-hidden="true">D</span><span data-i18n="st_thinking"></span></div>
-              </div>
-            </div>
-          </div>
-          <div class="pv-ctl" role="group" data-i18n-attr="aria-label:pv_ctl_aria">
-            <button type="button" class="btn ghost small" id="pv-replay" data-i18n="pv_replay"></button>
-            <button type="button" class="btn ghost small" id="pv-pause"></button>
+      </div>
+    </div>
+    <div class="half catch" data-ink="dark">
+      <div class="half-in" data-group>
+        <h2 class="split-h" data-rise data-i18n="tw_catch_h">She catches it.</h2>
+        <div class="card-slot" data-rise style="--i:2">
+          <div id="card" aria-live="polite">
+            <article class="tc" data-ui aria-labelledby="tc-k">
+              <p class="tc-top"><span class="lamp" data-f="lamp" aria-hidden="true"></span><b data-i18n="who_dory">Dory</b> <span data-f="where">in Nok's private Dory channel</span></p>
+              <p class="tc-k" id="tc-k" data-f="kind">New task for Nok</p>
+              <p class="tc-t" data-f="title">Send the Q3 receipts to accounting</p>
+              <dl class="tc-dl" data-f="facts">
+                <div><dt data-i18n="card_due">Due</dt><dd data-f="due">Friday</dd></div>
+                <div><dt data-f="k2">From</dt><dd data-f="v2">Ben in #finance</dd></div>
+              </dl>
+              <div class="tc-acts" data-f="acts"><button type="button" class="tb" data-a="ok">Accept</button><button type="button" class="tb" data-a="edit">Edit</button><button type="button" class="tb" data-a="no">Decline</button></div>
+              <p class="tc-said" data-f="said"></p>
+            </article>
           </div>
         </div>
+        <p class="after small" data-rise style="--i:3" data-i18n="tw_after">Each person gets their card in a private channel with Dory. Nobody else sees it.</p>
       </div>
     </div>
   </section>
 
-  <section class="sec" id="features" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="ft_h"></h2><p data-i18n="ft_p"></p></div>
-      <div class="grid reveal">
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 3a3 3 0 0 0-3 3v6a3 3 0 0 0 6 0V6a3 3 0 0 0-3-3Z"/><path d="M19 11a7 7 0 0 1-14 0M12 18v3"/></svg></div><h3 data-i18n="f1_t"></h3><p data-i18n="f1_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M6 3h9l4 4v14H6Z"/><path d="M14 3v5h5M9 13h6M9 17h6"/></svg></div><h3 data-i18n="f2_t"></h3><p data-i18n="f2_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M9 6h11M9 12h11M9 18h11"/><path d="m3 6 1.5 1.5L7 5M3 12l1.5 1.5L7 11M3 18l1.5 1.5L7 17"/></svg></div><h3 data-i18n="f3_t"></h3><p data-i18n="f3_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 4h16v16H4Z"/><path d="M8 9h8M8 13h5"/></svg></div><h3 data-i18n="f4_t"></h3><p data-i18n="f4_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M12 7v5l3 2"/></svg></div><h3 data-i18n="f5_t"></h3><p data-i18n="f5_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 7h16M4 12h10M4 17h7"/><path d="m16 15 2 2 4-4"/></svg></div><h3 data-i18n="f6_t"></h3><p data-i18n="f6_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.5-3.5"/></svg></div><h3 data-i18n="f7_t"></h3><p data-i18n="f7_d"></p></div>
-        <div class="card feat"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 5h16v11H8l-4 4Z"/><path d="M8 9h8M8 12h5"/></svg></div><h3 data-i18n="f8_t"></h3><p data-i18n="f8_d"></p></div>
-      </div>
+  <!-- 1,000 m · midnight -->
+  <section class="ch midnight" id="midnight" data-chapter="midnight" data-depth="1000" data-ink="light">
+    <div class="g mid-head" data-group>
+      <h2 data-rise data-i18n="mid_h">She follows up.</h2>
+      <p class="lead" data-rise style="--i:1" data-i18n="mid_p">Every task she hears runs on the same clock, and these are its real timings. Nobody has to remember to chase.</p>
     </div>
-  </section>
-
-  <section class="sec" id="how" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="ex_h"></h2><p data-i18n="ex_p"></p></div>
-      <ol class="steps reveal" style="list-style:none;margin:0;padding:0">
-        <li class="stp"><span class="n" aria-hidden="true">1</span><h3 data-i18n="ex1_t"></h3><p data-i18n="ex1_d"></p></li>
-        <li class="stp"><span class="n" aria-hidden="true">2</span><h3 data-i18n="ex2_t"></h3><p data-i18n-html="ex2_d"></p></li>
-        <li class="stp"><span class="n" aria-hidden="true">3</span><h3 data-i18n="ex3_t"></h3><p data-i18n="ex3_d"></p></li>
+    <div class="g" data-group>
+      <ol class="bar" data-ui aria-label="How Dory follows up a task, drawn to scale" data-i18n-attr="aria-label:bar_aria">
+        <li class="s-sec" data-rise><p class="blk" data-i18n="s1_d">Seconds</p><p data-i18n="s1_w">First, she hears the task in chat and sends its owner a card.</p></li>
+        <li class="s-day" data-rise style="--i:1"><p class="blk" data-i18n="s2_d">A day</p><p data-i18n="s2_w">Then, if nobody answers the card, she nudges once after 24 hours.</p></li>
+        <li class="s-3wd" data-rise style="--i:2"><p class="blk" data-i18n="s3_d">Three working days</p><p data-i18n="s3_w">Next, a task with no deadline gets one question: when is it due?</p></li>
+        <li class="s-eve" data-rise style="--i:3"><p class="blk" data-i18n="s4_d">Every evening</p><p data-i18n="s4_w">Last, the evening report lists what is still open.</p></li>
       </ol>
-      <div class="where reveal">
-        <h3 data-i18n="pf_h"></h3>
-        <p data-i18n="pf_p"></p>
-        <div class="grid">
-          <div class="card"><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf1_t"></h3><p data-i18n="pf1_d"></p></div>
-          <div class="card"><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf2_t"></h3><p data-i18n="pf2_d"></p></div>
-          <div class="card"><span class="pill ok" data-i18n="pf_now"></span><h3 data-i18n="pf3_t"></h3><p data-i18n="pf3_d"></p></div>
-          <div class="card"><span class="pill" data-i18n="pf_org"></span><h3 data-i18n="pf4_t"></h3><p data-i18n="pf4_d"></p></div>
+    </div>
+    <figure class="g photo" data-group>
+      <img data-rise src="/static/dory/photos/noaa-midnight-1600.webp" srcset="/static/dory/photos/noaa-midnight-800.webp 800w, /static/dory/photos/noaa-midnight-1600.webp 1600w" sizes="(min-width: 900px) 66vw, 100vw" width="1600" height="900" loading="lazy" decoding="async" alt="A long, see-through siphonophore drifts across black water: a clear, ribbed swimming stem on the left leads to a mass of pale, feathery tentacles on the right." data-i18n-attr="alt:ph_mid_alt">
+      <figcaption data-rise style="--i:1"><span data-i18n="ph_mid_cap">A lacey siphonophore (Erenna laciniata), a colony of many small animals living as one, photographed at 901 metres during NOAA&#x27;s Papahānaumokuākea expedition in the northwestern Hawaiian Islands, April 2025. This deep, sunlight has all but run out: apart from the robot&#x27;s lamps, the only light is the light animals make.</span> <span class="credit small"><span data-i18n="ph_mid_credit">Image courtesy of NOAA Ocean Exploration, 2025 Beyond the Blue. Public domain.</span> <a href="https://oceanexplorer.noaa.gov/multimedia/lacey-siphonophore/" data-credit="mid" data-i18n="ph_record">Original record</a></span></figcaption>
+    </figure>
+  </section>
+
+  <!-- 4,000 m · seabed -->
+  <section class="ch seabed" id="seabed" data-chapter="seabed" data-depth="4000" data-ink="dark">
+    <svg class="edge" viewBox="0 0 1600 200" preserveAspectRatio="xMidYMax slice" aria-hidden="true" focusable="false">
+      <path fill="#B6A587" d="M0 118C160 96 330 92 520 112C700 130 860 104 1040 98C1220 92 1400 120 1600 104V200H0Z"/>
+      <path fill="#DDD3C2" d="M0 156C200 138 360 134 540 148C720 162 880 170 1060 152C1240 134 1420 128 1600 146V200H0Z"/>
+      <g fill="#C4B69C">
+        <path d="M230 60C214 72 212 96 230 112C248 96 246 72 230 60Z"/><rect x="228" y="100" width="4" height="44"/>
+        <path d="M271 88C261 96 260 110 271 120C282 110 281 96 271 88Z"/><rect x="269" y="114" width="4" height="28"/>
+        <path d="M740 164C734 132 742 106 748 90H772C778 106 786 132 780 164Z"/>
+        <ellipse cx="430" cy="147" rx="26" ry="9"/><ellipse cx="1010" cy="158" rx="34" ry="10"/>
+      </g>
+      <g fill="none" stroke="#C4B69C" stroke-width="5" stroke-linecap="round">
+        <path d="M1200 138C1194 110 1214 90 1204 56M1203 108C1220 98 1228 84 1242 78M1198 120C1186 110 1180 98 1168 94"/>
+        <path stroke-width="4" d="M1420 130c10-4 18-2 26-10M1420 130c6 8 4 16 12 24M1420 130c-8 6-16 4-24 12M1420 130c-9-5-13-12-22-14M1420 130c1-10-4-17 0-26"/>
+      </g>
+    </svg>
+    <div class="g sea-split">
+      <div class="pin-col">
+        <div class="ans" id="ans" data-ui aria-live="polite" lang="en">
+          <p class="ans-q"><span class="ans-who" data-ans="who">Mai · Staff</span><span data-ans="q">What did we decide about the Q3 budget?</span></p>
+          <div class="ans-a"><span class="mark" aria-hidden="true">D</span><div>
+            <p><b data-i18n="who_dory">Dory</b></p>
+            <p data-ans="a">On 16 Oct the team agreed to cap Q3 travel at ฿40,000 and move the rest to the launch campaign.</p>
+            <p data-ans="x" hidden>In #management on 15 Oct, the owners also set aside ฿15,000 for the trade-fair booth.</p>
+            <p class="ans-src" data-ans="src">From #finance, 14 Oct · Weekly meeting minutes, 16 Oct</p>
+            <p class="ans-note" data-ans="note">One more source is in #management. Mai can't read that channel, so it is left out.</p>
+          </div></div>
+        </div>
+      </div>
+      <div class="sea-read" data-group>
+        <h2 data-rise data-i18n="sea_h">She remembers.</h2>
+        <p class="lead" data-rise style="--i:1" data-i18n="sea_p">Ask what the team decided and she answers from the day it was said, with her sources.</p>
+        <div class="blk1" data-rise style="--i:2">
+          <h3 data-i18n="ask_h">Ask as anyone on the team.</h3>
+          <p data-i18n="ask_p">A channel's memory is used only when the person asking, and everyone reading the answer, can read that channel.</p>
+          <fieldset class="segs">
+            <legend data-i18n="ask_legend">Ask as</legend>
+            <input type="radio" name="ask-as" id="as-owner" value="owner"><label for="as-owner" data-i18n="r_owner">Owner</label>
+            <input type="radio" name="ask-as" id="as-manager" value="manager"><label for="as-manager" data-i18n="r_manager">Manager</label>
+            <input type="radio" name="ask-as" id="as-staff" value="staff" checked><label for="as-staff" data-i18n="r_staff">Staff</label>
+          </fieldset>
+        </div>
+        <div class="blk2">
+          <h3 data-i18n="lang_h">She answers in your company's language.</h3>
+          <p data-i18n="lang_p">The company picks one language for everything Dory says, and each person can add their own.</p>
+          <fieldset class="segs">
+            <legend data-i18n="ans_legend">Answer in</legend>
+            <input type="radio" name="ans-lang" id="al-en" value="en" checked><label for="al-en" data-i18n="lang_en_full">English</label>
+            <input type="radio" name="ans-lang" id="al-th" value="th"><label for="al-th" lang="th" data-i18n="lang_th"></label>
+          </fieldset>
+          <p class="note small" data-i18n="sea_note">A scripted example with made-up names. The rule for who may read what is the real one.</p>
         </div>
       </div>
     </div>
-  </section>
-
-  <section class="sec roles" id="roles" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="ro_h"></h2><p data-i18n="ro_p"></p></div>
-      <div class="tabs row" role="tablist" id="ro-tabs" data-i18n-attr="aria-label:ro_tabs_aria">
-        <button type="button" class="tab" role="tab" id="rot1" aria-selected="true" aria-controls="rop1" data-i18n="ro_t1"></button>
-        <button type="button" class="tab" role="tab" id="rot2" aria-selected="false" aria-controls="rop2" tabindex="-1" data-i18n="ro_t2"></button>
-        <button type="button" class="tab" role="tab" id="rot3" aria-selected="false" aria-controls="rop3" tabindex="-1" data-i18n="ro_t3"></button>
-        <button type="button" class="tab" role="tab" id="rot4" aria-selected="false" aria-controls="rop4" tabindex="-1" data-i18n="ro_t4"></button>
+    <div class="g strata-row" data-group>
+      <div class="strata-head">
+        <h3 data-rise data-i18n="strata_h">Every day settles into memory.</h3>
+        <p data-rise style="--i:1" data-i18n="strata_p">Each day's talk becomes a short summary she can search, kept as your company's own record, forever by default.</p>
       </div>
-      <div class="role" role="tabpanel" id="rop1" aria-labelledby="rot1" tabindex="0"><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro1_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro1_a"></p></div></div>
-      <div class="role" role="tabpanel" id="rop2" aria-labelledby="rot2" tabindex="0" hidden><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro2_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro2_a"></p></div></div>
-      <div class="role" role="tabpanel" id="rop3" aria-labelledby="rot3" tabindex="0" hidden><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro3_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro3_a"></p></div></div>
-      <div class="role" role="tabpanel" id="rop4" aria-labelledby="rot4" tabindex="0" hidden><div><span class="lbl" data-i18n="ro_ask"></span><q data-i18n="ro4_q"></q></div><div><span class="lbl" data-i18n="ro_get"></span><p data-i18n="ro4_a"></p></div></div>
+      <ol class="strata" data-rise style="--i:2" aria-label="Example day summaries" data-i18n-attr="aria-label:strata_aria">
+        <li><span class="sd" data-i18n="d1_day">Thu 16 Oct</span><span data-i18n="d1_where">Weekly meeting</span><span data-i18n="d1_what">2 decisions, 4 tasks</span></li>
+        <li><span class="sd" data-i18n="d2_day">Wed 15 Oct</span><span data-i18n="d2_where">#finance</span><span data-i18n="d2_what">5 receipts filed</span></li>
+        <li><span class="sd" data-i18n="d3_day">Tue 14 Oct</span><span data-i18n="d3_where">#finance</span><span data-i18n="d3_what">1 decision</span></li>
+        <li><span class="sd" data-i18n="d4_day">Mon 13 Oct</span><span data-i18n="d4_where">#general</span><span data-i18n="d4_what">3 tasks handed out</span></li>
+        <li><span class="sd" data-i18n="d5_day">Fri 10 Oct</span><span data-i18n="d5_where">#sales</span><span data-i18n="d5_what">2 questions answered</span></li>
+      </ol>
+      <figure class="sea-photo" data-rise style="--i:3">
+        <img src="/static/dory/photos/noaa-seabed-1600.webp" srcset="/static/dory/photos/noaa-seabed-800.webp 800w, /static/dory/photos/noaa-seabed-1600.webp 1600w" sizes="(min-width: 900px) 50vw, 100vw" width="1600" height="900" loading="lazy" decoding="async" alt="A pale grey sea cucumber lies on smooth, sandy sediment. Its long body is studded with small shells and shell fragments, and short spines fringe its underside." data-i18n-attr="alt:ph_sea_alt">
+        <figcaption><span data-i18n="ph_sea_cap">A sea cucumber covered in small pieces of shell and forams (tiny single-celled organisms with shells), on the sedimented northern flank of Tutuila, American Samoa, 1,290-1,390 metres down, August 2026. Scientists are not sure why it carries pieces of the seafloor on its body.</span> <span class="credit small"><span data-i18n="ph_sea_credit">Image courtesy of NOAA Ocean Exploration, 2026 American Samoa ROV + Mapping Exploration. Public domain.</span> <a href="https://oceanexplorer.noaa.gov/multimedia/sea-cucumber-ex2606/" data-credit="sea" data-i18n="ph_record">Original record</a></span></figcaption>
+      </figure>
     </div>
   </section>
 
-  <section class="sec" id="trust" data-theme="deep">
-    <div class="wrap trust">
-      <div class="reveal">
-        <div class="sec-h"><h2 data-i18n="tm_h"></h2><p data-i18n="tm_p"></p></div>
-        <div class="flow" role="img" data-i18n-attr="aria-label:flow_aria">
-          <span data-i18n="flow1"></span><i></i><span data-i18n="flow2"></span><i></i><span data-i18n="flow3"></span>
+  <!-- 200 m · ascent -->
+  <section class="ch ascent" id="features" data-chapter="ascent" data-depth="200" data-ink="light">
+    <div class="g asc-head" data-group>
+      <h2 data-rise data-i18n="ft_h">Everything she does today</h2>
+      <p class="lead" data-rise style="--i:1" data-i18n="ft_p">Every one of these is in the current build, and admins switch each one on or off from the command center.</p>
+    </div>
+    <div class="g" data-group>
+      <ul class="feats">
+        <li data-rise><h3 data-i18n="f1_t">Voice meetings</h3><p data-i18n="f1_d">Joins the voice room when invited, answers when called by name, and posts decisions and action items at the end.</p></li>
+        <li data-rise><h3 data-i18n="f2_t">Receipts and expenses</h3><p data-i18n="f2_d">Reads receipt photos and PDFs into a ledger, drops duplicates, and lets executives ask about spending in plain language.</p></li>
+        <li data-rise style="--i:1"><h3 data-i18n="f3_t">Task follow-up and reports</h3><p data-i18n="f3_d">Turns action items into tasks, follows up with each owner, and sends an evening report.</p></li>
+        <li data-rise style="--i:1"><h3 data-i18n="f4_t">Documents and wiki</h3><p data-i18n="f4_d">Remembers files the team shares, keeps a company wiki, and answers from documents each person is allowed to see.</p></li>
+        <li data-rise style="--i:2"><h3 data-i18n="f5_t">Briefs and catch-up</h3><p data-i18n="f5_d">A personal morning and evening brief, and “what did I miss?” after a day away.</p></li>
+        <li data-rise style="--i:2"><h3 data-i18n="f6_t">Approvals, polls and forms</h3><p data-i18n="f6_d">Expense, leave and purchase requests, votes and surveys, without leaving Discord.</p></li>
+        <li data-rise style="--i:3"><h3 data-i18n="f7_t">Search</h3><p data-i18n="f7_d">Searches every team source at once: chat, files, the wiki, tasks and meetings.</p></li>
+        <li data-rise style="--i:3"><h3 data-i18n="f8_t">Learns your company</h3><p data-i18n="f8_d">Teach her your glossary, SOPs and FAQ, with 14 ready-made industry packs.</p></li>
+      </ul>
+    </div>
+  </section>
+
+  <!-- 0 m · surface -->
+  <section class="ch surface" id="trust" data-chapter="surface" data-depth="0" data-ink="dark">
+    <div class="g sf-head" data-group>
+      <h2 data-rise data-i18n="tm_h">Your server, your memory.</h2>
+      <p class="lead" data-rise style="--i:1" data-i18n="tm_p">Built for organizations from day one. Who sees what follows your team's own Discord.</p>
+    </div>
+    <dl class="bands">
+      <div class="band" data-ink="dark"><dt class="s3" data-i18n="tm1_t">Every server is its own tenant.</dt><dd data-i18n="tm1_d">Ledger, memory, documents and settings belong to your server alone. Nothing mixes between companies.</dd></div>
+      <div class="band" data-ink="dark"><dt class="s3" data-i18n="tm2_t">She answers only from what you can read.</dt><dd data-i18n="tm2_d">Permissions follow your channels and roles, and you decide who counts as an executive.</dd></div>
+      <div class="band" data-ink="dark"><dt class="s3" data-i18n="tm3_t">The memory is your company's.</dt><dd data-i18n="tm3_d">What your team tells Dory is kept as the company's record, forever by default. An admin can choose to delete it after a set number of days.</dd></div>
+      <div class="band" data-ink="dark"><dt class="s3" data-i18n="tm4_t">Every feature has a switch.</dt><dd data-i18n="tm4_d">Admins turn each feature on or off and pick channels from the web command center.</dd></div>
+      <div class="band" data-ink="dark" id="models-line"><dt class="s3" data-i18n="tm5_t">The models are named.</dt><dd><span data-i18n="models_label">AI models running Dory right now:</span> <code id="models">__DORY_MODELS__</code></dd></div>
+    </dl>
+    <div class="g plans" id="plans" data-group>
+      <div class="ticket" data-rise>
+        <div class="t-main">
+          <div><h2 data-i18n="pl_h">Launch plan</h2><p data-i18n="pl_p">One plan while Dory launches: every feature, free, with no limits.</p></div>
+          <ul class="t-terms" aria-label="What the plan includes" data-i18n-attr="aria-label:pl_terms_aria">
+            <li data-i18n="pl_1">Every feature</li><li data-i18n="pl_2">No time limit</li><li data-i18n="pl_3">No seat limit</li><li data-i18n="pl_4">No card, no payment</li>
+          </ul>
+        </div>
+        <div class="t-stub">
+          <span class="notch n1" aria-hidden="true"></span><span class="notch n2" aria-hidden="true"></span><span class="perf" aria-hidden="true"></span>
+          <p class="price s4" data-i18n="pl_price">Free</p>
+          <a class="b b-ink" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add">Add Dory to Discord</a>
+          <a class="b b-ink" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
         </div>
       </div>
-      <div class="reveal">
-        <ul class="facts">
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm1_t"></b> <span data-i18n="tm1_d"></span></div></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm2_t"></b> <span data-i18n="tm2_d"></span></div></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm5_t"></b> <span data-i18n="tm5_d"></span></div></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm6_t"></b> <span data-i18n="tm6_d"></span></div></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm3_t"></b> <span data-i18n="tm3_d"></span></div></li>
-          <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="tm4_t"></b> <span data-i18n="tm4_d"></span></div></li>
-        </ul>
-        <p class="models" id="models-line"><span data-i18n="models_label"></span> <code id="models">__DORY_MODELS__</code></p>
-      </div>
+      <p class="fine small" data-rise style="--i:1" data-i18n="pr_note">Nothing is charged and there is no payment in the system. Team and organization plans will be announced after launch, and trial users hear first.</p>
     </div>
   </section>
 
-  <section class="sec" id="plans" data-theme="deep">
-    <div class="wrap">
-      <div class="sec-h reveal"><h2 data-i18n="pr_h"></h2><p data-i18n="pr_p"></p></div>
-      <div class="grid reveal">
-        <div class="card plan-c"><span class="pill ok" data-i18n="p_rec"></span><h3 data-i18n="pl_trial"></h3><div class="price" data-i18n="pl_trial_price"></div><p data-i18n="pl_trial_d"></p><a class="btn ghost small" href="/start" data-i18n="pl_start"></a></div>
-        <div class="card plan-c soon"><h3 data-i18n="pl_more"></h3><div class="price" data-i18n="pl_more_price"></div><p data-i18n="pl_more_d"></p></div>
-      </div>
-      <p class="fine" data-i18n="pr_note"></p>
-    </div>
-  </section>
-
-  <section class="final">
-    <div class="wrap">
-      <picture class="surface-fish reveal"><source type="image/webp" srcset="/static/dory/dory.webp"><img src="/static/dory/dory.jpg" alt="" width="160" height="160" loading="lazy"></picture>
-      <h2 data-i18n="fin_h"></h2>
-      <p data-i18n="fin_p"></p>
-      <div class="ctas">
-        <a class="btn primary" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add"></a>
-        <a class="btn ghost" href="/start" data-invite-alt data-i18n="cta_signup"></a>
-      </div>
-      <div class="entry" id="start">
-        <h3 class="t" data-i18n="en_h"></h3>
-        <p data-i18n="en_p"></p>
-        <div class="grid">
-          <a class="card go" href="/start"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><circle cx="9" cy="8" r="3.5"/><path d="M3 20a6 6 0 0 1 12 0M16 11a3 3 0 1 0 0-6M21 20a6 6 0 0 0-5-5.9"/></svg></span><h3 data-i18n="en1_t"></h3><p data-i18n="en1_d"></p><strong class="more" data-i18n="en1_b"></strong></a>
-          <a class="card go" href="/center"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M3 21h18M5 21V7l7-4 7 4v14"/><path d="M9 21v-5h6v5M9 11h.01M15 11h.01M12 11h.01"/></svg></span><h3 data-i18n="en2_t"></h3><p data-i18n="en2_d"></p><strong class="more" data-i18n="en2_b"></strong></a>
-          <a class="card go" href="/recorder"><span class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><rect x="3" y="6" width="13" height="12" rx="2"/><path d="m16 10 5-3v10l-5-3"/></svg></span><h3 data-i18n="en3_t"></h3><p data-i18n="en3_d"></p><strong class="more" data-i18n="en3_b"></strong></a>
+  <!-- 0 m · her light -->
+  <section class="ch lantern-ch" id="start" data-chapter="lantern" data-depth="0" data-ink="dark">
+    <div class="g" data-group>
+      <div class="ln-copy">
+        <h2 data-rise data-i18n="fin_h">Bring Dory to&nbsp;your team.</h2>
+        <p data-rise style="--i:1" data-i18n="fin_p">Add her to your Discord server and mention @Dory to start, or set up your organization center first. It takes about two minutes.</p>
+        <div class="acts" data-rise style="--i:2">
+          <a class="b b-ink" href="__DORY_INVITE_URL__" data-invite data-i18n="cta_add">Add Dory to Discord</a>
+          <a class="b b-ink" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
         </div>
       </div>
+      <form class="dlg" data-ui action="/start" method="get" data-rise style="--i:2" aria-labelledby="org-h">
+        <h3 id="org-h" data-i18n="org_h">Name your organization</h3>
+        <p id="org-p" data-i18n="org_p">Your company, shop or team. You can change it later.</p>
+        <label for="org" data-i18n="org_label">Organization name</label>
+        <input type="text" id="org" name="org" value="Baan Suan Coffee" required autocomplete="organization" aria-describedby="org-p" data-i18n-attr="value:org_eg">
+        <button type="submit" data-i18n="org_go">Continue</button>
+        <p class="have"><span data-i18n="org_have">Already have an account?</span> <a href="/center" data-i18n="nav_login">Sign in</a></p>
+      </form>
     </div>
   </section>
 </main>
 
-<footer class="foot">
-  <div class="wrap">
-    <span data-i18n="foot_copy"></span>
-    <a href="/privacy" data-i18n="foot_privacy"></a>
-    <a href="/terms" data-i18n="foot_terms"></a>
-    <a href="/hub" data-i18n="nav_hub"></a>
-    <a href="/recorder" data-i18n="foot_recorder"></a>
-    <button type="button" class="btn ghost small" data-motion-toggle><span></span></button>
-    <button type="button" class="btn ghost small" id="lang-other" data-i18n="lang_other"></button>
+<footer class="ft" data-ink="light">
+  <div class="g ft-top">
+    <p class="ft-note"><span data-i18n="foot_note">Dory is an AI coworker for teams on Discord.</span> <span data-i18n="foot_copy">© 2026 The Frontier Company Limited</span></p>
+    <nav class="ft-nav" aria-label="Footer" data-i18n-attr="aria-label:foot_nav_aria">
+      <a href="/center" data-i18n="nav_login">Sign in</a>
+      <a href="/hub" data-i18n="nav_hub">Command center</a>
+      <a href="/recorder" data-i18n="foot_recorder">Meeting Scribe recorder</a>
+      <a href="/privacy" data-i18n="foot_privacy">Privacy</a>
+      <a href="/terms" data-i18n="foot_terms">Terms</a>
+    </nav>
+    <p class="credits"><span data-i18n="credits_t">Deep-sea photographs courtesy of NOAA Ocean Exploration, in the public domain. Original records:</span> <a href="https://oceanexplorer.noaa.gov/multimedia/lacey-siphonophore/" data-credit="mid" data-i18n="credit_mid">Lacey siphonophore at 901 metres</a> · <a href="https://oceanexplorer.noaa.gov/multimedia/sea-cucumber-ex2606/" data-credit="sea" data-i18n="credit_sea">A sea cucumber that wears the seafloor</a></p>
+    <div class="ft-ctl">
+      <button type="button" class="b b-line b-sm" data-motion-toggle>Pause motion</button>
+      <button type="button" class="b b-line b-sm" id="lang-other" data-i18n="lang_other"></button>
+      <a href="#top" data-i18n="foot_top">Back to the surface</a>
+    </div>
   </div>
+  <p class="bigname" aria-hidden="true" data-i18n="brand">Dory</p>
 </footer>
 
 <script type="application/json" id="i18n-data">
@@ -503,169 +682,206 @@
   "brand": {"th": "ดอรี่", "en": "Dory"},
   "skip": {"th": "ข้ามไปยังเนื้อหา", "en": "Skip to content"},
   "nav_aria": {"th": "เมนูหลัก", "en": "Main navigation"},
-  "menu_aria": {"th": "เปิดเมนู", "en": "Open menu"},
   "lang_switch_aria": {"th": "เลือกภาษา", "en": "Choose language"},
   "lang_th": {"th": "ไทย", "en": "ไทย"},
   "lang_en": {"th": "EN", "en": "EN"},
+  "lang_en_full": {"th": "English", "en": "English"},
   "lang_other": {"th": "English", "en": "ไทย"},
-  "nav_features": {"th": "ความสามารถ", "en": "Features"},
-  "nav_how": {"th": "วิธีเริ่มใช้", "en": "How it works"},
-  "nav_trust": {"th": "ความปลอดภัย", "en": "Trust"},
+  "nav_features": {"th": "ดอรี่ทำอะไรได้", "en": "What she does"},
   "nav_plans": {"th": "แพ็กเกจ", "en": "Plans"},
-  "nav_login": {"th": "เข้าสู่ระบบ", "en": "Log in"},
+  "nav_login": {"th": "เข้าสู่ระบบ", "en": "Sign in"},
   "nav_hub": {"th": "ศูนย์บัญชาการ", "en": "Command center"},
+  "depth_label": {"th": "ความลึก", "en": "Depth"},
   "cta_add": {"th": "เพิ่มดอรี่เข้า Discord", "en": "Add Dory to Discord"},
   "cta_add_short": {"th": "เพิ่มเข้า Discord", "en": "Add to Discord"},
   "cta_create": {"th": "สร้างบัญชี", "en": "Create account"},
-  "cta_signup": {"th": "สร้างบัญชีด้วย Google", "en": "Create account with Google"},
-  "cta_see": {"th": "ดูดอรี่ทำงาน", "en": "See Dory at work"},
-  "meet_h": {"th": "รู้จักดอรี่", "en": "Meet Dory"},
-  "meet_p": {"th": "สิบห้าวินาทีในโลกของดอรี่ กดเล่นได้เลย วิดีโอนี้มีเสียง", "en": "Fifteen seconds in Dory's world. Press play; the video has sound."},
-  "meet_aria": {"th": "วิดีโอแนะนำดอรี่", "en": "Introduction video: Meet Dory"},
-  "meet_cap": {"th": "ดอรี่ ปลาสีขาวหลังสีฟ้าที่สวมหูฟัง ลอยอยู่ในแนวปะการังข้างข้อความ (ภาษาอังกฤษ): Meet Dory. Ask once. Dory remembers, files and follows up. ตามด้วยบันทึกการประชุม ใบเสร็จ งาน คำตอบ และ Add Dory to Discord ยาว 15 วินาที", "en": "Dory, a white fish with a blue back and a headset, hovers in a sunlit reef beside the words: Meet Dory. Ask once. Dory remembers, files and follows up. Then: Meeting notes, Receipts, Tasks, Answers, and Add Dory to Discord. 15 seconds."},
+  "cta_film": {"th": "ดูวิดีโอ 15 วินาที", "en": "Watch the 15-second film"},
   "not_discord": {"th": "ไม่ได้ใช้ Discord?", "en": "Not on Discord?"},
   "not_discord_link": {"th": "สร้างบัญชีบนเว็บ", "en": "Create an account"},
-  "free": {"th": "ใช้ฟรีช่วงเปิดตัว", "en": "Free during launch"},
+  "free": {"th": "ใช้ฟรีช่วงเปิดตัว", "en": "Free during launch."},
   "pause": {"th": "หยุดภาพเคลื่อนไหว", "en": "Pause motion"},
   "play": {"th": "เล่นภาพเคลื่อนไหว", "en": "Play motion"},
-  "eyebrow": {"th": "ผู้ช่วย AI ของทีมบน Discord", "en": "AI coworker for teams on Discord"},
-  "headline": {"th": "ถามครั้งเดียว ดอรี่จำ จัดเก็บ และตามงานให้", "en": "Ask once. Dory remembers, files and follows up."},
+  "headline": {"th": "ถามครั้งเดียว ดอรี่\u2060จำ\u2060ไว้\u2060ให้", "en": "Ask once. Dory\u00a0remembers."},
   "sub": {"th": "ดอรี่อยู่ในแชตของทีมคุณ จดประชุม ลงบัญชีใบเสร็จ ตามงาน และตอบคำถามจากเอกสารของบริษัทคุณเอง ได้ทั้งภาษาไทยและอังกฤษ", "en": "Dory lives in your team's chat. She takes meeting notes, logs receipts, follows up on tasks and answers from your company's own documents, in Thai or English."},
-  "pv_h": {"th": "ดูดอรี่ทำงานในหนึ่งวัน", "en": "Watch Dory handle a working day"},
-  "pv_p": {"th": "ตัวอย่างบทสนทนา ชื่อและตัวเลขสมมติขึ้น แต่ทุกความสามารถที่เห็นมีอยู่จริงในเวอร์ชันปัจจุบัน", "en": "Example conversations. The names and numbers are made up; every feature shown is in the current build."},
-  "pv_tabs_aria": {"th": "ตัวอย่างบทสนทนา", "en": "Example conversations"},
-  "pv_ctl_aria": {"th": "ควบคุมตัวอย่าง", "en": "Example controls"},
-  "pv_t1": {"th": "จดประชุม", "en": "Meeting notes"},
-  "pv_t2": {"th": "ใบเสร็จ", "en": "A receipt"},
-  "pv_t3": {"th": "พลาดอะไรไปบ้าง", "en": "What did I miss?"},
-  "pv_t4": {"th": "คำถามภาษาไทย", "en": "A question in Thai"},
-  "pv_replay": {"th": "เล่นอีกครั้ง", "en": "Replay"},
-  "pv_pause": {"th": "หยุด", "en": "Pause"},
-  "pv_play": {"th": "เล่นต่อ", "en": "Play"},
+  "hero_alt": {"th": "ดอรี่ ปลาสีขาวหลังสีฟ้า ตาโตสีฟ้า สวมหูฟัง", "en": "Dory, a white fish with a blue back, big blue eyes and a headset"},
+  "meet_h": {"th": "รู้จักดอรี่", "en": "Meet Dory"},
+  "meet_p": {"th": "สิบห้าวินาทีในโลกของดอรี่ กดเล่นได้เลย วิดีโอนี้มีเสียง", "en": "Fifteen seconds in Dory's world. Press play; the film has sound."},
+  "meet_aria": {"th": "วิดีโอแนะนำดอรี่", "en": "Introduction video: Meet Dory"},
+  "meet_cap": {"th": "ดอรี่ ปลาสีขาวหลังสีฟ้าที่สวมหูฟัง ลอยอยู่ในแนวปะการังข้างข้อความ (ภาษาอังกฤษ): Meet Dory. Ask once. Dory remembers, files and follows up. ตามด้วยบันทึกการประชุม ใบเสร็จ งาน คำตอบ และ Add Dory to Discord ยาว 15 วินาที", "en": "Dory, a white fish with a blue back and a headset, hovers in a sunlit reef beside the words: Meet Dory. Ask once. Dory remembers, files and follows up. Then: Meeting notes, Receipts, Tasks, Answers, and Add Dory to Discord. 15 seconds."},
+
+  "tw_say_h": {"th": "คุณพูดในแชต", "en": "You say it."},
+  "tw_catch_h": {"th": "ดอรี่รับงานไว้", "en": "She catches it."},
+  "tw_label": {"th": "ข้อความจากเบนในห้อง #finance", "en": "A message from Ben in #finance"},
+  "tw_msg": {"th": "นก ช่วยส่งใบเสร็จไตรมาส 3 ให้ฝ่ายบัญชีภายในวันศุกร์นะ", "en": "Nok, can you send the Q3 receipts to accounting by Friday?"},
+  "tw_try": {"th": "ลองตัวอย่าง", "en": "Try an example"},
+  "eg1_l": {"th": "ส่งภายใน 3 พ.ย.", "en": "Due 3 Nov"},
+  "eg1": {"th": "Ploy, please update the price list by 3 Nov", "en": "Ploy, please update the price list by 3 Nov"},
+  "eg2_l": {"th": "ไม่ระบุชื่อ", "en": "Nobody named"},
+  "eg2": {"th": "Can someone book the meeting room for tomorrow?", "en": "Can someone book the meeting room for tomorrow?"},
+  "eg3_l": {"th": "ภาษาไทย", "en": "In Thai"},
+  "eg3": {"th": "อรุณ ช่วยส่งสรุปยอดขายภายในพรุ่งนี้นะ", "en": "อรุณ ช่วยส่งสรุปยอดขายภายในพรุ่งนี้นะ"},
+  "eg4_l": {"th": "ภาษาไทย ไม่ระบุชื่อ", "en": "In Thai, nobody named"},
+  "eg4": {"th": "ใครก็ได้ช่วยจองห้องประชุมวันจันทร์หน่อย", "en": "ใครก็ได้ช่วยจองห้องประชุมวันจันทร์หน่อย"},
+  "tw_note_b": {"th": "ตัวอย่างแบบสคริปต์", "en": "A scripted example."},
+  "tw_note": {"th": "ใช้กฎง่าย ๆ ไม่กี่ข้อแทนดอรี่ ไม่ใช่ AI ตัวจริง ชื่อในตัวอย่างสมมติขึ้น ส่วนการ์ด ปุ่ม และผลของแต่ละปุ่มคือการส่งมอบงานที่ดอรี่ใช้จริง", "en": "A few simple rules stand in for Dory here, not the live AI. The names are made up; the card, its buttons and what each one does are the real task handshake."},
+  "tw_after": {"th": "แต่ละคนได้รับการ์ดในห้องส่วนตัวกับดอรี่ ไม่มีคนอื่นเห็น", "en": "Each person gets their card in a private channel with Dory. Nobody else sees it."},
   "who_dory": {"th": "ดอรี่", "en": "Dory"},
-  "st_ready": {"th": "พร้อม", "en": "Ready"},
-  "st_thinking": {"th": "กำลังคิด…", "en": "Thinking…"},
-  "pv1_u": {"th": "@Dory เข้าประชุม", "en": "@Dory join the meeting"},
-  "pv1_d1": {"th": "เข้าห้อง Stand-up แล้วค่ะ จบประชุมแล้วจะสรุปให้นะคะ", "en": "Joined Stand-up. I'll post the minutes when you finish."},
-  "pv1_d2": {"th": "<b>สรุปประชุม · Stand-up</b><br>มติ: เริ่มโปรโมชันปลายปีวันที่ 1 ธ.ค.<br>งาน: สมชาย ทำรายการราคา ส่งวันศุกร์ · มะลิ ร่างโปสเตอร์ ส่งวันพุธ<br>ส่งการ์ดให้แต่ละคนกดยืนยันงานแล้วค่ะ", "en": "<b>Minutes · Stand-up</b><br>Decision: the year-end promotion starts on 1 Dec.<br>Tasks: Somchai, price list, due Friday · Mali, poster draft, due Wednesday.<br>I've sent each owner a card to confirm their task."},
-  "pv2_file": {"th": "receipt.jpg", "en": "receipt.jpg"},
-  "pv2_u": {"th": "ค่าอุปกรณ์สำนักงานสำหรับโต๊ะใหม่", "en": "Office supplies for the new desks"},
-  "pv2_d": {"th": "บันทึกลงบัญชีแล้วค่ะ: <b>Office Mate</b> · 1,250.00 บาท · อุปกรณ์สำนักงาน · 24 ต.ค. ถ้ามีคนส่งใบเดิมซ้ำ ดอรี่จะข้ามให้ค่ะ", "en": "Saved to the ledger: <b>Office Mate</b> · 1,250.00 THB · Office supplies · 24 Oct. If someone sends the same receipt again, I'll skip it."},
-  "pv3_u": {"th": "ตั้งแต่วันศุกร์ฉันพลาดอะไรไปบ้าง", "en": "What did I miss since Friday?"},
-  "pv3_d": {"th": "ตั้งแต่วันศุกร์มี 3 เรื่องค่ะ<ol><li>ประชุมงบประมาณย้ายไปวันพฤหัสบดี 14:00</li><li>สมชายมอบงาน “สไลด์ไตรมาส 4” ให้คุณ กำหนดส่งวันพุธ</li><li>มีคำขอเบิกค่าใช้จ่าย 2 รายการรอคุณอนุมัติ</li></ol>", "en": "Three things since Friday:<ol><li>The budget meeting moved to Thursday at 14:00.</li><li>Somchai assigned you “Q4 deck”, due Wednesday.</li><li>Two expense requests are waiting for your approval.</li></ol>"},
-  "pv4_u": {"th": "เดือนนี้ค่าการตลาดไปเท่าไรแล้ว", "en": "เดือนนี้ค่าการตลาดไปเท่าไรแล้ว"},
-  "pv4_d": {"th": "เดือนตุลาคมใช้ไปกับการตลาด 18,400 บาท จากใบเสร็จ 6 ใบค่ะ ก้อนใหญ่สุดคือค่าโฆษณาออนไลน์ 9,800 บาท", "en": "เดือนตุลาคมใช้ไปกับการตลาด 18,400 บาท จากใบเสร็จ 6 ใบค่ะ ก้อนใหญ่สุดคือค่าโฆษณาออนไลน์ 9,800 บาท"},
-  "pv4_note": {"th": "ดอรี่ตอบเป็นภาษาหลักที่บริษัทเลือก ทีมในตัวอย่างนี้เลือกภาษาไทย", "en": "“How much have we spent on marketing this month?” Dory replies in the language the company chose; this example team chose Thai."},
-  "ft_h": {"th": "ความสามารถที่ใช้ได้จริงวันนี้", "en": "What Dory can do today"},
-  "ft_p": {"th": "ทุกข้อด้านล่างมีอยู่ในดอรี่เวอร์ชันปัจจุบัน และผู้ดูแลเปิดปิดได้ทีละข้อจากศูนย์บัญชาการ", "en": "Everything below is in the current build, and admins can switch each one on or off from the command center."},
+  "card_where": {"th": "ในห้องส่วนตัวของ{who}กับดอรี่", "en": "in {who}'s private Dory channel"},
+  "card_where_ben": {"th": "ในห้องส่วนตัวของเบนกับดอรี่", "en": "in Ben's private Dory channel"},
+  "card_new": {"th": "งานใหม่สำหรับ{who}", "en": "New task for {who}"},
+  "card_q": {"th": "คำถามถึงเบน: ใครรับงานนี้", "en": "A question for Ben: who takes this?"},
+  "card_due": {"th": "กำหนดส่ง", "en": "Due"},
+  "card_from": {"th": "จาก", "en": "From"},
+  "card_from_v": {"th": "เบนในห้อง #finance", "en": "Ben in #finance"},
+  "card_owner": {"th": "ผู้รับงาน", "en": "Owner"},
+  "card_owner_v": {"th": "ยังไม่มีใครถูกระบุ", "en": "Nobody named"},
+  "card_nodue": {"th": "ยังไม่มีกำหนด ดอรี่จะถามเมื่อครบสามวันทำการ", "en": "No date yet; Dory asks after three working days"},
+  "card_empty_k": {"th": "ยังไม่พบงาน", "en": "Nothing caught yet"},
+  "card_empty_t": {"th": "ลองพิมพ์ข้อความที่มอบงานให้ใครสักคน", "en": "Type a message that hands someone a piece of work."},
+  "b_ok": {"th": "ยอมรับ", "en": "Accept"},
+  "b_edit": {"th": "แก้ไข", "en": "Edit"},
+  "b_no": {"th": "ปฏิเสธ", "en": "Decline"},
+  "b_mine": {"th": "งานของฉัน", "en": "It's mine"},
+  "b_other": {"th": "เป็นของคนอื่น", "en": "Someone else"},
+  "b_none": {"th": "ไม่ใช่งาน", "en": "Not a task"},
+  "say_ok": {"th": "ยอมรับแล้ว เบนได้รับข้อความสั้น ๆ ว่า{who}รับงานนี้", "en": "Accepted. Ben gets one line: {who} accepted it."},
+  "say_edit": {"th": "ใน Discord ปุ่มแก้ไขจะเปิดฟอร์มให้แก้ชื่องาน วันส่ง และผู้รับงาน ในตัวอย่างนี้ลองแก้ข้อความ แล้วการ์ดจะเปลี่ยนตาม", "en": "In Discord, Edit opens a form for the title, date and owner. Here, change the message and the card follows."},
+  "say_no": {"th": "ปฏิเสธแล้ว ดอรี่แจ้งเบน และงานนี้จะยังไม่มีผู้รับ", "en": "Declined. Ben is told, and the task is left without an owner."},
+  "say_mine": {"th": "เบนรับงานนี้ไว้เอง และงานอยู่ในรายการของเขาแล้ว", "en": "Ben keeps the task. It is on his list now."},
+  "say_other": {"th": "ดอรี่ถามเบนว่าใครจะรับงาน แล้วส่งการ์ดให้คนนั้น", "en": "Dory asks Ben who takes it, then sends that person the card."},
+  "say_none": {"th": "ปิดไว้ว่าไม่ใช่งาน ไม่มีการมอบหมายให้ใคร", "en": "Closed as not a task. Nothing is assigned."},
+  "n_nok": {"th": "นก", "en": "Nok"},
+  "n_ploy": {"th": "พลอย", "en": "Ploy"},
+  "n_arun": {"th": "อรุณ", "en": "Arun"},
+  "n_mali": {"th": "มะลิ", "en": "Mali"},
+  "n_mai": {"th": "มาย", "en": "Mai"},
+
+  "mid_h": {"th": "ดอรี่ตามงานให้", "en": "She follows up."},
+  "mid_p": {"th": "ทุกงานที่ดอรี่ได้ยินเดินตามนาฬิกาเดียวกัน และนี่คือเวลาจริงของมัน ไม่ต้องมีใครคอยจำว่าต้องตามงาน", "en": "Every task she hears runs on the same clock, and these are its real timings. Nobody has to remember to chase."},
+  "bar_aria": {"th": "ขั้นตอนการตามงานของดอรี่ ตามสัดส่วนเวลาจริง", "en": "How Dory follows up a task, drawn to scale"},
+  "s1_d": {"th": "ไม่กี่วินาที", "en": "Seconds"},
+  "s1_w": {"th": "แรกสุด ดอรี่ได้ยินงานในแชต แล้วส่งการ์ดให้ผู้รับงาน", "en": "First, she hears the task in chat and sends its owner a card."},
+  "s2_d": {"th": "หนึ่งวัน", "en": "A day"},
+  "s2_w": {"th": "ถ้าไม่มีใครตอบการ์ด ดอรี่เตือนหนึ่งครั้งเมื่อครบ 24 ชั่วโมง", "en": "Then, if nobody answers the card, she nudges once after 24 hours."},
+  "s3_d": {"th": "สามวันทำการ", "en": "Three working days"},
+  "s3_w": {"th": "งานที่ไม่มีกำหนดส่ง ดอรี่จะถามหนึ่งครั้งว่าจะส่งเมื่อไร", "en": "Next, a task with no deadline gets one question: when is it due?"},
+  "s4_d": {"th": "ทุกเย็น", "en": "Every evening"},
+  "s4_w": {"th": "สุดท้าย รายงานตอนเย็นสรุปงานที่ยังค้างอยู่", "en": "Last, the evening report lists what is still open."},
+  "ph_mid_alt": {"th": "ไซโฟโนฟอร์ลำตัวยาวโปร่งแสงลอยอยู่กลางน้ำสีดำ ด้านซ้ายเป็นส่วนว่ายน้ำใสเป็นปล้อง ๆ ต่อไปยังกลุ่มหนวดสีซีดฟูคล้ายขนนกทางด้านขวา", "en": "A long, see-through siphonophore drifts across black water: a clear, ribbed swimming stem on the left leads to a mass of pale, feathery tentacles on the right."},
+  "ph_mid_cap": {"th": "ไซโฟโนฟอร์ชนิด Erenna laciniata สัตว์ที่เป็นอาณานิคมของสัตว์ตัวเล็ก ๆ จำนวนมากซึ่งใช้ชีวิตร่วมกันเป็นหนึ่งเดียว ถ่ายที่ความลึก 901 เมตร ระหว่างภารกิจสำรวจปาปาฮาเนามอกูอาเคอาของ NOAA ในหมู่เกาะฮาวายตะวันตกเฉียงเหนือ เมื่อเมษายน 2568 ที่ความลึกระดับนี้แทบไม่มีแสงอาทิตย์ส่องถึง นอกจากไฟของหุ่นยนต์สำรวจแล้ว แสงเดียวที่มีคือแสงที่สัตว์สร้างขึ้นเอง", "en": "A lacey siphonophore (Erenna laciniata), a colony of many small animals living as one, photographed at 901 metres during NOAA's Papahānaumokuākea expedition in the northwestern Hawaiian Islands, April 2025. This deep, sunlight has all but run out: apart from the robot's lamps, the only light is the light animals make."},
+  "ph_mid_credit": {"th": "Image courtesy of NOAA Ocean Exploration, 2025 Beyond the Blue. สาธารณสมบัติ", "en": "Image courtesy of NOAA Ocean Exploration, 2025 Beyond the Blue. Public domain."},
+  "ph_sea_credit": {"th": "Image courtesy of NOAA Ocean Exploration, 2026 American Samoa ROV + Mapping Exploration. สาธารณสมบัติ", "en": "Image courtesy of NOAA Ocean Exploration, 2026 American Samoa ROV + Mapping Exploration. Public domain."},
+  "ph_record": {"th": "ดูต้นฉบับ", "en": "Original record"},
+
+  "sea_h": {"th": "ดอรี่จำได้", "en": "She remembers."},
+  "sea_p": {"th": "ถามว่าทีมตัดสินใจอะไรไว้ ดอรี่ตอบจากวันที่คุยกันจริง พร้อมบอกแหล่งที่มา", "en": "Ask what the team decided and she answers from the day it was said, with her sources."},
+  "ask_h": {"th": "ลองถามในฐานะคนในทีม", "en": "Ask as anyone on the team."},
+  "ask_p": {"th": "ดอรี่ใช้ความจำของห้องไหนก็ต่อเมื่อคนถาม และทุกคนที่อ่านคำตอบ อ่านห้องนั้นได้", "en": "A channel's memory is used only when the person asking, and everyone reading the answer, can read that channel."},
+  "ask_legend": {"th": "ถามในฐานะ", "en": "Ask as"},
+  "r_owner": {"th": "เจ้าของ", "en": "Owner"},
+  "r_manager": {"th": "ผู้จัดการ", "en": "Manager"},
+  "r_staff": {"th": "พนักงาน", "en": "Staff"},
+  "lang_h": {"th": "ดอรี่ตอบเป็นภาษาของบริษัท", "en": "She answers in your company's language."},
+  "lang_p": {"th": "บริษัทเลือกภาษาหลักที่ดอรี่ใช้ และแต่ละคนเพิ่มภาษาส่วนตัวได้", "en": "The company picks one language for everything Dory says, and each person can add their own."},
+  "ans_legend": {"th": "ตอบเป็นภาษา", "en": "Answer in"},
+  "sea_note": {"th": "ตัวอย่างแบบสคริปต์ ชื่อสมมติขึ้น แต่กฎว่าใครอ่านอะไรได้คือกฎจริงของดอรี่", "en": "A scripted example with made-up names. The rule for who may read what is the real one."},
+  "ans_who": {"th": "{who} · {role}", "en": "{who} · {role}"},
+  "ans_q": {"th": "เราตัดสินใจเรื่องงบไตรมาส 3 ไว้ว่ายังไง", "en": "What did we decide about the Q3 budget?"},
+  "ans_a": {"th": "วันที่ 16 ต.ค. ทีมตกลงจำกัดงบเดินทางไตรมาส 3 ไว้ที่ 40,000 บาท และย้ายงบที่เหลือไปใช้กับแคมเปญเปิดตัวค่ะ", "en": "On 16 Oct the team agreed to cap Q3 travel at ฿40,000 and move the rest to the launch campaign."},
+  "ans_x": {"th": "และในห้อง #management วันที่ 15 ต.ค. ผู้บริหารกันงบ 15,000 บาทไว้สำหรับบูธงานแสดงสินค้าค่ะ", "en": "In #management on 15 Oct, the owners also set aside ฿15,000 for the trade-fair booth."},
+  "ans_src": {"th": "จาก #finance 14 ต.ค. · บันทึกประชุมประจำสัปดาห์ 16 ต.ค.", "en": "From #finance, 14 Oct · Weekly meeting minutes, 16 Oct"},
+  "ans_src_x": {"th": " · #management 15 ต.ค.", "en": " · #management, 15 Oct"},
+  "ans_hidden": {"th": "ยังมีอีกหนึ่งแหล่งในห้อง #management แต่{who}อ่านห้องนั้นไม่ได้ ดอรี่จึงไม่นำมาตอบ", "en": "One more source is in #management. {who} can't read that channel, so it is left out."},
+  "ans_all": {"th": "{who}อ่านได้ทุกแหล่งที่ใช้ตอบครั้งนี้", "en": "{who} can read every source used here."},
+  "strata_h": {"th": "ทุกวันตกตะกอนเป็นความจำ", "en": "Every day settles into memory."},
+  "strata_p": {"th": "บทสนทนาแต่ละวันกลายเป็นสรุปสั้น ๆ ที่ดอรี่ค้นได้ และเก็บไว้เป็นข้อมูลของบริษัทตลอดไปโดยค่าเริ่มต้น", "en": "Each day's talk becomes a short summary she can search, kept as your company's own record, forever by default."},
+  "strata_aria": {"th": "ตัวอย่างสรุปรายวัน", "en": "Example day summaries"},
+  "d1_day": {"th": "พฤ. 16 ต.ค.", "en": "Thu 16 Oct"},
+  "d1_where": {"th": "ประชุมประจำสัปดาห์", "en": "Weekly meeting"},
+  "d1_what": {"th": "2 มติ 4 งาน", "en": "2 decisions, 4 tasks"},
+  "d2_day": {"th": "พ. 15 ต.ค.", "en": "Wed 15 Oct"},
+  "d2_where": {"th": "#finance", "en": "#finance"},
+  "d2_what": {"th": "บันทึกใบเสร็จ 5 ใบ", "en": "5 receipts filed"},
+  "d3_day": {"th": "อ. 14 ต.ค.", "en": "Tue 14 Oct"},
+  "d3_where": {"th": "#finance", "en": "#finance"},
+  "d3_what": {"th": "1 มติ", "en": "1 decision"},
+  "d4_day": {"th": "จ. 13 ต.ค.", "en": "Mon 13 Oct"},
+  "d4_where": {"th": "#general", "en": "#general"},
+  "d4_what": {"th": "มอบหมาย 3 งาน", "en": "3 tasks handed out"},
+  "d5_day": {"th": "ศ. 10 ต.ค.", "en": "Fri 10 Oct"},
+  "d5_where": {"th": "#sales", "en": "#sales"},
+  "d5_what": {"th": "ตอบคำถาม 2 ข้อ", "en": "2 questions answered"},
+  "ph_sea_alt": {"th": "ปลิงทะเลสีเทาอ่อนนอนอยู่บนพื้นตะกอนทรายเรียบ ลำตัวยาวมีเปลือกและเศษเปลือกชิ้นเล็ก ๆ ติดอยู่ทั่ว และมีหนามสั้น ๆ เรียงอยู่ตามขอบด้านล่าง", "en": "A pale grey sea cucumber lies on smooth, sandy sediment. Its long body is studded with small shells and shell fragments, and short spines fringe its underside."},
+  "ph_sea_cap": {"th": "ปลิงทะเลที่มีเศษเปลือกชิ้นเล็ก ๆ และฟอแรม (สิ่งมีชีวิตเซลล์เดียวขนาดจิ๋วที่มีเปลือก) ติดอยู่ทั่วตัว บนลาดตะกอนด้านเหนือของเกาะตูตูอีลา อเมริกันซามัว ที่ความลึก 1,290-1,390 เมตร เมื่อสิงหาคม 2569 นักวิทยาศาสตร์ยังไม่รู้ว่าทำไมมันจึงพาชิ้นส่วนของพื้นทะเลติดตัวไปด้วย", "en": "A sea cucumber covered in small pieces of shell and forams (tiny single-celled organisms with shells), on the sedimented northern flank of Tutuila, American Samoa, 1,290-1,390 metres down, August 2026. Scientists are not sure why it carries pieces of the seafloor on its body."},
+
+  "ft_h": {"th": "ทุกอย่างที่ดอรี่ทำได้วันนี้", "en": "Everything she does today"},
+  "ft_p": {"th": "ทุกข้อด้านล่างมีอยู่ในดอรี่เวอร์ชันปัจจุบัน และผู้ดูแลเปิดปิดได้ทีละข้อจากศูนย์บัญชาการ", "en": "Every one of these is in the current build, and admins switch each one on or off from the command center."},
   "f1_t": {"th": "ประชุมเสียง", "en": "Voice meetings"},
-  "f1_d": {"th": "เข้าห้องเสียงเมื่อถูกเชิญ ถอดเสียงทีละช่วง ตอบเมื่อถูกเรียกชื่อ และสรุปมติพร้อม action item ตอนจบ", "en": "Joins the voice room when invited, transcribes as it goes, answers when called by name, and posts decisions and action items at the end."},
+  "f1_d": {"th": "เข้าห้องเสียงเมื่อถูกเชิญ ตอบเมื่อถูกเรียกชื่อ และสรุปมติพร้อม action item ตอนจบ", "en": "Joins the voice room when invited, answers when called by name, and posts decisions and action items at the end."},
   "f2_t": {"th": "ใบเสร็จและค่าใช้จ่าย", "en": "Receipts and expenses"},
   "f2_d": {"th": "อ่านรูปใบเสร็จและ PDF ลงบัญชี ตัดใบซ้ำ และให้ผู้บริหารถามยอดค่าใช้จ่ายเป็นภาษาคน", "en": "Reads receipt photos and PDFs into a ledger, drops duplicates, and lets executives ask about spending in plain language."},
   "f3_t": {"th": "ติดตามงานและรายงาน", "en": "Task follow-up and reports"},
-  "f3_d": {"th": "เปลี่ยน action item เป็นงาน ตามความคืบหน้าทาง DM และส่งรายงานตอนเย็นให้ผู้บริหาร", "en": "Turns action items into tasks, follows up by DM, and sends executives an evening report."},
+  "f3_d": {"th": "เปลี่ยน action item เป็นงาน ตามกับผู้รับงานแต่ละคน และส่งรายงานตอนเย็น", "en": "Turns action items into tasks, follows up with each owner, and sends an evening report."},
   "f4_t": {"th": "เอกสารและ wiki", "en": "Documents and wiki"},
   "f4_d": {"th": "จำไฟล์ที่ทีมส่ง สร้างหน้า wiki ของบริษัท และตอบจากเอกสารตามสิทธิ์ที่แต่ละคนเห็นได้", "en": "Remembers files the team shares, keeps a company wiki, and answers from documents each person is allowed to see."},
   "f5_t": {"th": "สรุปเช้าเย็นและตามทัน", "en": "Briefs and catch-up"},
-  "f5_d": {"th": "สรุปประจำวันส่วนตัวทาง DM และ \"พลาดอะไรไปบ้าง\" หลังหายไปทั้งวัน", "en": "A personal morning and evening brief by DM, and \"what did I miss?\" after a day away."},
+  "f5_d": {"th": "สรุปประจำวันส่วนตัวตอนเช้าและเย็น และ “พลาดอะไรไปบ้าง” หลังหายไปทั้งวัน", "en": "A personal morning and evening brief, and “what did I miss?” after a day away."},
   "f6_t": {"th": "ขออนุมัติ โพลล์ และฟอร์ม", "en": "Approvals, polls and forms"},
-  "f6_d": {"th": "ขอเบิก ขอลา ขอซื้อ โหวต และแบบสอบถามทาง DM โดยไม่ต้องออกจาก Discord", "en": "Expense, leave and purchase requests, votes and DM surveys, all without leaving Discord."},
-  "f7_t": {"th": "ค้นหาและวิจัย", "en": "Search and research"},
-  "f7_d": {"th": "ค้นทุกแหล่งของทีมพร้อมกัน ค้นเว็บพร้อมอ้างอิง และทำรายงานวิจัยเชิงลึกเป็น PDF", "en": "Searches every team source at once, searches the web with citations, and writes deep-research reports as PDF."},
+  "f6_d": {"th": "ขอเบิก ขอลา ขอซื้อ โหวต และแบบสอบถาม โดยไม่ต้องออกจาก Discord", "en": "Expense, leave and purchase requests, votes and surveys, without leaving Discord."},
+  "f7_t": {"th": "ค้นหา", "en": "Search"},
+  "f7_d": {"th": "ค้นทุกแหล่งของทีมพร้อมกัน ทั้งแชต ไฟล์ wiki งาน และการประชุม", "en": "Searches every team source at once: chat, files, the wiki, tasks and meetings."},
   "f8_t": {"th": "เรียนรู้บริษัทของคุณ", "en": "Learns your company"},
-  "f8_d": {"th": "สอนศัพท์เฉพาะ SOP และ FAQ ให้ดอรี่ พร้อม domain pack สำเร็จรูป 14 สาขา", "en": "Teach Dory your glossary, SOPs and FAQ, with 14 ready-made industry packs."},
-  "ex_h": {"th": "เริ่มใช้ได้ใน 3 ขั้นตอน", "en": "Up and running in three steps"},
-  "ex_p": {"th": "ดอรี่ทำงานอยู่ใน Discord ของทีมคุณ ไม่ต้องติดตั้งแอปใหม่ ไม่ต้องย้ายข้อมูล", "en": "Dory lives inside your team's Discord. No new app to install, no data to migrate."},
-  "ex1_t": {"th": "เพิ่มดอรี่เข้าเซิร์ฟเวอร์", "en": "Add Dory to your server"},
-  "ex1_d": {"th": "กดปุ่มเชิญแล้วเลือกเซิร์ฟเวอร์ ดอรี่จะสร้างห้องคุยส่วนตัวให้สมาชิกเอง", "en": "Use the invite button and pick a server. Dory creates a private chat channel for each member."},
-  "ex2_t": {"th": "พิมพ์ /ตั้งค่า หรือเรียกชื่อ", "en": "Type /setup or just say her name"},
-  "ex2_d": {"th": "พิมพ์ <code>/ตั้งค่า</code> เพื่อเปิดศูนย์บัญชาการ หรือพิมพ์ <code>@Dory</code> แล้วถามได้เลย", "en": "Type <code>/setup</code> to open the command center, or mention <code>@Dory</code> and ask away."},
-  "ex3_t": {"th": "ปล่อยให้ดอรี่ทำงาน", "en": "Let Dory work"},
-  "ex3_d": {"th": "ส่งใบเสร็จ เชิญเข้าประชุม หรือถามเรื่องค่าใช้จ่าย ดอรี่ตอบเป็นภาษาหลักของบริษัท", "en": "Send a receipt, invite her to a meeting, or ask about expenses. Dory answers in your company's language."},
-  "pf_h": {"th": "ดอรี่อยู่ตรงไหนบ้าง", "en": "Where Dory works"},
-  "pf_p": {"th": "เราให้บริการสองส่วน: บอตดอรี่ในแพลตฟอร์มที่ทีมคุยกันอยู่แล้ว และแพลตฟอร์มเว็บสำหรับดูแลองค์กร", "en": "Two parts: the Dory bot inside the platforms your team already talks on, and a web platform to run the organization."},
-  "pf_now": {"th": "ใช้ได้แล้ว", "en": "Available now"},
-  "pf_org": {"th": "สำหรับองค์กร", "en": "For organizations"},
-  "pf1_t": {"th": "บอตใน Discord", "en": "Bot in Discord"},
-  "pf1_d": {"th": "เพิ่มเข้าเซิร์ฟเวอร์แล้วใช้ได้ทันที ใบเสร็จ ประชุมเสียง ตามงาน ถามตอบ ทุกอย่างอยู่ในห้องที่ทีมใช้อยู่", "en": "Add it to a server and it works at once: receipts, voice meetings, follow-ups and Q&A, all in the channels your team already uses."},
-  "pf2_t": {"th": "แพลตฟอร์มเว็บ", "en": "Web platform"},
-  "pf2_d": {"th": "ศูนย์ควบคุมองค์กร: สมาชิก คลังเอกสาร งาน แพ็กเกจ และคุยกับดอรี่จากเบราว์เซอร์ ล็อกอินด้วย Google", "en": "The organization center: members, document library, tasks, plan, and chat with Dory from the browser. Sign in with Google."},
-  "pf3_t": {"th": "Google Meet", "en": "Google Meet"},
-  "pf3_d": {"th": "เครื่องอัดประชุมเปิดคู่กับ Meet ถอดเสียงไทยสด สรุปมติและงานส่งเข้า Discord", "en": "A recorder that runs beside Meet: live Thai transcript, then decisions and action items posted to Discord."},
-  "pf4_t": {"th": "Slack และ ClickUp", "en": "Slack and ClickUp"},
-  "pf4_d": {"th": "เชื่อมต่อผ่านศูนย์ควบคุมองค์กร เปิดให้ตามคำขอ ติดต่อเราเพื่อเปิดใช้", "en": "Connected through the organization center, switched on by request. Contact us to enable it."},
-  "ro_h": {"th": "แต่ละตำแหน่งถามดอรี่อย่างไร", "en": "What each role asks Dory"},
-  "ro_p": {"th": "ตัวอย่างคำถาม แต่ละคนได้คำตอบจากข้อมูลที่ตัวเองมีสิทธิ์เห็นเท่านั้น", "en": "Example asks. Each person gets answers only from what they are allowed to see."},
-  "ro_tabs_aria": {"th": "ตำแหน่ง", "en": "Roles"},
-  "ro_t1": {"th": "เจ้าของกิจการ", "en": "Owner"},
-  "ro_t2": {"th": "ผู้จัดการ", "en": "Manager"},
-  "ro_t3": {"th": "สมาชิกทีม", "en": "Team member"},
-  "ro_t4": {"th": "การเงิน", "en": "Finance"},
-  "ro_ask": {"th": "ถามว่า", "en": "They ask"},
-  "ro_get": {"th": "ดอรี่ตอบด้วย", "en": "Dory returns"},
-  "ro1_q": {"th": "สรุปค่าใช้จ่ายสัปดาห์นี้แยกตามหมวดให้หน่อย", "en": "Summarise this week's spending by category."},
-  "ro1_a": {"th": "ตารางยอดตามหมวด ร้านที่จ่ายมากที่สุด และสไลด์สรุปถ้าคุณขอ", "en": "A table by category, the biggest vendors, and a slide deck if you ask for one."},
-  "ro2_q": {"th": "โปรเจกต์เปิดตัวมีงานไหนเลยกำหนดบ้าง", "en": "What's overdue on the launch project?"},
-  "ro2_a": {"th": "งานที่เลยกำหนดพร้อมผู้รับผิดชอบ และภาพความคืบหน้าเทียบกับเวลาที่เหลือ", "en": "Overdue tasks with their owners, and a picture of progress against the time left."},
-  "ro3_q": {"th": "เตือนฉันทุกวันจันทร์ 9 โมงให้ส่งรายงานยอดขาย", "en": "Remind me every Monday at 9 to send the sales report."},
-  "ro3_a": {"th": "การเตือนซ้ำทุกสัปดาห์ ส่งเข้าห้องส่วนตัวของคุณกับดอรี่", "en": "A weekly reminder, delivered to your private Dory channel."},
-  "ro4_q": {"th": "รวมยอดในไฟล์ Excel นี้ตามผู้ขายให้หน่อย", "en": "Total this spreadsheet by vendor."},
-  "ro4_a": {"th": "ตารางยอดตามผู้ขายและกราฟ จากไฟล์ที่คุณแนบมา", "en": "A table by vendor and a chart, worked out from the file you attached."},
-  "tm_h": {"th": "สร้างมาเพื่อองค์กรตั้งแต่วันแรก", "en": "Built for organizations from day one"},
-  "tm_p": {"th": "เซิร์ฟเวอร์แต่ละแห่งคือผู้เช่าแยกกัน ข้อมูลไม่ปะปน และสิทธิ์การเห็นข้อมูลเดินตามโครงสร้างของทีมบน Discord", "en": "Every server is its own tenant. Data never mixes, and who sees what follows your team's Discord structure."},
-  "flow_aria": {"th": "ดอรี่ตอบจากห้องแชตให้เฉพาะคนที่อ่านห้องนั้นได้", "en": "Dory answers from a channel only for people who can read it"},
-  "flow1": {"th": "เซิร์ฟเวอร์ของคุณ", "en": "Your server"},
-  "flow2": {"th": "ห้องแชตในเซิร์ฟเวอร์", "en": "Its channels"},
-  "flow3": {"th": "เฉพาะคนที่อ่านห้องนั้นได้", "en": "Only people who can read them"},
-  "tm1_t": {"th": "แยกข้อมูลต่อเซิร์ฟเวอร์", "en": "Isolated per server."},
-  "tm1_d": {"th": "บัญชี ความจำ เอกสาร และการตั้งค่าทั้งหมดผูกกับเซิร์ฟเวอร์ของคุณเท่านั้น", "en": "Ledger, memory, documents and settings belong to your server alone."},
-  "tm2_t": {"th": "สิทธิ์ตามห้องและตำแหน่ง", "en": "Permissions follow channels and roles."},
-  "tm2_d": {"th": "ดอรี่ตอบจากข้อมูลที่ผู้ถามเห็นได้อยู่แล้วเท่านั้น และผู้บริหารกำหนดได้ว่าใครคือผู้บริหาร", "en": "Dory only answers from what the asker can already read, and you decide who counts as an executive."},
-  "tm3_t": {"th": "ภาษาหลักของบริษัท และภาษาของคุณเอง", "en": "One company language, plus your own."},
-  "tm3_d": {"th": "บริษัทเลือกภาษาที่ดอรี่ใช้ และแต่ละคนเพิ่มภาษาส่วนตัวได้", "en": "The company picks the language Dory uses, and each person can add a personal language."},
-  "tm4_t": {"th": "ศูนย์บัญชาการบนเว็บ", "en": "A web command center."},
-  "tm4_d": {"th": "ล็อกอินด้วย Google เพื่อเปิดปิดความสามารถ เลือกห้อง และดูกิจกรรมล่าสุดของแต่ละเซิร์ฟเวอร์", "en": "Sign in with Google to switch features, pick channels and review each server's recent activity."},
-  "tm5_t": {"th": "ทุกความสามารถมีสวิตช์", "en": "Every feature has a switch."},
-  "tm5_d": {"th": "ผู้ดูแลเปิดหรือปิดแต่ละความสามารถได้จากศูนย์บัญชาการ", "en": "Admins turn each feature on or off from the command center."},
-  "tm6_t": {"th": "บริษัทเป็นผู้กำหนดว่าจะเก็บอะไร", "en": "Your company decides what is kept."},
-  "tm6_d": {"th": "ความจำของทีมเก็บไว้เป็นข้อมูลของบริษัทโดยค่าเริ่มต้น และผู้ดูแลตั้งให้ลบเมื่อครบจำนวนวันที่กำหนดได้", "en": "Team memory is kept as the company's record by default, and an admin can set it to delete after a chosen number of days."},
+  "f8_d": {"th": "สอนศัพท์เฉพาะ SOP และ FAQ ให้ดอรี่ พร้อม domain pack สำเร็จรูป 14 สาขา", "en": "Teach her your glossary, SOPs and FAQ, with 14 ready-made industry packs."},
+
+  "tm_h": {"th": "เซิร์ฟเวอร์ของคุณ ความ\u2060จำ\u2060ของ\u2060คุณ", "en": "Your server, your memory."},
+  "tm_p": {"th": "สร้างมาเพื่อองค์กรตั้งแต่วันแรก ใครเห็นอะไรเป็นไปตามโครงสร้าง Discord ของทีมคุณเอง", "en": "Built for organizations from day one. Who sees what follows your team's own Discord."},
+  "tm1_t": {"th": "แต่ละเซิร์ฟเวอร์แยกข้อมูลกันเด็ดขาด", "en": "Every server is its own tenant."},
+  "tm1_d": {"th": "บัญชี ความจำ เอกสาร และการตั้งค่า ผูกกับเซิร์ฟเวอร์ของคุณเท่านั้น ข้อมูลไม่ปะปนข้ามบริษัท", "en": "Ledger, memory, documents and settings belong to your server alone. Nothing mixes between companies."},
+  "tm2_t": {"th": "ดอรี่ตอบจากสิ่งที่คุณอ่านได้เท่านั้น", "en": "She answers only from what you can read."},
+  "tm2_d": {"th": "สิทธิ์เป็นไปตามห้องและตำแหน่งใน Discord และคุณกำหนดได้ว่าใครคือผู้บริหาร", "en": "Permissions follow your channels and roles, and you decide who counts as an executive."},
+  "tm3_t": {"th": "ความจำเป็นของบริษัทคุณ", "en": "The memory is your company's."},
+  "tm3_d": {"th": "สิ่งที่ทีมเล่าให้ดอรี่ฟังเก็บเป็นข้อมูลของบริษัทตลอดไปโดยค่าเริ่มต้น และผู้ดูแลตั้งให้ลบเมื่อครบจำนวนวันที่กำหนดได้", "en": "What your team tells Dory is kept as the company's record, forever by default. An admin can choose to delete it after a set number of days."},
+  "tm4_t": {"th": "ทุกความสามารถมีสวิตช์", "en": "Every feature has a switch."},
+  "tm4_d": {"th": "ผู้ดูแลเปิดปิดแต่ละความสามารถและเลือกห้องได้จากศูนย์บัญชาการบนเว็บ", "en": "Admins turn each feature on or off and pick channels from the web command center."},
+  "tm5_t": {"th": "บอกชัดว่าใช้โมเดลอะไร", "en": "The models are named."},
   "models_label": {"th": "โมเดล AI ที่ดอรี่ใช้อยู่ตอนนี้:", "en": "AI models running Dory right now:"},
-  "pr_h": {"th": "แพ็กเกจ", "en": "Plans"},
-  "pr_p": {"th": "ช่วงเปิดตัวมีแพ็กเกจเดียว ใช้ฟรีทุกความสามารถโดยไม่มีลิมิต", "en": "During launch there is one plan: every feature, free, with no limits."},
-  "p_rec": {"th": "แนะนำ", "en": "Recommended"},
-  "pl_trial": {"th": "ทดลองใช้งาน", "en": "Trial"},
-  "pl_trial_price": {"th": "ฟรี ไม่จำกัดเวลา", "en": "Free, no time limit"},
-  "pl_trial_d": {"th": "ทุกความสามารถ ไม่จำกัดจำนวนคน ไม่ต้องใช้บัตรเครดิต ตลอดช่วงเปิดตัว", "en": "Every feature, unlimited seats, no credit card, for the whole launch period."},
-  "pl_more": {"th": "แพ็กเกจอื่น", "en": "More plans"},
-  "pl_more_price": {"th": "เร็ว ๆ นี้", "en": "Coming soon"},
-  "pl_more_d": {"th": "แพ็กเกจสำหรับทีมและองค์กรจะประกาศหลังช่วงเปิดตัว ผู้ใช้ช่วงทดลองจะได้รับแจ้งก่อน", "en": "Team and organization plans will be announced after launch. Trial users hear first."},
-  "pl_start": {"th": "เริ่มทดลองใช้", "en": "Start the trial"},
-  "pr_note": {"th": "ยังไม่มีการเก็บค่าบริการและไม่มีการชำระเงินในระบบ การสมัครไม่มีค่าใช้จ่ายใด ๆ", "en": "Nothing is charged and there is no payment in the system. Signing up is completely free."},
-  "fin_h": {"th": "พาดอรี่ไปช่วยทีมของคุณ", "en": "Bring Dory to your team."},
-  "fin_p": {"th": "เพิ่มดอรี่เข้าเซิร์ฟเวอร์ แล้วพิมพ์ @Dory เพื่อเริ่มคุยได้ทันที", "en": "Add her to your server, then mention @Dory to start right away."},
-  "en_h": {"th": "เลือกทางเข้าของคุณ", "en": "Choose your way in"},
-  "en_p": {"th": "ดอรี่มีสามบริการ แต่ละแบบเหมาะกับการใช้งานต่างกัน เลือกที่ตรงกับคุณได้เลย", "en": "Dory offers three services for different ways of working. Pick the one that fits you."},
-  "en1_t": {"th": "ทีมเล็กและร้านค้า", "en": "Small teams and shops"},
-  "en1_d": {"th": "สร้างบัญชีด้วย Google เลือกทดลองใช้ฟรี แล้วเพิ่มดอรี่เข้า Discord ของทีม ใช้ได้ทันทีโดยไม่ต้องตั้งค่า", "en": "Create an account with Google, pick the free trial, then add Dory to your team's Discord. It works at once with no setup."},
-  "en1_b": {"th": "สร้างบัญชีและเริ่มใช้ →", "en": "Create an account and start →"},
-  "en2_t": {"th": "องค์กรหลายทีม", "en": "Organizations with many teams"},
-  "en2_d": {"th": "รวมหลายเซิร์ฟเวอร์และ workspace ไว้ในองค์กรเดียว จัดการสมาชิก คลังเอกสาร แพ็กเกจ และคุยกับดอรี่จากเว็บ", "en": "Bring several servers and workspaces under one organization: members, document library, plan, and chat with Dory from the web."},
-  "en2_b": {"th": "เปิดศูนย์ควบคุมองค์กร →", "en": "Open the organization center →"},
-  "en3_t": {"th": "ประชุมบน Google Meet", "en": "Meetings on Google Meet"},
-  "en3_d": {"th": "เปิดเครื่องอัดคู่กับ Google Meet ถอดเสียงภาษาไทยสด แล้วสรุปมติและงานที่ต้องทำส่งเข้า Discord", "en": "Open the recorder beside Google Meet for a live Thai transcript, then decisions and action items posted to Discord."},
-  "en3_b": {"th": "เปิดเครื่องอัดประชุม →", "en": "Open the meeting recorder →"},
+  "pl_h": {"th": "แพ็กเกจช่วงเปิดตัว", "en": "Launch plan"},
+  "pl_p": {"th": "ช่วงเปิดตัวมีแพ็กเกจเดียว ใช้ฟรีทุกความสามารถโดยไม่มีลิมิต", "en": "One plan while Dory launches: every feature, free, with no limits."},
+  "pl_terms_aria": {"th": "สิ่งที่รวมในแพ็กเกจ", "en": "What the plan includes"},
+  "pl_1": {"th": "ทุกความสามารถ", "en": "Every feature"},
+  "pl_2": {"th": "ไม่จำกัดเวลา", "en": "No time limit"},
+  "pl_3": {"th": "ไม่จำกัดจำนวนคน", "en": "No seat limit"},
+  "pl_4": {"th": "ไม่ต้องใช้บัตร ไม่มีการชำระเงิน", "en": "No card, no payment"},
+  "pl_price": {"th": "ฟรี", "en": "Free"},
+  "pr_note": {"th": "ยังไม่มีการเก็บค่าบริการและไม่มีการชำระเงินในระบบ แพ็กเกจสำหรับทีมและองค์กรจะประกาศหลังช่วงเปิดตัว และผู้ใช้ช่วงทดลองจะได้รับแจ้งก่อน", "en": "Nothing is charged and there is no payment in the system. Team and organization plans will be announced after launch, and trial users hear first."},
+
+  "fin_h": {"th": "พาดอรี่ไปช่วย ทีม\u2060ของ\u2060คุณ", "en": "Bring Dory to\u00a0your team."},
+  "fin_p": {"th": "เพิ่มดอรี่เข้าเซิร์ฟเวอร์ Discord แล้วพิมพ์ @Dory เพื่อเริ่มได้ทันที หรือตั้งค่าศูนย์ควบคุมองค์กรก่อนก็ได้ ใช้เวลาประมาณสองนาที", "en": "Add her to your Discord server and mention @Dory to start, or set up your organization center first. It takes about two minutes."},
+  "org_h": {"th": "ตั้งชื่อองค์กรของคุณ", "en": "Name your organization"},
+  "org_p": {"th": "บริษัท ร้าน หรือทีมของคุณ เปลี่ยนภายหลังได้", "en": "Your company, shop or team. You can change it later."},
+  "org_label": {"th": "ชื่อองค์กร", "en": "Organization name"},
+  "org_eg": {"th": "บ้านสวนคอฟฟี่", "en": "Baan Suan Coffee"},
+  "org_go": {"th": "ต่อไป", "en": "Continue"},
+  "org_have": {"th": "มีบัญชีอยู่แล้ว?", "en": "Already have an account?"},
+
+  "foot_note": {"th": "ดอรี่คือผู้ช่วย AI ของทีมบน Discord", "en": "Dory is an AI coworker for teams on Discord."},
   "foot_copy": {"th": "© 2026 The Frontier Company Limited", "en": "© 2026 The Frontier Company Limited"},
+  "foot_nav_aria": {"th": "ส่วนท้าย", "en": "Footer"},
   "foot_privacy": {"th": "ความเป็นส่วนตัว", "en": "Privacy"},
   "foot_terms": {"th": "ข้อกำหนดการใช้งาน", "en": "Terms"},
-  "foot_recorder": {"th": "เครื่องอัดประชุม Meeting Scribe", "en": "Meeting Scribe recorder"}
+  "foot_recorder": {"th": "เครื่องอัดประชุม Meeting Scribe", "en": "Meeting Scribe recorder"},
+  "foot_top": {"th": "กลับขึ้นผิวน้ำ", "en": "Back to the surface"},
+  "credits_t": {"th": "ภาพใต้ทะเลลึกโดยความอนุเคราะห์ของ NOAA Ocean Exploration เป็นสาธารณสมบัติ ดูต้นฉบับ:", "en": "Deep-sea photographs courtesy of NOAA Ocean Exploration, in the public domain. Original records:"},
+  "credit_mid": {"th": "ไซโฟโนฟอร์ที่ความลึก 901 เมตร", "en": "Lacey siphonophore at 901 metres"},
+  "credit_sea": {"th": "ปลิงทะเลที่สวมพื้นทะเลไว้บนตัว", "en": "A sea cucumber that wears the seafloor"}
 }
 </script>
 <script>
 "use strict";
-document.documentElement.classList.add("js"); // reveal hides content only when this script runs
 
 // ---------- language (Thai / English) ----------
 // Priority: saved manual choice ("dory-language") -> English. The browser language is not consulted.
+// The markup carries the English words, so the page reads without script; the dictionary is the source.
 const LANG_KEY = "dory-language";
 const SUPPORTED = ["th", "en"];
 const $ = (id) => document.getElementById(id);
@@ -678,12 +894,12 @@ function readLang(op, v) {
   } catch { return null; } // storage blocked: the choice then lasts until reload
 }
 let lang = readLang("get") || "en";
-function t(key) { const e = I18N[key]; return e ? (e[lang] ?? e.en) : key; }
+function t(key, l = lang) { const e = I18N[key]; return e ? (e[l] ?? e.en) : key; }
+const fill = (s, v) => s.replace(/\{(\w+)\}/g, (_, k) => v[k] ?? "");
 function applyStatic() {
   document.documentElement.lang = lang;
   document.title = t("title");
   for (const el of document.querySelectorAll("[data-i18n]")) el.textContent = t(el.dataset.i18n);
-  for (const el of document.querySelectorAll("[data-i18n-html]")) el.innerHTML = t(el.dataset.i18nHtml);
   for (const el of document.querySelectorAll("[data-i18n-attr]")) {
     for (const pair of el.dataset.i18nAttr.split(";")) { const [attr, key] = pair.split(":"); el.setAttribute(attr, t(key)); }
   }
@@ -691,7 +907,9 @@ function applyStatic() {
   $("lang-other").lang = lang === "th" ? "en" : "th";
   markInvite();
   paintMotion();
-  pvButton();
+  readMessage(); // the example message follows the language until someone edits it
+  setAnswerLang(lang);
+  queueHeader();
 }
 function setLang(l) { if (!SUPPORTED.includes(l)) return; lang = l; readLang("set", l); applyStatic(); }
 for (const b of document.querySelectorAll("[data-lang]")) b.addEventListener("click", () => setLang(b.dataset.lang));
@@ -708,177 +926,189 @@ function markInvite() {
   }
   for (const a of document.querySelectorAll("[data-invite-fallback]")) a.hidden = ok;
   for (const a of document.querySelectorAll("[data-invite-aside]")) a.hidden = !ok;
-  for (const a of document.querySelectorAll("[data-invite-alt]")) { a.classList.toggle("primary", !ok); a.classList.toggle("ghost", ok); }
 }
 
-// The server fills the model list; an empty list (or a page opened without the server) hides the line.
+// The server fills the model list; an empty list (or a page opened without the server) hides the band.
 const models = $("models");
 if (!models.textContent.trim() || models.textContent.startsWith("__")) $("models-line").hidden = true;
 
-// ---------- navigation ----------
-const nav = $("nav"), links = $("links"), menu = $("menu");
-const onScroll = () => nav.classList.toggle("scrolled", scrollY > 8);
-addEventListener("scroll", onScroll, { passive: true });
-onScroll();
-function closeMenu() { links.classList.remove("open"); menu.setAttribute("aria-expanded", "false"); }
-menu.addEventListener("click", () => menu.setAttribute("aria-expanded", String(links.classList.toggle("open"))));
-links.addEventListener("click", (e) => { if (e.target.tagName === "A") closeMenu(); });
-addEventListener("keydown", (e) => { if (e.key === "Escape" && links.classList.contains("open")) { closeMenu(); menu.focus(); } });
-
-// ---------- motion: one switch, remembered; the OS "reduce motion" setting always wins ----------
+// ---------- motion: one switch, remembered; under the OS "reduce motion" setting it starts off ----------
+// water.js and dory3d.js watch the motion-off class on <html> themselves.
 const MOTION_KEY = "dory-motion";
 const reduce = matchMedia("(prefers-reduced-motion: reduce)");
 function savedMotion(v) {
   try { if (v) localStorage.setItem(MOTION_KEY, v); return localStorage.getItem(MOTION_KEY); } catch { return null; }
 }
-let motionOn = !reduce.matches && savedMotion() !== "off";
-const hero = $("hero"), stage = $("stage"), fish = $("fish");
-let heroVisible = true;
-const awake = () => motionOn && heroVisible && !document.hidden;
+const motionWanted = () => { const s = savedMotion(); return s === "on" || s === "off" ? s === "on" : !reduce.matches; };
+let motionOn = motionWanted();
 function paintMotion() {
   document.documentElement.classList.toggle("motion-off", !motionOn);
-  for (const b of document.querySelectorAll("[data-motion-toggle]")) {
-    b.hidden = reduce.matches; // nothing moves, so there is nothing to pause
-    b.querySelector("span").textContent = t(motionOn ? "pause" : "play");
-  }
+  for (const b of document.querySelectorAll("[data-motion-toggle]")) b.textContent = t(motionOn ? "pause" : "play");
 }
-function setMotion(on) {
-  motionOn = on; savedMotion(on ? "on" : "off"); paintMotion();
-  if (on) { wake(); pvPlay(); } else { rest(true); pvShowAll(); }
-}
+function setMotion(on) { motionOn = on; savedMotion(on ? "on" : "off"); paintMotion(); }
 for (const b of document.querySelectorAll("[data-motion-toggle]")) b.addEventListener("click", () => setMotion(!motionOn));
-reduce.addEventListener("change", () => { motionOn = !reduce.matches && savedMotion() !== "off"; paintMotion(); if (!motionOn) rest(true); });
+reduce.addEventListener("change", () => { motionOn = motionWanted(); paintMotion(); });
 
-// ---------- hero: Dory turns toward the pointer (M1) and the sea moves in depth (M2) ----------
-const cur = { tilt: 0, px: 0, py: 0 }, tgt = { ...cur };
-let raf = 0;
-const clamp = (v) => Math.max(-1, Math.min(1, v));
-function paint() {
-  stage.style.setProperty("--tilt", cur.tilt.toFixed(2));
-  hero.style.setProperty("--px", cur.px.toFixed(3));
-  hero.style.setProperty("--py", cur.py.toFixed(3));
-}
-function frame() {
-  raf = 0;
-  let moving = false;
-  for (const k in cur) {
-    const d = tgt[k] - cur[k];
-    if (Math.abs(d) > .002) { cur[k] += d * (k === "px" || k === "py" ? .08 : .12); moving = true; } else cur[k] = tgt[k];
+// ---------- the header reads the field under it: its ink, its colour and the chapter's depth ----------
+const hd = $("hd"), depth = $("depth"), probes = [...hd.querySelectorAll("[data-probe]")];
+function fieldAt(x, y) {
+  for (const el of document.elementsFromPoint(x, y)) {
+    if (hd.contains(el)) continue;
+    const f = el.closest("[data-ink]");
+    if (f) return f;
   }
-  paint();
-  if (moving) wake(); // the loop stops itself once everything has settled
+  return null;
 }
-function wake() { if (!raf && awake()) raf = requestAnimationFrame(frame); }
-function aim(x, y) {
-  const r = fish.getBoundingClientRect();
-  const dy = y - (r.top + r.height * .48); // her eyes
-  Object.assign(tgt, { tilt: clamp(dy / 400) * 6, px: clamp(x / innerWidth * 2 - 1), py: clamp(y / innerHeight * 2 - 1) });
-  wake();
+let hdRaf = 0;
+function paintHeader() {
+  hdRaf = 0;
+  const y = hd.offsetHeight / 2;
+  for (const p of probes) {
+    const r = p.getBoundingClientRect();
+    const f = r.width && fieldAt(r.left + r.width / 2, y);
+    if (f) p.dataset.ink = f.dataset.ink;
+  }
+  for (const [side, x] of [["l", innerWidth / 4], ["r", innerWidth * 3 / 4]]) {
+    const f = fieldAt(x, y);
+    if (f) hd.style.setProperty("--hb-" + side, getComputedStyle(f).backgroundColor);
+  }
+  const ch = fieldAt(innerWidth / 2, hd.offsetHeight + 2)?.closest("[data-chapter]");
+  if (ch) depth.textContent = Number(ch.dataset.depth).toLocaleString("en-US") + " m";
 }
-function rest(now) {
-  for (const k in tgt) tgt[k] = 0;
-  if (now) { Object.assign(cur, tgt); paint(); hero.style.setProperty("--sy", "0"); } else wake();
-}
-let tapT = 0;
-hero.addEventListener("pointermove", (e) => { if (e.pointerType === "mouse") aim(e.clientX, e.clientY); }, { passive: true });
-hero.addEventListener("pointerleave", () => rest(false));
-hero.addEventListener("pointerdown", (e) => {
-  if (e.pointerType === "mouse") return;
-  aim(e.clientX, e.clientY); clearTimeout(tapT); tapT = setTimeout(() => rest(false), 1200); // a tap: look there, then back
+function queueHeader() { if (!hdRaf) hdRaf = requestAnimationFrame(paintHeader); }
+addEventListener("scroll", queueHeader, { passive: true });
+addEventListener("resize", queueHeader);
+addEventListener("load", queueHeader);
+
+// ---------- entrances: each group once, as it enters; content is never hidden without this ----------
+const rise = new IntersectionObserver((es) => {
+  for (const e of es) if (e.isIntersecting) { e.target.classList.add("in"); rise.unobserve(e.target); }
+}, { rootMargin: "0px 0px -10% 0px" });
+for (const g of document.querySelectorAll("[data-group]")) rise.observe(g);
+
+// ---------- the pointer is her lantern (water.js draws the light pool) ----------
+let lx = 0, ly = 0, lraf = 0;
+addEventListener("pointermove", (e) => {
+  lx = e.clientX; ly = e.clientY;
+  if (!lraf) lraf = requestAnimationFrame(() => { lraf = 0; window.doryWater?.lantern(lx, ly); });
 }, { passive: true });
-let sraf = 0;
-addEventListener("scroll", () => {
-  if (!sraf && awake()) sraf = requestAnimationFrame(() => { sraf = 0; hero.style.setProperty("--sy", String(Math.round(scrollY))); });
-}, { passive: true });
-new IntersectionObserver(([e]) => {
-  heroVisible = e.isIntersecting;
-  hero.classList.toggle("asleep", !heroVisible);
-  if (heroVisible) wake();
-}).observe(hero);
-document.addEventListener("visibilitychange", () => { if (!document.hidden) wake(); });
 
-// drifting specks (decorative, <= 24): placed from a fixed sequence, so every visit looks the same
-const specks = $("specks");
-for (let i = 0; i < 20; i++) {
-  const r = (n) => { const v = Math.sin(i * 12.9898 + n * 78.233) * 43758.5453; return v - Math.floor(v); };
-  const s = document.createElement("i");
-  s.className = "speck";
-  s.style.cssText = `--x:${(r(1) * 100).toFixed(1)}%;--y:${(25 + r(2) * 70).toFixed(1)}%;--s:${(1.5 + r(3) * 2.5).toFixed(1)}px;` +
-    `--o:${(.2 + r(4) * .45).toFixed(2)};--d:${(14 + r(5) * 16).toFixed(1)}s;--dl:-${(r(6) * 20).toFixed(1)}s`;
-  specks.append(s);
+// the film plays only when asked: the link scrolls to it and starts it (a click, so sound is allowed)
+$("film-link").addEventListener("click", () => { $("intro").play().catch(() => {}); });
+
+// ---------- twilight: the live thing ----------
+// read() is the ONE place that turns a message into a task. Here a few scripted rules stand in for Dory;
+// a model call can replace it later (it may return a promise; stale answers are dropped).
+const NAMES = ["nok", "ploy", "arun", "mali"];
+const WEEK = ["sunday", "monday", "tuesday", "wednesday", "thursday", "friday", "saturday"];
+const WEEK_TH = ["อาทิตย์", "จันทร์", "อังคาร", "พุธ", "พฤหัส", "ศุกร์", "เสาร์"];
+const MONTHS = ["jan", "feb", "mar", "apr", "may", "jun", "jul", "aug", "sep", "oct", "nov", "dec"];
+const DUE = /(?:\b(?:by|on|before|due|for|until|this|next)\s+)*\b(today|tomorrow|sunday|monday|tuesday|wednesday|thursday|friday|saturday|(\d{1,2})\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)[a-z]*\.?)(?![a-z])|(?:ภายใน|ก่อน)?\s*(วันนี้|พรุ่งนี้|(?:วัน)?(?:จันทร์|อังคาร|พุธ|พฤหัสบดี|พฤหัส|ศุกร์|เสาร์|อาทิตย์))/i;
+function dueDate(m) {
+  if (!m) return null;
+  const now = new Date(), d = new Date(now.getFullYear(), now.getMonth(), now.getDate());
+  const w = (m[1] || m[4]).toLowerCase();
+  const plus = (n) => { d.setDate(d.getDate() + n); return d; };
+  if (w === "today" || w === "วันนี้") return d;
+  if (w === "tomorrow" || w === "พรุ่งนี้") return plus(1);
+  const day = Math.max(WEEK.indexOf(w), WEEK_TH.findIndex((x) => w.includes(x)));
+  if (day >= 0) return plus((day - d.getDay() + 7) % 7 || 7);
+  const x = new Date(d.getFullYear(), MONTHS.indexOf(m[3].toLowerCase()), Number(m[2]));
+  if (x < d) x.setFullYear(x.getFullYear() + 1);
+  return x;
+}
+function read(text) {
+  let s = " " + text.replace(/\s+/g, " ").trim() + " ", who = null;
+  for (const k of NAMES) {
+    const { en, th } = I18N["n_" + k];
+    const named = new RegExp(`^ (?:(?:hey|hi) )?@?(?:${en}\\b[,:]?|(?:คุณ|น้อง|พี่)?${th}[,:]?)|@(?:${en}\\b|${th})|,? ${en}[?.!]* $`, "i");
+    if (named.test(s)) { who = k; s = s.replace(named, " "); break; }
+  }
+  const m = s.match(DUE);
+  if (m) s = s.replace(m[0], " ");
+  const title = s
+    .replace(/^[\s,:]+/, "")
+    .replace(/^(?:(?:hey|hi) )?(?:can|could|would|will) (?:you|someone|somebody|anyone) (?:please )?/i, "")
+    .replace(/^(?:someone|somebody|anyone) (?:needs to|should|must|has to|please) /i, "")
+    .replace(/^(?:please|pls) /i, "")
+    .replace(/^(?:ใครก็ได้|ใครสักคน)\s*/, "")
+    .replace(/^(?:ช่วย|รบกวน|ฝาก)\s*/, "")
+    .replace(/(?:\s*(?:please|thanks|thank you))?[\s?.!,]*$/i, "")
+    .replace(/\s*(?:ให้หน่อย|หน่อย|ด้วย)?\s*(?:นะ)?\s*(?:ครับ|ค่ะ|คะ|จ้า|จ้ะ)?$/, "")
+    .replace(/\s+/g, " ")
+    .trim();
+  const enough = /[฀-๿]/.test(title) ? title.length > 3 : title.split(" ").length > 1;
+  return { who, due: dueDate(m), title: enough ? title.charAt(0).toUpperCase() + title.slice(1) : "" };
 }
 
-// ---------- reveal on entering view (M7), once ----------
-const seen = new IntersectionObserver((es) => {
-  for (const e of es) if (e.isIntersecting) { e.target.classList.add("in"); seen.unobserve(e.target); }
-}, { rootMargin: "0px 0px -8% 0px", threshold: .08 });
-for (const el of document.querySelectorAll(".reveal")) seen.observe(el);
-
-// ---------- ARIA tabs (preview and roles): arrows, Home and End move; selection follows focus ----------
-function tabs(list, onSelect) {
-  const ts = [...list.querySelectorAll('[role="tab"]')];
-  const select = (tab, focus) => {
-    for (const x of ts) {
-      const on = x === tab;
-      x.setAttribute("aria-selected", String(on)); x.tabIndex = on ? 0 : -1;
-      $(x.getAttribute("aria-controls")).hidden = !on;
-    }
-    if (focus) tab.focus();
-    if (onSelect) onSelect($(tab.getAttribute("aria-controls")));
-  };
-  list.addEventListener("click", (e) => { const tb = e.target.closest('[role="tab"]'); if (tb) select(tb); });
-  list.addEventListener("keydown", (e) => {
-    const i = ts.indexOf(document.activeElement);
-    if (i < 0) return;
-    const step = { ArrowRight: 1, ArrowDown: 1, ArrowLeft: -1, ArrowUp: -1 }[e.key];
-    if (step) { e.preventDefault(); select(ts[(i + step + ts.length) % ts.length], true); }
-    else if (e.key === "Home" || e.key === "End") { e.preventDefault(); select(ts.at(e.key === "Home" ? 0 : -1), true); }
+const msg = $("msg"), F = {};
+for (const el of $("card").querySelectorAll("[data-f]")) F[el.dataset.f] = el;
+const ACTS = { task: ["ok", "edit", "no"], ask: ["mine", "other", "none"] };
+let reading = null, seq = 0, lampT = 0, typeT = 0;
+const fmtDate = (d) => d.toLocaleDateString(lang === "th" ? "th-TH" : "en-GB", { weekday: "short", day: "numeric", month: "short" });
+const whoName = () => (reading?.who ? t("n_" + reading.who) : "");
+function paintCard() {
+  const r = reading, kind = !r.title ? "empty" : r.who ? "task" : "ask", who = whoName();
+  F.where.textContent = kind === "task" ? fill(t("card_where"), { who }) : t("card_where_ben");
+  F.kind.textContent = kind === "empty" ? t("card_empty_k") : kind === "task" ? fill(t("card_new"), { who }) : t("card_q");
+  F.title.textContent = r.title || t("card_empty_t");
+  F.facts.hidden = F.acts.hidden = kind === "empty";
+  F.due.textContent = r.due ? fmtDate(r.due) : t("card_nodue");
+  F.k2.textContent = t(kind === "ask" ? "card_owner" : "card_from");
+  F.v2.textContent = t(kind === "ask" ? "card_owner_v" : "card_from_v");
+  const acts = ACTS[kind] || ACTS.task;
+  [...F.acts.children].forEach((b, i) => { b.dataset.a = acts[i]; b.textContent = t("b_" + acts[i]); b.setAttribute("aria-pressed", "false"); });
+  F.said.textContent = "";
+}
+function readMessage() {
+  const n = ++seq;
+  Promise.resolve(read(msg.value)).then((r) => {
+    if (n !== seq) return;
+    const changed = JSON.stringify(r) !== JSON.stringify(reading);
+    reading = r;
+    paintCard();
+    if (!changed) return;
+    F.lamp.classList.add("on"); // her light: she is working on it
+    clearTimeout(lampT); lampT = setTimeout(() => F.lamp.classList.remove("on"), 1400);
+    const b = msg.getBoundingClientRect();
+    window.doryWater?.drop(b.left + b.width * .8, b.bottom - 16); // the message falls as one flake
   });
 }
+msg.addEventListener("input", () => { clearTimeout(typeT); typeT = setTimeout(readMessage, 250); });
+for (const b of document.querySelectorAll("[data-eg]")) b.addEventListener("click", () => { msg.value = t(b.dataset.eg); readMessage(); });
+F.acts.addEventListener("click", (e) => {
+  const b = e.target.closest("button[data-a]");
+  if (!b) return;
+  for (const x of F.acts.children) x.setAttribute("aria-pressed", String(x === b));
+  F.said.textContent = fill(t("say_" + b.dataset.a), { who: whoName() });
+  if (b.dataset.a === "edit") msg.focus();
+});
 
-// ---------- "See Dory at work": each example plays once in view; Replay and Pause; final state without motion ----------
-const pv = { panel: $("pvp1"), steps: [], i: 0, timer: 0, paused: false, thinking: false };
-function think(on) {
-  const p = pv.panel;
-  p.querySelector(".think").hidden = !on;
-  p.querySelector(".st").textContent = t(on ? "st_thinking" : "st_ready");
-  p.querySelector(".chat-h .lantern").classList.toggle("pulse", on);
+// ---------- seabed: the answer stays pinned while the controls change it (scripted example) ----------
+const ROLE_NAME = { owner: "arun", manager: "ploy", staff: "mai" };
+const ansCard = $("ans"), A = {};
+for (const el of ansCard.querySelectorAll("[data-ans]")) A[el.dataset.ans] = el;
+let ansLang = "en";
+function paintAnswer() {
+  const role = document.querySelector('input[name="ask-as"]:checked')?.value || "staff";
+  const tl = (k) => t(k, ansLang), who = tl("n_" + ROLE_NAME[role]), all = role !== "staff";
+  ansCard.lang = ansLang;
+  A.who.textContent = fill(tl("ans_who"), { who, role: tl("r_" + role) });
+  A.q.textContent = tl("ans_q");
+  A.a.textContent = tl("ans_a");
+  A.x.textContent = tl("ans_x");
+  A.x.hidden = !all; // #management is readable by the owner and the manager, not by staff
+  A.src.textContent = tl("ans_src") + (all ? tl("ans_src_x") : "");
+  A.note.textContent = fill(tl(all ? "ans_all" : "ans_hidden"), { who });
 }
-function pvButton() {
-  const b = $("pv-pause"), done = pv.i >= pv.steps.length;
-  b.textContent = t(pv.paused ? "pv_play" : "pv_pause");
-  b.hidden = !motionOn; // without motion every example is shown whole: nothing to pause
-  b.disabled = done;
+function setAnswerLang(l) {
+  ansLang = l;
+  const r = document.querySelector(`input[name="ans-lang"][value="${l}"]`);
+  if (r) r.checked = true;
+  paintAnswer();
 }
-function pvShowAll() {
-  clearTimeout(pv.timer);
-  for (const s of pv.steps) s.classList.remove("pending");
-  pv.i = pv.steps.length; pv.paused = false; pv.thinking = false; think(false); pvButton();
-}
-function pvNext() {
-  if (pv.paused) return;
-  if (pv.i >= pv.steps.length) { think(false); pvButton(); return; }
-  const s = pv.steps[pv.i], dory = s.classList.contains("m-dory");
-  if (dory && !pv.thinking) { pv.thinking = true; think(true); pv.timer = setTimeout(pvNext, 1100); return; }
-  pv.thinking = false; think(false); s.classList.remove("pending"); s.classList.add("shown"); pv.i++;
-  pv.timer = setTimeout(pvNext, dory ? 900 : 500);
-  pvButton();
-}
-function pvPlay() {
-  clearTimeout(pv.timer);
-  pv.steps = [...pv.panel.querySelectorAll(".step")]; pv.i = 0; pv.paused = false; pv.thinking = false;
-  if (!motionOn) { pvShowAll(); return; }
-  for (const s of pv.steps) { s.classList.add("pending"); s.classList.remove("shown"); }
-  think(false); pvButton();
-  pv.timer = setTimeout(pvNext, 300);
-}
-tabs($("pv-tabs"), (panel) => { clearTimeout(pv.timer); think(false); pv.panel = panel; pvPlay(); });
-tabs($("ro-tabs"));
-$("pv-replay").addEventListener("click", pvPlay);
-$("pv-pause").addEventListener("click", () => { pv.paused = !pv.paused; if (pv.paused) clearTimeout(pv.timer); else pvNext(); pvButton(); });
-pv.steps = [...pv.panel.querySelectorAll(".step")]; pv.i = pv.steps.length; // complete until it scrolls into view
-const pvSeen = new IntersectionObserver(([e]) => { if (e.isIntersecting) { pvSeen.disconnect(); pvPlay(); } }, { threshold: .35 });
-pvSeen.observe($("preview"));
+for (const i of document.querySelectorAll('input[name="ask-as"]')) i.addEventListener("change", paintAnswer);
+for (const i of document.querySelectorAll('input[name="ans-lang"]')) i.addEventListener("change", () => setAnswerLang(i.value));
 
 applyStatic();
 </script>

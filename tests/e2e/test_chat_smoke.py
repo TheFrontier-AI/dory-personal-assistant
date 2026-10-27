@@ -51,3 +51,21 @@ def test_axe_finds_no_wcag_aa_violations_in_the_chat(page):
     page.locator(".chatpage .msgs article").first.wait_for()
     res = Axe().run(page, context=".chatpage", options=WCAG)
     assert res.violations_count == 0, res.generate_report()
+
+
+def test_chat_has_a_title_svg_icons_and_english_samples(page):
+    page.goto(CHAT)
+    page.locator(".chatpage .msgs article").first.wait_for()
+    expect(page.get_by_role("heading", level=1, name="Chat with Dory")).to_be_visible()
+    expect(page.locator(".chatpage .msgs")).to_contain_text("Ask me anything")
+    assert not page.evaluate(
+        "/[\\u0e00-\\u0e7f]/.test(document.querySelector('.chatpage').innerText)"
+    )
+    assert not page.evaluate(
+        "/[\\u{1F300}-\\u{1FAFF}\\u{2600}-\\u{27BF}]/u.test(document.body.innerText)"
+    )
+    assert page.locator("#nav a svg.ic").count() >= 10
+    assert (
+        page.evaluate("getComputedStyle(document.getElementById('chat-live')).backgroundImage")
+        == "none"
+    )

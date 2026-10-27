@@ -1,0 +1,86 @@
+[
+  {
+    "slug": "noaa-midnight",
+    "chapter": "midnight: She follows up",
+    "files": {
+      "1600": {"file": "noaa-midnight-1600.webp", "width": 1600, "height": 900, "bytes": 54224},
+      "800": {"file": "noaa-midnight-800.webp", "width": 800, "height": 450, "bytes": 16702}
+    },
+    "title": "Lacey siphonophore at 901 metres",
+    "depicts": {
+      "subject": "Lacey siphonophore (Erenna laciniata), a colonial hydrozoan, in open water",
+      "depth": "901 m (2,955 ft), as stated in the NOAA record",
+      "place": "Midwater Site 01, Hawaiian Archipelago",
+      "expedition": "Dive 08, Beyond the Blue: Papahānaumokuākea ROV and Mapping (EX2503), NOAA Ship Okeanos Explorer, 8 April - 5 May 2025",
+      "date": "April 2025 (embedded camera timestamp 2025-04-21)",
+      "camera": "Canon EOS R3 (embedded EXIF), the 35mm still camera NOAA Ocean Exploration uses on ROV Deep Discoverer; the animal is lit by the vehicle's lamps"
+    },
+    "credit": "Image courtesy of NOAA Ocean Exploration, 2025 Beyond the Blue.",
+    "photographer": null,
+    "photographer_note": "No photographer is named; the record credits NOAA Ocean Exploration only.",
+    "source_url": "https://oceanexplorer.noaa.gov/multimedia/lacey-siphonophore/",
+    "original_file_url": "https://oceanexplorer.noaa.gov/wp-content/uploads/2025/08/dive08-siphonophore.jpg",
+    "original_size": "2779 x 2111",
+    "expedition_url": "https://oceanexplorer.noaa.gov/expedition/ex2503/",
+    "commons_url": null,
+    "licence": "Public domain: U.S. federal government work (NOAA)",
+    "verification": {
+      "record_credit": "NOAA record page, field 'Credit': \"NOAA Ocean Exploration, 2025 Beyond the Blue\"",
+      "embedded_rights": "Original file, XMP dc:rights: \"'National Oceanic and Atmospheric Administration (NOAA) | Office of Exploration and Research (OER)' Image Courtesy of NOAA Ocean Exploration, 2025 Beyond the Blue.\"; dc:creator \"NOAA Ocean Exploration\"; xmpRights:Marked = False (not marked as copyrighted)",
+      "site_policy": "NOAA Ocean Exploration FAQ (https://oceanexplorer.noaa.gov/faqs/): \"Unless otherwise noted (copyrighted material for example), information presented on this website is in the public domain and may be distributed freely. If you elect to use images or video from the website, please refer to the original source page and use the credit that is listed with the image/video.\"",
+      "copyright_notice_found": false,
+      "checked": "2026-10-27"
+    },
+    "crop": {
+      "box": [0, 400, 2779, 1963],
+      "box_format": "left, top, right, bottom in pixels of the 2779 x 2111 original",
+      "why": "16:9 at full width; removes only empty black water above and below the animal. No colour, tone or content changes."
+    },
+    "alt_en": "A long, see-through siphonophore drifts across black water: a clear, ribbed swimming stem on the left leads to a mass of pale, feathery tentacles on the right.",
+    "alt_th": "ไซโฟโนฟอร์ลำตัวยาวโปร่งแสงลอยอยู่กลางน้ำสีดำ ด้านซ้ายเป็นส่วนว่ายน้ำใสเป็นปล้อง ๆ ต่อไปยังกลุ่มหนวดสีซีดฟูคล้ายขนนกทางด้านขวา",
+    "caption_en": "A lacey siphonophore (Erenna laciniata), a colony of many small animals living as one, photographed at 901 metres during NOAA's Papahānaumokuākea expedition in the northwestern Hawaiian Islands, April 2025. This deep, sunlight has all but run out: apart from the robot's lamps, the only light is the light animals make.",
+    "caption_th": "ไซโฟโนฟอร์ชนิด Erenna laciniata สัตว์ที่เป็นอาณานิคมของสัตว์ตัวเล็ก ๆ จำนวนมากซึ่งใช้ชีวิตร่วมกันเป็นหนึ่งเดียว ถ่ายที่ความลึก 901 เมตร ระหว่างภารกิจสำรวจปาปาฮาเนามอกูอาเคอาของ NOAA ในหมู่เกาะฮาวายตะวันตกเฉียงเหนือ เมื่อเมษายน 2568 ที่ความลึกระดับนี้แทบไม่มีแสงอาทิตย์ส่องถึง นอกจากไฟของหุ่นยนต์สำรวจแล้ว แสงเดียวที่มีคือแสงที่สัตว์สร้างขึ้นเอง"
+  },
+  {
+    "slug": "noaa-seabed",
+    "chapter": "seabed: She remembers",
+    "files": {
+      "1600": {"file": "noaa-seabed-1600.webp", "width": 1600, "height": 900, "bytes": 154898},
+      "800": {"file": "noaa-seabed-800.webp", "width": 800, "height": 450, "bytes": 66812}
+    },
+    "title": "A sea cucumber that wears the seafloor",
+    "depicts": {
+      "subject": "Large sea cucumber (holothurian) with small pieces of shell and forams attached to its body, on soft sediment",
+      "depth": "1,290-1,390 m (4,232-4,560 ft): the depth range of Dive 03; the exact depth of this frame is not stated",
+      "place": "North Tutuila Flank, American Samoa",
+      "expedition": "Dive 03, 2026 American Samoa ROV + Mapping Exploration (EX2606), NOAA Ship Okeanos Explorer",
+      "date": "29 August 2026 (Dive 03 date on the NOAA dive page)",
+      "camera": "Frame from the ROV video; the animal is lit by the vehicle's lamps"
+    },
+    "credit": "Image courtesy of NOAA Ocean Exploration, 2026 American Samoa ROV + Mapping Exploration.",
+    "photographer": null,
+    "photographer_note": "No photographer is named; the record credits NOAA Ocean Exploration only.",
+    "source_url": "https://oceanexplorer.noaa.gov/multimedia/sea-cucumber-ex2606/",
+    "original_file_url": "https://oceanexplorer.noaa.gov/wp-content/uploads/2026/08/ex2606-dive03-seacucumber.jpg",
+    "original_size": "1920 x 1080",
+    "dive_url": "https://oceanexplorer.noaa.gov/dive-03-ex2606/",
+    "commons_url": null,
+    "licence": "Public domain: U.S. federal government work (NOAA)",
+    "verification": {
+      "record_credit": "NOAA record page, field 'Credit': \"NOAA Ocean Exploration, 2026 American Samoa ROV + Mapping Exploration\"; the Dive 03 page prints under the same image: \"Image courtesy of NOAA Ocean Exploration, 2026 American Samoa ROV + Mapping Exploration.\"",
+      "embedded_rights": "Original file, XMP dc:rights and EXIF Copyright: \"Image courtesy of NOAA Ocean Exploration, 2026 American Samoa ROV + Mapping Exploration.\"; dc:creator \"NOAA Ocean Exploration\"; xmpRights:Marked = False (not marked as copyrighted)",
+      "site_policy": "NOAA Ocean Exploration FAQ (https://oceanexplorer.noaa.gov/faqs/): \"Unless otherwise noted (copyrighted material for example), information presented on this website is in the public domain and may be distributed freely. If you elect to use images or video from the website, please refer to the original source page and use the credit that is listed with the image/video.\"",
+      "copyright_notice_found": false,
+      "checked": "2026-10-27"
+    },
+    "crop": {
+      "box": [213, 120, 1920, 1080],
+      "box_format": "left, top, right, bottom in pixels of the 1920 x 1080 original",
+      "why": "16:9 that keeps the whole animal; trims plain sediment on the left and the top strip with the ROV's two green scaling-laser dots. No colour, tone or content changes."
+    },
+    "alt_en": "A pale grey sea cucumber lies on smooth, sandy sediment. Its long body is studded with small shells and shell fragments, and short spines fringe its underside.",
+    "alt_th": "ปลิงทะเลสีเทาอ่อนนอนอยู่บนพื้นตะกอนทรายเรียบ ลำตัวยาวมีเปลือกและเศษเปลือกชิ้นเล็ก ๆ ติดอยู่ทั่ว และมีหนามสั้น ๆ เรียงอยู่ตามขอบด้านล่าง",
+    "caption_en": "A sea cucumber covered in small pieces of shell and forams (tiny single-celled organisms with shells), on the sedimented northern flank of Tutuila, American Samoa, 1,290-1,390 metres down, August 2026. Scientists are not sure why it carries pieces of the seafloor on its body.",
+    "caption_th": "ปลิงทะเลที่มีเศษเปลือกชิ้นเล็ก ๆ และฟอแรม (สิ่งมีชีวิตเซลล์เดียวขนาดจิ๋วที่มีเปลือก) ติดอยู่ทั่วตัว บนลาดตะกอนด้านเหนือของเกาะตูตูอีลา อเมริกันซามัว ที่ความลึก 1,290-1,390 เมตร เมื่อสิงหาคม 2569 นักวิทยาศาสตร์ยังไม่รู้ว่าทำไมมันจึงพาชิ้นส่วนของพื้นทะเลติดตัวไปด้วย"
+  }
+]

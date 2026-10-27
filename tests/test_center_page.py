@@ -216,7 +216,7 @@ def chat_widget() -> str:
 
 def test_chat_is_a_page_and_still_the_panel():
     s = html()
-    assert '["chat", "n_chat", "✦"]' in s and "VIEWS.chat = async" in s
+    assert '["chat", "n_chat", "chat"]' in s and "VIEWS.chat = async" in s
     assert "the chat is the panel now" not in s  # #/chat no longer bounces to the overview
     assert '$("fab").hidden = id === "chat"' in s  # one composer at a time
     assert 'if (cur !== "chat") route();' in s  # an answer never rebuilds the page under the reader
@@ -267,3 +267,43 @@ def test_no_cat_assets_left_in_the_command_center():
     assert (
         '<div class="mark" aria-hidden="true">S</div>' not in html()
     )  # the letter was the old name's
+
+
+# ---------- audit fixes (27 Oct 2026): icons, the Live button, the chat title, mock samples ----------
+def test_interface_icons_are_svg_not_emoji_or_symbol_glyphs():
+    """The taste audit flags emoji and dingbats used as icons (same ranges as its probe)."""
+    s = html()
+    assert not re.search(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]", s)
+    icons = between("const IC = {", "\n};")
+    assert 'stroke-width="1.75"' in between("const icHtml = ", "\n")
+    nav = re.findall(r'\["\w+", "n_\w+", "(\w+)"\]', between("const NAV_SECTIONS = [", "\n];"))
+    used = set(nav) | set(re.findall(r'ic\("(\w+)"\)', s))
+    used |= set(re.findall(r'"(\w+)"', between("const MON_ICON = {", "};")))
+    assert used and all(f"  {n}: '" in icons for n in used), used - set(
+        re.findall(r"  (\w+): '", icons)
+    )
+
+
+def test_live_button_is_flat_and_the_side_menu_floats_only_when_open():
+    s = html()
+    live = re.search(r"\.livebtn \{[^}]*\}", s).group(0)
+    assert "gradient" not in live and "shadow" not in live
+    assert "body.nav-open #side { transform: none; box-shadow: var(--shadow-lg); }" in s
+
+
+def test_chat_page_has_a_visible_h1_and_a_sentence_case_rail_label():
+    s = html()
+    assert 'h1.classList.add("sr")' not in s
+    assert 'el("div", { class: "grow" }, h1, ' in s  # the page title sits in the chat header
+    rail = re.search(r"\.chatpage \.rail-h \{[^}]*\}", s).group(0)
+    assert "uppercase" not in rail and "letter-spacing" not in rail
+
+
+def test_mock_samples_follow_the_interface_language():
+    """Every Thai sample string in the mock API has an English twin, and every mock answer goes through it."""
+    s = html()
+    assert ".then(mockLang);" in s and 'if (lang === "th") return x;' in s
+    table = set(re.findall(r'"((?:[^"\\]|\\.)*)":', between("const MOCK_EN = {", "\n};")))
+    mock = between("function mockApi(method, path, body) {", "/* ---------- boot ---------- */")
+    thai = {x for x in re.findall(r'"((?:[^"\\]|\\.)*)"', mock) if re.search(r"[\u0e00-\u0e7f]", x)}
+    assert thai and thai <= table, thai - table
