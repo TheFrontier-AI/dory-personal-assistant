@@ -180,13 +180,15 @@ class Engines:
 
 
 # ---- the socket -------------------------------------------------------------------------------
-def make_app(engines: Any, idle_shutdown_min: int = 0):
+def make_app(engines: Any, idle_shutdown_min: int = 0, max_calls: int = 4):
+    """`max_calls` concurrent sockets (the web call and a Discord room at the same time; the
+    engines are shared and fast), unlike GLM-4-Voice's one stream per GPU."""
     from contextlib import asynccontextmanager
 
     from fastapi import FastAPI, WebSocket
     from starlette.websockets import WebSocketDisconnect
 
-    busy = asyncio.Lock()
+    busy = asyncio.Semaphore(max_calls)  # locked() = every slot taken
     last_active = {"at": time.monotonic()}
 
     async def idle_watch() -> None:
@@ -219,6 +221,8 @@ def make_app(engines: Any, idle_shutdown_min: int = 0):
         return {
             "ok": True,
             "busy": busy.locked(),
+            "calls": max_calls - busy._value,
+            "max_calls": max_calls,
             "mode": "cascade",
             "engines": getattr(engines, "name", "gpu"),
         }
@@ -341,6 +345,7 @@ def main() -> None:
     ap.add_argument("--voice", default=os.environ.get("CASCADE_VOICE", "af_heart"))
     ap.add_argument("--device", default="cuda")
     ap.add_argument("--idle-shutdown-min", type=int, default=0)
+    ap.add_argument("--max-calls", type=int, default=int(os.environ.get("CASCADE_MAX_CALLS", "4")))
     a = ap.parse_args()
     if a.selftest:
         selftest()
@@ -351,7 +356,12 @@ def main() -> None:
 
     logging.basicConfig(level=logging.INFO)
     engines = Engines(a.asr, a.tts, a.voice, a.device)
-    uvicorn.run(make_app(engines, a.idle_shutdown_min), host=a.host, port=a.port, log_level="info")
+    uvicorn.run(
+        make_app(engines, a.idle_shutdown_min, a.max_calls),
+        host=a.host,
+        port=a.port,
+        log_level="info",
+    )
 
 
 if __name__ == "__main__":

@@ -96,29 +96,60 @@ def test_glm_voice_speaks_the_server_protocol_and_logs_latency(caplog):
     assert re.search(r"voice_latency path=web e2e_ms=\d+ speech_end->first_audio=\d+", caplog.text)
 
 
-def test_glm_voice_reports_the_servers_error_and_connection_failures():
+def test_glm_voice_tells_once_then_keeps_trying_while_the_box_is_busy_or_off(monkeypatch):
+    """`busy` (another call holds the server) and a refused connect (the box is off or booting)
+    are said once, then retried every RETRY_S until the server answers or the call is closed;
+    a server error of its own ends the call; past RETRY_MAX it gives up."""
+    import dory.glm_voice as gv
+
+    monkeypatch.setattr(gv, "RETRY_S", 0.01)
+    monkeypatch.setattr(gv, "RETRY_MAX", 3)
     events = []
 
     async def out(kind, payload):
         events.append((kind, payload))
 
-    @contextlib.asynccontextmanager
-    async def busy():
-        yield FakeSocket([(lambda f: True, [json.dumps({"type": "error", "text": "busy"})])])
+    attempts = {"n": 0}
 
     @contextlib.asynccontextmanager
-    async def refused():
+    async def busy_then_refused_then_ready():
+        attempts["n"] += 1
+        if attempts["n"] == 1:
+            yield FakeSocket([(lambda f: True, [json.dumps({"type": "error", "text": "busy"})])])
+            return
+        if attempts["n"] == 2:
+            raise ConnectionRefusedError("down")
+        yield FakeSocket([(lambda f: True, [json.dumps({"type": "ready"})])])
+
+    @contextlib.asynccontextmanager
+    async def always_refused():
         raise ConnectionRefusedError("down")
         yield  # unreachable: keeps this an async generator for the context manager
 
+    @contextlib.asynccontextmanager
+    async def server_error():
+        yield FakeSocket([(lambda f: True, [json.dumps({"type": "error", "text": "turn"})])])
+
     async def main():
-        v = GlmVoice(_settings(), out=out, url="ws://x/voice", connect=busy)
-        await asyncio.wait_for(v.start(), 2)
-        w = GlmVoice(_settings(), out=out, url="ws://x/voice", connect=refused)
-        await asyncio.wait_for(w.start(), 2)
+        v = GlmVoice(_settings(), out=out, url="ws://x/voice", connect=busy_then_refused_then_ready)
+        v.start()
+        for _ in range(300):
+            if ("ready", "") in events:
+                break
+            await asyncio.sleep(0.01)
+        await v.close()
+        assert attempts["n"] == 3
+        assert events == [("error", "busy"), ("ready", "")]  # told once, then it recovered
+        events.clear()
+        w = GlmVoice(_settings(), out=out, url="ws://x/voice", connect=always_refused)
+        await asyncio.wait_for(w.start(), 5)  # RETRY_MAX attempts, then it gives up
+        assert events == [("error", "voice_server_down")]
+        events.clear()
+        x = GlmVoice(_settings(), out=out, url="ws://x/voice", connect=server_error)
+        await asyncio.wait_for(x.start(), 5)
+        assert events == [("error", "turn")]  # the server's own error: no retry
 
     asyncio.run(main())
-    assert events == [("error", "busy"), ("error", "voice_server_down")]  # refused = the box is off
 
 
 def test_glm_voice_wakes_a_stopped_box_before_connecting():
