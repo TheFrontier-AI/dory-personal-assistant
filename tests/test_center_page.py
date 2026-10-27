@@ -399,3 +399,49 @@ def test_mock_samples_follow_the_interface_language():
     mock = between("function mockApi(method, path, body) {", "/* ---------- boot ---------- */")
     thai = {x for x in re.findall(r'"((?:[^"\\]|\\.)*)"', mock) if re.search(r"[\u0e00-\u0e7f]", x)}
     assert thai and thai <= table, thai - table
+
+
+def test_discord_link_shows_at_once_and_the_coral_frames_every_page():
+    s = html()
+    # linking a server with the /ตั้งค่า code also verifies my Discord account: fetch me again, then redraw
+    assert 'toast(t("linked")); await refreshMe(); route();' in s
+    assert (
+        "async function refreshMe()" in s
+        and 'await refreshMe();\n    if (cur !== "chat") route();' in s
+    )
+    # back from Discord in another tab: refresh without a reload (refreshView waits while typing)
+    assert (
+        'document.addEventListener("visibilitychange"' in s
+        and "Date.now() - hiddenAt > 10000) refreshView();" in s
+    )
+    # a Discord workspace shows its own server icon and the platform's name
+    assert (
+        "const wsBadge = (w) =>" in s
+        and 'wsBadge(w), el("div", {}, el("strong", { text: w.name }), el("div", { class: "muted small", text: pname(w.platform) }))'
+        in s
+    )
+    # the coral: a fixed layer over the whole page area on every view, and across the whole company card
+    assert (
+        '#mainwrap::before { content: ""; position: fixed; z-index: -1; left: 264px; right: 0; bottom: 0;'
+        in s
+    )
+    assert "body:has(#panel.open) #mainwrap::before { right: var(--panel-w); }" in s
+    assert ".hero .hcoral { position: absolute; inset: 0; z-index: 0; pointer-events: none;" in s
+
+
+def test_platform_tiles_are_the_official_app_icons():
+    s = html()
+    brands = dict(
+        re.findall(r'(\w+): "([a-z-]+)"', re.search(r"const BRAND = \{([^}]*)\}", s).group(1))
+    )
+    assert {"discord", "slack", "line", "telegram", "whatsapp", "google_calendar"} <= set(brands)
+    folder = PAGE.parent / "dory" / "brands"
+    for name in set(brands.values()):
+        svg = (folder / f"{name}.svg").read_text("utf-8")
+        assert svg.lstrip().startswith("<svg") and len(svg) < 6000, name
+        assert "<script" not in svg and 'href="http' not in svg and "<image" not in svg, name
+    assert (folder / "SOURCES.md").exists()  # where each logo came from
+    assert (
+        '"/static/dory/brands/" + BRAND[p] + ".svg"' in s and "const PLAT" not in s
+    )  # no letter tiles
+    assert "platBadge(c.platform)," in s  # Google apps show their own icons on Integrations

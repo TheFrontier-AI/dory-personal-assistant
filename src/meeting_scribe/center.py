@@ -1842,8 +1842,24 @@ async def find_experts(
 
 # ------------------------------------------------------------------ workspaces
 @router.get("/orgs/{org_id}/workspaces")
-async def list_workspaces(ctx: Ctx = Depends(member_ctx)) -> list[WorkspaceView]:
-    return [workspace_view(w) for w in ctx.org.workspaces]
+async def list_workspaces(
+    ctx: Ctx = Depends(member_ctx), guilds=Depends(hub.get_guild_store)
+) -> list[WorkspaceView]:
+    """Discord servers show the name and icon the bot last synced, not the ones stored at link time."""
+
+    def live(w: Workspace) -> WorkspaceView:
+        v = workspace_view(w)
+        if w.platform == "discord" and w.external_id.isdigit():
+            try:
+                g = guilds.get(int(w.external_id))
+            except Exception:
+                logger.warning("guild %s unreadable; showing the stored name", w.external_id)
+                return v
+            if g.guild_name:
+                v.name, v.icon_url = g.guild_name, g.icon_url or v.icon_url
+        return v
+
+    return await run_in_threadpool(lambda: [live(w) for w in ctx.org.workspaces])
 
 
 class LinkBody(BaseModel):
