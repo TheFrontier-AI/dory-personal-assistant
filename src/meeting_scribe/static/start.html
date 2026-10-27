@@ -6,67 +6,76 @@
 <title>Create your Dory account</title>
 <meta name="robots" content="noindex">
 <link rel="preconnect" href="https://fonts.googleapis.com">
-<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;display=swap">
+<link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Anuphan:wght@600;700&amp;family=IBM+Plex+Mono:wght@500&amp;family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;display=swap">
 <link rel="icon" type="image/png" href="/static/dory/favicon.png">
+<link rel="apple-touch-icon" href="/static/dory/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/dory/theme.css">
 <script src="https://accounts.google.com/gsi/client?hl=en" async defer></script>
 <style>
-  * { box-sizing: border-box; }
-  body { margin: 0; background: var(--bg); color: var(--ink); line-height: 1.6; -webkit-font-smoothing: antialiased;
-    font-family: "IBM Plex Sans Thai", "Noto Sans Thai", "Segoe UI", Tahoma, sans-serif; min-height: 100vh; display: flex; flex-direction: column; }
-  a { color: var(--indigo-2); } [hidden] { display: none !important; }
-  h1, h2, h3, p { margin: 0; } button { font: inherit; cursor: pointer; }
-  :focus-visible { outline: 3px solid var(--indigo-2); outline-offset: 3px; border-radius: 8px; }
-  .nav { border-bottom: 1px solid var(--line); background: rgba(250,249,246,.9); }
-  .nav .wrap { display: flex; align-items: center; gap: 16px; min-height: 64px; }
-  .wrap { width: min(880px, 100% - 32px); margin: 0 auto; }
-  .logo { display: flex; align-items: center; gap: 10px; color: var(--indigo); text-decoration: none; font-weight: 700; font-size: 18px; }
-  .logo .mark { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: #fff; font-size: 15px;
-    background: linear-gradient(135deg, var(--indigo-2), #7A6CF0); box-shadow: 0 4px 12px rgba(74,79,191,.3); }
-  .grow { flex: 1 1 auto; }
-  .langsw { display: flex; border: 1px solid var(--line); border-radius: 99px; padding: 2px; background: #fff; }
-  .langsw button { border: 0; background: none; padding: 4px 10px; border-radius: 99px; font-size: 13px; font-weight: 600; color: var(--muted); }
-  .langsw button[aria-pressed="true"] { background: var(--indigo); color: #fff; }
-  .who { font-size: 14px; color: var(--muted); overflow-wrap: anywhere; }
-  main { flex: 1; padding: 40px 0 64px; }
-  .steps { display: flex; gap: 8px; margin-bottom: 28px; flex-wrap: wrap; }
-  .steps span { flex: 1 1 120px; display: flex; align-items: center; gap: 8px; font-size: 13px; color: var(--faint); padding: 8px 0; border-top: 3px solid var(--line); }
-  .steps span i { font-style: normal; width: 22px; height: 22px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--line); color: var(--muted); }
-  .steps span.on { color: var(--indigo); border-top-color: var(--indigo-2); } .steps span.on i { background: var(--indigo-2); color: #fff; }
-  .steps span.done { color: var(--ok-ink); border-top-color: var(--ok-ink); } .steps span.done i { background: var(--ok-ink); color: #fff; }
-  .card { background: #fff; border: 1px solid var(--line); border-radius: 22px; padding: 32px; box-shadow: var(--shadow); display: flex; flex-direction: column; gap: 18px; }
-  .card h1 { font-size: clamp(26px, 4vw, 34px); line-height: 1.2; letter-spacing: -.01em; }
-  .card h2 { font-size: 22px; line-height: 1.25; }
-  .card p { color: var(--muted); font-size: 16px; }
-  .eyebrow { font-size: 13px; letter-spacing: .18em; font-weight: 600; color: var(--indigo-2); }
-  ul.gets { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; }
-  ul.gets li { display: flex; gap: 12px; align-items: flex-start; font-size: 15.5px; }
-  ul.gets svg { width: 20px; height: 20px; flex: none; color: var(--indigo-2); margin-top: 3px; }
-  ul.gets b { font-weight: 600; } ul.gets span { color: var(--muted); }
+  /* Page-specific rules only: tokens, base, .nav/.logo/.mark, .btn, forms and notices come from theme.css. */
+  body { min-height: 100vh; display: flex; flex-direction: column; }
+  .nav { position: static; background: none; border: 0; backdrop-filter: none; -webkit-backdrop-filter: none; }
+  .logo .mark { box-shadow: none; }
+  .who { font-size: 14px; color: var(--color-text-muted); overflow-wrap: anywhere; }
+  main { flex: 1; padding: 16px 0 72px; }
+  .layout { display: grid; grid-template-columns: minmax(0, 1fr) minmax(260px, 500px); gap: 32px 64px; align-items: start; }
+  .flow { display: flex; flex-direction: column; gap: 40px; min-width: 0; }
+  .steps { display: flex; gap: 8px; flex-wrap: wrap; }
+  .steps span { flex: 1 1 96px; display: flex; align-items: center; gap: 8px; padding-top: 10px; font-size: 14px; color: var(--color-text-muted); border-top: 3px solid var(--color-border); }
+  .steps em { font-style: normal; }
+  .steps i { font-style: normal; width: 24px; height: 24px; border-radius: 50%; display: grid; place-items: center; font-size: 12px; font-weight: 700; background: var(--color-bg-sunken); color: var(--color-text-muted); }
+  .steps span.on { color: var(--color-text); font-weight: 600; border-top-color: var(--color-action); }
+  .steps span.on i { background: var(--color-action); color: var(--color-on-action); }
+  .steps span.done { color: var(--color-text); border-top-color: var(--color-action); }
+  .steps span.done i { color: var(--color-action); }
+  /* each step is open content on the page, not a boxed card */
+  .card { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; padding: 0; background: none; border: 0; border-radius: 0; box-shadow: none; }
+  .card > * { max-width: 100%; }
+  .card h1 { font-family: var(--font-display); font-weight: 700; font-size: clamp(40px, 5.4vw, 72px); line-height: 1.04; letter-spacing: -.02em; max-width: 12ch; }
+  .card h2 { font-family: var(--font-display); font-weight: 600; font-size: clamp(28px, 3.4vw, 40px); line-height: 1.15; letter-spacing: -.01em; }
+  :lang(th) .card h1, :lang(th) .card h2 { line-height: 1.35; letter-spacing: 0; }
+  .card p { font-size: 17px; max-width: 60ch; color: var(--color-text); }
+  .card p.lead { font-size: 19px; }
+  .card p.fine { font-size: 15px; color: var(--color-text-muted); }
+  ul.gets { margin: 0; padding: 0; list-style: none; display: grid; gap: 12px; max-width: 60ch; }
+  ul.gets li { display: flex; gap: 12px; align-items: flex-start; font-size: 17px; }
+  ul.gets svg { width: 20px; height: 20px; flex: none; color: var(--color-action); margin-top: 4px; }
+  ul.gets b { font-weight: 600; }
   #gsi-button { min-height: 44px; display: flex; }
-  .notice { padding: 10px 14px; border-radius: 10px; font-size: 14px; background: var(--warn-bg); color: var(--warn-ink); }
-  .notice.error { background: var(--err-bg); color: var(--err-ink); } .notice.ok { background: var(--ok-bg); color: var(--ok-ink); }
-  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(170px, 1fr)); gap: 12px; }
-  .plan { border: 2px solid var(--line); border-radius: 16px; padding: 16px; display: flex; flex-direction: column; gap: 6px; cursor: pointer; background: #fff; text-align: left; }
-  .plan[aria-pressed="true"] { border-color: var(--indigo-2); background: #F7F7FF; }
-  .plan b { font-size: 16px; } .plan .price { font-size: 14px; color: var(--indigo); font-weight: 600; } .plan span { font-size: 13px; color: var(--muted); }
-  .pill { font-size: 12px; padding: 2px 8px; border-radius: 99px; background: #EEF0FF; color: var(--indigo); font-weight: 500; align-self: flex-start; }
-  label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 15px; }
-  input[type=text] { font: inherit; padding: 11px 14px; border: 1px solid var(--line); border-radius: 12px; background: #fff; }
+  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: 100%; max-width: 480px; }
+  .plan { border: 2px solid var(--color-border-control); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px; background: var(--color-bg-raised); color: var(--color-text); text-align: left; }
+  .plan[aria-pressed="true"] { border-color: var(--color-action); }
+  .plan b { font-size: 17px; }
+  .plan span { font-size: 14px; color: var(--color-text-muted); }
+  .plan .price { font-size: 15px; font-weight: 600; color: var(--color-action); }
+  .plan .pill { align-self: flex-start; font-size: 12px; color: var(--color-action); }
+  label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 15px; width: 100%; max-width: 480px; }
   .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
-  .btn { display: inline-flex; align-items: center; justify-content: center; gap: 8px; padding: 11px 20px; border-radius: 12px; font-weight: 600; font-size: 15px;
-    text-decoration: none; border: 1px solid transparent; transition: transform .15s var(--ease), box-shadow .15s var(--ease); }
-  .btn.primary { background: var(--indigo); color: #fff; box-shadow: 0 6px 18px rgba(43,47,122,.25); }
-  .btn.primary:hover { background: #22265F; transform: translateY(-1px); }
-  .btn.primary:disabled, .btn.primary[aria-disabled="true"] { background: #C9CBE0; box-shadow: none; cursor: not-allowed; pointer-events: none; }
-  .btn.ghost { color: var(--indigo); border-color: var(--line); background: #fff; }
-  .btn.ghost:hover { border-color: var(--lavender); }
-  ol.how { margin: 0; padding-left: 22px; display: grid; gap: 8px; color: var(--muted); font-size: 15px; }
-  ol.how code { font-family: ui-monospace, SFMono-Regular, Menlo, monospace; font-size: 13.5px; background: #EEF0FF; color: var(--indigo); padding: 2px 7px; border-radius: 6px; }
-  footer { border-top: 1px solid var(--line); padding: 20px 0 32px; color: var(--faint); font-size: 13.5px; }
-  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 20px; }
-  footer a { color: var(--muted); text-decoration: none; }
-  @media (max-width: 560px) { .card { padding: 22px 18px; } }
+  .btn.primary, .btn.primary:hover, .btn.primary:active { box-shadow: none; }
+  ol.how { margin: 0; padding-left: 22px; display: grid; gap: 10px; font-size: 17px; max-width: 60ch; }
+  ol.how code { font-family: var(--mono); font-size: 14px; background: var(--color-bg-sunken); color: var(--color-text); padding: 2px 7px; border-radius: 6px; }
+  /* Dory's picture keeps the person company through every step */
+  .hero-pic { margin: 0; position: sticky; top: 24px; }
+  .hero-pic img { display: block; width: 100%; height: auto; aspect-ratio: 777 / 779; object-fit: cover; border-radius: var(--radius-xl); background: var(--ocean-800); }
+  footer { padding: 24px 0 40px; color: var(--color-text-muted); font-size: 14px; }
+  footer .wrap { display: flex; flex-wrap: wrap; gap: 8px 24px; }
+  footer a { color: var(--color-text-muted); }
+  footer a:hover { color: var(--color-text); }
+  /* motion: each step rises in when it opens; Dory floats. Transform and opacity only. */
+  @keyframes rise { from { opacity: 0; transform: translateY(16px); } to { opacity: 1; transform: none; } }
+  @keyframes buoy { 0%, 100% { transform: translateY(0); } 50% { transform: translateY(-10px); } }
+  .card > * { animation: rise var(--dur-slow) var(--ease) both; }
+  .card > :nth-child(2) { animation-delay: 60ms; } .card > :nth-child(3) { animation-delay: 120ms; }
+  .card > :nth-child(4) { animation-delay: 180ms; } .card > :nth-child(n+5) { animation-delay: 240ms; }
+  .hero-pic { animation: rise var(--dur-gentle) var(--ease) 120ms both; }
+  .hero-pic img { animation: buoy 6s var(--ease-in-out) 1s infinite; }
+  @media (prefers-reduced-motion: reduce) { .card > *, .hero-pic, .hero-pic img { animation: none; } }
+  @media (max-width: 860px) {
+    .layout { grid-template-columns: minmax(0, 1fr); gap: 24px; }
+    .flow { gap: 28px; }
+    .hero-pic { order: -1; position: static; width: min(176px, 46%); }
+    .hero-pic img { border-radius: var(--radius-lg); }
+  }
 </style>
 </head>
 <body>
@@ -83,8 +92,9 @@
 </header>
 
 <main>
-  <div class="wrap">
-    <div class="steps" aria-hidden="true">
+  <div class="wrap layout">
+    <div class="flow">
+    <div class="steps" id="steps" aria-hidden="true" hidden>
       <span data-step="1" class="on"><i>1</i><em data-i18n="s1"></em></span>
       <span data-step="2"><i>2</i><em data-i18n="s2"></em></span>
       <span data-step="3"><i>3</i><em data-i18n="s3"></em></span>
@@ -93,20 +103,19 @@
 
     <!-- step 1: welcome + Google sign-in -->
     <section class="card" id="step1">
-      <div class="eyebrow" data-i18n="eyebrow"></div>
       <h1 data-i18n="w_h"></h1>
-      <p data-i18n="w_p"></p>
+      <p class="lead" data-i18n="w_p"></p>
       <ul class="gets">
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="g1_t"></b> <span data-i18n="g1_d"></span></div></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="g2_t"></b> <span data-i18n="g2_d"></span></div></li>
-        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="g3_t"></b> <span data-i18n="g3_d"></span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="g1_t"></b> <span data-i18n="g1_d"></span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="g2_t"></b> <span data-i18n="g2_d"></span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="g3_t"></b> <span data-i18n="g3_d"></span></div></li>
       </ul>
       <p data-i18n="w_next"></p>
       <div id="gsi-button"></div>
-      <div class="row" style="margin-top:10px"><button type="button" class="btn ghost" id="discord-signup" data-i18n="signup_discord" hidden></button></div>
+      <button type="button" class="btn ghost" id="discord-signup" data-i18n="signup_discord" hidden></button>
       <div class="notice" id="not-configured" data-i18n="not_configured" hidden></div>
       <div class="notice error" id="login-error" hidden></div>
-      <p style="font-size:13px;color:var(--faint)" data-i18n="w_privacy"></p>
+      <p class="fine" data-i18n="w_privacy"></p>
     </section>
 
     <!-- already a member -->
@@ -151,8 +160,13 @@
         <a class="btn primary" href="__DORY_INVITE_URL__" data-invite></a>
         <a class="btn ghost" href="/center" data-i18n="go_center"></a>
       </div>
-      <p style="font-size:13px;color:var(--faint)" data-i18n="c_later"></p>
+      <p class="fine" data-i18n="c_later"></p>
     </section>
+    </div>
+    <picture class="hero-pic">
+      <source srcset="/static/dory/dory.webp" type="image/webp">
+      <img src="/static/dory/dory.jpg" width="777" height="779" alt="" decoding="async" fetchpriority="high" data-i18n-attr="alt:hero_alt">
+    </picture>
   </div>
 </main>
 
@@ -171,9 +185,9 @@
   "s2": {"th": "แพ็กเกจ", "en": "Plan"},
   "s3": {"th": "องค์กร", "en": "Organization"},
   "s4": {"th": "เชื่อมต่อ", "en": "Connect"},
-  "eyebrow": {"th": "เริ่มต้นกับดอรี่", "en": "GET STARTED WITH DORY"},
-  "w_h": {"th": "สร้างบัญชีด้วย Google แล้วเริ่มใช้ดอรี่ใน 4 ขั้น", "en": "Create your account with Google and start in four steps"},
-  "w_p": {"th": "บัญชีหนึ่งดูแลได้หลายทีม สิ่งที่คุณจะได้ทันทีหลังสมัคร:", "en": "One account can run several teams. Here is what you get right after signing up:"},
+  "w_h": {"th": "พาดอรี่ไปช่วยทีมของคุณ", "en": "Bring Dory to your team"},
+  "w_p": {"th": "สร้างบัญชีด้วย Google แล้วเริ่มใช้ใน 4 ขั้น บัญชีหนึ่งดูแลได้หลายทีม และนี่คือสิ่งที่คุณได้ทันทีหลังสมัคร:", "en": "Create your account with Google and start in four steps. One account can run several teams, and this is what you get right after signing up:"},
+  "hero_alt": {"th": "ดอรี่ ปลาตัวเล็กสีขาวฟ้าสวมหูฟัง กำลังยิ้มอยู่ใต้น้ำ", "en": "Dory, a small white-and-blue fish wearing a headset, smiling underwater"},
   "g1_t": {"th": "ใช้ฟรีช่วงเปิดตัว", "en": "Free during launch"},
   "g1_d": {"th": "ทุกความสามารถ ไม่จำกัดเวลาและจำนวนคน ไม่ต้องใช้บัตรเครดิต", "en": "every feature, no time or seat limit, no credit card."},
   "g2_t": {"th": "ศูนย์ควบคุมองค์กรของคุณเอง", "en": "Your own organization center"},
@@ -296,6 +310,7 @@ async function exchangeSession(googleCredential) {
 function show(step) {
   for (const id of ["step1", "existing", "step2", "step3", "step4"]) $(id).hidden = id !== step;
   const n = { step1: 1, existing: 1, step2: 2, step3: 3, step4: 4 }[step];
+  $("steps").hidden = n === 1; // the welcome screen names the steps in words; the bar shows from step 2
   for (const s of document.querySelectorAll("[data-step]")) {
     const k = Number(s.dataset.step); s.classList.toggle("on", k === n); s.classList.toggle("done", k < n);
   }
@@ -337,6 +352,14 @@ $("create").addEventListener("click", async () => {
   } finally { $("create").disabled = false; }
 });
 $("org-name").addEventListener("keydown", (e) => { if (e.key === "Enter") $("create").click(); });
+// The homepage hands over the company name as ?org=: prefill step 3 (trimmed, within the field's limit). The tab keeps
+// it in sessionStorage, so the round trip through "Sign up with Discord" does not lose it.
+const ORG_KEY = "dory_signup_org";
+try {
+  const org = (new URLSearchParams(location.search).get("org") || "").trim().slice(0, $("org-name").maxLength);
+  $("org-name").value = org || sessionStorage.getItem(ORG_KEY) || "";
+  if (org) sessionStorage.setItem(ORG_KEY, org);
+} catch { /* storage blocked: only this page load keeps the name */ }
 // Hand the credential to /center (same tab, sessionStorage, read once there) so the user is not
 // asked to sign in again right after signing up.
 function tokenExp(tok) {

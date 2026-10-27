@@ -184,10 +184,9 @@ CHAT_KEYS = [
     "chat_intro",
     "chat_trust",
     "chat_try",
-    "chip_missed",
-    "chip_tasks",
-    "chip_spend",
-    "chip_upload",
+    "sug_docs",
+    "sug_meet",
+    "sug_people",
     "thinking_s",
     "thinking_sr",
     "still_working",
@@ -216,7 +215,7 @@ def chat_widget() -> str:
 
 def test_chat_is_a_page_and_still_the_panel():
     s = html()
-    assert '["chat", "n_chat", "✦"]' in s and "VIEWS.chat = async" in s
+    assert '["chat", "n_chat", "chat"]' in s and "VIEWS.chat = async" in s
     assert "the chat is the panel now" not in s  # #/chat no longer bounces to the overview
     assert '$("fab").hidden = id === "chat"' in s  # one composer at a time
     assert 'if (cur !== "chat") route();' in s  # an answer never rebuilds the page under the reader
@@ -244,18 +243,110 @@ def test_chat_states_are_announced_once_and_stop_waiting_is_honest():
     assert "!ev.isComposing && !coarse" in w  # Thai IME and touch keyboards never send by accident
 
 
-def test_the_fish_in_center_is_the_master_drawing():
-    master = (PAGE.parent / "dory" / "dory.svg").read_text("utf-8")
-    body = re.sub(
-        r">\s+<",
-        "><",
-        master[master.index('<g class="dory-fish">') : master.rindex("</svg>")].strip(),
-    )
+def test_voice_call_is_the_painted_reef_scene():
+    """The voice call (owner's reference, 27 Oct 2026): the painted reef fills the panel, the painted Dory stands on a CSS
+    ring of light, a frosted speech bubble carries the state in words and a waveform; 2.5D, no WebGL in the app."""
     s = html()
-    assert body in s, "FISH_SVG drifted from static/dory/dory.svg"
-    defs = re.search(r'<svg id="dory-defs"[^>]*>', s).group(0)
-    assert "position:absolute" in defs and "display:none" not in defs  # hidden defs would not paint
-    assert '"data-theme": "deep"' in s  # the voice-call stage is the deep sea
+    assert (
+        "FISH_SVG" not in s and "dory-defs" not in s and "dory-mark.svg" not in s
+    )  # no vector rig
+    assert (
+        "dory-voice.webp" not in s and "dory3d" not in s and "three@" not in s
+    )  # no sprite, no WebGL
+    assert 'url("/static/dory/voice-reef.webp") center / cover' in s
+    assert 'src="/static/dory/dory-painted-700.webp"' in s and "dory-painted-1200.webp 1200w" in s
+    css = between("/* live call:", "/* company profile:")
+    assert ".call .ring {" in css and "radial-gradient" in css  # light, not a drawn rock
+    assert (
+        "max(var(--lvl), var(--mouth))" in css
+    )  # the waveform follows the mic or Dory, whichever is louder
+    assert "prefers-reduced-transparency" in css and "-webkit-backdrop-filter" in css
+    assert re.search(
+        r"prefers-reduced-motion[^}]*\.call \.fish[^}]*\.call \.wave i", s
+    )  # bob and wave stop
+    view = between("const build = () => {", "\n  // Expand:")
+    assert (
+        'class: "speech", role: "status", "aria-live": "polite"' in view
+    )  # the state is announced in words
+    assert '"data-theme": "deep"' in view and 'role: "region"' in view
+    assert "page ? null :" in view  # the #/chat page keeps itself: its call has no Close
+
+
+def test_speaker_is_a_real_toggle_and_expand_restores_with_escape():
+    s = html()
+    th, en = s.split("\nen: {", 1)
+    assert (
+        "S.out.gain.value = S.spkOff ? 0 : 1" in s
+    )  # Dory's voice on this device; the call goes on
+    assert (
+        "onclick: () => setSpeaker(S.spkOff)" in s
+        and 'v.spkB.setAttribute("aria-pressed", String(S.spkOff))' in s
+    )
+    assert ".call.max { position: fixed;" in s
+    assert 'const big = document.querySelector(".call.max"); if (big) { big.unmax(); return; }' in s
+    for k in (
+        "live_spk",
+        "live_spk_off",
+        "live_spk_mute",
+        "live_spk_unmute",
+        "live_conv",
+        "live_expand",
+        "live_restore",
+    ):
+        assert f"{k}:" in th and f"{k}:" in en, k
+
+
+def test_top_bar_search_asks_dory_and_the_bell_needs_the_monitor():
+    s = html()
+    th, en = s.split("\nen: {", 1)
+    assert '<form class="qs" id="qs-form" role="search">' in s
+    assert (
+        'askDory(t("search_ask", { q: x }))' in s
+    )  # Dory's search covers chat, files, wiki, tasks, meetings
+    assert "(ev.metaKey || ev.ctrlKey)" in s and '$("qs").focus()' in s
+    ask = between("function askDory(text) {", "\n}")
+    assert "chatPage.w.ask(text)" in ask and "panel.ask = text; panelOpen();" in ask
+    assert '$("bell").hidden = !(orgId && pageVisible("monitor"))' in s  # only real attention items
+    assert 'href="#/monitor?tab=attention"' in s
+    for k in ("qs_ph", "qs_label", "search_ask", "lang_label", "sub_overview", "sub_noorg"):
+        assert f"{k}:" in th and f"{k}:" in en, k
+
+
+def test_first_run_page_and_its_help_ask_dory():
+    s = html()
+    th, en = s.split("\nen: {", 1)
+    first = between("function noOrg(full) {", "\n}")
+    assert (
+        'onclick: () => askDory(t("help_q"))' in first
+    )  # no documentation page exists: ask Dory instead
+    assert "/docs" not in first and "http" not in first
+    assert first.count('class: "itile ') == 1 and '["shield", "orange", "can_safe"]' in first
+    assert (
+        't("ask_after_org", { q: panel.ask })' in s
+    )  # without a company, the question waits and says so
+    assert 'get("orgs") === "0") mockApi.s.orgs = []' in s  # ?mock=1&orgs=0 shows the first run
+    for k in (
+        "can_h",
+        "can_members_h",
+        "can_know_p",
+        "can_tools_h",
+        "can_safe_p",
+        "help_h",
+        "help_p",
+        "help_b",
+        "help_q",
+        "ask_after_org",
+    ):
+        assert f"{k}:" in th and f"{k}:" in en, k
+
+
+def test_company_profile_sections_use_the_existing_editor_and_links():
+    view = between("VIEWS.overview = async (body, my) => {", "\n};")
+    assert 'infoCard("file", t("cp_about"), editB(t("cp_about"), "about")' in view
+    assert 'infoCard("scale", t("lg_h"), editB(t("lg_h"), "legal")' in view
+    assert 'href: "#/members" }, ic("users"), t("cp_manage"))' in view
+    assert 'sessionStorage.setItem("center_mtab", "chart")' in view and "foot: false" in view
+    assert '(at === "about" ? about : at === "legal" ? F.registered_name : F.name).focus()' in view
 
 
 def test_no_cat_assets_left_in_the_command_center():
@@ -267,3 +358,44 @@ def test_no_cat_assets_left_in_the_command_center():
     assert (
         '<div class="mark" aria-hidden="true">S</div>' not in html()
     )  # the letter was the old name's
+
+
+# ---------- audit fixes (27 Oct 2026): icons, the Live button, the chat title, mock samples ----------
+def test_interface_icons_are_svg_not_emoji_or_symbol_glyphs():
+    """The taste audit flags emoji and dingbats used as icons (same ranges as its probe)."""
+    s = html()
+    assert not re.search(r"[\U0001F300-\U0001FAFF\u2600-\u27BF]", s)
+    icons = between("const IC = {", "\n};")
+    assert 'stroke-width="1.75"' in between("const icHtml = ", "\n")
+    nav = re.findall(r'\["\w+", "n_\w+", "(\w+)"\]', between("const NAV_SECTIONS = [", "\n];"))
+    used = set(nav) | set(re.findall(r'ic\("(\w+)"\)', s))
+    used |= set(re.findall(r'"(\w+)"', between("const MON_ICON = {", "};")))
+    used |= set(re.findall(r'data-ic="(\w+)"', s))  # the page's static icons, same set
+    assert used and all(f"  {n}: '" in icons for n in used), used - set(
+        re.findall(r"  (\w+): '", icons)
+    )
+
+
+def test_live_button_is_flat_and_the_side_menu_floats_only_when_open():
+    s = html()
+    live = re.search(r"\.livebtn \{[^}]*\}", s).group(0)
+    assert "gradient" not in live and "shadow" not in live
+    assert "body.nav-open #side { transform: none; box-shadow: var(--shadow-lg); }" in s
+
+
+def test_chat_page_has_a_visible_h1_and_a_sentence_case_rail_label():
+    s = html()
+    assert 'h1.classList.add("sr")' not in s
+    assert 'el("div", { class: "grow" }, h1, ' in s  # the page title sits in the chat header
+    rail = re.search(r"\.chatpage \.rail-h \{[^}]*\}", s).group(0)
+    assert "uppercase" not in rail and "letter-spacing" not in rail
+
+
+def test_mock_samples_follow_the_interface_language():
+    """Every Thai sample string in the mock API has an English twin, and every mock answer goes through it."""
+    s = html()
+    assert ".then(mockLang);" in s and 'if (lang === "th") return x;' in s
+    table = set(re.findall(r'"((?:[^"\\]|\\.)*)":', between("const MOCK_EN = {", "\n};")))
+    mock = between("function mockApi(method, path, body) {", "/* ---------- boot ---------- */")
+    thai = {x for x in re.findall(r'"((?:[^"\\]|\\.)*)"', mock) if re.search(r"[\u0e00-\u0e7f]", x)}
+    assert thai and thai <= table, thai - table
