@@ -244,17 +244,23 @@ def test_chat_states_are_announced_once_and_stop_waiting_is_honest():
     assert "!ev.isComposing && !coarse" in w  # Thai IME and touch keyboards never send by accident
 
 
-def test_the_fish_in_center_is_the_master_drawing():
-    master = (PAGE.parent / "dory" / "dory.svg").read_text("utf-8")
-    body = re.sub(
-        r">\s+<",
-        "><",
-        master[master.index('<g class="dory-fish">') : master.rindex("</svg>")].strip(),
-    )
+def test_dory_in_center_is_rendered_from_the_3d_model():
     s = html()
-    assert body in s, "FISH_SVG drifted from static/dory/dory.svg"
-    defs = re.search(r'<svg id="dory-defs"[^>]*>', s).group(0)
-    assert "position:absolute" in defs and "display:none" not in defs  # hidden defs would not paint
+    assert (
+        "FISH_SVG" not in s and "dory-defs" not in s and "dory-mark.svg" not in s
+    )  # no vector rig
+    # the voice-call face: three frames of one sprite (idle, talking, blink), 2.5D, no WebGL in the app
+    assert (
+        '<div class="orb"><i class="face"></i><i class="face talk"></i><i class="face blink"></i></div>'
+        in s
+    )
+    assert 'url("/static/dory/dory-voice.webp") 0 0 / 300% 100%' in s
+    assert (
+        ".call .orb .talk { background-position: 50% 0; opacity: calc(var(--mouth) * 1.8); }" in s
+    )
+    assert ".call .orb .blink," in s  # reduced motion stops the blink too
+    assert "dory3d.js" not in s and "three@" not in s
+    assert 'src="/static/dory/dory3d-poster.webp"' in s  # the first-visit fish is the 3D poster
     assert '"data-theme": "deep"' in s  # the voice-call stage is the deep sea
 
 
