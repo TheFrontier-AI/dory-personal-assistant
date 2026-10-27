@@ -67,9 +67,14 @@ class GlmVoice(WebLive):
         waker: Any = None,
         ask: Callable[[str], str] | None = None,
         lang: str = "en",
+        path: str = "web",
     ):
         super().__init__(settings, None, instruction="", ask=ask or (lambda q: ""), out=out)
         self.url, self.lang = url, lang
+        if path != "web":  # a Discord room logs `voice_latency path=discord`, as LiveVoice does
+            from .voice_latency import StageTimer
+
+            self.timer = StageTimer(path)
         self.cascade = ask is not None  # a cascade server sends "heard": Dory's brain answers it
         self._answer: asyncio.Task | None = None
         self._connect = connect or (lambda: self._ws_connect(url, token))
@@ -137,7 +142,8 @@ class GlmVoice(WebLive):
             act = self._gate.on_frame(item, time.monotonic())
             if act is Act.DROP:
                 continue
-            if act is Act.VOICE:
+            if act is Act.VOICE and self._answer is None:
+                # voiced frames while Dory already answers (echo, a cough) are not the question's end
                 self.timer.touch("speech_end")
             await ws.send(item)
             if act is Act.END:
