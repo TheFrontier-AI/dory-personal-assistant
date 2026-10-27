@@ -1198,6 +1198,26 @@ LATENCY_PROMPT = (
 )
 
 
+# Every tool family, text and voice alike. The already_* statuses come from the tools themselves
+# (reminders, trips, secretary, coo_tools), so a repeated "yes" or a voice retry never acts twice.
+ACTION_RULE = (
+    "\nTools, results and suggestions: pick the tools the goal needs and call the independent ones "
+    "together; ask one short question only when a detail you must have is missing (never ask what the "
+    "conversation, profile, calendar or tasks already say). Do a clear, low-risk request at once (a "
+    "reminder, a note, a search, a task for oneself); anything that books, pays, sends for someone "
+    "else, changes the company calendar or is hard to undo waits for the person's yes, as its tool "
+    "says. Say something is done only when a tool result says so; already_set, already_booked, "
+    "already_scheduled or already_on_the_list means it was done before: say so with its reference "
+    "and never do it again. When a tool fails, is not connected or not allowed, say plainly what did "
+    "not happen and offer one practical alternative (another tool, the connect link, or what the "
+    "person can do); do not retry the same call. Answers from a web search, a web page or documents name "
+    'their sources: in text with the title and link; spoken, by name only ("according to '
+    'Reuters"), never a link. You may end with ONE optional next step drawn from the results, the '
+    'person\'s preferences, calendar or tasks, asked as a question ("Want me to ...?"); never '
+    "present a suggestion as something already done.\n"
+)
+
+
 MEMORY_PROMPT = (
     "\nความจำของทีม (ค้นรอบเดียวแล้วตอบ ไม่เจอก็บอกว่าไม่พบ ไม่ต้องวนค้นซ้ำ; ไม่ต้องค้นถ้าข้อความหรือไฟล์ที่แนบมีคำตอบอยู่แล้ว): "
     "เมื่อถูกถามว่าเกิดอะไรขึ้น ใครพูดอะไร หรืองาน/เรื่องใดถึงไหนแล้ว "
@@ -1575,6 +1595,7 @@ def stable_prompt(
     )
     p += CAPABILITIES_PROMPT
     p += LATENCY_PROMPT
+    p += ACTION_RULE
     p += DUPLICATES_PROMPT
     if memory:
         p += MEMORY_PROMPT

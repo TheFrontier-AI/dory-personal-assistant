@@ -240,6 +240,11 @@ def test_speakable_drops_symbols_tts_reads_aloud():
     assert sp.speakable("เมี้ยว~ แป๊บนึงน้า") == "เมี้ยว แป๊บนึงน้า"
     assert sp.speakable("**12,450 บาท** (8 ใบ) ~ เก่งมาก!") == "12,450 บาท 8 ใบ เก่งมาก!"
     assert sp.speakable("งบโฆษณา 80% ของเดือน 10/2026") == "งบโฆษณา 80% ของเดือน 10/2026"
+    # web_search citation markers are for the eye: a voice never says "one" after a fact
+    assert sp.speakable("Rates rose to 2.5% [1][2], per Reuters [3, 4].") == (
+        "Rates rose to 2.5%, per Reuters."
+    )
+    assert sp.speakable("ห้อง [1] ว่าง") == "ห้อง ว่าง"
     acks = "".join(__import__("dory.meeting", fromlist=["ACK_TEXT"]).ACK_TEXT.values())
     assert "~" not in acks and "เมี้ยว" not in acks
 
