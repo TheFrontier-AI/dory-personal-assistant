@@ -27,6 +27,7 @@ from dory.sharing import SHARED_DOCS_CHANNEL, WEB_DOCS_CHANNEL
 from dory.store import SQLiteStore
 from dory.wiki import WikiPage, WikiRepo
 from meeting_scribe import center, hub, pipeline
+from meeting_scribe import config as ms_config
 from meeting_scribe.app import app
 from meeting_scribe.config import get_settings
 
@@ -61,6 +62,9 @@ def w(docs, tmp_path, monkeypatch):
     monkeypatch.setenv("STORE", "memory")
     monkeypatch.setenv("HUB_GOOGLE_CLIENT_ID", CLIENT_ID)
     monkeypatch.setenv("HUB_ADMIN_EMAILS", "root@example.com")
+    # the web settings never read the developer's .env here (a Discord client secret there turned
+    # the sign-in flows on and failed the tests that expect them off)
+    monkeypatch.setitem(ms_config.Settings.model_config, "env_file", None)
     get_settings.cache_clear()
     pipeline.get_store.cache_clear()
     center._chat_times.clear()
