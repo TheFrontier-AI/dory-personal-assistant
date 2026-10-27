@@ -32,7 +32,7 @@ class Settings(BaseSettings):
     receipt_bucket: str = ""
     receipt_prefix: str = "dory-receipts/"
     db_path: str = "./data/ledger.db"
-    gcp_project: str = "meeting-scribe-hackathon"
+    gcp_project: str = "dory-personal-assistant"
     gemini_location: str = "global"
     gemini_model: str = "gemini-3.5-flash"
     tz: str = "Asia/Bangkok"
