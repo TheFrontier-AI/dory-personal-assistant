@@ -1547,6 +1547,14 @@ CATALOG: dict[str, dict[str, str]] = {
         "th": "ดอรี่หลุดไปครู่หนึ่ง แต่กลับเข้าห้องและจดประชุมต่อแล้วค่ะ",
         "en": "Dory dropped out for a moment but is back in the room and still taking notes.",
     },
+    "glm_answer_failed": {
+        "th": "ขอโทษค่ะ ตอนนี้ดอรี่ยังตอบไม่ได้ ลองใหม่อีกครั้งนะคะ",
+        "en": "Sorry, I could not get that right now. Please try again.",
+    },
+    "glm_waking": {
+        "th": "ระบบเสียงของดอรี่พักอยู่ค่ะ กำลังปลุกเครื่องขึ้นมา ประมาณสองนาทีนะคะ",
+        "en": "Dory's voice server was asleep; waking it up now, about two minutes.",
+    },
     "meet_reconnect_failed": {
         "th": "ดอรี่ต่อเข้าห้องเสียงกลับไม่ได้ค่ะ ขอปิดการประชุมและสรุปให้ตอนนี้",
         "en": "Dory could not reconnect to the voice channel, so it is ending the meeting now.",

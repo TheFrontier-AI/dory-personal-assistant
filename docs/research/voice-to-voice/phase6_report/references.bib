@@ -1,0 +1,808 @@
+@inproceedings{ekstedt2020turngpt,
+  title = {TurnGPT: a Transformer-based Language Model for Predicting Turn-taking in Spoken Dialog},
+  author = {Erik Ekstedt and Gabriel Skantze},
+  year = {2020},
+  booktitle = {Findings of EMNLP 2020},
+  eprint = {2010.10874},
+  archivePrefix = {arXiv},
+  abstract = {Syntactic and pragmatic completeness is known to be important for turn-taking prediction, but so far machine learning models of turn-taking have used such linguistic information in a limited way. In this paper, we introduce TurnGPT, a transformer-based language model for predicting turn-shifts in spoken dialog. The model has been trained and evaluated on a variety of written and spoken dialog datasets. We show that the model outperforms two baselines used in prior work. We also report on an abla},
+}
+
+@inproceedings{nguyen2022generative,
+  title = {Generative Spoken Dialogue Language Modeling},
+  author = {Tu Anh Nguyen and Eugene Kharitonov and Jade Copet and Yossi Adi and Wei-Ning Hsu and Ali Elkahky and Paden Tomasello and Robin Algayres and Benoit Sagot and Abdelrahman Mohamed and Emmanuel Dupoux},
+  year = {2022},
+  booktitle = {TACL 2023},
+  eprint = {2203.16502},
+  archivePrefix = {arXiv},
+  abstract = {We introduce dGSLM, the first "textless" model able to generate audio samples of naturalistic spoken dialogues. It uses recent work on unsupervised spoken unit discovery coupled with a dual-tower transformer architecture with cross-attention trained on 2000 hours of two-channel raw conversational audio (Fisher dataset) without any text or labels. We show that our model is able to generate speech, laughter and other paralinguistic signals in the two channels simultaneously and reproduces more nat},
+}
+
+@article{ekstedt2022voice,
+  title = {Voice Activity Projection: Self-supervised Learning of Turn-taking Events},
+  author = {Erik Ekstedt and Gabriel Skantze},
+  year = {2022},
+  eprint = {2205.09812},
+  archivePrefix = {arXiv},
+  abstract = {The modeling of turn-taking in dialog can be viewed as the modeling of the dynamics of voice activity of the interlocutors. We extend prior work and define the predictive task of Voice Activity Projection, a general, self-supervised objective, as a way to train turn-taking models without the need of labeled data. We highlight a theoretical weakness with prior approaches, arguing for the need of modeling the dependency of voice activity events in the projection window. We propose four zero-shot t},
+}
+
+@article{lin2022duplex,
+  title = {Duplex Conversation: Towards Human-like Interaction in Spoken Dialogue Systems},
+  author = {Ting-En Lin and Yuchuan Wu and Fei Huang and Luo Si and Jian Sun and Yongbin Li},
+  year = {2022},
+  eprint = {2205.15060},
+  archivePrefix = {arXiv},
+  abstract = {In this paper, we present Duplex Conversation, a multi-turn, multimodal spoken dialogue system that enables telephone-based agents to interact with customers like a human. We use the concept of full-duplex in telecommunication to demonstrate what a human-like interactive experience should be and how to achieve smooth turn-taking through three subtasks: user state detection, backchannel selection, and barge-in detection. Besides, we propose semi-supervised learning with multimodal data augmentati},
+}
+
+@article{kang2022delay,
+  title = {Delay-penalized transducer for low-latency streaming ASR},
+  author = {Wei Kang and Zengwei Yao and Fangjun Kuang and Liyong Guo and Xiaoyu Yang and Long lin and Piotr Żelasko and Daniel Povey},
+  year = {2022},
+  eprint = {2211.00490},
+  archivePrefix = {arXiv},
+  abstract = {In streaming automatic speech recognition (ASR), it is desirable to reduce latency as much as possible while having minimum impact on recognition accuracy. Although a few existing methods are able to achieve this goal, they are difficult to implement due to their dependency on external alignments. In this paper, we propose a simple way to penalize symbol delay in transducer model, so that we can balance the trade-off between symbol delay and accuracy for streaming models without external alignme},
+}
+
+@inproceedings{radford2022robust,
+  title = {Robust Speech Recognition via Large-Scale Weak Supervision},
+  author = {Alec Radford and Jong Wook Kim and Tao Xu and Greg Brockman and Christine McLeavey and Ilya Sutskever},
+  year = {2022},
+  booktitle = {ICML 2023},
+  eprint = {2212.04356},
+  archivePrefix = {arXiv},
+  abstract = {We study the capabilities of speech processing systems trained simply to predict large amounts of transcripts of audio on the internet. When scaled to 680,000 hours of multilingual and multitask supervision, the resulting models generalize well to standard benchmarks and are often competitive with prior fully supervised results but in a zero-shot transfer setting without the need for any fine-tuning. When compared to humans, the models approach their accuracy and robustness. We are releasing mod},
+}
+
+@inproceedings{xu2023efficient,
+  title = {Efficient Sequence Transduction by Jointly Predicting Tokens and Durations},
+  author = {Hainan Xu and Fei Jia and Somshubra Majumdar and He Huang and Shinji Watanabe and Boris Ginsburg},
+  year = {2023},
+  booktitle = {ICML 2023},
+  eprint = {2304.06795},
+  archivePrefix = {arXiv},
+  abstract = {This paper introduces a novel Token-and-Duration Transducer (TDT) architecture for sequence-to-sequence tasks. TDT extends conventional RNN-Transducer architectures by jointly predicting both a token and its duration, i.e. the number of input frames covered by the emitted token. This is achieved by using a joint network with two outputs which are independently normalized to generate distributions over tokens and durations. During inference, TDT models can skip input frames guided by the predicte},
+}
+
+@article{rekesh2023fast,
+  title = {Fast Conformer with Linearly Scalable Attention for Efficient Speech Recognition},
+  author = {Dima Rekesh and Nithin Rao Koluguri and Samuel Kriman and Somshubra Majumdar and Vahid Noroozi and He Huang and Oleksii Hrinchuk and Krishna Puvvada and Ankur Kumar and Jagadeesh Balam and Boris Ginsburg},
+  year = {2023},
+  eprint = {2305.05084},
+  archivePrefix = {arXiv},
+  abstract = {Conformer-based models have become the dominant end-to-end architecture for speech processing tasks. With the objective of enhancing the conformer architecture for efficient training and inference, we carefully redesigned Conformer with a novel downsampling schema. The proposed model, named Fast Conformer(FC), is 2.8x faster than the original Conformer, supports scaling to Billion parameters without any changes to the core architecture and also achieves state-of-the-art accuracy on Automatic Spe},
+}
+
+@inproceedings{zhang2023speechgpt,
+  title = {SpeechGPT: Empowering Large Language Models with Intrinsic Cross-Modal Conversational Abilities},
+  author = {Dong Zhang and Shimin Li and Xin Zhang and Jun Zhan and Pengyu Wang and Yaqian Zhou and Xipeng Qiu},
+  year = {2023},
+  booktitle = {Findings of EMNLP 2023},
+  eprint = {2305.11000},
+  archivePrefix = {arXiv},
+  abstract = {Multi-modal large language models are regarded as a crucial step towards Artificial General Intelligence (AGI) and have garnered significant interest with the emergence of ChatGPT. However, current speech-language models typically adopt the cascade paradigm, preventing inter-modal knowledge transfer. In this paper, we propose SpeechGPT, a large language model with intrinsic cross-modal conversational abilities, capable of perceiving and generating multi-model content. With discrete speech repres},
+}
+
+@article{shi2023semantic,
+  title = {Semantic VAD: Low-Latency Voice Activity Detection for Speech Interaction},
+  author = {Mohan Shi and Yuchun Shu and Lingyun Zuo and Qian Chen and Shiliang Zhang and Jie Zhang and Li-Rong Dai},
+  year = {2023},
+  eprint = {2305.12450},
+  archivePrefix = {arXiv},
+  abstract = {For speech interaction, voice activity detection (VAD) is often used as a front-end. However, traditional VAD algorithms usually need to wait for a continuous tail silence to reach a preset maximum duration before segmentation, resulting in a large latency that affects user experience. In this paper, we propose a novel semantic VAD for low-latency segmentation. Different from existing methods, a frame-level punctuation prediction task is added to the semantic VAD, and the artificial endpoint is },
+}
+
+@article{pratap2023scaling,
+  title = {Scaling Speech Technology to 1,000+ Languages},
+  author = {Vineel Pratap and Andros Tjandra and Bowen Shi and Paden Tomasello and Arun Babu and Sayani Kundu and Ali Elkahky and Zhaoheng Ni and Apoorv Vyas and Maryam Fazel-Zarandi and Alexei Baevski and Yossi Adi and Xiaohui Zhang and Wei-Ning Hsu and Alexis Conneau and Michael Auli},
+  year = {2023},
+  eprint = {2305.13516},
+  archivePrefix = {arXiv},
+  abstract = {Expanding the language coverage of speech technology has the potential to improve access to information for many more people. However, current speech technology is restricted to about one hundred languages which is a small fraction of the over 7,000 languages spoken around the world. The Massively Multilingual Speech (MMS) project increases the number of supported languages by 10-40x, depending on the task. The main ingredients are a new dataset based on readings of publicly available religious },
+}
+
+@article{rubenstein2023audiopalm,
+  title = {AudioPaLM: A Large Language Model That Can Speak and Listen},
+  author = {Paul K. Rubenstein and Chulayuth Asawaroengchai and Duc Dung Nguyen and Ankur Bapna and Zalán Borsos and Félix de Chaumont Quitry and Peter Chen and Dalia El Badawy and Wei Han and Eugene Kharitonov and Hannah Muckenhirn and Dirk Padfield and James Qin and Danny Rozenberg and Tara Sainath and Johan Schalkwyk and Matt Sharifi and Michelle Tadmor Ramanovich and Marco Tagliasacchi and Alexandru Tudor and Mihajlo Velimirović and Damien Vincent and Jiahui Yu and Yongqiang Wang and Vicky Zayats and Neil Zeghidour and Yu Zhang and Zhishuai Zhang and Lukas Zilka and Christian Frank},
+  year = {2023},
+  eprint = {2306.12925},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2306.12925},
+  abstract = {We introduce AudioPaLM, a large language model for speech understanding and generation. AudioPaLM fuses text-based and speech-based language models, PaLM-2 [Anil et al., 2023] and AudioLM [Borsos et al., 2022], into a unified multimodal architecture that can process and generate text and speech with applications including speech recognition and speech-to-speech translation. AudioPaLM inherits the capability to preserve paralinguistic information such as speaker identity and intonation from Audio},
+}
+
+@inproceedings{machacek2023turning,
+  title = {Turning Whisper into Real-Time Transcription System},
+  author = {Dominik Macháček and Raj Dabre and Ondřej Bojar},
+  year = {2023},
+  booktitle = {IJCNLP-AACL 2023},
+  eprint = {2307.14743},
+  archivePrefix = {arXiv},
+  abstract = {Whisper is one of the recent state-of-the-art multilingual speech recognition and translation models, however, it is not designed for real time transcription. In this paper, we build on top of Whisper and create Whisper-Streaming, an implementation of real-time speech transcription and translation of Whisper-like models. Whisper-Streaming uses local agreement policy with self-adaptive latency to enable streaming transcription. We show that Whisper-Streaming achieves high quality and 3.3 seconds },
+}
+
+@inproceedings{yao2023zipformer,
+  title = {Zipformer: A faster and better encoder for automatic speech recognition},
+  author = {Zengwei Yao and Liyong Guo and Xiaoyu Yang and Wei Kang and Fangjun Kuang and Yifan Yang and Zengrui Jin and Long Lin and Daniel Povey},
+  year = {2023},
+  booktitle = {ICLR 2024},
+  eprint = {2310.11230},
+  archivePrefix = {arXiv},
+  abstract = {The Conformer has become the most popular encoder model for automatic speech recognition (ASR). It adds convolution modules to a transformer to learn both local and global dependencies. In this work we describe a faster, more memory-efficient, and better-performing transformer, called Zipformer. Modeling changes include: 1) a U-Net-like encoder structure where middle stacks operate at lower frame rates; 2) reorganized block structure with more modules, within which we re-use attention weights fo},
+}
+
+@inproceedings{tang2023salmonn,
+  title = {SALMONN: Towards Generic Hearing Abilities for Large Language Models},
+  author = {Changli Tang and Wenyi Yu and Guangzhi Sun and Xianzhao Chen and Tian Tan and Wei Li and Lu Lu and Zejun Ma and Chao Zhang},
+  year = {2023},
+  booktitle = {ICLR 2024},
+  eprint = {2310.13289},
+  archivePrefix = {arXiv},
+  abstract = {Hearing is arguably an essential ability of artificial intelligence (AI) agents in the physical world, which refers to the perception and understanding of general auditory information consisting of at least three types of sounds: speech, audio events, and music. In this paper, we propose SALMONN, a speech audio language music open neural network, built by integrating a pre-trained text-based large language model (LLM) with speech and audio encoders into a single multimodal model. SALMONN enables},
+}
+
+@article{inoue2024real,
+  title = {Real-time and Continuous Turn-taking Prediction Using Voice Activity Projection},
+  author = {Koji Inoue and Bing'er Jiang and Erik Ekstedt and Tatsuya Kawahara and Gabriel Skantze},
+  year = {2024},
+  eprint = {2401.04868},
+  archivePrefix = {arXiv},
+  abstract = {A demonstration of a real-time and continuous turn-taking prediction system is presented. The system is based on a voice activity projection (VAP) model, which directly maps dialogue stereo audio to future voice activities. The VAP model includes contrastive predictive coding (CPC) and self-attention transformers, followed by a cross-attention transformer. We examine the effect of the input context audio length and demonstrate that the proposed system can operate in real-time with CPU settings, },
+}
+
+@article{inoue2024multilingual,
+  title = {Multilingual Turn-taking Prediction Using Voice Activity Projection},
+  author = {Koji Inoue and Bing'er Jiang and Erik Ekstedt and Tatsuya Kawahara and Gabriel Skantze},
+  year = {2024},
+  eprint = {2403.06487},
+  archivePrefix = {arXiv},
+  abstract = {This paper investigates the application of voice activity projection (VAP), a predictive turn-taking model for spoken dialogue, on multilingual data, encompassing English, Mandarin, and Japanese. The VAP model continuously predicts the upcoming voice activities of participants in dyadic dialogue, leveraging a cross-attention Transformer to capture the dynamic interplay between participants. The results show that a monolingual VAP model trained on one language does not make good predictions when },
+}
+
+@article{dang2024livespeech,
+  title = {LiveSpeech: Low-Latency Zero-shot Text-to-Speech via Autoregressive Modeling of Audio Discrete Codes},
+  author = {Trung Dang and David Aponte and Dung Tran and Kazuhito Koishida},
+  year = {2024},
+  eprint = {2406.02897},
+  archivePrefix = {arXiv},
+  abstract = {Prior works have demonstrated zero-shot text-to-speech by using a generative language model on audio tokens obtained via a neural audio codec. It is still challenging, however, to adapt them to low-latency scenarios. In this paper, we present LiveSpeech - a fully autoregressive language model-based approach for zero-shot text-to-speech, enabling low-latency streaming of the output audio. To allow multiple token prediction within a single decoding step, we propose (1) using adaptive codebook loss},
+}
+
+@inproceedings{yang2024gigaspeech,
+  title = {GigaSpeech 2: An Evolving, Large-Scale and Multi-domain ASR Corpus for Low-Resource Languages with Automated Crawling, Transcription and Refinement},
+  author = {Yifan Yang and Zheshu Song and Jianheng Zhuo and Mingyu Cui and Jinpeng Li and Bo Yang and Yexing Du and Ziyang Ma and Xunying Liu and Ziyuan Wang and Ke Li and Shuai Fan and Kai Yu and Wei-Qiang Zhang and Guoguo Chen and Xie Chen},
+  year = {2024},
+  booktitle = {ACL 2025},
+  eprint = {2406.11546},
+  archivePrefix = {arXiv},
+  abstract = {The evolution of speech technology has been spurred by the rapid increase in dataset sizes. Traditional speech models generally depend on a large amount of labeled training data, which is scarce for low-resource languages. This paper presents GigaSpeech 2, a large-scale, multi-domain, multilingual speech recognition corpus. It is designed for low-resource languages and does not rely on paired speech and text data. GigaSpeech 2 comprises about 30,000 hours of automatically transcribed speech, inc},
+}
+
+@article{puvvada2024less,
+  title = {Less is More: Accurate Speech Recognition \& Translation without Web-Scale Data},
+  author = {Krishna C. Puvvada and Piotr Żelasko and He Huang and Oleksii Hrinchuk and Nithin Rao Koluguri and Kunal Dhawan and Somshubra Majumdar and Elena Rastorgueva and Zhehuai Chen and Vitaly Lavrukhin and Jagadeesh Balam and Boris Ginsburg},
+  year = {2024},
+  eprint = {2406.19674},
+  archivePrefix = {arXiv},
+  abstract = {Recent advances in speech recognition and translation rely on hundreds of thousands of hours of Internet speech data. We argue that state-of-the art accuracy can be reached without relying on web-scale data. Canary - multilingual ASR and speech translation model, outperforms current state-of-the-art models - Whisper, OWSM, and Seamless-M4T on English, French, Spanish, and German languages, while being trained on an order of magnitude less data than these models. Three key factors enables such da},
+}
+
+@inproceedings{ma2024language,
+  title = {Language Model Can Listen While Speaking},
+  author = {Ziyang Ma and Yakun Song and Chenpeng Du and Jian Cong and Zhuo Chen and Yuping Wang and Yuxuan Wang and Xie Chen},
+  year = {2024},
+  booktitle = {AAAI (per OpenAlex)},
+  eprint = {2408.02622},
+  archivePrefix = {arXiv},
+  abstract = {Dialogue serves as the most natural manner of human-computer interaction (HCI). Recent advancements in speech language models (SLM) have significantly enhanced speech-based conversational AI. However, these models are limited to turn-based conversation, lacking the ability to interact with humans in real-time spoken scenarios, for example, being interrupted when the generated content is not satisfactory. To address these limitations, we explore full duplex modeling (FDM) in interactive speech la},
+}
+
+@article{xie2024mini,
+  title = {Mini-Omni: Language Models Can Hear, Talk While Thinking in Streaming},
+  author = {Zhifei Xie and Changqiao Wu},
+  year = {2024},
+  eprint = {2408.16725},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2408.16725},
+  abstract = {Recent advances in language models have achieved significant progress. GPT-4o, as a new milestone, has enabled real-time conversations with humans, demonstrating near-human natural fluency. Such human-computer interaction necessitates models with the capability to perform reasoning directly with the audio modality and generate output in streaming. However, this remains beyond the reach of current academic models, as they typically depend on extra TTS systems for speech synthesis, resulting in un},
+}
+
+@inproceedings{fang2024llama,
+  title = {LLaMA-Omni: Seamless Speech Interaction with Large Language Models},
+  author = {Qingkai Fang and Shoutao Guo and Yan Zhou and Zhengrui Ma and Shaolei Zhang and Yang Feng},
+  year = {2024},
+  booktitle = {ICLR 2025},
+  eprint = {2409.06666},
+  archivePrefix = {arXiv},
+  abstract = {Models like GPT-4o enable real-time interaction with large language models (LLMs) through speech, significantly enhancing user experience compared to traditional text-based interaction. However, there is still a lack of exploration on how to build speech interaction models based on open-source LLMs. To address this, we propose LLaMA-Omni, a novel model architecture designed for low-latency and high-quality speech interaction with LLMs. LLaMA-Omni integrates a pretrained speech encoder, a speech },
+}
+
+@article{manakul2024enhancing,
+  title = {Enhancing Low-Resource Language and Instruction Following Capabilities of Audio Language Models},
+  author = {Potsawee Manakul and Guangzhi Sun and Warit Sirichotedumrong and Kasima Tharnpipitchai and Kunat Pipatanakul},
+  year = {2024},
+  eprint = {2409.10999},
+  archivePrefix = {arXiv},
+  abstract = {Audio language models process audio inputs using textual prompts for tasks like speech recognition and audio captioning. Although built on multilingual pre-trained components, most are trained primarily on English, limiting their usability for other languages. This paper evaluates audio language models on Thai, a low-resource language, and finds that they lack emergent cross-lingual abilities despite their multilingual foundations. To address this, we explore data mixtures that optimize audio la},
+}
+
+@inproceedings{veluri2024beyond,
+  title = {Beyond Turn-Based Interfaces: Synchronous LLMs as Full-Duplex Dialogue Agents},
+  author = {Bandhav Veluri and Benjamin N Peloquin and Bokai Yu and Hongyu Gong and Shyamnath Gollakota},
+  year = {2024},
+  booktitle = {EMNLP 2024},
+  eprint = {2409.15594},
+  archivePrefix = {arXiv},
+  abstract = {Despite broad interest in modeling spoken dialogue agents, most approaches are inherently "half-duplex" -- restricted to turn-based interaction with responses requiring explicit prompting by the user or implicit tracking of interruption or silence events. Human dialogue, by contrast, is "full-duplex" allowing for rich synchronicity in the form of quick and dynamic turn-taking, overlapping speech, and backchanneling. Technically, the challenge of achieving full-duplex dialogue with LLMs lies in m},
+}
+
+@article{defossez2024moshi,
+  title = {Moshi: a speech-text foundation model for real-time dialogue},
+  author = {Alexandre Défossez and Laurent Mazaré and Manu Orsini and Amélie Royer and Patrick Pérez and Hervé Jégou and Edouard Grave and Neil Zeghidour},
+  year = {2024},
+  eprint = {2410.00037},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2410.00037},
+  abstract = {We introduce Moshi, a speech-text foundation model and full-duplex spoken dialogue framework. Current systems for spoken dialogue rely on pipelines of independent components, namely voice activity detection, speech recognition, textual dialogue and text-to-speech. Such frameworks cannot emulate the experience of real conversations. First, their complexity induces a latency of several seconds between interactions. Second, text being the intermediate modality for dialogue, non-linguistic informati},
+}
+
+@inproceedings{chen2024voicebench,
+  title = {VoiceBench: Benchmarking LLM-Based Voice Assistants},
+  author = {Yiming Chen and Xianghu Yue and Chen Zhang and Xiaoxue Gao and Robby T. Tan and Haizhou Li},
+  year = {2024},
+  booktitle = {TACL (per OpenAlex)},
+  eprint = {2410.17196},
+  archivePrefix = {arXiv},
+  abstract = {Building on the success of large language models (LLMs), recent advancements such as GPT-4o have enabled real-time speech interactions through LLM-based voice assistants, offering a significantly improved user experience compared to traditional text-based interactions. However, the absence of benchmarks designed to evaluate these speech interaction capabilities has hindered progress of LLM-based voice assistants development. Current evaluations focus primarily on automatic speech recognition (AS},
+}
+
+@article{wang2024freeze,
+  title = {Freeze-Omni: A Smart and Low Latency Speech-to-speech Dialogue Model with Frozen LLM},
+  author = {Xiong Wang and Yangze Li and Chaoyou Fu and Yunhang Shen and Lei Xie and Ke Li and Xing Sun and Long Ma},
+  year = {2024},
+  eprint = {2411.00774},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2411.00774},
+  abstract = {Rapidly developing large language models (LLMs) have brought tremendous intelligent applications. Especially, the GPT-4o's excellent duplex speech interaction ability has brought impressive experience to users. Researchers have recently proposed several multi-modal LLMs in this direction that can achieve user-agent speech-to-speech conversations. This paper proposes a novel speech-text multimodal LLM architecture called Freeze-Omni. Our main contribution is that the speech input and output modal},
+}
+
+@article{zeng2024glm,
+  title = {GLM-4-Voice: Towards Intelligent and Human-Like End-to-End Spoken Chatbot},
+  author = {Aohan Zeng and Zhengxiao Du and Mingdao Liu and Kedong Wang and Shengmin Jiang and Lei Zhao and Yuxiao Dong and Jie Tang},
+  year = {2024},
+  eprint = {2412.02612},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2412.02612},
+  abstract = {We introduce GLM-4-Voice, an intelligent and human-like end-to-end spoken chatbot. It supports both Chinese and English, engages in real-time voice conversations, and varies vocal nuances such as emotion, intonation, speech rate, and dialect according to user instructions. GLM-4-Voice uses an ultra-low bitrate (175bps), single-codebook speech tokenizer with 12.5Hz frame rate derived from an automatic speech recognition (ASR) model by incorporating a vector-quantized bottleneck into the encoder. },
+}
+
+@inproceedings{he2024meralion,
+  title = {MERaLiON-AudioLLM: Bridging Audio and Language with Large Language Models},
+  author = {Yingxu He and Zhuohan Liu and Shuo Sun and Bin Wang and Wenyu Zhang and Xunlong Zou and Nancy F. Chen and Ai Ti Aw},
+  year = {2024},
+  booktitle = {ACL 2025 System Demonstrations (companion paper)},
+  eprint = {2412.09818},
+  archivePrefix = {arXiv},
+  abstract = {We introduce MERaLiON-AudioLLM (Multimodal Empathetic Reasoning and Learning in One Network), the first speech-text model tailored for Singapore's multilingual and multicultural landscape. Developed under the National Large Language Models Funding Initiative, Singapore, MERaLiON-AudioLLM integrates advanced speech and text processing to address the diverse linguistic nuances of local accents and dialects, enhancing accessibility and usability in complex, multilingual environments. Our results de},
+}
+
+@article{du2024cosyvoice,
+  title = {CosyVoice 2: Scalable Streaming Speech Synthesis with Large Language Models},
+  author = {Zhihao Du and Yuxuan Wang and Qian Chen and Xian Shi and Xiang Lv and Tianyu Zhao and Zhifu Gao and Yexin Yang and Changfeng Gao and Hui Wang and Fan Yu and Huadai Liu and Zhengyan Sheng and Yue Gu and Chong Deng and Wen Wang and Shiliang Zhang and Zhijie Yan and Jingren Zhou},
+  year = {2024},
+  eprint = {2412.10117},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2412.10117},
+  abstract = {In our previous work, we introduced CosyVoice, a multilingual speech synthesis model based on supervised discrete speech tokens. By employing progressive semantic decoding with two popular generative models, language models (LMs) and Flow Matching, CosyVoice demonstrated high prosody naturalness, content consistency, and speaker similarity in speech in-context learning. Recently, significant progress has been made in multi-modal large language models (LLMs), where the response latency and real-t},
+}
+
+@article{pipatanakul2024typhoon,
+  title = {Typhoon 2: A Family of Open Text and Multimodal Thai Large Language Models},
+  author = {Kunat Pipatanakul and Potsawee Manakul and Natapong Nitarach and Warit Sirichotedumrong and Surapon Nonesung and Teetouch Jaknamon and Parinthapat Pengpun and Pittawat Taveekitworachai and Adisai Na-Thalang and Sittipong Sripaisarnmongkol and Krisanapong Jirayoot and Kasima Tharnpipitchai},
+  year = {2024},
+  eprint = {2412.13702},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2412.13702},
+  abstract = {This paper introduces Typhoon 2, a series of text and multimodal large language models optimized for the Thai language. The series includes models for text, vision, and audio. Typhoon2-Text builds on state-of-the-art open models, such as Llama 3 and Qwen2, and we perform continual pre-training on a mixture of English and Thai data. We employ post-training techniques to enhance Thai language performance while preserving the base models' original capabilities. We release text models across a range},
+}
+
+@article{yang2024interleaved,
+  title = {Interleaved Speech-Text Language Models for Simple Streaming Text-to-Speech Synthesis},
+  author = {Yifan Yang and Shujie Liu and Jinyu Li and Hui Wang and Lingwei Meng and Haiyang Sun and Yuzhe Liang and Ziyang Ma and Yuxuan Hu and Rui Zhao and Jianwei Yu and Yan Lu and Xie Chen},
+  year = {2024},
+  eprint = {2412.16102},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2412.16102},
+  abstract = {This paper introduces Interleaved Speech-Text Language Model (IST-LM) for zero-shot streaming Text-to-Speech (TTS). Unlike many previous approaches, IST-LM is directly trained on interleaved sequences of text and speech tokens with a fixed ratio, eliminating the need for additional efforts like forced alignment or complex designs. The ratio of text chunk size to speech chunk size is crucial for the performance of IST-LM. To explore this, we conducted a comprehensive series of statistical analyse},
+}
+
+@inproceedings{fu2025vita,
+  title = {VITA-1.5: Towards GPT-4o Level Real-Time Vision and Speech Interaction},
+  author = {Chaoyou Fu and Haojia Lin and Xiong Wang and Yi-Fan Zhang and Yunhang Shen and Xiaoyu Liu and Haoyu Cao and Zuwei Long and Heting Gao and Ke Li and Long Ma and Xiawu Zheng and Rongrong Ji and Xing Sun and Caifeng Shan and Ran He},
+  year = {2025},
+  booktitle = {NeurIPS 2025},
+  eprint = {2501.01957},
+  archivePrefix = {arXiv},
+  abstract = {Recent Multimodal Large Language Models (MLLMs) have typically focused on integrating visual and textual modalities, with less emphasis placed on the role of speech in enhancing interaction. However, speech plays a crucial role in multimodal dialogue systems, and implementing high-performance in both vision and speech tasks remains a significant challenge due to the fundamental modality differences. In this paper, we propose a carefully designed multi-stage training methodology that progressivel},
+}
+
+@article{chen2025minmo,
+  title = {MinMo: A Multimodal Large Language Model for Seamless Voice Interaction},
+  author = {Qian Chen and Yafeng Chen and Yanni Chen and Mengzhe Chen and Yingda Chen and Chong Deng and Zhihao Du and Ruize Gao and Changfeng Gao and Zhifu Gao and Yabin Li and Xiang Lv and Jiaqing Liu and Haoneng Luo and Bin Ma and Chongjia Ni and Xian Shi and Jialong Tang and Hui Wang and Hao Wang and Wen Wang and Yuxuan Wang and Yunlan Xu and Fan Yu and Zhijie Yan and Yexin Yang and Baosong Yang and Xian Yang and Guanrou Yang and Tianyu Zhao and Qinglin Zhang and Shiliang Zhang and Nan Zhao and Pei Zhang and Chong Zhang and Jinren Zhou},
+  year = {2025},
+  eprint = {2501.06282},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2501.06282},
+  abstract = {Recent advancements in large language models (LLMs) and multimodal speech-text models have laid the groundwork for seamless voice interactions, enabling real-time, natural, and human-like conversations. Previous models for voice interactions are categorized as native and aligned. Native models integrate speech and text processing in one framework but struggle with issues like differing sequence lengths and insufficient pre-training. Aligned models maintain text LLM capabilities but are often lim},
+}
+
+@article{sheng2025syncspeech,
+  title = {SyncSpeech: Efficient and Low-Latency Text-to-Speech based on Temporal Masked Transformer},
+  author = {Zhengyan Sheng and Zhihao Du and Shiliang Zhang and Zhijie Yan and Liping Chen},
+  year = {2025},
+  eprint = {2502.11094},
+  archivePrefix = {arXiv},
+  abstract = {Current text-to-speech (TTS) models face a persistent limitation: autoregressive (AR) models suffer from low generation efficiency, while modern non-autoregressive (NAR) models experience high latency due to their unordered temporal nature. To bridge this divide, we introduce SyncSpeech, an efficient and low-latency TTS model based on the proposed Temporal Mask Transformer (TMT) paradigm. TMT synergistically unifies the temporally ordered generation of AR models with the parallel decoding effici},
+}
+
+@article{huang2025step,
+  title = {Step-Audio: Unified Understanding and Generation in Intelligent Speech Interaction},
+  author = {Ailin Huang and Boyong Wu and Bruce Wang and Chao Yan and Chen Hu and Chengli Feng and Fei Tian and Feiyu Shen and Jingbei Li and Mingrui Chen and Peng Liu and Ruihang Miao and Wang You and Xi Chen and Xuerui Yang and Yechang Huang and Yuxiang Zhang and Zheng Gong and Zixin Zhang and Hongyu Zhou and Jianjian Sun and Brian Li and Chengting Feng and Changyi Wan and Hanpeng Hu and Jianchang Wu and Jiangjie Zhen and Ranchen Ming and Song Yuan and Xuelin Zhang and Yu Zhou and Bingxin Li and Buyun Ma and Hongyuan Wang and Kang An and Wei Ji and Wen Li and Xuan Wen and Xiangwen Kong and Yuankai Ma and Yuanwei Liang and Yun Mou and Bahtiyar Ahmidi and Bin Wang and Bo Li and Changxin Miao and Chen Xu and Chenrun Wang and Dapeng Shi and Deshan Sun and Dingyuan Hu and Dula Sai and Enle Liu and Guanzhe Huang and Gulin Yan and Heng Wang and Haonan Jia and Haoyang Zhang and Jiahao Gong and Junjing Guo and Jiashuai Liu and Jiahong Liu and Jie Feng and Jie Wu and Jiaoren Wu and Jie Yang and Jinguo Wang and Jingyang Zhang and Junzhe Lin and Kaixiang Li and Lei Xia and Li Zhou and Liang Zhao and Longlong Gu and Mei Chen and Menglin Wu and Ming Li and Mingxiao Li and Mingliang Li and Mingyao Liang and Na Wang and Nie Hao and Qiling Wu and Qinyuan Tan and Ran Sun and Shuai Shuai and Shaoliang Pang and Shiliang Yang and Shuli Gao and Shanshan Yuan and Siqi Liu and Shihong Deng and Shilei Jiang and Sitong Liu and Tiancheng Cao and Tianyu Wang and Wenjin Deng and Wuxun Xie and Weipeng Ming and Wenqing He and Wen Sun and Xin Han and Xin Huang and Xiaomin Deng and Xiaojia Liu and Xin Wu and Xu Zhao and Yanan Wei and Yanbo Yu and Yang Cao and Yangguang Li and Yangzhen Ma and Yanming Xu and Yaoyu Wang and Yaqiang Shi and Yilei Wang and Yizhuang Zhou and Yinmin Zhong and Yang Zhang and Yaoben Wei and Yu Luo and Yuanwei Lu and Yuhe Yin and Yuchu Luo and Yuanhao Ding and Yuting Yan and Yaqi Dai and Yuxiang Yang and Zhe Xie and Zheng Ge and Zheng Sun and Zhewei Huang and Zhichao Chang and Zhisheng Guan and Zidong Yang and Zili Zhang and Binxing Jiao and Daxin Jiang and Heung-Yeung Shum and Jiansheng Chen and Jing Li and Shuchang Zhou and Xiangyu Zhang and Xinhao Zhang and Yibo Zhu},
+  year = {2025},
+  eprint = {2502.11946},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2502.11946},
+  abstract = {Real-time speech interaction, serving as a fundamental interface for human-machine collaboration, holds immense potential. However, current open-source models face limitations such as high costs in voice data collection, weakness in dynamic control, and limited intelligence. To address these challenges, this paper introduces Step-Audio, the first production-ready open-source solution. Key contributions include: 1) a 130B-parameter unified speech-text multi-modal model that achieves unified under},
+}
+
+@article{li2025baichuan,
+  title = {Baichuan-Audio: A Unified Framework for End-to-End Speech Interaction},
+  author = {Tianpeng Li and Jun Liu and Tao Zhang and Yuanbo Fang and Da Pan and Mingrui Wang and Zheng Liang and Zehuan Li and Mingan Lin and Guosheng Dong and Jianhua Xu and Haoze Sun and Zenan Zhou and Weipeng Chen},
+  year = {2025},
+  eprint = {2502.17239},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2502.17239},
+  abstract = {We introduce Baichuan-Audio, an end-to-end audio large language model that seamlessly integrates audio understanding and generation. It features a text-guided aligned speech generation mechanism, enabling real-time speech interaction with both comprehension and generation capabilities. Baichuan-Audio leverages a pre-trained ASR model, followed by multi-codebook discretization of speech at a frame rate of 12.5 Hz. This multi-codebook setup ensures that speech tokens retain both semantic and acous},
+}
+
+@article{yan2025uro,
+  title = {URO-Bench: Towards Comprehensive Evaluation for End-to-End Spoken Dialogue Models},
+  author = {Ruiqi Yan and Xiquan Li and Wenxi Chen and Zhikang Niu and Chen Yang and Ziyang Ma and Kai Yu and Xie Chen},
+  year = {2025},
+  eprint = {2502.17810},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2502.17810},
+  abstract = {Recent advances in large language models (LLMs) have driven significant progress in end-to-end spoken dialogue models (SDMs). In contrast to text-based LLMs, the evaluation framework for SDMs should encompass both cognitive dimensions (e.g., logical reasoning, knowledge) and speech-related aspects (e.g., paralinguistic cues, audio quality). However, there is still a lack of comprehensive evaluations for SDMs in speech-to-speech (S2S) scenarios. To address this gap, we propose URO-Bench, an exten},
+}
+
+@inproceedings{arora2025talking,
+  title = {Talking Turns: Benchmarking Audio Foundation Models on Turn-Taking Dynamics},
+  author = {Siddhant Arora and Zhiyun Lu and Chung-Cheng Chiu and Ruoming Pang and Shinji Watanabe},
+  year = {2025},
+  booktitle = {ICLR 2025},
+  eprint = {2503.01174},
+  archivePrefix = {arXiv},
+  abstract = {The recent wave of audio foundation models (FMs) could provide new capabilities for conversational modeling. However, there have been limited efforts to evaluate these audio FMs comprehensively on their ability to have natural and interactive conversations. To engage in meaningful conversation with the end user, we would want the FMs to additionally perform a fluent succession of turns without too much overlapping speech or long stretches of silence. Inspired by this, we ask whether the recently},
+}
+
+@article{lin2025full,
+  title = {Full-Duplex-Bench: A Benchmark to Evaluate Full-duplex Spoken Dialogue Models on Turn-taking Capabilities},
+  author = {Guan-Ting Lin and Jiachen Lian and Tingle Li and Qirui Wang and Gopala Anumanchipalli and Alexander H. Liu and Hung-yi Lee},
+  year = {2025},
+  eprint = {2503.04721},
+  archivePrefix = {arXiv},
+  abstract = {Spoken dialogue modeling poses challenges beyond text-based language modeling, requiring real-time interaction, turn-taking, and backchanneling. While most Spoken Dialogue Models (SDMs) operate in half-duplex mode-processing one turn at a time - emerging full-duplex SDMs can listen and speak simultaneously, enabling more natural conversations. However, current evaluations remain limited, focusing mainly on turn-based metrics or coarse corpus-level analyses. To address this, we introduce Full-Dup},
+}
+
+@inproceedings{shikhar2025llmvox,
+  title = {LLMVoX: Autoregressive Streaming Text-to-Speech Model for Any LLM},
+  author = {Sambal Shikhar and Mohammed Irfan Kurpath and Sahal Shaji Mullappilly and Jean Lahoud and Fahad Khan and Rao Muhammad Anwer and Salman Khan and Hisham Cholakkal},
+  year = {2025},
+  booktitle = {ACL 2025},
+  eprint = {2503.04724},
+  archivePrefix = {arXiv},
+  abstract = {Recent advancements in speech-to-speech dialogue systems leverage LLMs for multimodal interactions, yet they remain hindered by fine-tuning requirements, high computational overhead, and text-speech misalignment. Existing speech-enabled LLMs often degrade conversational quality by modifying the LLM, thereby compromising its linguistic capabilities. In contrast, we propose LLMVoX, a lightweight 30M-parameter, LLM-agnostic, autoregressive streaming TTS system that generates high-quality speech wit},
+}
+
+@article{xu2025qwen,
+  title = {Qwen2.5-Omni Technical Report},
+  author = {Jin Xu and Zhifang Guo and Jinzheng He and Hangrui Hu and Ting He and Shuai Bai and Keqin Chen and Jialin Wang and Yang Fan and Kai Dang and Bin Zhang and Xiong Wang and Yunfei Chu and Junyang Lin},
+  year = {2025},
+  eprint = {2503.20215},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2503.20215},
+  abstract = {In this report, we present Qwen2.5-Omni, an end-to-end multimodal model designed to perceive diverse modalities, including text, images, audio, and video, while simultaneously generating text and natural speech responses in a streaming manner. To enable the streaming of multimodal information inputs, both audio and visual encoders utilize a block-wise processing approach. To synchronize the timestamps of video inputs with audio, we organize the audio and video sequentially in an interleaved mann},
+}
+
+@inproceedings{ok2025speculative,
+  title = {Speculative End-Turn Detector for Efficient Speech Chatbot Assistant},
+  author = {Hyunjong Ok and Suho Yoo and Jaeho Lee},
+  year = {2025},
+  booktitle = {ACL 2026},
+  eprint = {2503.23439},
+  archivePrefix = {arXiv},
+  abstract = {Spoken dialogue systems powered by large language models have demonstrated remarkable abilities in understanding human speech and generating appropriate spoken responses. However, these systems struggle with end-turn detection (ETD) -- the ability to distinguish between user turn completion and hesitation. This limitation often leads to premature or delayed responses, disrupting the flow of spoken conversations. In this paper, we introduce the ETD Dataset, the first public dataset for end-turn d},
+}
+
+@article{kimiteam2025kimi,
+  title = {Kimi-Audio Technical Report},
+  author = {KimiTeam and Ding Ding and Zeqian Ju and Yichong Leng and Songxiang Liu and Tong Liu and Zeyu Shang and Kai Shen and Wei Song and Xu Tan and Heyi Tang and Zhengtao Wang and Chu Wei and Yifei Xin and Xinran Xu and Jianwei Yu and Yutao Zhang and Xinyu Zhou and Y. Charles and Jun Chen and Yanru Chen and Yulun Du and Weiran He and Zhenxing Hu and Guokun Lai and Qingcheng Li and Yangyang Liu and Weidong Sun and Jianzhou Wang and Yuzhi Wang and Yuefeng Wu and Yuxin Wu and Dongchao Yang and Hao Yang and Ying Yang and Zhilin Yang and Aoxiong Yin and Ruibin Yuan and Yutong Zhang and Zaida Zhou},
+  year = {2025},
+  eprint = {2504.18425},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2504.18425},
+  abstract = {We present Kimi-Audio, an open-source audio foundation model that excels in audio understanding, generation, and conversation. We detail the practices in building Kimi-Audio, including model architecture, data curation, training recipe, inference deployment, and evaluation. Specifically, we leverage a 12.5Hz audio tokenizer, design a novel LLM-based architecture with continuous features as input and discrete tokens as output, and develop a chunk-wise streaming detokenizer based on flow matching.},
+}
+
+@article{shi2025voila,
+  title = {Voila: Voice-Language Foundation Models for Real-Time Autonomous Interaction and Voice Role-Play},
+  author = {Yemin Shi and Yu Shu and Siwei Dong and Guangyi Liu and Jaward Sesay and Jingwen Li and Zhiting Hu},
+  year = {2025},
+  eprint = {2505.02707},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2505.02707},
+  abstract = {A voice AI agent that blends seamlessly into daily life would interact with humans in an autonomous, real-time, and emotionally expressive manner. Rather than merely reacting to commands, it would continuously listen, reason, and respond proactively, fostering fluid, dynamic, and emotionally resonant interactions. We introduce Voila, a family of large voice-language foundation models that make a step towards this vision. Voila moves beyond traditional pipeline systems by adopting a new end-to-en},
+}
+
+@article{hu2025salm,
+  title = {SALM-Duplex: Efficient and Direct Duplex Modeling for Speech-to-Speech Language Model},
+  author = {Ke Hu and Ehsan Hosseini-Asl and Chen Chen and Edresson Casanova and Subhankar Ghosh and Piotr Żelasko and Zhehuai Chen and Jason Li and Jagadeesh Balam and Boris Ginsburg},
+  year = {2025},
+  eprint = {2505.15670},
+  archivePrefix = {arXiv},
+  abstract = {Spoken dialogue is an intuitive form of human-computer interaction, yet current speech language models often remain constrained to turn-based exchanges, lacking real-time adaptability such as user barge-in. We propose a novel duplex speech to speech (S2S) architecture featuring continuous user inputs and codec agent outputs with channel fusion that directly models simultaneous user and agent streams. Using a pretrained streaming encoder for user input enables the first duplex S2S model without r},
+}
+
+@article{dao2025speechless,
+  title = {Speechless: Speech Instruction Training Without Speech for Low Resource Languages},
+  author = {Alan Dao and Dinh Bach Vu and Huy Hoang Ha and Tuan Le Duc Anh and Shreyas Gopal and Yue Heng Yeo and Warren Keng Hoong Low and Eng Siong Chng and Jia Qi Yip},
+  year = {2025},
+  eprint = {2505.17417},
+  archivePrefix = {arXiv},
+  abstract = {The rapid growth of voice assistants powered by large language models (LLM) has highlighted a need for speech instruction data to train these systems. Despite the abundance of speech recognition data, there is a notable scarcity of speech instruction data, which is essential for fine-tuning models to understand and execute spoken commands. Generating high-quality synthetic speech requires a good text-to-speech (TTS) model, which may not be available to low resource languages. Our novel approach },
+}
+
+@article{bai2025speakstream,
+  title = {SpeakStream: Streaming Text-to-Speech with Interleaved Data},
+  author = {Richard He Bai and Zijin Gu and Tatiana Likhomanenko and Navdeep Jaitly},
+  year = {2025},
+  eprint = {2505.19206},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2505.19206},
+  abstract = {The latency bottleneck of traditional text-to-speech (TTS) systems fundamentally hinders the potential of streaming large language models (LLMs) in conversational AI. These TTS systems, typically trained and inferenced on complete utterances, introduce unacceptable delays, even with optimized inference speeds, when coupled with streaming LLM outputs. This is particularly problematic for creating responsive conversational agents where low first-token latency is critical. In this paper, we present},
+}
+
+@inproceedings{wang2025ntpp,
+  title = {NTPP: Generative Speech Language Modeling for Dual-Channel Spoken Dialogue via Next-Token-Pair Prediction},
+  author = {Qichao Wang and Ziqiao Meng and Wenqian Cui and Yifei Zhang and Pengcheng Wu and Bingzhe Wu and Irwin King and Liang Chen and Peilin Zhao},
+  year = {2025},
+  booktitle = {ICML 2025},
+  eprint = {2506.00975},
+  archivePrefix = {arXiv},
+  abstract = {Inspired by the impressive capabilities of GPT-4o, there is growing interest in enabling speech language models (SLMs) to engage in natural, fluid spoken interactions with humans. Recent advancements have led to the development of several SLMs that demonstrate promising results in this area. However, current approaches have yet to fully exploit dual-channel speech data, which inherently captures the structure and dynamics of human conversation. In this work, we systematically explore the use of },
+}
+
+@article{zhang2025stream,
+  title = {Stream-Omni: Simultaneous Multimodal Interactions with Large Language-Vision-Speech Model},
+  author = {Shaolei Zhang and Shoutao Guo and Qingkai Fang and Yan Zhou and Yang Feng},
+  year = {2025},
+  eprint = {2506.13642},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2506.13642},
+  abstract = {The emergence of GPT-4o-like large multimodal models (LMMs) has raised the exploration of integrating text, vision, and speech modalities to support more flexible multimodal interaction. Existing LMMs typically concatenate representation of modalities along the sequence dimension and feed them into a large language model (LLM) backbone. While sequence-dimension concatenation is straightforward for modality integration, it often relies heavily on large-scale data to learn modality alignments. In },
+}
+
+@article{inoue2025prompt,
+  title = {Prompt-Guided Turn-Taking Prediction},
+  author = {Koji Inoue and Mikey Elmers and Yahui Fu and Zi Haur Pang and Divesh Lala and Keiko Ochi and Tatsuya Kawahara},
+  year = {2025},
+  eprint = {2506.21191},
+  archivePrefix = {arXiv},
+  abstract = {Turn-taking prediction models are essential components in spoken dialogue systems and conversational robots. Recent approaches leverage transformer-based architectures to predict speech activity continuously and in real-time. In this study, we propose a novel model that enables turn-taking prediction to be dynamically controlled via textual prompts. This approach allows intuitive and explicit control through instructions such as "faster" or "calmer" adapting dynamically to conversational partner},
+}
+
+@article{peng2025bench,
+  title = {FD-Bench: A Full-Duplex Benchmarking Pipeline Designed for Full Duplex Spoken Dialogue Systems},
+  author = {Yizhou Peng and Yi-Wen Chao and Dianwen Ng and Yukun Ma and Chongjia Ni and Bin Ma and Eng Siong Chng},
+  year = {2025},
+  eprint = {2507.19040},
+  archivePrefix = {arXiv},
+  abstract = {Full-duplex spoken dialogue systems (FDSDS) enable more natural human-machine interactions by allowing real-time user interruptions and backchanneling, compared to traditional SDS that rely on turn-taking. However, existing benchmarks lack metrics for FD scenes, e.g., evaluating model performance during user interruptions. In this paper, we present a comprehensive FD benchmarking pipeline utilizing LLMs, TTS, and ASR to address this gap. It assesses FDSDS's ability to handle user interruptions, },
+}
+
+@article{lin2025fulla,
+  title = {Full-Duplex-Bench v1.5: Evaluating Overlap Handling for Full-Duplex Speech Models},
+  author = {Guan-Ting Lin and Shih-Yun Shan Kuan and Qirui Wang and Jiachen Lian and Tingle Li and Shinji Watanabe and Hung-yi Lee},
+  year = {2025},
+  eprint = {2507.23159},
+  archivePrefix = {arXiv},
+  abstract = {Full-duplex spoken dialogue systems promise to transform human-machine interaction from a rigid, turn-based protocol into a fluid, natural conversation. However, the central challenge to realizing this vision, managing overlapping speech, remains critically under-evaluated. We introduce Full-Duplex-Bench v1.5, the first fully automated benchmark designed to systematically probe how models behave during speech overlap. The benchmark simulates four representative overlap scenarios: user interrupti},
+}
+
+@article{zeghidour2025streaming,
+  title = {Streaming Sequence-to-Sequence Learning with Delayed Streams Modeling},
+  author = {Neil Zeghidour and Eugene Kharitonov and Manu Orsini and Václav Volhejn and Gabriel de Marmiesse and Edouard Grave and Patrick Pérez and Laurent Mazaré and Alexandre Défossez},
+  year = {2025},
+  eprint = {2509.08753},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2509.08753},
+  abstract = {We introduce Delayed Streams Modeling (DSM), a flexible formulation for streaming, multimodal sequence-to-sequence learning. Sequence-to-sequence generation is often cast in an offline manner, where the model consumes the complete input sequence before generating the first output timestep. Alternatively, streaming sequence-to-sequence rely on learning a policy for choosing when to advance on the input stream, or write to the output stream. DSM instead models already time-aligned streams with a d},
+}
+
+@article{chen2025from,
+  title = {From Turn-Taking to Synchronous Dialogue: A Survey of Full-Duplex Spoken Language Models},
+  author = {Yuxuan Chen and Haoyuan Yu},
+  year = {2025},
+  eprint = {2509.14515},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2509.14515},
+  abstract = {True Full-Duplex (TFD) voice communication--enabling simultaneous listening and speaking with natural turn-taking, overlapping speech, and interruptions--represents a critical milestone toward human-like AI interaction. This survey comprehensively reviews Full-Duplex Spoken Language Models (FD-SLMs) in the LLM era. We establish a taxonomy distinguishing Engineered Synchronization (modular architectures) from Learned Synchronization (end-to-end architectures), and unify fragmented evaluation appr},
+}
+
+@article{shao2025towards,
+  title = {Towards Building Speech Large Language Models for Multitask Understanding in Low-Resource Languages},
+  author = {Mingchen Shao and Bingshen Mu and Chengyou Wang and Hai Li and Ying Yan and Zhonghua Fu and Lei Xie},
+  year = {2025},
+  eprint = {2509.14804},
+  archivePrefix = {arXiv},
+  abstract = {Speech large language models (SLLMs) built on speech encoders, adapters, and LLMs demonstrate remarkable multitask understanding performance in high-resource languages such as English and Chinese. However, their effectiveness substantially degrades in low-resource languages such as Thai. This limitation arises from three factors: (1) existing commonly used speech encoders, like the Whisper family, underperform in low-resource languages and lack support for broader spoken language understanding t},
+}
+
+@article{zhao2025moss,
+  title = {MOSS-Speech: Towards True Speech-to-Speech Models Without Text Guidance},
+  author = {Xingjian Zhao and Zhe Xu and Qinyuan Cheng and Zhaoye Fei and Luozhijie Jin and Yang Wang and Hanfu Chen and Yaozhou Jiang and Qinghui Gao and Ke Chen and Ruixiao Li and Mingshu Chen and Ruiming Wang and Wenbo Zhang and Yiyang Zhang and Donghua Yu and Yang Gao and Xiaogui Yang and Yitian Gong and Yuanfan Xu and Yaqian Zhou and Xuanjing Huang and Xipeng Qiu},
+  year = {2025},
+  eprint = {2510.00499},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2510.00499},
+  abstract = {Spoken dialogue systems often rely on cascaded pipelines that transcribe, process, and resynthesize speech. While effective, this design discards paralinguistic cues and limits expressivity. Recent end-to-end methods reduce latency and better preserve these cues, yet still rely on text intermediates, creating a fundamental bottleneck. We present MOSS-Speech, a true speech-to-speech large language model that directly understands and generates speech without relying on text guidance. Our approach },
+}
+
+@article{tsunoo2025spiralformer,
+  title = {Spiralformer: Low Latency Encoder for Streaming Speech Recognition with Circular Layer Skipping and Early Exiting},
+  author = {Emiru Tsunoo and Hayato Futami and Yosuke Kashiwagi and Siddhant Arora and Shinji Watanabe},
+  year = {2025},
+  eprint = {2510.00982},
+  archivePrefix = {arXiv},
+  abstract = {For streaming speech recognition, a Transformer-based encoder has been widely used with block processing. Although many studies addressed improving emission latency of transducers, little work has been explored for improving encoding latency of the block processing. We seek to reduce latency by frequently emitting a chunk with a small shift rather than scarce large-chunk emissions, resulting in higher computational costs. To efficiently compute with the small chunk shift, we propose a new encode},
+}
+
+@article{arora2025chain,
+  title = {Chain-of-Thought Reasoning in Streaming Full-Duplex End-to-End Spoken Dialogue Systems},
+  author = {Siddhant Arora and Jinchuan Tian and Hayato Futami and Jiatong Shi and Yosuke Kashiwagi and Emiru Tsunoo and Shinji Watanabe},
+  year = {2025},
+  eprint = {2510.02066},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2510.02066},
+  abstract = {Most end-to-end (E2E) spoken dialogue systems (SDS) rely on voice activity detection (VAD) for turn-taking, but VAD fails to distinguish between pauses and turn completions. Duplex SDS models address this by predicting output continuously, including silence tokens, thus removing the need for explicit VAD. However, they often have complex dual-channel architecture and lag behind cascaded models in semantic reasoning. To overcome these challenges, we propose SCoT: a Streaming Chain-of-Thought (CoT},
+}
+
+@article{wu2025chronological,
+  title = {Chronological Thinking in Full-Duplex Spoken Dialogue Language Models},
+  author = {Donghang Wu and Haoyang Zhang and Chen Chen and Tianyu Zhang and Fei Tian and Xuerui Yang and Gang Yu and Hexin Liu and Nana Hou and Yuchen Hu and Eng Siong Chng},
+  year = {2025},
+  eprint = {2510.05150},
+  archivePrefix = {arXiv},
+  abstract = {Recent advances in spoken dialogue language models (SDLMs) reflect growing interest in shifting from turn-based to full-duplex systems, where the models continuously perceive user speech streams while generating responses. This simultaneous listening and speaking design enables real-time interaction and the agent can handle dynamic conversational behaviors like user barge-in. However, during the listening phase, existing systems keep the agent idle by repeatedly predicting the silence token, whi},
+}
+
+@article{liu2025seallms,
+  title = {SeaLLMs-Audio: Large Audio-Language Models for Southeast Asia},
+  author = {Chaoqun Liu and Mahani Aljunied and Guizhen Chen and Hou Pong Chan and Weiwen Xu and Yu Rong and Wenxuan Zhang},
+  year = {2025},
+  eprint = {2511.01670},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2511.01670},
+  abstract = {We introduce SeaLLMs-Audio, the first large audio-language model (LALM) tailored for multiple Southeast Asian (SEA) languages-Indonesian (id), Thai (th), and Vietnamese (vi)-alongside English (en) and Chinese (zh). Trained on a large-scale audio corpus, SeaLLMs-Audio exhibits strong performance across diverse audio-centric tasks, spanning fine-grained audio understanding and voice-based interaction. Its key features include: 1) Multilingual: the model primarily supports 5 languages, namely Indon},
+}
+
+@inproceedings{yang2025paras,
+  title = {ParaS2S: Benchmarking and Aligning Spoken Language Models for Paralinguistic-aware Speech-to-Speech Interaction},
+  author = {Shu-wen Yang and Ming Tu and Andy T. Liu and Xinghua Qu and Hung-yi Lee and Lu Lu and Yuxuan Wang and Yonghui Wu},
+  year = {2025},
+  booktitle = {ICLR 2026},
+  eprint = {2511.08723},
+  archivePrefix = {arXiv},
+  abstract = {Speech-to-Speech (S2S) models have shown promising dialogue capabilities, but their ability to handle paralinguistic cues - such as emotion, tone, and speaker attributes - and to respond appropriately in both content and style remains under-explored. Progress is further hindered by the scarcity of high-quality and expressive demonstrations. To address this, we introduce a new reinforcement learning (RL) framework for paralinguistic-aware S2S, ParaS2S, which evaluates and optimizes both response },
+}
+
+@inproceedings{zhang2025mtr,
+  title = {MTR-DuplexBench: Towards a Comprehensive Evaluation of Multi-Round Conversations for Full-Duplex Speech Language Models},
+  author = {He Zhang and Wenqian Cui and Haoning Xu and Xiaohui Li and Lei Zhu and Haoli Bai and Shaohua Ma and Irwin King},
+  year = {2025},
+  booktitle = {ACL 2026},
+  eprint = {2511.10262},
+  archivePrefix = {arXiv},
+  abstract = {Full-Duplex Speech Language Models (FD-SLMs) enable real-time, overlapping conversational interactions, offering a more dynamic user experience compared to traditional half-duplex models. However, existing benchmarks primarily focus on evaluating single-round interactions, neglecting the complexities of multi-round communication. Evaluating FD-SLMs in multi-round settings poses significant challenges, including blurred turn boundaries in communication and context inconsistency during model infer},
+}
+
+@article{sirichotedumrong2026typhoon,
+  title = {Typhoon ASR Real-time: FastConformer-Transducer for Thai Automatic Speech Recognition},
+  author = {Warit Sirichotedumrong and Adisai Na-Thalang and Potsawee Manakul and Pittawat Taveekitworachai and Sittipong Sripaisarnmongkol and Kunat Pipatanakul},
+  year = {2026},
+  eprint = {2601.13044},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2601.13044},
+  abstract = {Large encoder-decoder models like Whisper achieve strong offline transcription but remain impractical for streaming applications due to high latency. However, due to the accessibility of pre-trained checkpoints, the open Thai ASR landscape remains dominated by these offline architectures, leaving a critical gap in efficient streaming solutions. We present Typhoon ASR Real-time, a 115M-parameter FastConformer-Transducer model for low-latency Thai speech recognition. We demonstrate that rigorous t},
+}
+
+@article{russell2026role,
+  title = {The Role of Prosodic and Lexical Cues in Turn-Taking with Self-Supervised Speech Representations},
+  author = {Sam OConnor Russell and Delphine Charuau and Naomi Harte},
+  year = {2026},
+  eprint = {2601.13835},
+  archivePrefix = {arXiv},
+  abstract = {Fluid turn-taking remains a key challenge in human-robot interaction. Self-supervised speech representations (S3Rs) have driven many advances, but it remains unclear whether S3R-based turn-taking models rely on prosodic cues, lexical cues or both. We introduce a vocoder-based approach to control prosody and lexical cues in speech more cleanly than prior work. This allows us to probe the voice-activity projection model, an S3R-based turn-taking model. We find that prediction on prosody-matched, u},
+}
+
+@article{wan2026streaming,
+  title = {Streaming Speech Recognition with Decoder-Only Large Language Models and Latency Optimization},
+  author = {Genshun Wan and Wenhui Zhang and Jing-Xuan Zhang and Shifu Xiong and Jianqing Gao and Zhongfu Ye},
+  year = {2026},
+  eprint = {2601.22779},
+  archivePrefix = {arXiv},
+  abstract = {Recent advances have demonstrated the potential of decoderonly large language models (LLMs) for automatic speech recognition (ASR). However, enabling streaming recognition within this framework remains a challenge. In this work, we propose a novel streaming ASR approach that integrates a read/write policy network with monotonic chunkwise attention (MoChA) to dynamically segment speech embeddings. These segments are interleaved with label sequences during training, enabling seamless integration w},
+}
+
+@article{liu2026ctc,
+  title = {CTC-TTS: LLM-based dual-streaming text-to-speech with CTC alignment},
+  author = {Hanwen Liu and Saierdaer Yusuyin and Hao Huang and Zhijian Ou},
+  year = {2026},
+  eprint = {2602.19574},
+  archivePrefix = {arXiv},
+  abstract = {Large-language-model (LLM)-based text-to-speech (TTS) systems can generate natural speech, but most are not designed for low-latency dual-streaming synthesis. High-quality dual-streaming TTS depends on accurate text--speech alignment and well-designed training sequences that balance synthesis quality and latency. Prior work often relies on GMM-HMM based forced-alignment toolkits (e.g., MFA), which are pipeline-heavy and less flexible than neural aligners; fixed-ratio interleaving of text and spe},
+}
+
+@article{yang2026duplexcascade,
+  title = {DuplexCascade: Full-Duplex Speech-to-Speech Dialogue with VAD-Free Cascaded ASR-LLM-TTS Pipeline and Micro-Turn Optimization},
+  author = {Jianing Yang and Yusuke Fujita and Yui Sudo},
+  year = {2026},
+  eprint = {2603.09180},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2603.09180},
+  abstract = {Spoken dialog systems with cascaded ASR-LLM-TTS modules retain strong LLM intelligence, but VAD segmentation often forces half-duplex turns and brittle control. On the other hand, VAD-free end-to-end model support full-duplex interaction but is hard to maintain conversational intelligence. In this paper, we present DuplexCascade, a VAD-free cascaded streaming pipeline for full-duplex speech-to-speech dialogue. Our key idea is to convert conventional utterance-wise long turns into chunk-wise micr},
+}
+
+@article{helwani2026hierarchical,
+  title = {A Hierarchical End-of-Turn Model with Primary Speaker Segmentation for Real-Time Conversational AI},
+  author = {Karim Helwani and Hoang Do and James Luan and Sriram Srinivasan},
+  year = {2026},
+  eprint = {2603.13379},
+  archivePrefix = {arXiv},
+  abstract = {We present a real-time front-end for voice-based conversational AI to enable natural turn-taking in two-speaker scenarios by combining primary speaker segmentation with hierarchical End-of-Turn (EOT) detection. To operate robustly in multi-speaker environments, the system continuously identifies and tracks the primary user, ensuring that downstream EOT decisions are not confounded by background conversations. The tracked activity segments are fed to a hierarchical, causal EOT model that predicts},
+}
+
+@article{xia2026semantic,
+  title = {Semantic-Aware Interruption Detection in Spoken Dialogue Systems: Benchmark, Metric, and Model},
+  author = {Kangxiang Xia and Bingshen Mu and Xian Shi and Jin Xu and Lei Xie},
+  year = {2026},
+  eprint = {2603.24144},
+  archivePrefix = {arXiv},
+  abstract = {Achieving natural full-duplex interaction in spoken dialogue systems (SDS) remains a challenge due to the difficulty of accurately detecting user interruptions. Current solutions are polarized between "trigger-happy" VAD-based methods that misinterpret backchannels and robust end-to-end models that exhibit unacceptable response delays. Moreover, the absence of real-world benchmarks and holistic metrics hinders progress in the field. This paper presents a comprehensive frame-work to overcome thes},
+}
+
+@article{pan2026jal,
+  title = {JAL-Turn: Joint Acoustic-Linguistic Modeling for Real-Time and Robust Turn-Taking Detection in Full-Duplex Spoken Dialogue Systems},
+  author = {Yu Pan and Guangzhao Yang and Muhammad Huzaifah and Ningjie Bai and Shi Qiu},
+  year = {2026},
+  eprint = {2603.26515},
+  archivePrefix = {arXiv},
+  abstract = {Efficient and robust turn-taking detection remains a significant challenge in industrial-grade voice AI agents. Existing systems often rely on acoustic or linguistic cues alone, limiting accuracy and stability, whereas directly endowing large language models with full-duplex capability incurs heavy data and deployment costs that hinder real-time usage. We propose JAL-Turn, a lightweight speech-only turn-taking framework based on a joint acoustic-linguistic modeling paradigm, in which a cross-att},
+}
+
+@article{lin2026full,
+  title = {Full-Duplex-Bench-v3: Benchmarking Tool Use for Full-Duplex Voice Agents Under Real-World Disfluency},
+  author = {Guan-Ting Lin and Chen Chen and Zhehuai Chen and Hung-yi Lee},
+  year = {2026},
+  eprint = {2604.04847},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2604.04847},
+  abstract = {We introduce Full-Duplex-Bench-v3 (FDB-v3), a benchmark for evaluating spoken language models under naturalistic speech conditions and multi-step tool use. Unlike prior work, our dataset consists entirely of real human audio annotated for five disfluency categories, paired with scenarios requiring chained API calls across four task domains. We evaluate six model configurations -- GPT-Realtime, Gemini Live 2.5, Gemini Live 3.1, Grok, Ultravox v0.7, and a traditional Cascaded pipeline (Whisper$\ri},
+}
+
+@article{karnjanaekarin2026jaitts,
+  title = {JaiTTS: A Thai Voice Cloning Model},
+  author = {Jullajak Karnjanaekarin and Pontakorn Trakuekul and Narongkorn Panitsrisit and Sumana Sumanakul and Vichayuth Nitayasomboon and Nithid Guntasin and Thanavin Denkavin and Attapol T. Rutherford},
+  year = {2026},
+  eprint = {2604.27607},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2604.27607},
+  abstract = {We present JaiTTS-v1.0, a state-of-the-art Thai voice cloning text-to-speech model built through continual training on a large Thai-centric speech corpus. The model architecture is adapted from VoxCPM, a tokenizer-free autoregressive TTS model. JaiTTS-v1.0 directly processes numerals and Thai-English code-switching, which is very common in realistic settings, without explicit text normalization. We test the models on short- and long-duration speech generation, which reflects many real-world use },
+}
+
+@article{fang2026bayling,
+  title = {BayLing-Duplex: Native Full-Duplex Speech Dialogue with a Single Autoregressive LLM},
+  author = {Qingkai Fang and Shoutao Guo and Yang Feng},
+  year = {2026},
+  eprint = {2606.14528},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2606.14528},
+  abstract = {Real-time, full-duplex speech interaction is a key feature of next-generation spoken chatbots, allowing the model to listen and speak at the same time and to handle natural phenomena such as overlap, hesitation, and barge-in. Existing speech language models (SpeechLMs) such as LLaMA-Omni and GLM-4-Voice are still turn-based and rely on an external Voice Activity Detection (VAD) module to mark the end of the user's turn, which fundamentally limits their interactive ability. In this paper, we intr},
+}
+
+@article{lu2026survey,
+  title = {A Survey of Full-Duplex Spoken Dialogue Systems: Architectural Hierarchy, Interaction Ontology, and Decision State Machine},
+  author = {Jingyu Lu and Yuhan Wang and Jianming Luo and Yifu Chen and Tianle Liang and Shengpeng Ji and Ziyue Jiang and Xiaoda Yang and Yu Zhang and Xize Cheng and Chenyuhao Wen and Changhao Pan and Haoxiao Wang and Chen Ye and Jian Wu and Xiaoxi Jiang and Guanjun Jiang and Zhou Zhao},
+  year = {2026},
+  eprint = {2606.19453},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2606.19453},
+  abstract = {More than a dozen spoken dialogue systems have recently claimed to be "full-duplex," yet the term has been used to describe substantially different capabilities. Existing surveys collapse them onto a single axis (cascaded/end-to-end, or engineered/learned) and miss the distinctions that matter most for builders. We argue that much of this ambiguity is taxonomical: current terminology does not specify where duplex decisions are made, which interaction types are supported, or how a system behaves },
+}
+
+@article{jiang2026turnbench,
+  title = {TurnBench: A Multi-Domain Benchmark for Turn-Taking Dynamics in Spoken Dialogue},
+  author = {Freeman Jiang and Ramon Sanabria and Soham Deshmukh and Bandhav Veluri and Simon Michael Vuch Williams and Elliott K. Suen and Garreth Lee and Kevin Yoonho Choi and Takuya Umeki and Riku Kubo and Sathvik Udupa and Chien-yu Huang and Shih-Yun Shan Kuan and Zhuoyan Tao and Satyapriya Krishna and Sefik Emre Eskimez and Yu Tsao and Hung-yi Lee and Shinji Watanabe},
+  year = {2026},
+  eprint = {2608.25218},
+  archivePrefix = {arXiv},
+  abstract = {Speakers in natural conversation take turns speaking and listening, deciding in real time when to take, hold, or yield the floor. However, turn-taking evaluation remains limited due to the lack of a consistent, linguistically grounded evaluation protocol and hand-annotated data covering diverse conversation types. To address this, we present TurnBench, a multi-domain benchmark that pairs a 30-hour, hand-labeled corpus of dyadic human conversation with a standardized evaluation protocol for end-o},
+}
+
+@article{pipatanakul2026building,
+  title = {Building and Evaluating Fixed-Voice Thai TTS from Synthetic Speech},
+  author = {Kunat Pipatanakul and Potsawee Manakul and Warit Sirichotedumrong and Sittipong Sripaisarnmongkol and Pakorn Nathong and Phatrasek Jirabovonvisut},
+  year = {2026},
+  eprint = {2609.03502},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2609.03502},
+  abstract = {In low-resource settings, deploying TTS typically requires choosing between a large voice-cloning model with costly inference or a compact fixed-voice system that requires a speaker-specific corpus. We study a third route: using a large voice-cloning model as a programmable data source to turn a short voice reference (e.g., 15 seconds) into a compact fixed-voice student trained entirely on synthetic speech. This setting makes pipeline design consequential: teacher errors become training targets,},
+}
+
+@article{sharon2026less,
+  title = {Less can be More: What Aspects of Speech Drive End-of-Turn Detection},
+  author = {Rini Sharon and Manickavela A and Kadri Hacioglu and Andreas Stolcke},
+  year = {2026},
+  eprint = {2609.11066},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2609.11066},
+  abstract = {In conversational AI, detecting when a speaker has finished talking is crucial for natural turn taking. While recent work incorporates semantics, the relative contribution of different modalities remains unclear. We present a controlled ablation of acoustic, prosodic, and semantic signals for streaming end of turn detection using a lightweight trimodal classifier. Under identical training conditions, the acoustic prosodic combination achieves the best balance of accuracy and latency, achieving u},
+}
+
+@article{chang2026high,
+  title = {D2: High-Capability Full-Duplex Spoken Language Models from Half-Duplex Backbones},
+  author = {Cheng-Kuang Chang and Alexander H. Liu and Brian Kingsbury and Hilde Kuehne and Rogerio Feris and Samuel Thomas and James Glass and Kai-Wei Chang},
+  year = {2026},
+  eprint = {2610.17124},
+  archivePrefix = {arXiv},
+  journal = {arXiv preprint arXiv:2610.17124},
+  abstract = {Full-duplex spoken language models (FD-SLMs) support simultaneous listening and speaking, but often lag behind half-duplex spoken language models (HD-SLMs) in general capabilities. We propose Dialogue-to-Duplex (D2), a framework that converts pretrained HD-SLMs into high-capability FD-SLMs at fine temporal granularity. D2 adapts the original audio encoder to streaming through decoder-free representation distillation and learns full-duplex interaction through supervised fine-tuning. We systematic},
+}
+
+@article{noroozi2024stateful,
+  title = {Stateful Conformer with Cache-Based Inference for Streaming Automatic Speech Recognition},
+  author = {V. Noroozi and Somshubra Majumdar and Ankur Kumar and Jagadeesh Balam and Boris Ginsburg},
+  year = {2024},
+  eprint = {2312.17279},
+  archivePrefix = {arXiv},
+  abstract = {In this paper, we propose an efficient and accurate streaming speech recognition model based on the FastConformer architecture. We adapted the FastConformer architecture for streaming applications through: (1) constraining both the look-ahead and past contexts in the encoder, and (2) introducing an activation caching mechanism to enable the non-autoregressive encoder to operate autoregressively during inference. The proposed model is thoughtfully designed in a way to eliminate the accuracy dispa},
+}
+
+@article{wang2024turn,
+  title = {Turn-Taking and Backchannel Prediction with Acoustic and Large Language Model Fusion},
+  author = {Jin-Han Wang and Long Chen and Aparna Khare and A. Raju and Pranav Dheram and Di He and Minhua Wu and A. Stolcke and Venkatesh Ravichandran},
+  year = {2024},
+  eprint = {2401.14717},
+  archivePrefix = {arXiv},
+  abstract = {We propose an approach for continuous prediction of turn-taking and backchanneling locations in spoken dialogue by fusing a neural acoustic model with a large language model (LLM). Experiments on the Switchboard human-human conversation dataset demonstrate that our approach consistently outperforms the baseline models with single modality. We also develop a novel multi-task instruction fine-tuning strategy to further benefit from LLM-encoded knowledge for understanding the tasks and conversation},
+}
+
+@misc{thai2025eot,
+  title = {Thai Semantic End-of-Turn Detection for Real-Time Voice Agents},
+  year = {2025},
+  eprint = {2510.04016},
+  archivePrefix = {arXiv},
+  url = {https://arxiv.org/abs/2510.04016},
+  note = {IEEE ICSEC 2025 per the arXiv abstract page; authors not retrieved on 2026-10-25; added by hand}
+}
+
+@misc{purwar2025ilava,
+  title = {i-LAVA: Insights on Low Latency Voice-2-Voice Architecture for Agents},
+  author = {Purwar, Anupam and Choudhary, Ravi},
+  year = {2025},
+  eprint = {2509.20971},
+  archivePrefix = {arXiv},
+  url = {https://arxiv.org/abs/2509.20971},
+  note = {(preprint); added by hand from phase1_frontier/frontier.md}
+}

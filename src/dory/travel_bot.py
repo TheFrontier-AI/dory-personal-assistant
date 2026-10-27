@@ -11,6 +11,7 @@ import asyncio
 import logging
 import time
 
+from . import trips
 from .currency import Converter, currency_tools
 from .dm import send_dm
 from .flights import (
@@ -20,6 +21,7 @@ from .flights import (
     select_provider,
 )
 from .i18n import resolve_lang, t
+from .secretary_store import new_id
 
 logger = logging.getLogger(__name__)
 TRAVEL_TICK_SECONDS = 60.0  # how often tracks are looked at (each is polled every 15 minutes)
@@ -33,13 +35,15 @@ class TravelMixin:
             self.llm, self.s.gemini_model, provider, today=lambda: self.s.now().date()
         )
         self.flight_tracker = FlightTracker(self.docs, provider)
+        self.trips_provider = trips.make_provider(self.s)  # sample unless DORY_AMADEUS_CLIENT_ID
         self._travel_last = 0.0
 
     def _travel_on(self, guild_id: int) -> bool:
         return self.team.enabled(guild_id, "travel")
 
-    def _travel_tools(self, guild, asker, lang: str) -> list:
-        """convert_currency, flight_status, flight_prices, track_flight for one request.
+    def _travel_tools(self, guild, asker, lang: str, is_exec: bool = False) -> list:
+        """convert_currency, flight_status, flight_prices, track_flight and the trips tools
+        (search_flights, search_hotels, book_trip, travel_profile, list_trips) for one request.
         Never raises: without them Dory just cannot do these."""
         try:
             if not self._travel_on(guild.id):
@@ -54,6 +58,23 @@ class TravelMixin:
                     today=lambda: self.s.now().date(),
                     lang=lang,
                 ),
+                *trips.trips_tools(
+                    trips.TripsCtx(
+                        guild_id=guild.id,
+                        asker_id=asker.id,
+                        asker_name=asker.display_name,
+                        is_exec=is_exec,
+                        lang=lang,
+                        provider=self.trips_provider,
+                        docs=self.docs,
+                        store=self.store,
+                        state=self.secretary_state,
+                        request_id=new_id(),
+                        now=self.s.now,
+                        reminders=getattr(self, "reminder_book", None),
+                        approvals=getattr(self, "approvals", None),
+                    )
+                ),  # fmt: skip
             ]
         except Exception:
             logger.warning("travel tools unavailable", exc_info=True)
