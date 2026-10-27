@@ -142,11 +142,13 @@ def test_route_focuses_content_on_a_new_page_or_when_focus_was_inside():
     # a new page takes focus; so does a re-render while focus was in the page (Retry, Save, Delete),
     # which would otherwise drop focus to <body>. A re-render from outside (language, company) does not.
     s = html()
-    body = between("function route() {", "\nconst stale = ")
+    body = between("function route(quiet) {", "\nconst stale = ")
     assert "const moved = cur !== id;" in body
     inside = body.index("const inside = c.contains(document.activeElement);")
     assert inside < body.index("c.replaceChildren(")  # read before the old page is removed
-    assert "if (moved || inside) c.focus({ preventScroll: true });" in body
+    assert "if (!stage && (moved || inside)) c.focus({ preventScroll: true });" in body
+    # a quiet refresh swaps the staged page in, and focus that went with the old page lands on the page
+    assert "if (focusIn) c.focus({ preventScroll: true });" in body
     assert "if (moved) c.focus(" not in s
 
 
@@ -218,7 +220,7 @@ def test_chat_is_a_page_and_still_the_panel():
     assert '["chat", "n_chat", "chat"]' in s and "VIEWS.chat = async" in s
     assert "the chat is the panel now" not in s  # #/chat no longer bounces to the overview
     assert '$("fab").hidden = id === "chat"' in s  # one composer at a time
-    assert 'if (cur !== "chat") route();' in s  # an answer never rebuilds the page under the reader
+    assert 'if (cur !== "chat" && cur !== "settings") route(true);' in s  # never under the reader
 
 
 def test_chat_strings_exist_in_both_languages():
@@ -410,7 +412,8 @@ def test_discord_link_shows_at_once_and_the_coral_frames_every_page():
     assert 'toast(t("linked")); await refreshMe(); route();' in s
     assert (
         "async function refreshMe()" in s
-        and 'await refreshMe();\n    if (cur !== "chat") route();' in s
+        and "await refreshMe();" in s
+        and 'if (cur !== "chat" && cur !== "settings") route(true);' in s
     )
     # back from Discord in another tab: refresh without a reload (refreshView waits while typing)
     assert (
