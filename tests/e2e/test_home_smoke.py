@@ -1,6 +1,6 @@
-"""Playwright smoke of the homepage (`/`, Dory Descent): the Pause motion control, the scripted live thing
-in English and Thai by mouse and keyboard, the header that reads each chapter, the seabed answer, the
-sign-up hand-off, no sideways scroll at 320 px, no script errors, and axe WCAG 2.2 AA scans."""
+"""Playwright smoke of the homepage (`/`): the Pause motion control, the header links and the phone menu,
+the film dialog, the scripted live demo in English and Thai by mouse and keyboard, the For Teams answer,
+the sign-up hand-off, no sideways scroll at 320 px, no script errors, and axe WCAG 2.2 AA scans."""
 
 import re
 
@@ -16,12 +16,14 @@ WCAG = {
 }
 
 
-def _to(page, section_id: str, offset: int = 10) -> None:
-    """Puts a chapter's top under the header (instant, whatever the page's smooth scrolling)."""
-    page.evaluate(
-        f"window.scrollTo({{top: document.getElementById('{section_id}').offsetTop + {offset},"
-        " behavior: 'instant'})"
-    )
+def _scroll_through(page) -> None:
+    """Scrolls the whole page once (instant) so every entrance has played, then back to the top."""
+    height = page.evaluate("document.documentElement.scrollHeight")
+    for y in range(0, height, 500):
+        page.evaluate(f"window.scrollTo({{top: {y}, behavior: 'instant'}})")
+        page.wait_for_timeout(40)
+    page.wait_for_timeout(900)
+    page.evaluate("window.scrollTo({top: 0, behavior: 'instant'})")
 
 
 def test_pause_motion_is_remembered(page):
@@ -30,32 +32,88 @@ def test_pause_motion_is_remembered(page):
     expect(pause).to_have_text("Pause motion")
     pause.click()
     expect(page.locator("html")).to_have_class(re.compile(r"\bmotion-off\b"))
+    expect(page.locator(".hero-dory img")).to_have_css("animation-name", "none")
     page.reload()
     expect(page.locator("html")).to_have_class(
         re.compile(r"\bmotion-off\b")
     )  # saved in dory-motion
     expect(pause).to_have_text("Play motion")
+    expect(page.locator("footer [data-motion-toggle]")).to_have_text("Play motion")
 
 
 def test_reduced_motion_starts_still_and_can_be_played(page):
     page.emulate_media(reduced_motion="reduce")
     page.goto("/")
     expect(page.locator("html")).to_have_class(re.compile(r"\bmotion-off\b"))
+    expect(page.locator(".bubbles span").first).to_have_css("animation-name", "none")
     play = page.locator(".hero [data-motion-toggle]")
     expect(play).to_have_text("Play motion")
     play.click()
     expect(page.locator("html")).not_to_have_class(re.compile(r"\bmotion-off\b"))
 
 
-def test_no_script_errors_through_the_whole_dive(page):
+def test_no_script_errors_through_the_whole_page(page):
     errors = []
     page.on("pageerror", lambda e: errors.append(str(e)))
     page.goto("/")
-    height = page.evaluate("document.documentElement.scrollHeight")
-    for y in range(0, height, 600):
-        page.evaluate(f"window.scrollTo({{top: {y}, behavior: 'instant'}})")
+    _scroll_through(page)
     page.wait_for_timeout(300)
     assert errors == []
+
+
+def test_every_header_link_lands_on_its_section(page):
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.emulate_media(reduced_motion="reduce")  # instant jumps
+    page.goto("/")
+    for name, sid in (
+        ("Features", "features"),
+        ("How it works", "how"),
+        ("For Teams", "teams"),
+        ("Trust", "trust"),
+        ("Pricing", "pricing"),
+        ("FAQ", "faq"),
+    ):
+        page.locator(".hd-nav").get_by_role("link", name=name, exact=True).click()
+        expect(page.locator(f"#{sid} h2")).to_be_in_viewport()
+    expect(page.locator(".hd")).to_have_class(re.compile(r"\bsolid\b"))  # frosted once scrolled
+    expect(page.locator(".hd").get_by_role("link", name="Log in")).to_have_attribute(
+        "href", "/center"
+    )
+
+
+def test_the_phone_menu_opens_and_closes(page):
+    page.set_viewport_size({"width": 390, "height": 844})
+    page.goto("/")
+    menu = page.locator(".menu-btn")
+    expect(page.locator(".hd-nav")).to_be_hidden()
+    menu.click()
+    expect(menu).to_have_attribute("aria-expanded", "true")
+    expect(page.locator(".hd-nav").get_by_role("link", name="Pricing")).to_be_visible()
+    page.keyboard.press("Escape")
+    expect(menu).to_have_attribute("aria-expanded", "false")
+    expect(menu).to_be_focused()
+    menu.click()
+    page.locator(".hd-nav").get_by_role("link", name="FAQ").click()
+    expect(menu).to_have_attribute("aria-expanded", "false")
+    expect(page.locator("#faq h2")).to_be_in_viewport()
+
+
+def test_see_dory_at_work_opens_the_film_in_a_dialog(page):
+    page.goto("/")
+    film = page.locator("#film")
+    expect(film).to_be_hidden()
+    assert (
+        page.evaluate("document.getElementById('intro').poster") == ""
+    )  # nothing loads before it opens
+    page.get_by_role("link", name="See Dory at work").click()
+    expect(page.get_by_role("dialog", name="Meet Dory")).to_be_visible()
+    expect(film.locator("video")).to_have_attribute("preload", "none")
+    expect(film.locator("video")).to_have_attribute("poster", "/static/dory/meet-dory.webp")
+    expect(film.get_by_role("button", name="Close")).to_be_focused()  # the first control in it
+    page.keyboard.press("Escape")
+    expect(film).to_be_hidden()
+    # the dialog's close event (queued after it hides) stops the film
+    page.wait_for_function("document.getElementById('intro').paused", timeout=5000)
 
 
 def test_live_thing_reads_a_message_in_english(page):
@@ -100,22 +158,7 @@ def test_live_thing_reads_thai_and_works_by_keyboard(page):
     expect(card.locator("[data-f=said]")).to_have_text("Closed as not a task. Nothing is assigned.")
 
 
-def test_the_header_reads_each_chapter(page):
-    page.goto("/")
-    depth, act = page.locator("#depth"), page.locator(".hd-act")
-    expect(depth).to_have_text("0 m")
-    _to(page, "midnight")
-    expect(depth).to_have_text("1,000 m")
-    expect(act).to_have_attribute("data-ink", "light")
-    _to(page, "seabed", 400)
-    expect(depth).to_have_text("4,000 m")
-    expect(act).to_have_attribute("data-ink", "dark")
-    _to(page, "twilight")
-    expect(depth).to_have_text("200 m")
-    expect(act).to_have_attribute("data-ink", "dark")  # the right half is the light field
-
-
-def test_the_seabed_answer_follows_who_asks_and_the_language(page):
+def test_the_team_answer_follows_who_asks_and_the_language(page):
     page.goto("/")
     note = page.locator('#ans [data-ans="note"]')
     expect(note).to_contain_text("#management")  # staff by default: the source is left out
@@ -127,12 +170,16 @@ def test_the_seabed_answer_follows_who_asks_and_the_language(page):
     expect(page.locator("#ans")).to_have_attribute("lang", "th")
 
 
-def test_the_page_switches_to_thai(page):
+def test_the_page_switches_to_thai_and_back(page):
     page.goto("/")
     page.locator('.hd [data-lang="th"]').click()
     expect(page.locator("html")).to_have_attribute("lang", "th")
     expect(page.locator("h1")).to_contain_text("ถามครั้งเดียว")
+    expect(page.locator(".hd-nav a").first).to_have_text("ความสามารถ")
     expect(page.locator("#card [data-f=kind]")).to_have_text("งานใหม่สำหรับนก")
+    page.locator("#lang-other").click()
+    expect(page.locator("html")).to_have_attribute("lang", "en")
+    expect(page.locator("h1")).to_contain_text("Ask once.")
 
 
 def test_the_sign_up_step_hands_the_name_to_start(page):
@@ -142,18 +189,23 @@ def test_the_sign_up_step_hands_the_name_to_start(page):
     page.wait_for_url(re.compile(r"/start\?org=Baan\+Suan\+Coffee$"))
 
 
-def test_no_sideways_scroll_on_a_small_phone(page):
-    page.set_viewport_size({"width": 320, "height": 700})
+@pytest.mark.parametrize("width", [320, 390])
+def test_no_sideways_scroll_on_a_phone(page, width):
+    page.set_viewport_size({"width": width, "height": 700})
     page.goto("/")
-    assert page.evaluate("document.documentElement.scrollWidth") <= 320
+    _scroll_through(page)
+    assert page.evaluate("document.documentElement.scrollWidth") <= width
 
 
-@pytest.mark.parametrize("lang", ["en", "th"])
-def test_axe_finds_no_wcag_aa_violations_on_the_homepage(page, lang):
-    page.emulate_media(reduced_motion="reduce")  # everything visible at once, nothing mid-animation
+@pytest.mark.parametrize(("lang", "motion"), [("en", "reduce"), ("th", "reduce"), ("en", "on")])
+def test_axe_finds_no_wcag_aa_violations_on_the_homepage(page, lang, motion):
+    if motion == "reduce":
+        page.emulate_media(reduced_motion="reduce")  # everything visible at once, nothing moving
     page.add_init_script(
         f"try {{ localStorage.setItem('dory-language', '{lang}'); }} catch (e) {{}}"
     )
     page.goto("/")
+    if motion == "on":
+        _scroll_through(page)  # every entrance has finished before the scan
     res = Axe().run(page, options=WCAG)
     assert res.violations_count == 0, res.generate_report()

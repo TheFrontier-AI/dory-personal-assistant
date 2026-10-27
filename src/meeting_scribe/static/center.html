@@ -15,13 +15,13 @@
 <style>
 /* Page-specific rules only: tokens, resets, buttons, inputs, badges and tables come from /static/dory/theme.css
    (light theme on purpose, so the demo looks the same on every machine). */
+/* the app's ground is the cool mist of the owner's reference; cards are white on it */
+:root { --color-bg: var(--mist-50); --color-bg-sunken: var(--mist-100); --color-border: var(--mist-200); --line-soft: var(--mist-100); --soon-bg: var(--mist-100);
+  --nav-active: var(--plankton-50); --chip: var(--plankton-50); --panel-w: 400px; --top-h: 72px; }
 body { line-height: 1.55; }
-.btn { background: var(--indigo); color: var(--on-accent); border-color: var(--indigo); padding: 9px 18px; min-height: 42px;
-  box-shadow: 0 4px 12px rgba(43, 47, 122, .18); }
-.btn:hover { background: #22265F; color: #fff; transform: translateY(-1px); box-shadow: 0 8px 20px rgba(43, 47, 122, .24); }
-.btn:active { transform: none; }
-.btn.ghost { box-shadow: none; }
-.btn.danger { box-shadow: none; }
+.btn { background: var(--indigo); color: var(--on-accent); border-color: var(--indigo); padding: 9px 18px; min-height: 42px; }
+.btn:hover { background: #22265F; color: #fff; }
+.btn .ic { width: 18px; height: 18px; }
 .btn.sm { min-height: 34px; padding: 5px 12px; font-size: 14px; border-radius: 10px; }
 .btn[disabled] { transform: none; }
 label.f { display: flex; flex-direction: column; gap: 6px; font-size: 14px; font-weight: 500; color: var(--muted); min-width: 0; }
@@ -69,31 +69,70 @@ textarea { resize: vertical; min-height: 80px; }
 #discord-login .badge[hidden] { display: none; }
 #login-lang { align-self: center; }
 
-/* shell */
+/* shell: the sidebar on white, a top bar with search, the page on mist; "Talk to Dory" docks on the right when it is open */
 #app { min-height: 100vh; display: flex; }
-#side { width: 256px; flex: none; background: var(--card); border-right: 1px solid var(--line); display: flex; flex-direction: column; gap: 12px;
-  padding: 16px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto; }
-.brand { display: flex; align-items: center; gap: 10px; padding: 2px 4px; color: var(--indigo); }
+#side { width: 264px; flex: none; background: var(--card); border-right: 1px solid var(--mist-200); display: flex; flex-direction: column; gap: 10px;
+  padding: 18px 16px 14px; position: sticky; top: 0; height: 100vh; overflow-y: auto; scrollbar-width: thin; }
+.brand { display: flex; align-items: center; gap: 12px; padding: 2px 4px; color: var(--ink); }
 .brand strong { font-size: 18px; }
 #side .brand { margin-bottom: 4px; }
-#side nav { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
-#side nav a { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 10px; color: var(--ink); text-decoration: none; font-weight: 500;
+#side .brand strong { font-size: 24px; letter-spacing: -.01em; }
+#side .brand .mark { width: 46px; height: 46px; }
+#side #new-org { width: 100%; min-height: 40px; }
+#side nav { display: flex; flex-direction: column; gap: 1px; }
+#side nav a { display: flex; align-items: center; gap: 14px; padding: 6px 14px; min-height: 38px; border-radius: 12px; color: var(--ink); text-decoration: none; font-weight: 500;
   transition: background .15s, color .15s; }
-#side nav a > span { width: 22px; display: grid; place-items: center; color: var(--faint); }
+#side nav a > span { width: 22px; display: grid; place-items: center; color: var(--ink-600); }
 #side nav a > span svg.ic { width: 20px; height: 20px; }
-#side nav a:hover { background: var(--bg-2); color: var(--indigo); }
+#side nav a:hover { background: var(--mist-100); color: var(--indigo); }
 #side nav a[aria-current=page] { background: var(--nav-active); color: var(--indigo); font-weight: 600; }
 #side nav a[aria-current=page] > span { color: var(--indigo-2); }
-#side nav .sec { font-size: 11px; font-weight: 600; letter-spacing: .09em; text-transform: uppercase; color: var(--faint); padding: 16px 12px 5px; }
-#side nav .sec:first-child { padding-top: 2px; }
-#side .foot { margin-top: auto; display: flex; flex-direction: column; gap: 8px; font-size: 14px; padding-top: 12px; border-top: 1px solid var(--line-soft); }
-#side .who { display: block; overflow-wrap: anywhere; color: var(--muted); font-size: 13px; padding: 4px 4px; border-radius: 8px; text-decoration: none; }
-#side .who:hover { color: var(--indigo); background: var(--bg-2); }
-#side .who[aria-current=page] { color: var(--indigo); font-weight: 600; }
-#topbar { display: none; }
-#content { flex: 1 1 auto; min-width: 0; padding: 28px 32px 48px; max-width: 1200px; margin: 0 auto; width: 100%; }
-#content > h1 { font-size: 28px; margin-bottom: 20px; color: var(--ink); }
-.card { padding: 22px 24px; display: flex; flex-direction: column; gap: 12px; min-width: 0; margin-bottom: 16px; }
+#side nav .sec { font-size: 12px; font-weight: 600; letter-spacing: .08em; text-transform: uppercase; color: var(--faint); padding: 12px 14px 4px; }
+#side nav .sec:first-child { padding-top: 4px; }
+:lang(th) #side nav .sec { letter-spacing: 0; } /* tracking breaks Thai clusters */
+#side .foot { margin-top: auto; display: flex; flex-direction: column; gap: 10px; font-size: 14px; padding-top: 12px; border-top: 1px solid var(--mist-200); }
+.langsel { position: relative; display: block; }
+.langsel .ic { position: absolute; left: 12px; top: 50%; translate: 0 -50%; width: 20px; height: 20px; color: var(--ink-600); pointer-events: none; }
+.langsel select { padding-left: 42px; font-weight: 500; }
+#side .who { display: flex; align-items: center; gap: 12px; min-width: 0; padding: 6px; border-radius: 12px; color: var(--ink); text-decoration: none; }
+#side .who:hover { background: var(--mist-100); }
+#side .who[aria-current=page] { background: var(--nav-active); }
+.who .wt { min-width: 0; display: flex; flex-direction: column; line-height: 1.3; }
+.who .wn, .who .we { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.who .wn { font-weight: 600; font-size: 15px; }
+.who .we { font-size: 13px; color: var(--muted); }
+#side .who .av { width: 40px; height: 40px; font-size: 15px; background: var(--indigo-2); }
+#me-av { width: 42px; height: 42px; font-size: 15px; background: var(--indigo-2); }
+#side #signout { width: 100%; }
+#mainwrap { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
+/* the pale coral edges sit under the last card of every page, never behind text */
+#mainwrap { background: url("/static/dory/coral-edge-left.svg") left bottom / auto 190px no-repeat, url("/static/dory/coral-edge-right.svg") right bottom / auto 190px no-repeat;
+  background-origin: content-box; }
+#mainwrap:has(.chatpage) { background: none; }
+#topbar { position: sticky; top: 0; z-index: 30; min-height: var(--top-h); display: flex; align-items: center; gap: 12px; padding: 12px 24px 12px 40px;
+  background: var(--card); border-bottom: 1px solid var(--mist-200); }
+#topbar #burger, #topbar .t { display: none; }
+.qs { flex: 1 1 auto; display: flex; justify-content: center; min-width: 0; }
+.qs > div { position: relative; width: min(440px, 100%); }
+.qs .ic { position: absolute; left: 14px; top: 50%; translate: 0 -50%; width: 20px; height: 20px; color: var(--ink-600); pointer-events: none; }
+.qs input { min-height: 44px; padding: 8px 66px 8px 44px; border-radius: 12px; background: var(--mist-50); }
+.qs input::-webkit-search-cancel-button { display: none; }
+.qs kbd { position: absolute; right: 10px; top: 50%; translate: 0 -50%; padding: 2px 7px; border: 1px solid var(--mist-200); border-radius: 7px; background: var(--card);
+  font: 600 12px/1.4 var(--font); color: var(--ink-600); pointer-events: none; }
+.tb { position: relative; flex: none; width: 44px; height: 44px; border-radius: 12px; display: grid; place-items: center; color: var(--ink-600); text-decoration: none; }
+.tb:hover { background: var(--mist-100); color: var(--indigo); }
+.tb .ic { width: 22px; height: 22px; }
+.tb .n { position: absolute; top: 3px; right: 1px; min-width: 19px; height: 19px; padding: 0 5px; border-radius: 99px; background: var(--err-ink); color: #fff;
+  font-size: 11.5px; font-weight: 700; line-height: 19px; text-align: center; }
+#me-av { flex: none; text-decoration: none; }
+#me-av:hover { box-shadow: 0 0 0 3px var(--plankton-100); }
+#content { flex: 1 1 auto; min-width: 0; padding: 32px 40px 220px; max-width: 1200px; margin: 0 auto; width: 100%; }
+#content:has(.chatpage) { padding-bottom: 16px; }
+#content > h1 { font-size: 32px; margin-bottom: 22px; color: var(--ink); }
+#content > h1:has(+ .sub) { margin-bottom: 4px; }
+#content > .sub { font-size: 17px; color: var(--muted); margin-bottom: 26px; }
+@media (min-width: 1200px) { body:has(#panel.open) #mainwrap { padding-right: var(--panel-w); } }
+.card { padding: 24px 28px; display: flex; flex-direction: column; gap: 12px; min-width: 0; margin-bottom: 18px; border-color: var(--mist-200); box-shadow: 0 1px 2px rgba(27, 31, 59, .04); }
 .card h2 { font-size: 18px; color: var(--ink); }
 .card > .badge, .card > .chip { align-self: flex-start; }
 .grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(220px, 1fr)); gap: 16px; }
@@ -166,7 +205,7 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 .msg.me a { color: #fff; }
 .msg.bot { align-self: stretch; max-width: 720px; color: var(--ink); }
 .msg .who { display: flex; align-items: center; gap: 8px; margin-bottom: 4px; font-size: 13px; font-weight: 600; color: var(--muted); }
-.msg .who .mark { width: 28px; height: 28px; border-radius: 9px; box-shadow: none; }
+.msg .who .mark { width: 28px; height: 28px; box-shadow: none; }
 .msg .who time { font-weight: 400; color: var(--faint); opacity: 0; transition: opacity var(--dur-fast); }
 .msg:hover .who time, .msg:focus-within .who time, .msg:focus .who time { opacity: 1; }
 .msg.bot.cont .who { display: none; }
@@ -186,28 +225,28 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 .msg.cnote.err { background: var(--err-bg); color: var(--err-ink); }
 .day { align-self: stretch; display: flex; align-items: center; gap: 10px; font-size: 12px; font-weight: 600; color: var(--muted); }
 .day::before, .day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
-.chat-empty { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; max-width: 420px; padding: 12px 8px; }
-.chat-empty .fish { width: 160px; animation: glowup var(--dur-gentle) var(--ease) forwards; }
-.chat-empty .fish img { width: 100%; height: auto; display: block; }
-@keyframes glowup { from { filter: drop-shadow(0 0 0 rgba(11, 122, 114, 0)); } to { filter: drop-shadow(0 6px 18px rgba(11, 122, 114, .3)); } }
-.chat-empty h2 { font-size: 22px; font-family: var(--font-display); }
+.chat-empty { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; width: 100%; max-width: 420px; padding: 16px 8px; }
+.chat-empty .art { width: 184px; height: auto; display: block; margin-bottom: 8px; }
+.chat-empty h2 { font-size: 20px; line-height: 1.35; }
 .chat-empty p { color: var(--muted); font-size: 15px; }
 .chat-empty .trust { font-size: 13px; color: var(--faint); }
-.chips { display: flex; flex-wrap: wrap; justify-content: center; gap: 8px; margin-top: 8px; }
-.chipbtn { min-height: 36px; padding: 6px 14px; border-radius: 99px; border: 1px solid var(--plankton-300); background: var(--card); color: var(--plankton-800); font-weight: 500; font-size: 14px; overflow-wrap: anywhere; }
-.chipbtn:hover { background: #EEEDFB; }
-.chipbtn:active { background: #E0DEF8; }
-@media (pointer: coarse) { .chipbtn { min-height: 44px; } }
-.compose { display: flex; gap: 4px; align-items: flex-end; border: 1px solid var(--color-border-control); border-radius: var(--radius-xl); background: var(--card); padding: 5px; }
+.chat-empty .btn { margin-top: 8px; }
+.sugs { display: flex; flex-direction: column; gap: 10px; width: 100%; margin-top: 14px; }
+.sugbtn { display: flex; align-items: center; gap: 12px; min-height: 48px; padding: 10px 16px; border-radius: 12px; border: 1px solid var(--plankton-300); background: var(--card);
+  color: var(--ink); font-weight: 500; font-size: 15px; text-align: left; overflow-wrap: anywhere; transition: background .15s, border-color .15s; }
+.sugbtn .ic { width: 20px; height: 20px; color: var(--indigo-2); }
+.sugbtn:hover { background: var(--plankton-50); border-color: var(--indigo-2); }
+.sugbtn:active { background: var(--plankton-100); }
+.compose { display: flex; gap: 4px; align-items: flex-end; border: 1px solid var(--color-border-control); border-radius: 16px; background: var(--card); padding: 6px 6px 6px 12px; }
 .compose:hover { border-color: var(--ink-600); }
 .compose:focus-within { border-color: var(--color-focus); box-shadow: 0 0 0 3px rgba(74, 79, 191, .25); }
 .compose textarea { flex: 1; min-width: 0; min-height: 40px; max-height: 192px; padding: 8px 6px; border: 0; border-radius: 0; background: transparent; resize: none; box-shadow: none; line-height: 1.5; }
 .compose textarea:focus { box-shadow: none; outline: none; }
-.compose .ib { flex: none; position: relative; width: 40px; height: 40px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center; background: transparent; color: var(--muted); }
+.compose .ib { flex: none; position: relative; width: 44px; height: 44px; border-radius: 50%; border: 0; padding: 0; display: grid; place-items: center; background: transparent; color: var(--muted); }
 .compose .ib svg { width: 20px; height: 20px; display: block; }
 .compose .ib:hover { background: var(--chip); color: var(--indigo); }
-.compose .send { background: var(--color-action); color: #fff; }
-.compose .send:hover { background: var(--color-action-hover); color: #fff; }
+.compose .send { background: var(--indigo-2); color: #fff; }
+.compose .send:hover { background: var(--color-action); color: #fff; }
 .compose .send[disabled] { background: #E3E2EE; color: var(--ink-500); cursor: default; }
 .compose .send.stop { background: var(--ink-900); }
 .compose .send.ripple::after { content: ""; position: absolute; inset: 0; border-radius: 50%; border: 2px solid var(--color-action); animation: dory-ripple var(--dur-base) var(--ease) forwards; pointer-events: none; }
@@ -223,7 +262,7 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 .chatpage .dayb:hover { background: var(--nav-active); }
 .chatpage .convo { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .chat-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
-.chat-head .mark { width: 44px; height: 44px; border-radius: 13px; box-shadow: none; }
+.chat-head .mark { width: 48px; height: 48px; box-shadow: none; }
 .chat-head h1 { font-size: 22px; line-height: 1.3; }
 .chat-head .hist { display: none; }
 .chatpage .chat { flex: 1; }
@@ -242,26 +281,32 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
   box-shadow: 0 10px 26px rgba(74, 79, 191, .38), 0 0 0 2px var(--lavender); transition: transform .15s var(--ease), box-shadow .15s var(--ease); }
 #fab:hover { transform: translateY(-2px); box-shadow: 0 14px 32px rgba(74, 79, 191, .45); }
 #fab[aria-expanded=true] { transform: scale(.92); opacity: .6; }
-#panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(380px, 100%); background: var(--card); border-left: 1px solid var(--line); box-shadow: var(--shadow-lg); z-index: 61;
+#panel { position: fixed; top: 0; right: 0; bottom: 0; width: min(var(--panel-w), 100%); background: var(--card); border-left: 1px solid var(--mist-200); box-shadow: var(--shadow-lg); z-index: 61;
   display: flex; flex-direction: column; transform: translateX(104%); visibility: hidden; transition: transform .25s var(--ease), visibility 0s .25s; }
+@media (min-width: 1200px) { #panel { box-shadow: none; } } /* docked: part of the layout, not floating */
 #panel.open { transform: none; visibility: visible; transition: transform .25s var(--ease); }
-#panel .ph { display: flex; align-items: center; gap: 10px; padding: 12px 14px 12px 16px; border-bottom: 1px solid var(--line); }
+#panel .ph { display: flex; align-items: center; gap: 12px; padding: 16px 16px 12px 18px; }
 #panel .ph .ttl { flex: 1; min-width: 0; }
-#panel .ph h2 { font-size: 17px; line-height: 1.3; }
-#panel .ph p { font-size: 12.5px; color: var(--muted); }
-#panel .x { background: #fff; border: 1px solid var(--line); border-radius: 10px; width: 38px; height: 38px; font-size: 22px; line-height: 1; color: var(--muted); flex: none; }
-#panel .x:hover { color: var(--indigo); border-color: var(--lavender); }
-#panel .ph .mark { width: 42px; height: 42px; border-radius: 13px; }
+#panel .ph h2 { font-size: 19px; line-height: 1.3; }
+#panel .ph p { font-size: 13px; line-height: 1.4; color: var(--muted); }
+#panel .x { background: #fff; border: 1px solid var(--color-border-control); border-radius: 12px; width: 42px; height: 42px; padding: 0; display: grid; place-items: center; color: var(--ink-600); flex: none; }
+#panel .x .ic { width: 20px; height: 20px; }
+#panel .x:hover { color: var(--indigo); border-color: var(--indigo-2); }
+#panel .ph .mark { width: 56px; height: 56px; }
+#panel:has(.call) .ph { visibility: hidden; } /* the call has its own header */
+#panel .pb, #panel .chat { position: static; } /* so the call view covers the whole panel */
 /* "Live": a real voice call (header button, pill with the handset icon; red with a pulsing dot while the call is on) */
-.livebtn { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 15px 0 12px; border: 0; border-radius: 99px; font-weight: 700; font-size: 14px;
-  background: var(--color-action); color: var(--color-on-action); transition: background .15s; }
-.livebtn:hover { background: var(--color-action-hover); }
+.livebtn { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 42px; padding: 0 16px 0 13px; border: 0; border-radius: 12px; font-weight: 700; font-size: 14px;
+  background: var(--indigo-2); color: var(--color-on-action); transition: background .15s; }
+.livebtn:hover { background: var(--color-action); }
 .livebtn svg { width: 18px; height: 18px; display: block; }
 .livebtn[aria-pressed=true], .livebtn[aria-pressed=true]:hover { background: var(--err-ink); }
 .livebtn i { width: 9px; height: 9px; border-radius: 50%; background: #fff; animation: livedot 1.2s ease-in-out infinite; }
 @keyframes livedot { 50% { opacity: .3; } }
-#panel .pb { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 12px 16px 16px; gap: 10px; }
+#panel .pb { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 4px 16px 16px; gap: 10px; }
 #panel .chat { height: auto; min-height: 0; flex: 1; }
+#panel .msgs { border: 1px solid var(--mist-200); border-radius: 16px; padding: 14px 12px; }
+#panel .pb > .chat-empty { border: 1px solid var(--mist-200); border-radius: 16px; max-width: none; flex: 1; justify-content: center; padding: 24px 20px; }
 #panel .msg.me { max-width: 88%; }
 @media (max-width: 767px) { #panel { width: 100%; height: var(--vvh, 100%); bottom: auto; } }
 #panel label.f { font-size: 13px; }
@@ -318,7 +363,7 @@ fieldset { border-color: var(--line-soft); }
 .titem:first-child { padding-top: 4px; }
 .titem .tk { width: 30px; height: 30px; border-radius: 9px; flex: none; display: grid; place-items: center; font-size: 15px; background: var(--chip); color: var(--indigo); }
 .titem.done .tk { background: var(--ok-bg); color: var(--ok-ink); }
-.titem .tk.mark, .titem.done .tk.mark { border-radius: 9px; box-shadow: none; font-size: 0; color: transparent; background: var(--ocean-800) url("/static/dory/dory-mark.webp") center / cover no-repeat; }
+.titem .tk.mark, .titem.done .tk.mark { border-radius: 50%; box-shadow: none; font-size: 0; color: transparent; background: var(--ocean-800) url("/static/dory/dory-mark.webp") center / cover no-repeat; }
 details.sys.tasks { margin: 4px 0 0; } details.sys.tasks > .inner { padding-top: 4px; }
 .titem.done .tt { color: var(--muted); text-decoration: line-through; }
 .titem .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -368,7 +413,7 @@ details.sys.tasks { margin: 4px 0 0; } details.sys.tasks > .inner { padding-top:
 .band .bandbox > ul > li::before, .band .bandbox > ul > li::after { display: none; }
 .pcard { width: 190px; background: #fff; border: 1px solid var(--dept-line, var(--line)); border-top: 4px solid var(--dept-ink, var(--lavender)); border-radius: 14px; padding: 12px 12px 10px;
   display: flex; flex-direction: column; align-items: center; gap: 4px; text-align: center; box-shadow: 0 1px 3px rgba(43, 47, 122, .08); position: relative; }
-.pcard.me { box-shadow: 0 0 0 2px var(--indigo-2), 0 1px 3px rgba(43, 47, 122, .08); }
+.pcard.me { outline: 2px solid var(--indigo-2); outline-offset: 1px; } /* "you": a ring, not a shadow */
 .av { width: 46px; height: 46px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; font-size: 16px; color: #fff; background: var(--dept-ink, var(--indigo-2)); flex: none; }
 .pcard .nm { font-weight: 600; line-height: 1.25; overflow-wrap: anywhere; margin-top: 2px; }
 .pcard .ti { font-size: 13px; color: var(--muted); overflow-wrap: anywhere; line-height: 1.3; }
@@ -420,58 +465,71 @@ input[type=datetime-local]:focus { outline: none; border-color: var(--indigo-2);
 .frame .fh h2 { margin-bottom: 2px; }
 .hubframe { width: 100%; min-height: 80vh; border: 0; background: #fff; display: block; }
 
-/* live call: Dory (the rigged fish in an orb) in the deep theme, over the chat. State classes: connecting / idle (muted) /
-   listening / thinking / speaking / ended; emotion classes happy / sorry / curious. --lvl = mic level, --mouth = Dory's output
-   level (both 0..1, set per frame): the fish reads --mouth for her mouth and headset bars, and --glow for her lights. */
-.call { position: absolute; inset: 0; z-index: 2; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 6px 6px; text-align: center; --lvl: 0; --mouth: 0;
-  background: radial-gradient(70% 42% at 50% 30%, rgba(95, 242, 224, .12) 0%, rgba(5, 11, 31, 0) 70%), linear-gradient(180deg, var(--ocean-900), var(--ocean-950)); border-radius: 12px; color: var(--color-text); }
-.chat:has(> .call) > .msgs, .chat:has(> .call) > .compose, .chat:has(> .call) > .hintline { visibility: hidden; } /* shadows must not spill from under the view */
-.call .st { display: flex; align-items: center; gap: 8px; font-size: 13px; font-weight: 600; color: var(--color-text); min-height: 22px; max-width: 100%; padding: 0 8px; }
-.call .st .tx { overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-.call .st .dot { flex: none; width: 8px; height: 8px; border-radius: 50%; background: var(--ocean-400); }
-.call.listening .st .dot { background: #5BE3A0; animation: livedot 1.2s ease-in-out infinite; }
-.call.speaking .st .dot { background: var(--glow-300); } .call.thinking .st .dot { background: var(--lantern-300); }
-.call .st .tm { font-weight: 500; color: var(--color-text-muted); font-variant-numeric: tabular-nums; }
-.call .st .tm:empty { display: none; }
-.call .stage { position: relative; width: 252px; height: 252px; flex: none; display: grid; place-items: center; }
-.call .ring { position: absolute; inset: 22px; border-radius: 50%; border: 2px solid rgba(95, 242, 224, .6); opacity: 0; transition: transform .1s linear, opacity .3s; }
-.call.listening .ring { opacity: .9; animation: ringbreath 2.2s ease-in-out infinite; }
-.call.listening .ring.r1 { transform: scale(calc(1.02 + var(--lvl) * .2)); }
-.call.listening .ring.r2 { transform: scale(calc(1.1 + var(--lvl) * .4)); opacity: .55; animation-delay: .25s; }
-.call.listening .ring.r3 { transform: scale(calc(1.18 + var(--lvl) * .6)); opacity: .3; animation-delay: .5s; }
-@keyframes ringbreath { 50% { border-color: rgba(185, 180, 242, .9); } }
-.call .halo { position: absolute; inset: 14px; border-radius: 50%; opacity: .7; transition: opacity .3s, transform .08s linear;
-  background: radial-gradient(circle, rgba(95, 242, 224, .32) 0%, rgba(74, 79, 191, .22) 44%, rgba(5, 11, 31, 0) 70%); filter: blur(2px); }
-.call.speaking .halo { opacity: calc(.6 + var(--mouth) * .6); transform: scale(calc(1 + var(--mouth) * .22)); }
-.call.thinking .halo { background: radial-gradient(circle, rgba(255, 196, 107, .32) 0%, rgba(74, 79, 191, .2) 44%, rgba(5, 11, 31, 0) 70%); }
-.call .orb { position: relative; z-index: 2; width: 180px; height: 180px; border-radius: 50%; overflow: hidden; display: grid; place-items: center; transform-origin: 50% 62%;
-  border: 3px solid rgba(163, 183, 221, .35); background: radial-gradient(circle at 50% 38%, var(--ocean-700), var(--ocean-900));
-  box-shadow: 0 14px 34px rgba(0, 0, 0, .45), 0 0 0 calc(2px + var(--mouth) * 9px) rgba(95, 242, 224, calc(.18 + var(--mouth) * .45));
-  transition: box-shadow .08s linear, rotate .45s var(--ease), translate .45s var(--ease); }
-/* Her face: three frames rendered from the 3D model (static/dory/dory-voice.webp: idle, talking, blink). The talking
-   frame fades in with her voice (--mouth); "happy" holds the closed-eye smile. 2.5D on purpose: no WebGL in the app. */
-.call .orb .face { position: absolute; inset: 0; background: url("/static/dory/dory-voice.webp") 0 0 / 300% 100% no-repeat; }
-.call .orb .talk { background-position: 50% 0; opacity: calc(var(--mouth) * 1.8); }
-.call .orb .blink { background-position: 100% 0; opacity: 0; animation: dory-blink-frame 5.3s linear infinite; }
-.call.happy .orb .blink { opacity: 1; animation: none; }
-@keyframes dory-blink-frame { 0%, 97% { opacity: 0; } 97.5%, 99.5% { opacity: 1; } 100% { opacity: 0; } }
-.call.connecting .orb, .call.idle .orb, .call.ended .orb { animation: breathe 3.8s ease-in-out infinite, tilt 11s ease-in-out infinite; }
-.call.listening .orb { animation: listen 2.6s ease-in-out infinite; }
-.call.speaking .orb { animation: bob 1.15s ease-in-out infinite; }
-.call.thinking .orb { rotate: -7deg; translate: 0 -2px; animation: none; }
-.call.curious .orb { rotate: 7deg; animation: none; }
-.call.sorry .orb { translate: 0 7px; rotate: 0deg; animation: none; }
-.call.ended .orb { filter: saturate(.5) brightness(.8); }
-@keyframes breathe { 50% { transform: scale(1.03); } }
-@keyframes tilt { 0%, 78%, 100% { rotate: 0deg; } 84% { rotate: -3.5deg; } 92% { rotate: 2deg; } }
-@keyframes listen { 0%, 100% { transform: scale(1.05); } 50% { transform: scale(1.08); } }
-@keyframes bob { 50% { transform: translateY(-5px) scale(1.02); } }
-.call .bars { position: absolute; top: 50%; translate: 0 -50%; display: flex; gap: 4px; align-items: center; height: 44px; opacity: 0; transition: opacity .25s; z-index: 1; }
-.call .bars.l { left: 8px; } .call .bars.r { right: 8px; flex-direction: row-reverse; }
-.call .bars i { width: 5px; border-radius: 3px; background: linear-gradient(180deg, var(--glow-300), var(--plankton-300)); height: calc(7px + var(--mouth) * var(--k) * 40px); transition: height .07s linear; }
-.call .bars i:nth-child(1) { --k: .5; } .call .bars i:nth-child(2) { --k: 1; } .call .bars i:nth-child(3) { --k: .75; } .call .bars i:nth-child(4) { --k: .4; }
-.call.speaking .bars { opacity: 1; }
-.call .dots { position: absolute; top: 26px; right: 26px; z-index: 3; display: flex; gap: 5px; padding: 9px 11px; background: var(--ocean-800); border: 1px solid var(--color-border); border-radius: 14px 14px 14px 3px;
+/* live call: the owner's painted reef fills the panel and Dory stands on a ring of light in the middle (2.5D on purpose, no
+   WebGL in the app). State classes: connecting / idle (muted) / listening / thinking / speaking / ended; emotions happy / sorry
+   / curious. --lvl = mic level, --mouth = Dory's output level (both 0..1, set per frame): the waveform in the speech bubble
+   follows whichever is louder, the ring breathes with --lvl and Dory leans into her words with --mouth. */
+.call { position: absolute; inset: 0; z-index: 4; display: flex; flex-direction: column; align-items: center; overflow: hidden; --lvl: 0; --mouth: 0;
+  color: var(--color-text); text-align: center; border-radius: inherit; background: var(--ocean-900) url("/static/dory/voice-reef.webp") center / cover no-repeat; }
+/* a neutral scrim under the header and the controls: the one gradient the painting needs to keep text readable */
+.call::before { content: ""; position: absolute; inset: 0; pointer-events: none;
+  background: linear-gradient(180deg, rgba(5, 11, 31, .78) 0, rgba(5, 11, 31, .28) 120px, rgba(5, 11, 31, 0) 32%, rgba(5, 11, 31, 0) 55%, rgba(5, 11, 31, .82) 100%); }
+.call > * { position: relative; }
+.chatpage .call { border-radius: 16px; }
+.call.max { position: fixed; z-index: 95; border-radius: 0; }
+.call .ch { width: 100%; display: flex; align-items: center; gap: 12px; padding: 16px 16px 6px 18px; text-align: left; }
+.call .ch .mark { width: 48px; height: 48px; box-shadow: 0 0 0 2px rgba(234, 242, 255, .55); }
+.call .ch .ttl { flex: 1; min-width: 0; text-shadow: 0 1px 3px rgba(5, 11, 31, .6); }
+.call .ch h2 { font-size: 18px; line-height: 1.3; color: #fff; }
+.call .ch .sub { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; font-size: 13px; color: var(--ocean-50); }
+.call .ch .sub i { width: 9px; height: 9px; border-radius: 50%; background: #5BE3A0; flex: none; }
+.call.connecting .ch .sub i { background: var(--lantern-300); } .call.ended .ch .sub i { background: var(--ocean-400); }
+.call .ch .tm { font-variant-numeric: tabular-nums; color: var(--ocean-300); }
+.call .ch .tm:empty { display: none; }
+.call .cx { flex: none; width: 42px; height: 42px; padding: 0; border-radius: 12px; display: grid; place-items: center; color: #fff;
+  border: 1px solid rgba(234, 242, 255, .45); background: rgba(10, 21, 48, .5); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.call .cx:hover { background: rgba(10, 21, 48, .72); }
+.call .cx .ic { width: 20px; height: 20px; }
+/* rising bubbles: decoration only */
+.call .bub { position: absolute; inset: 0; pointer-events: none; }
+.call .bub i { position: absolute; bottom: -24px; left: var(--x); width: var(--s); height: var(--s); border-radius: 50%; opacity: 0;
+  border: 1.5px solid rgba(234, 242, 255, .6); background: radial-gradient(circle at 32% 30%, rgba(255, 255, 255, .7), rgba(255, 255, 255, .06) 62%);
+  animation: rise var(--d) linear var(--dl) infinite; }
+@keyframes rise { 0% { translate: 0 0; opacity: 0; } 12% { opacity: .85; } 85% { opacity: .55; } 100% { translate: 12px -720px; opacity: 0; } }
+/* the frosted speech bubble: the state in words (a status region) and a waveform */
+.call .speech { margin-top: 4px; min-width: 210px; max-width: calc(100% - 48px); display: flex; flex-direction: column; align-items: center; gap: 8px; padding: 14px 24px 16px;
+  border-radius: 28px; color: #fff; border: 1px solid rgba(234, 242, 255, .42); background: rgba(16, 32, 68, .46);
+  -webkit-backdrop-filter: blur(14px) saturate(150%); backdrop-filter: blur(14px) saturate(150%); box-shadow: inset 0 1px 0 rgba(255, 255, 255, .25), 0 10px 30px rgba(5, 11, 31, .3); }
+.call .speech::after { content: ""; position: absolute; left: 50%; bottom: -9px; width: 18px; height: 18px; margin-left: -9px; rotate: 45deg; border-radius: 0 0 5px 0;
+  background: rgba(16, 32, 68, .46); border: solid rgba(234, 242, 255, .42); border-width: 0 1px 1px 0; -webkit-backdrop-filter: blur(14px); backdrop-filter: blur(14px);
+  clip-path: polygon(100% 0, 100% 100%, 0 100%); } /* only the point below the bubble: no darker square inside it */
+.call .speech .sx { font-size: 17px; font-weight: 600; line-height: 1.35; overflow-wrap: anywhere; text-shadow: 0 1px 2px rgba(5, 11, 31, .5); }
+.call .wave { display: flex; align-items: center; justify-content: center; gap: 3px; height: 36px; }
+.call .wave i { width: 3px; border-radius: 3px; background: #fff; height: calc(4px + max(var(--lvl), var(--mouth)) * var(--k) * 32px); transition: height .08s linear; }
+.call.listening .wave i { animation: wv 1.1s ease-in-out calc(var(--k) * -1.1s) infinite alternate; }
+@keyframes wv { to { scale: 1 calc(1.4 + var(--k)); } }
+.call.thinking .wave, .call.connecting .wave, .call.ended .wave { opacity: .45; }
+/* Dory on her ring of light */
+/* the speech bubble and Dory stay together in the middle, however tall the panel is */
+.call .mid { flex: 1 1 auto; min-height: 0; width: 100%; display: flex; flex-direction: column; align-items: center; justify-content: center; }
+.call .dory { flex: 1 1 auto; max-height: 400px; min-height: 140px; width: 100%; position: relative; display: flex; align-items: flex-end; justify-content: center; padding: 16px 0 6px; }
+.call.max .dory { max-height: 62vh; }
+.call.max .fish img { max-width: min(70vw, 620px); }
+.call .ring { position: absolute; left: 50%; bottom: 2px; width: min(76%, 300px); aspect-ratio: 4 / 1; translate: -50% 0; border-radius: 50%;
+  border: 2px solid rgba(160, 246, 255, .9); background: radial-gradient(closest-side, rgba(95, 242, 224, .42), rgba(95, 242, 224, .08) 70%, rgba(95, 242, 224, 0));
+  box-shadow: 0 0 22px 5px rgba(95, 242, 224, .45), inset 0 0 18px 4px rgba(95, 242, 224, .35); scale: calc(1 + var(--lvl) * .08); transition: scale .1s linear; }
+.call.speaking .ring { box-shadow: 0 0 calc(22px + var(--mouth) * 26px) calc(5px + var(--mouth) * 8px) rgba(95, 242, 224, .5), inset 0 0 18px 4px rgba(95, 242, 224, .4); }
+.call.thinking .ring { border-color: rgba(255, 214, 150, .9); box-shadow: 0 0 22px 5px rgba(255, 196, 107, .4), inset 0 0 18px 4px rgba(255, 196, 107, .3); }
+.call .fish { position: relative; height: 100%; display: flex; align-items: flex-end; justify-content: center; animation: dbob 3.6s ease-in-out infinite; }
+.call .fish img { display: block; height: 100%; width: auto; max-width: min(84vw, 344px); object-fit: contain; object-position: bottom; transform-origin: 50% 90%;
+  filter: drop-shadow(0 16px 22px rgba(5, 11, 31, .45)); transition: rotate .45s var(--ease), translate .45s var(--ease), scale .08s linear, filter .3s; }
+@keyframes dbob { 50% { translate: 0 -9px; } }
+.call.speaking .fish img { scale: calc(1 + var(--mouth) * .035); }
+.call.thinking .fish img { rotate: -5deg; }
+.call.curious .fish img { rotate: 6deg; }
+.call.sorry .fish img { translate: 0 6px; }
+.call.ended .fish { animation: none; } .call.ended .fish img { filter: saturate(.45) brightness(.75); }
+.call .dots { position: absolute; top: 10%; right: 18%; z-index: 3; display: flex; gap: 5px; padding: 9px 11px; background: var(--ocean-800); border: 1px solid var(--color-border); border-radius: 14px 14px 14px 3px;
   box-shadow: 0 4px 14px rgba(0, 0, 0, .4); opacity: 0; scale: .6; transition: opacity .2s, scale .25s var(--ease); }
 .call .dots span { width: 7px; height: 7px; border-radius: 50%; background: var(--glow-300); animation: b 1s infinite; }
 .call .dots span:nth-child(2) { animation-delay: .15s; } .call .dots span:nth-child(3) { animation-delay: .3s; }
@@ -479,52 +537,96 @@ input[type=datetime-local]:focus { outline: none; border-color: var(--indigo-2);
 .call.thinking .dots { opacity: 1; scale: 1; }
 .call .ovl { position: absolute; z-index: 3; opacity: 0; scale: .5; transition: opacity .2s, scale .3s var(--ease); line-height: 1; pointer-events: none; }
 .call .ovl.sparkle, .call .ovl.sparkle2 { color: var(--lantern-300); } .call .ovl svg.ic { display: block; }
-.call .ovl.sparkle { top: 30px; left: 36px; font-size: 30px; filter: drop-shadow(0 2px 6px rgba(255, 196, 107, .7)); }
-.call .ovl.sparkle2 { top: 150px; right: 26px; font-size: 20px; }
+.call .ovl.sparkle { top: 14%; left: 16%; font-size: 30px; filter: drop-shadow(0 2px 6px rgba(255, 196, 107, .7)); }
+.call .ovl.sparkle2 { top: 42%; right: 14%; font-size: 20px; }
 .call.happy .ovl.sparkle, .call.happy .ovl.sparkle2 { opacity: 1; scale: 1; animation: twinkle 1.2s ease-in-out; }
 .call.happy .ovl.sparkle2 { animation-delay: .15s; }
 @keyframes twinkle { 0%, 100% { rotate: -10deg; } 50% { rotate: 12deg; scale: 1.15; } }
-.call .ovl.tear { top: 44px; right: 50px; width: 24px; height: 30px; } .call .ovl.tear svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .4)); }
+.call .ovl.tear { top: 30%; right: 30%; width: 24px; height: 30px; } .call .ovl.tear svg { width: 100%; height: 100%; display: block; filter: drop-shadow(0 2px 4px rgba(0, 0, 0, .4)); }
 .call.sorry .ovl.tear { opacity: 1; scale: 1; animation: dropfall 1.2s ease-in; }
 @keyframes dropfall { to { translate: 0 10px; } }
-.call .ovl.q { top: 30px; right: 36px; width: 36px; height: 36px; border-radius: 50%; background: var(--lantern-300); color: var(--ocean-950); font-weight: 800; font-size: 20px; display: grid; place-items: center; box-shadow: 0 6px 14px rgba(0, 0, 0, .4); }
+.call .ovl.q { top: 12%; right: 20%; width: 36px; height: 36px; border-radius: 50%; background: var(--lantern-300); color: var(--ocean-950); font-weight: 800; font-size: 20px; display: grid; place-items: center; box-shadow: 0 6px 14px rgba(0, 0, 0, .4); }
 .call.curious .ovl.q { opacity: 1; scale: 1; }
-.call .caps { flex: 1 1 auto; min-height: 0; width: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 2px 6px; }
-.call .bubble { position: relative; max-width: 100%; background: var(--ocean-800); color: var(--color-text); border: 1px solid var(--color-border); padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; text-align: left; margin-top: 7px; }
-.call .bubble::before { content: ""; position: absolute; top: -7px; left: 50%; margin-left: -7px; border: 7px solid transparent; border-top: 0; border-bottom-color: var(--ocean-800); }
-.call .bubble:empty { display: none; }
-.call .heard { font-size: 13px; color: var(--color-text-muted); max-width: 100%; overflow-wrap: anywhere; }
-.call .heard:empty { display: none; }
+/* captions: what Dory says and what she heard, on dark glass so they stay readable over the painting */
+.call .caps { flex: 0 1 auto; min-height: 0; max-height: 28%; width: 100%; overflow-y: auto; display: flex; flex-direction: column; align-items: center; gap: 6px; padding: 8px 16px 2px; }
+.call .bubble { max-width: 100%; padding: 10px 14px; border-radius: 16px; font-size: 15px; line-height: 1.45; overflow-wrap: anywhere; text-align: left; color: #fff;
+  background: rgba(10, 21, 48, .74); border: 1px solid rgba(234, 242, 255, .22); -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); }
+.call .bubble:empty, .call .heard:empty { display: none; }
+.call .heard, .call .hint { max-width: 100%; padding: 4px 12px; border-radius: 99px; font-size: 13px; color: var(--ocean-50); background: rgba(10, 21, 48, .66); overflow-wrap: anywhere; }
 .call .heard::before { content: "\201C"; } .call .heard::after { content: "\201D"; }
-.call .hint { font-size: 12.5px; color: var(--color-text-muted); }
 .call.ended .hint, .call.speaking .hint, .call.thinking .hint { display: none; }
-.call .ctl { display: flex; align-items: flex-start; justify-content: center; gap: 26px; padding: 2px 0; }
-.call .ctl > div { display: flex; flex-direction: column; align-items: center; gap: 4px; font-size: 12px; color: var(--color-text-muted); }
-.call .rb { width: 54px; height: 54px; border-radius: 50%; border: 1px solid var(--color-border-control); background: var(--ocean-800); color: var(--color-text); display: grid; place-items: center; padding: 0; transition: transform .15s var(--ease), background .15s, color .15s; }
-.call .rb svg { width: 22px; height: 22px; display: block; }
-.call .rb:hover { transform: scale(1.06); }
-.call .rb.mute[aria-pressed=true] { background: var(--lantern-300); color: var(--ocean-950); border-color: transparent; }
-.call .rb.end { width: 66px; height: 66px; background: #E5484D; color: #fff; border: 0; box-shadow: 0 10px 24px rgba(229, 72, 77, .38); }
+.call .ctl { display: flex; align-items: flex-start; justify-content: center; gap: 26px; padding: 12px 12px 4px; }
+.call .ctl > div { display: flex; flex-direction: column; align-items: center; gap: 6px; min-width: 64px; font-size: 13px; font-weight: 600; color: #fff; text-shadow: 0 1px 2px rgba(5, 11, 31, .6); }
+.call .rb { width: 60px; height: 60px; border-radius: 50%; border: 1px solid rgba(234, 242, 255, .5); background: rgba(10, 21, 48, .55); color: #fff; display: grid; place-items: center; padding: 0;
+  -webkit-backdrop-filter: blur(10px); backdrop-filter: blur(10px); transition: transform .15s var(--ease), background .15s, color .15s; }
+.call .rb svg { width: 24px; height: 24px; display: block; }
+.call .rb:hover { transform: scale(1.06); background: rgba(10, 21, 48, .75); }
+.call .rb[aria-pressed=true] { background: var(--ocean-50); color: var(--ocean-950); border-color: transparent; }
+.call .rb.end { width: 70px; height: 70px; margin-top: -5px; background: #E5484D; color: #fff; border: 0; box-shadow: 0 0 0 3px rgba(160, 246, 255, .55), 0 10px 24px rgba(229, 72, 77, .38); }
 .call .rb.end:hover { background: #D13B40; }
 .call .rb.end svg { width: 28px; height: 28px; }
 .call .rb[disabled] { opacity: .5; cursor: default; transform: none; }
-.call form.say { display: flex; gap: 8px; width: 100%; align-items: center; }
-.call form.say input { min-height: 44px; padding: 7px 14px; border-radius: 99px; font-size: 14px; }
+.call form.say { display: flex; gap: 8px; width: 100%; max-width: 680px; align-items: center; padding: 8px 16px 16px; }
+.call .caps { max-width: 680px; }
+.call form.say input { min-height: 44px; padding: 7px 16px; border-radius: 99px; font-size: 14px; color: #fff; background: rgba(10, 21, 48, .62); border-color: rgba(234, 242, 255, .5); }
+.call form.say input::placeholder { color: var(--ocean-300); }
 .call form.say button { flex: none; width: 44px; height: 44px; min-height: 44px; padding: 0; border-radius: 50%; background: var(--color-action); color: var(--color-on-action); border: 0; display: grid; place-items: center; }
 .call form.say button svg { width: 18px; height: 18px; display: block; }
-/* company profile: hero, leadership, departments, the collapsed "Dory & systems" section */
-.card.hero { flex-direction: row; flex-wrap: wrap; gap: 20px; align-items: flex-start; background: linear-gradient(135deg, #FFFFFF 0%, #F7F5FF 55%, #EEF4FF 100%); }
-.hero .logo { width: 96px; height: 96px; border-radius: 22px; flex: none; object-fit: cover; background: #fff; border: 1px solid var(--line); }
-.hero .lettermark { display: grid; place-items: center; font-size: 34px; font-weight: 700; color: #fff; border: 0; background: linear-gradient(135deg, var(--indigo-2), #7A6CF0); box-shadow: 0 10px 24px rgba(74, 79, 191, .3); }
-.hero .hx { flex: 1 1 300px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
-.hero .hx h2 { font-size: clamp(24px, 3vw, 32px); line-height: 1.2; }
-.hero .tag { font-size: 17px; color: var(--muted); }
+@media (prefers-reduced-transparency: reduce) { .call .speech, .call .speech::after, .call .cx, .call .rb, .call .bubble { -webkit-backdrop-filter: none; backdrop-filter: none; background-color: var(--ocean-800); } }
+@supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .call .speech, .call .speech::after { background: rgba(16, 32, 68, .86); } }
+/* company profile: the org header, one card per section (icon tile, title, its action), the collapsed "Dory & systems" */
+.card.hero { flex-direction: row; flex-wrap: wrap; gap: 18px 24px; align-items: flex-start; container-type: inline-size; }
+/* pale coral at the card's right edge: its own column, so it never sits behind text; gone when the card is narrow */
+.hero .hcoral { flex: 0 0 120px; align-self: stretch; min-height: 120px; margin: -24px -28px -24px -8px; border-radius: 0 16px 16px 0;
+  background: url("/static/dory/coral-edge-right.svg") right bottom / contain no-repeat; }
+@container (max-width: 680px) { .hero .hcoral { display: none; } }
+.hero .logo { width: 88px; height: 88px; border-radius: 20px; flex: none; object-fit: cover; background: #fff; border: 1px solid var(--mist-200); }
+.hero .lettermark { display: grid; place-items: center; font-size: 32px; font-weight: 700; color: #fff; border: 0; background: var(--indigo-2); }
+.hero .hx { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
+.hero .hx h2 { font-size: clamp(22px, 2.6vw, 28px); line-height: 1.25; }
+.hero .tag { font-size: 16px; color: var(--muted); }
 .hero .facts { display: flex; flex-wrap: wrap; gap: 6px; }
-.hero .facts .chip { background: #fff; border: 1px solid var(--line); font-weight: 500; font-size: 13px; color: var(--ink); }
+.hero .facts .chip { background: #fff; border: 1px solid var(--mist-200); font-weight: 500; font-size: 13px; color: var(--ink); }
 .hero .links { display: flex; flex-wrap: wrap; gap: 6px 18px; font-size: 14.5px; }
 .hero .links a { overflow-wrap: anywhere; }
-.hero .hedit { flex: none; align-self: flex-start; }
+.hero .hrow { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 16px; }
+.hero .hedit { flex: none; }
 .hero form { flex-basis: 100%; }
+.card.info { display: grid; grid-template-columns: 52px minmax(0, 1fr); column-gap: 20px; align-items: start; }
+.itile { width: 52px; height: 52px; border-radius: 14px; flex: none; display: grid; place-items: center; background: var(--plankton-50); color: var(--indigo-2); }
+.itile .ic { width: 24px; height: 24px; }
+.info .ibody { min-width: 0; display: flex; flex-direction: column; gap: 12px; }
+.info .ihead, .info .pline { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 14px; min-height: 40px; }
+.info .ihead h2, .info .pline h2 { font-size: 18px; }
+.info .ihead > .btn, .info .pline > .btn { margin-left: auto; }
+.info p { color: var(--ink); }
+.info p.muted { color: var(--muted); }
+@media (max-width: 560px) { .card.info { grid-template-columns: minmax(0, 1fr); row-gap: 12px; }
+  .cgrid .card { display: grid; grid-template-columns: 52px minmax(0, 1fr); gap: 4px 16px; align-items: start; }
+  .cgrid .card .itile { grid-row: span 2; } .cgrid h3 { margin-top: 2px; } }
+/* no organization yet: the coral welcome, what an organization gives you, help to start */
+.card.welcome { align-items: center; justify-content: center; text-align: center; gap: 10px; min-height: 330px; padding: 48px 24px 72px;
+  background: var(--card) url("/static/dory/coral-scene-light.svg") center bottom / cover no-repeat; }
+.welcome .itile { width: 72px; height: 72px; border-radius: 18px; margin-bottom: 6px; }
+.welcome .itile .ic { width: 34px; height: 34px; }
+.welcome h2 { font-size: 22px; }
+.welcome p { font-size: 16px; color: var(--muted); }
+.welcome .btn { margin-top: 12px; min-height: 52px; padding: 12px 28px; font-size: 16px; }
+.cando { margin: 30px 0 18px; }
+.cando > h2 { font-size: 22px; margin-bottom: 16px; }
+.cando { container-type: inline-size; }
+.cgrid { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 16px; } /* 4, 2 or 1 across: never one card alone in a row */
+@container (max-width: 760px) { .cgrid { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@container (max-width: 460px) { .cgrid { grid-template-columns: minmax(0, 1fr); } }
+.cgrid .card { margin: 0; gap: 10px; padding: 22px; }
+.cgrid h3 { font-size: 17px; margin-top: 6px; }
+.cgrid p { font-size: 15px; color: var(--muted); }
+.itile.blue { background: #E7EEFF; color: #2754C5; } .itile.violet { background: #EFEBFF; color: #5B3FC9; }
+.itile.green { background: #E1F5EA; color: #0E7A50; } .itile.orange { background: #FFEEDC; color: #B4540A; }
+.card.helpb { flex-direction: row; flex-wrap: wrap; align-items: center; gap: 14px 20px; }
+.helpb > .ic { width: 40px; height: 40px; color: var(--indigo-2); }
+.helpb .hx { flex: 1 1 260px; min-width: 0; display: flex; flex-direction: column; gap: 2px; }
+.helpb h2 { font-size: 18px; }
 .vals { display: flex; flex-wrap: wrap; gap: 8px; }
 .vals .chip { font-size: 14px; padding: 6px 14px; background: #fff; border: 1px solid var(--lavender); }
 .lead { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
@@ -645,19 +747,23 @@ details.sys > .inner { padding-top: 12px; }
 }
 /* monitor:css:end */
 
-@media (prefers-reduced-motion: reduce) { .skeleton, .typing span, .call .ring, .call .orb, .call .orb .blink, .call .dots span, .call .ovl, .livebtn i, .mon-flash { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .skeleton, .typing span, .call .fish, .call .wave i, .call .dots span, .call .ovl, .livebtn i, .mon-flash { animation: none !important; } .call .bub { display: none; } }
+/* the tablet keeps the sidebar but the top bar gets narrower */
+@media (max-width: 1100px) { #topbar { padding-left: 24px; } #content { padding-left: 28px; padding-right: 28px; } }
 @media (max-width: 900px) { #login { grid-template-columns: 1fr; gap: 28px; align-items: start; padding: 32px 16px 40px; } #login .panel { place-items: start; } #login .box { max-width: 480px; } }
 @media (max-width: 720px) {
   #app { flex-direction: column; }
   #side { position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; height: auto; width: min(290px, 86%); transform: translateX(-102%); transition: transform .2s var(--ease); }
   body.nav-open #side { transform: none; box-shadow: var(--shadow-lg); }
   body.nav-open::after { content: ""; position: fixed; inset: 0; background: rgba(27, 31, 59, .4); z-index: 45; }
-  #topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: rgba(250, 249, 246, .9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
-    color: var(--indigo); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 30; }
-  #topbar button { background: #fff; border: 1px solid var(--line); color: var(--indigo); border-radius: 10px; min-height: 40px; min-width: 40px; font-size: 18px; }
-  #topbar .t { flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
-  #content { padding: 16px 16px 32px; }
+  #topbar { min-height: 60px; padding: 8px 16px; color: var(--indigo); }
+  #topbar #burger { display: grid; place-items: center; background: #fff; border: 1px solid var(--color-border-control); color: var(--indigo); border-radius: 10px; min-height: 44px; min-width: 44px; font-size: 18px; }
+  #topbar .t { display: block; flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+  #topbar .qs { display: none; } /* phones ask Dory in the chat itself */
+  #mainwrap { background: none; }
+  #content { padding: 16px 16px 40px; }
   #content > h1 { font-size: 24px; margin-bottom: 16px; }
+  #content > .sub { font-size: 15px; margin-bottom: 18px; }
   .card { padding: 16px; }
   #fab { right: 16px; bottom: 16px; width: 54px; height: 54px; }
   #panel { border-left: 0; }
@@ -672,7 +778,7 @@ details.sys > .inner { padding-top: 12px; }
   .cal-date b { font-size: 20px; }
   .pcard { width: 164px; }
   .hubframe { min-height: 75vh; }
-  .call .stage { width: 232px; height: 232px; } .call .orb { width: 164px; height: 164px; } .call .ovl.eyes { left: 22px; } .call .ovl.sparkle { left: 26px; }
+  .card.welcome { min-height: 280px; padding: 36px 16px 56px; }
 }
 .rolecell { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
 .gsi-link { min-height: 32px; }
@@ -844,30 +950,37 @@ h3 .n { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99
 
 
 <div id="app" hidden>
-  <div id="topbar">
-    <button id="burger" type="button" aria-label="Menu" aria-controls="side" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
-    <span class="t" id="topbar-title">Dory</span>
-  </div>
   <aside id="side" aria-label="Main">
     <div class="brand"><div class="mark" aria-hidden="true">D</div><strong>Dory</strong></div>
     <label class="f"><span class="sr" data-i="org"></span>
       <select id="org-switch" aria-label="Organization"></select></label>
-    <button class="btn ghost sm" id="new-org" type="button" data-i="new_org"></button>
+    <button class="btn sm" id="new-org" type="button"><i data-ic="plus"></i><span data-i="new_org"></span></button>
     <nav id="nav"></nav>
     <div class="foot">
-      <button class="btn ghost sm" id="lang" type="button"></button>
+      <label class="langsel"><span class="sr" data-i="lang_label"></span><i data-ic="globe"></i>
+        <select id="lang"><option value="en">English</option><option value="th">ไทย</option></select></label>
       <a class="who" id="who" href="#/account" title="My account"></a>
-      <button class="btn ghost sm" id="signout" type="button" data-i="signout"></button>
+      <button class="btn ghost sm" id="signout" type="button"><i data-ic="logout"></i><span data-i="signout"></span></button>
     </div>
   </aside>
-  <main id="content" tabindex="-1"></main>
+  <div id="mainwrap">
+    <header id="topbar">
+      <button id="burger" type="button" aria-label="Menu" aria-controls="side" aria-expanded="false"><i data-ic="menu"></i></button>
+      <span class="t" id="topbar-title">Dory</span>
+      <!-- search asks Dory: Enter opens Talk to Dory with the query; Cmd/Ctrl+K focuses it -->
+      <form class="qs" id="qs-form" role="search"><div><i data-ic="search"></i><input type="search" id="qs" maxlength="200" autocomplete="off" enterkeyhint="search"><kbd id="qs-k" aria-hidden="true"></kbd></div></form>
+      <a class="tb" id="bell" href="#/monitor?tab=attention" hidden><i data-ic="bell"></i><span class="n" hidden></span></a>
+      <a class="av" id="me-av" href="#/account"></a>
+    </header>
+    <main id="content" tabindex="-1"></main>
+  </div>
   <button id="fab" class="mark" type="button" aria-controls="panel" aria-expanded="false" aria-haspopup="dialog"></button>
   <aside id="panel" role="dialog" aria-labelledby="panel-t" aria-hidden="true">
     <div class="ph">
       <div class="mark" aria-hidden="true">D</div>
       <div class="ttl"><h2 id="panel-t" data-i="talk"></h2><p data-i="panel_p"></p></div>
       <button class="livebtn" id="panel-live" type="button" aria-pressed="false"></button>
-      <button class="x" id="panel-x" type="button" data-i-label="close" aria-label="Close">&times;</button>
+      <button class="x" id="panel-x" type="button" aria-label="Close"><i data-ic="x"></i></button>
     </div>
     <div class="pb" id="panel-body"></div>
   </aside>
@@ -967,9 +1080,20 @@ const IC = {
   skip: '<path d="M4 16a8 8 0 0 1 14.6-6.5"/><path d="M19.5 4.5v5h-5"/>',
   dot: '<circle cx="12" cy="12" r="2.5" fill="currentColor"/>',
   spark: '<path d="M12 2.5c.7 5 2.5 6.8 7.5 7.5-5 .7-6.8 2.5-7.5 7.5-.7-5-2.5-6.8-7.5-7.5 5-.7 6.8-2.5 7.5-7.5z" fill="currentColor" stroke="none"/>',
+  plus: '<path d="M12 5v14M5 12h14"/>',
+  menu: '<path d="M4 7h16M4 12h16M4 17h16"/>',
+  search: '<circle cx="11" cy="11" r="6.5"/><path d="m20 20-4.4-4.4"/>',
+  globe: '<circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/>',
+  logout: '<path d="M14 4h4a2 2 0 0 1 2 2v12a2 2 0 0 1-2 2h-4M10 8l-4 4 4 4M6 12h10"/>',
+  shield: '<path d="M12 3 4.5 6v5.5c0 4.6 3.2 8.2 7.5 9.5 4.3-1.3 7.5-4.9 7.5-9.5V6z"/>',
+  book: '<path d="M12 6.5C10.4 5 8 4.5 4 4.5v14c4 0 6.4.5 8 2 1.6-1.5 4-2 8-2v-14c-4 0-6.4.5-8 2zM12 6.5v14"/>',
+  tree: '<rect x="9" y="3" width="6" height="5" rx="1.2"/><rect x="3" y="16" width="6" height="5" rx="1.2"/><rect x="15" y="16" width="6" height="5" rx="1.2"/><path d="M12 8v4M6 16v-4h12v4"/>',
+  expand: '<path d="M14 4h6v6M10 20H4v-6M20 4l-7 7M4 20l7-7"/>',
+  collapse: '<path d="M20 10h-6V4M4 14h6v6M14 10l7-7M10 14l-7 7"/>',
 };
 const icHtml = (n) => '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (IC[n] || IC.dot) + "</svg>";
 function ic(n) { const tp = document.createElement("template"); tp.innerHTML = icHtml(n); return tp.content.firstChild; }
+for (const n of document.querySelectorAll("i[data-ic]")) n.replaceWith(ic(n.dataset.ic)); // the page's static icons, same set
 // replaceChildren that tolerates arrays / null / false (so conditional children never render as text)
 { const rc = Element.prototype.replaceChildren; Element.prototype.replaceChildren = function (...k) { rc.apply(this, k.flat(Infinity).filter((x) => x != null && x !== false)); }; }
 const items = (x, k = "items") => Array.isArray(x) ? x : (x && Array.isArray(x[k]) ? x[k] : []);
@@ -996,10 +1120,10 @@ th: {
   f_ws:"พื้นที่ทำงาน", f_all_ws:"ทั้งหมด", f_from:"ตั้งแต่", f_to:"ถึง", f_search:"ค้นหา", f_search_ph:"ค้นหาชื่อหรือเนื้อหา",
   c_title:"ชื่อ", c_ws:"พื้นที่", c_date:"วันที่", c_who:"โดย", c_size:"ขนาด", no_docs:"ยังไม่มีเอกสารในหมวดนี้", no_docs_hint:"เอกสารที่ดอรี่อ่านใน Discord หรือที่คุณอัปโหลดจะแสดงที่นี่",
   upload:"อัปโหลดเอกสาร", drop_here:"ลากไฟล์มาวางที่นี่ หรือกดเลือกไฟล์", uploading:"กำลังอัปโหลด {name}", upload_done:"อัปโหลดแล้ว", open_source:"เปิดใน Discord", more:"โหลดเพิ่ม", preview:"ตัวอย่าง", no_preview:"ไม่มีตัวอย่าง",
-  chat_ph:"พิมพ์ข้อความถึงดอรี่…", send:"ส่ง", chat_empty:"ถามดอรี่ได้เลย เช่น “สรุปค่าใช้จ่ายเดือนนี้”", typing:"ดอรี่กำลังพิมพ์",
-  n_chat:"คุยกับดอรี่", dory_name:"ดอรี่", you:"คุณ", chat_hi:"สวัสดีค่ะ ดอรี่เองค่ะ", chat_intro:"ถามเรื่องบริษัทได้เลยค่ะ ทั้งใบเสร็จ เอกสาร การประชุม และงาน", chat_trust:"ดอรี่ตอบจากห้องที่คุณมีสิทธิ์อ่านเท่านั้นค่ะ", chat_try:"ลองถาม", chip_missed:"ฉันพลาดอะไรไปบ้าง", chip_tasks:"งานของฉันวันนี้", chip_spend:"สรุปค่าใช้จ่ายเดือนนี้", chip_upload:"อัปโหลดเอกสาร", thinking_s:"กำลังคิด… {n} วินาที", thinking_sr:"ดอรี่กำลังคิด", still_working:"ดอรี่ยังทำอยู่", long_wait:"คำตอบยาว ๆ อาจใช้เวลาถึงหนึ่งนาที", stop_wait:"หยุดรอ", stopped:"คุณหยุดรอแล้ว ดอรี่อาจยังตอบต่อ และคำตอบจะอยู่ในประวัติแชท", ask_again:"ถามอีกครั้ง", chat_err:"ดอรี่ตอบไม่ได้: {e}", copy_q:"คัดลอกคำถาม", copy_fail:"คัดลอกไม่ได้", offline_p:"คุณออฟไลน์อยู่ ข้อความยังอยู่ในช่องพิมพ์", send_hint:"Enter เพื่อส่ง · Shift+Enter ขึ้นบรรทัดใหม่", drop_files:"วางไฟล์ได้สูงสุด 10 ไฟล์", search_hist:"ค้นในแชท", jump_day:"ไปยังวันที่", yesterday:"เมื่อวาน", no_match:"ไม่พบข้อความที่ตรงกัน", files_sent:"ไฟล์ที่ฉันส่ง", history:"ประวัติ",
+  chat_ph:"ถามดอรี่ได้ทุกเรื่อง…", send:"ส่ง", chat_empty:"ถามดอรี่ได้เลย เช่น “สรุปค่าใช้จ่ายเดือนนี้”", typing:"ดอรี่กำลังพิมพ์",
+  n_chat:"คุยกับดอรี่", dory_name:"ดอรี่", you:"คุณ", chat_hi:"เริ่มคุยกันเลยค่ะ", chat_intro:"ถามดอรี่เรื่องบริษัทได้ทุกเรื่องค่ะ ดอรี่หาข้อมูล สรุปเอกสาร และช่วยงานของคุณได้", chat_trust:"ดอรี่ตอบจากห้องที่คุณมีสิทธิ์อ่านเท่านั้นค่ะ", chat_try:"ลองถาม", sug_docs:"สรุปเอกสารล่าสุดของเรา", sug_meet:"แสดงการประชุมที่กำลังจะมาถึง", sug_people:"หาคนในทีม", thinking_s:"กำลังคิด… {n} วินาที", thinking_sr:"ดอรี่กำลังคิด", still_working:"ดอรี่ยังทำอยู่", long_wait:"คำตอบยาว ๆ อาจใช้เวลาถึงหนึ่งนาที", stop_wait:"หยุดรอ", stopped:"คุณหยุดรอแล้ว ดอรี่อาจยังตอบต่อ และคำตอบจะอยู่ในประวัติแชท", ask_again:"ถามอีกครั้ง", chat_err:"ดอรี่ตอบไม่ได้: {e}", copy_q:"คัดลอกคำถาม", copy_fail:"คัดลอกไม่ได้", offline_p:"คุณออฟไลน์อยู่ ข้อความยังอยู่ในช่องพิมพ์", send_hint:"Enter เพื่อส่ง · Shift+Enter ขึ้นบรรทัดใหม่", drop_files:"วางไฟล์ได้สูงสุด 10 ไฟล์", search_hist:"ค้นในแชท", jump_day:"ไปยังวันที่", yesterday:"เมื่อวาน", no_match:"ไม่พบข้อความที่ตรงกัน", files_sent:"ไฟล์ที่ฉันส่ง", history:"ประวัติ",
   sec_company:"บริษัท", sec_personal:"ส่วนตัว",
-  live:"คุยสด", live_on:"กำลังคุย", live_title:"คุยสดกับดอรี่", live_hint:"พูดได้เลย แทรกได้ทุกเมื่อ", live_connecting:"กำลังเชื่อมต่อ…", live_listening:"กำลังฟัง", live_thinking:"กำลังคิด", live_speaking:"ดอรี่กำลังพูด", live_checking:"ดอรี่กำลังเช็กให้: {q}", live_muted:"ปิดไมค์อยู่", live_ended:"วางสายแล้ว", live_lost:"สายหลุด กดคุยสดใหม่ได้เลยค่ะ",
+  live:"คุยสด", live_on:"กำลังคุย", live_title:"คุยสดกับดอรี่", live_hint:"พูดได้เลย แทรกได้ทุกเมื่อ", live_connecting:"กำลังเชื่อมต่อ…", live_listening:"ดอรี่ฟังอยู่ค่ะ…", live_thinking:"กำลังคิด", live_speaking:"ดอรี่กำลังพูด", live_checking:"ดอรี่กำลังเช็กให้: {q}", live_muted:"ปิดไมค์อยู่", live_ended:"วางสายแล้ว", live_lost:"สายหลุด กดคุยสดใหม่ได้เลยค่ะ",
   live_end:"วางสาย", live_mute:"ปิดไมค์", live_unmute:"เปิดไมค์", live_type_ph:"หรือพิมพ์ถึงดอรี่…", live_send:"ส่ง", live_na:"เบราว์เซอร์นี้คุยสดไม่ได้ (ลอง Chrome หรือ Edge)", live_mic_denied:"ไม่ได้รับอนุญาตให้ใช้ไมโครโฟน", live_mic_err:"เปิดไมโครโฟนไม่ได้ ({e})",
   live_err_auth:"เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง", live_err_forbidden:"บัญชีนี้ไม่มีสิทธิ์คุยสดในองค์กรนี้", live_err_unavailable:"คุยสดยังใช้ไม่ได้: องค์กรนี้ยังไม่มีแพ็กเกจที่ใช้งานได้ หรือยังไม่ได้เชื่อมต่อพื้นที่ทำงาน", live_err_already:"มีสายคุยสดเปิดอยู่ในแท็บอื่น ปิดสายนั้นก่อนนะคะ", live_err_limit:"คุยครบ 30 นาทีแล้ว กดคุยสดใหม่ได้เลยค่ะ", live_err_goaway:"ดอรี่ต้องพักสายสักครู่ ลองคุยสดใหม่นะคะ", live_err_generic:"คุยสดขัดข้อง ({e})",
   si_h:"วิธีเข้าสู่ระบบ", si_discord_ok:"เข้าสู่ระบบด้วย Discord ได้แล้ว", si_discord_no:"ยืนยัน Discord ด้านบน เพื่อเข้าสู่ระบบด้วย Discord ได้ด้วย", si_code_hint:"ใช้รหัสจากคำสั่ง /linkaccount",
@@ -1086,6 +1210,13 @@ th: {
   mon_d_attempts:"พยายาม {n} ครั้ง", mon_d_started:"เริ่ม {t}", mon_d_finished:"เสร็จ {t}",
   mon_dismiss:"ซ่อน", mon_licence:"แพ็กเกจของบริษัทยังไม่ใช้งาน จึงยังดูหน้าติดตามงานไม่ได้ค่ะ เจ้าของบริษัทต่ออายุได้ที่หน้าแพ็กเกจ", mon_forbidden:"ตอนนี้คุณดูงานของบริษัทนี้ไม่ได้แล้วค่ะ ถ้าบทบาทของคุณถูกเปลี่ยนโดยไม่ตั้งใจ ติดต่อเจ้าของหรือผู้ดูแลนะคะ",
   mon_view:"ดู", mon_toast:"มี {n} รายการที่ต้องดูแลค่ะ", mon_announce:"อัปเดตแล้ว {n} รายการ",
+  lang_label:"ภาษา", qs_ph:"ค้นหาทุกอย่าง…", qs_label:"ค้นหาทุกอย่างกับดอรี่", search_ask:"ช่วยค้นหา \"{q}\" จากทุกที่",
+  sub_overview:"จัดการข้อมูลและการตั้งค่าขององค์กร", sub_noorg:"ตั้งค่าองค์กรเพื่อเริ่มใช้ดอรี่กับทีมของคุณ", can_h:"องค์กรช่วยอะไรได้บ้าง",
+  can_members_h:"จัดการสมาชิก", can_members_p:"เชิญเพื่อนร่วมทีม และกำหนดบทบาทของแต่ละคน", can_know_h:"จัดระเบียบความรู้", can_know_p:"เก็บเอกสาร วิกิ และบันทึกการประชุมไว้ด้วยกัน",
+  can_tools_h:"เชื่อมเครื่องมือของคุณ", can_tools_p:"เชื่อม Discord, Slack และ Google Calendar", can_safe_h:"ทำงานอย่างปลอดภัย", can_safe_p:"ดอรี่ตอบจากสิ่งที่แต่ละคนมีสิทธิ์อ่านเท่านั้น",
+  help_h:"ต้องการความช่วยเหลือในการเริ่มต้น?", help_p:"ถามดอรี่ในแชทได้เลย ดอรี่จะพาทำทีละขั้นค่ะ", help_b:"ถามดอรี่", help_q:"เริ่มต้นใช้งานยังไง", ask_after_org:"สร้างองค์กรก่อน แล้วดอรี่จะตอบ “{q}” ให้ทันทีค่ะ",
+  cp_manage:"จัดการสมาชิก", oc_edit_b:"แก้ผังองค์กร", oc_mine:"ตั้งหัวหน้าของฉัน", live_conv:"สนทนาด้วยเสียงสด", live_expand:"ขยายเต็มจอ", live_restore:"ย่อกลับ (Esc)",
+  live_spk:"ลำโพง", live_spk_off:"ปิดลำโพง", live_spk_mute:"ปิดเสียงดอรี่บนเครื่องนี้", live_spk_unmute:"เปิดเสียงดอรี่อีกครั้ง",
 },
 en: {
   login_h:"Your company's command center", login_p:"Manage documents, workspaces and members in one place, and chat with Dory right from the web.",
@@ -1107,10 +1238,10 @@ en: {
   f_ws:"Workspace", f_all_ws:"All", f_from:"From", f_to:"To", f_search:"Search", f_search_ph:"Search title or content",
   c_title:"Title", c_ws:"Workspace", c_date:"Date", c_who:"By", c_size:"Size", no_docs:"No documents in this category", no_docs_hint:"Documents Dory reads in Discord, or that you upload, appear here.",
   upload:"Upload a document", drop_here:"Drag a file here, or click to choose", uploading:"Uploading {name}", upload_done:"Uploaded", open_source:"Open in Discord", more:"Load more", preview:"Preview", no_preview:"No preview",
-  chat_ph:"Message Dory…", send:"Send", chat_empty:"Just ask, e.g. “Summarize this month's expenses”", typing:"Dory is typing",
-  n_chat:"Chat with Dory", dory_name:"Dory", you:"You", chat_hi:"Hi, I'm Dory.", chat_intro:"Ask about your company: receipts, documents, meetings and tasks.", chat_trust:"I answer from the channels you can read.", chat_try:"Try asking", chip_missed:"What did I miss?", chip_tasks:"My tasks today", chip_spend:"Summarise this month's expenses", chip_upload:"Upload a document", thinking_s:"Thinking… {n} s", thinking_sr:"Dory is thinking", still_working:"Still working", long_wait:"Long answers can take up to a minute.", stop_wait:"Stop waiting", stopped:"You stopped waiting. Dory may still finish, and her answer will show up in your history.", ask_again:"Ask again", chat_err:"Dory couldn't answer: {e}", copy_q:"Copy question", copy_fail:"Couldn't copy", offline_p:"You're offline. Your draft stays here.", send_hint:"Enter to send · Shift+Enter for a new line", drop_files:"Drop up to 10 files", search_hist:"Search this chat", jump_day:"Jump to day", yesterday:"Yesterday", no_match:"No messages match", files_sent:"Files I sent", history:"History",
+  chat_ph:"Ask Dory anything…", send:"Send", chat_empty:"Just ask, e.g. “Summarize this month's expenses”", typing:"Dory is typing",
+  n_chat:"Chat with Dory", dory_name:"Dory", you:"You", chat_hi:"Start a conversation", chat_intro:"Ask me anything about your company. I can find information, summarize documents, and help with your tasks.", chat_trust:"I answer from the channels you can read.", chat_try:"Try asking", sug_docs:"Summarize our latest documents", sug_meet:"Show upcoming meetings", sug_people:"Find team members", thinking_s:"Thinking… {n} s", thinking_sr:"Dory is thinking", still_working:"Still working", long_wait:"Long answers can take up to a minute.", stop_wait:"Stop waiting", stopped:"You stopped waiting. Dory may still finish, and her answer will show up in your history.", ask_again:"Ask again", chat_err:"Dory couldn't answer: {e}", copy_q:"Copy question", copy_fail:"Couldn't copy", offline_p:"You're offline. Your draft stays here.", send_hint:"Enter to send · Shift+Enter for a new line", drop_files:"Drop up to 10 files", search_hist:"Search this chat", jump_day:"Jump to day", yesterday:"Yesterday", no_match:"No messages match", files_sent:"Files I sent", history:"History",
   sec_company:"Company", sec_personal:"Personal",
-  live:"Live", live_on:"On call", live_title:"Live call with Dory", live_hint:"Just talk. You can interrupt her any time", live_connecting:"Connecting…", live_listening:"Listening", live_thinking:"Thinking", live_speaking:"Dory is speaking", live_checking:"Dory is checking: {q}", live_muted:"Mic muted", live_ended:"Call ended", live_lost:"Connection lost. Press Live to call again.",
+  live:"Live", live_on:"On call", live_title:"Live call with Dory", live_hint:"Just talk. You can interrupt her any time", live_connecting:"Connecting…", live_listening:"I'm listening…", live_thinking:"Thinking", live_speaking:"Dory is speaking", live_checking:"Dory is checking: {q}", live_muted:"Mic muted", live_ended:"Call ended", live_lost:"Connection lost. Press Live to call again.",
   live_end:"End call", live_mute:"Mute mic", live_unmute:"Unmute mic", live_type_ph:"or type to Dory…", live_send:"Send", live_na:"Live calls are not supported in this browser (try Chrome or Edge)", live_mic_denied:"Microphone access was not allowed", live_mic_err:"Could not open the microphone ({e})",
   live_err_auth:"Session expired, please sign in again.", live_err_forbidden:"This account cannot call Dory in this organization", live_err_unavailable:"Live calls are not available: this organization has no active plan or no connected workspace yet", live_err_already:"A live call is already open in another tab. End it there first.", live_err_limit:"That was 30 minutes. Press Live again to keep talking", live_err_goaway:"Dory had to hang up for a moment. Please press Live again.", live_err_generic:"Live call failed ({e})",
   si_h:"Sign-in methods", si_discord_ok:"You can sign in with Discord too", si_discord_no:"Verify your Discord above to sign in with Discord as well", si_code_hint:"Use the /linkaccount code",
@@ -1197,6 +1328,13 @@ en: {
   mon_d_attempts:"{n} attempts", mon_d_started:"Started {t}", mon_d_finished:"Finished {t}",
   mon_dismiss:"Dismiss", mon_licence:"This company's licence is not active, so the monitor is unavailable. An owner can renew it on the License page.", mon_forbidden:"You can no longer see this company's work here. If your role changed by mistake, ask an owner or admin.",
   mon_view:"View", mon_toast:"{n} items need attention", mon_announce:"Items updated: {n}",
+  lang_label:"Language", qs_ph:"Search anything…", qs_label:"Search anything with Dory", search_ask:"Search everything for \"{q}\"",
+  sub_overview:"Manage your organization's information and settings.", sub_noorg:"Set up your organization to start using Dory with your team.", can_h:"What you can do with an organization",
+  can_members_h:"Manage members", can_members_p:"Invite teammates and set each person's role.", can_know_h:"Organize knowledge", can_know_p:"Keep documents, wiki and meeting notes together.",
+  can_tools_h:"Connect your tools", can_tools_p:"Bring in Discord, Slack and Google Calendar.", can_safe_h:"Work securely", can_safe_p:"Dory answers only from what each person may read.",
+  help_h:"Need help getting started?", help_p:"Ask Dory in the chat: she walks you through each step.", help_b:"Ask Dory", help_q:"How do I get started?", ask_after_org:"Create your organization first, then Dory answers “{q}” right away.",
+  cp_manage:"Manage members", oc_edit_b:"Edit chart", oc_mine:"Set my manager", live_conv:"Live voice conversation", live_expand:"Expand", live_restore:"Restore size (Esc)",
+  live_spk:"Speaker", live_spk_off:"Speaker off", live_spk_mute:"Mute Dory's voice on this device", live_spk_unmute:"Turn Dory's voice back on",
 }};
 let lang = "en"; // English by default; a saved choice wins
 const LANG_KEY = "dory-language"; // one key for every Dory page (landing, start, hub, center)
@@ -1205,9 +1343,11 @@ const t = (k, vars) => { let s = (I[lang] && I[lang][k]) ?? I.th[k] ?? k; for (c
 function applyStatic() {
   document.documentElement.lang = lang;
   document.querySelectorAll("[data-i]").forEach((n) => { n.textContent = t(n.dataset.i); });
-  $("lang").textContent = lang === "th" ? "EN" : "ไทย";
+  $("lang").value = lang;
   $("login-lang").textContent = lang === "th" ? "English" : "ภาษาไทย";
-  $("lang").setAttribute("aria-label", lang === "th" ? "Switch to English" : "เปลี่ยนเป็นภาษาไทย");
+  $("qs").placeholder = t("qs_ph"); $("qs").setAttribute("aria-label", t("qs_label"));
+  $("qs-k").textContent = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘K" : "Ctrl K";
+  $("me-av").setAttribute("aria-label", t("n_account")); $("me-av").title = t("n_account");
   $("fab").setAttribute("aria-label", t("talk")); $("fab").title = t("talk");
   $("panel-x").setAttribute("aria-label", t("close")); $("who").title = t("n_account"); $("panel").dataset.drop = t("up_drop");
   liveLabel();
@@ -1462,8 +1602,12 @@ function renderNav() {
   const sel = $("org-switch"); sel.replaceChildren();
   for (const o of me.orgs) sel.append(el("option", { value: o.id, selected: o.id === orgId }, o.name));
   if (!me.orgs.length) sel.append(el("option", { value: "" }, t("no_org_h")));
-  $("who").textContent = [realName(me) || me.name, nickOf(me), me.email, me.is_super ? t("role_super") : ""].filter(Boolean).join(" · ");
+  const nm = personName(me);
+  $("who").replaceChildren(el("span", { class: "av", "aria-hidden": "true", text: initials(nm) }),
+    el("span", { class: "wt" }, el("span", { class: "wn", text: [nm, nickOf(me)].filter(Boolean).join(" · ") }), el("span", { class: "we", text: [me.email, me.is_super ? t("role_super") : ""].filter(Boolean).join(" · ") })));
   $("who").setAttribute("aria-current", cur === "account" ? "page" : "false");
+  $("me-av").textContent = initials(nm);
+  $("bell").hidden = !(orgId && pageVisible("monitor")); // only with the workflow monitor: its attention items
   monPaintBadge();
 }
 function closeNav() { document.body.classList.remove("nav-open"); $("burger").setAttribute("aria-expanded", "false"); }
@@ -1481,14 +1625,14 @@ function route() {
   $("topbar-title").textContent = t(nm[1]);
   const c = $("content");
   const inside = c.contains(document.activeElement); // read before the old page is removed
-  c.replaceChildren(el("h1", { text: t(nm[1]) }));
+  c.replaceChildren(el("h1", { text: t(nm[1]) }), id === "overview" ? el("p", { class: "sub", text: t(orgId ? "sub_overview" : "sub_noorg") }) : null);
   const body = el("div", { "aria-busy": "true" }, loading()); c.append(body);
   // a new page takes keyboard and screen-reader focus, and so does a re-render while focus was in the page (Retry, Save,
   // Delete: the control is gone, focus would drop to <body>); a re-render from outside (language, company) does not
   if (moved || inside) c.focus({ preventScroll: true });
   const my = ++navSeq;
   if (MONITOR) monBadgeStart();
-  if (!orgId && id !== "settings" && id !== "account") { body.replaceWith(noOrg()); return; }
+  if (!orgId && id !== "settings" && id !== "account") { body.replaceWith(noOrg(id === "overview")); return; }
   Promise.resolve().then(() => VIEWS[id](body, my)).catch((e) => {
     if (my !== navSeq || handleAuth(e)) return;
     body.replaceChildren(errBox(e, route));
@@ -1497,7 +1641,26 @@ function route() {
 const stale = (my) => my !== navSeq;
 const loading = () => el("div", { class: "card", role: "status", "aria-label": t("loading") }, el("div", { class: "skeleton", style: "width:60%" }), el("div", { class: "skeleton" }), el("div", { class: "skeleton", style: "width:80%" }));
 const errBox = (e, again) => el("div", { class: "card" }, el("div", { class: "notice error", role: "alert", text: errText(e) }), el("div", {}, el("button", { class: "btn ghost sm", type: "button", onclick: again }, t("retry"))));
-function noOrg() { return el("div", { class: "card" }, el("div", { class: "empty" }, el("h2", { text: t("no_org_h") }), el("p", { text: t("no_org_p") }), el("p", {}, el("button", { class: "btn", type: "button", onclick: openOrgDlg }, t("new_org")))));}
+// A Company-profile section: icon tile, title and its one action, then the content
+function infoCard(icon, title, action, ...body) {
+  return el("section", { class: "card info" }, el("span", { class: "itile", "aria-hidden": "true" }, ic(icon)),
+    el("div", { class: "ibody" }, el("div", { class: "ihead" }, el("h2", { text: title }), action), body));
+}
+// No organization yet: the coral welcome card (every page) and, on the Company profile, what an organization gives
+// (each card names something the product does) and help to start, which asks Dory in the chat
+function noOrg(full) {
+  const welcome = el("div", { class: "card welcome" }, el("span", { class: "itile", "aria-hidden": "true" }, ic("building")),
+    el("h2", { text: t("no_org_h") }), el("p", { text: t("no_org_p") }),
+    el("button", { class: "btn", type: "button", onclick: openOrgDlg }, ic("plus"), t("new_org")));
+  if (!full) return welcome;
+  const can = [["users", "blue", "can_members"], ["folder", "violet", "can_know"], ["calendar", "green", "can_tools"], ["shield", "orange", "can_safe"]];
+  return el("div", {}, welcome,
+    el("section", { class: "cando", "aria-labelledby": "can-h" }, el("h2", { id: "can-h", text: t("can_h") }),
+      el("div", { class: "cgrid" }, can.map(([icon, tint, k]) => el("div", { class: "card" }, el("span", { class: "itile " + tint, "aria-hidden": "true" }, ic(icon)),
+        el("h3", { text: t(k + "_h") }), el("p", { text: t(k + "_p") }))))),
+    el("div", { class: "card helpb", id: "help-start" }, ic("book"), el("div", { class: "hx" }, el("h2", { text: t("help_h") }), el("p", { class: "muted", text: t("help_p") })),
+      el("button", { class: "btn ghost", type: "button", onclick: () => askDory(t("help_q")) }, ic("chat"), t("help_b"))));
+}
 function done(body) { body.removeAttribute("aria-busy"); }
 
 async function start() {
@@ -1575,7 +1738,7 @@ const FEAT_TH = { receipts: "ใบเสร็จ", qa: "ถาม-ตอบ", 
 const FEAT_EN = { qa: "Q&A", bizfin: "Business finance", freetime: "Free time", catchup: "Catch-up" };
 const featName = (k) => (lang === "th" && FEAT_TH[k]) || FEAT_EN[k] || String(k).replace(/_/g, " ").replace(/^\w/, (c) => c.toUpperCase());
 // department tints for the org chart: [background, line, ink]; the last one is for "no department"
-const DEPT_COLORS = [["#EEEDFB", "#D5D2F5", "#4A4FBF"], ["#E3EEFF", "#C7DAF7", "#2B6CD9"], ["#E3F4EA", "#BFE3CF", "#0B6B45"], ["#FFEFE3", "#F7D3B8", "#B4530A"], ["#FDE7EE", "#F5C4D3", "#B0305A"], ["#FFF3DA", "#F0DCA8", "#8A5A00"], ["#E0F5F5", "#B9E2E2", "#0E6B6B"], ["#F1EEFF", "#D9D0FA", "#6B3FD1"]];
+const DEPT_COLORS = [["#EEEDFB", "#D5D2F5", "#4A4FBF"], ["#E3EEFF", "#C7DAF7", "#2560C4"], ["#E3F4EA", "#BFE3CF", "#0B6B45"], ["#FFEFE3", "#F7D3B8", "#A44B09"], ["#FDE7EE", "#F5C4D3", "#B0305A"], ["#FFF3DA", "#F0DCA8", "#8A5A00"], ["#E0F5F5", "#B9E2E2", "#0E6B6B"], ["#F1EEFF", "#D9D0FA", "#6B3FD1"]];
 const DEPT_NONE = ["#F0EDE6", "#E0DBD0", "#5B6078"];
 function deptStyler(depts) {
   const map = {}; let i = 0;
@@ -1763,14 +1926,16 @@ VIEWS.overview = async (body, my) => {
     if (prof.email) links.push(el("a", { href: "mailto:" + prof.email, text: prof.email }));
     if (prof.phone) links.push(el("a", { href: "tel:" + String(prof.phone).replace(/[^+\d]/g, ""), text: prof.phone }));
     const empty = !PF.some((k) => prof[k]) && !(prof.values || []).length;
-    const hx = el("div", { class: "hx" }, el("h2", { text: org.name }),
+    const hx = el("div", { class: "hx" }, el("div", { class: "hrow" }, el("h2", { text: org.name }),
+        admin ? el("button", { class: "btn ghost sm hedit", type: "button", onclick: () => editHero() }, ic("pencil"), t("cp_edit")) : null),
       prof.tagline ? el("div", { class: "tag", text: prof.tagline }) : (empty ? el("div", { class: "tag muted", text: t("cp_empty") }) : null),
-      el("div", { class: "facts" }, el("span", { class: "chip", text: t("cp_people", { n: ov.headcount ?? ov.members ?? 0 }) }), facts.map(([k, v]) => el("span", { class: "chip", title: t("cp_" + k), text: v }))),
+      el("div", { class: "facts" }, el("span", { class: "chip", text: nPeople(ov.headcount ?? ov.members ?? 0) }), facts.map(([k, v]) => el("span", { class: "chip", title: t("cp_" + k), text: v }))),
       links.length ? el("div", { class: "links" }, links) : null,
       empty ? el("div", { class: "muted small", text: t("cp_empty_hint") }) : null);
-    hero.replaceChildren(logo, hx, admin ? el("button", { class: "btn ghost sm hedit", type: "button", onclick: editHero }, t("cp_edit")) : null);
+    hero.replaceChildren(logo, hx, el("span", { class: "hcoral", "aria-hidden": "true" }));
   };
-  const editHero = () => {
+  // one editor for the whole profile; a section's Edit opens it at that section's first field
+  const editHero = (at) => {
     const inp = (k, v, type = "text") => el("input", { type, id: "cp-" + k, value: v || "" });
     const F = { name: inp("name", org.name), logo_url: inp("logo_url", org.logo_url, "url"), tagline: inp("tagline", prof.tagline), industry: inp("industry", prof.industry), founded: inp("founded", prof.founded), location: inp("location", prof.location),
       size: inp("size", prof.size), website: inp("website", prof.website, "url"), email: inp("email", prof.email, "email"), phone: inp("phone", prof.phone), values: inp("values", (prof.values || []).join(", ")) };
@@ -1794,21 +1959,22 @@ VIEWS.overview = async (body, my) => {
         toast(t("saved")); renderNav(); route();
       } catch (e) { saveB.disabled = false; if (!handleAuth(e)) msg.replaceChildren(el("div", { class: "notice error", role: "alert", text: errText(e) })); }
     });
-    hero.replaceChildren(f); F.name.focus();
+    hero.replaceChildren(f); (at === "about" ? about : at === "legal" ? F.registered_name : F.name).focus();
   };
   drawHero(); out.push(hero);
+  const editB = (title, at) => admin ? el("button", { class: "btn ghost sm", type: "button", "aria-label": t("edit") + ": " + title, onclick: () => editHero(at) }, ic("pencil"), t("edit")) : null;
   // (2) about, (3) values
-  out.push(el("div", { class: "card" }, el("h2", { text: t("cp_about") }),
+  out.push(infoCard("file", t("cp_about"), editB(t("cp_about"), "about"),
     prof.about ? prof.about.split(/\n{2,}/).map((p) => el("p", { text: p })) : el("p", { class: "muted", text: t("cp_about_empty") }),
     (prof.values || []).length ? [el("h3", { text: t("cp_values") }), el("div", { class: "vals" }, prof.values.map((v) => el("span", { class: "chip", text: v })))] : null));
   // (3b) the legal entity, as on the registration papers
-  if (LG.some((k) => prof[k]) || admin) out.push(el("div", { class: "card" }, el("h2", { text: t("lg_h") }),
+  if (LG.some((k) => prof[k]) || admin) out.push(infoCard("scale", t("lg_h"), editB(t("lg_h"), "legal"),
     LG.some((k) => prof[k]) ? el("dl", { class: "pdl lg" }, LG.filter((k) => prof[k]).flatMap((k) => [el("dt", { text: t("lg_" + k) }), el("dd", { class: "pre", text: prof[k] })]))
       : el("p", { class: "muted small", text: t("lg_p") })));
   // (4) leadership: owners + admins
   const leaders = items(ov, "leadership"), deptNames = (dir ? items(dir, "departments").map((g) => g.department) : items(ov, "departments")).filter(Boolean);
   const dstyle = deptStyler(deptNames);
-  out.push(el("div", { class: "card" }, el("h2", { text: t("cp_leadership") }),
+  out.push(infoCard("users", t("cp_leadership"), canManage() ? el("a", { class: "btn ghost sm", href: "#/members" }, ic("users"), t("cp_manage")) : null,
     leaders.length ? el("div", { class: "lead" }, leaders.map((p) => { const nm = personName(p);
       return el("div", { class: "lcard", style: dstyle(p.department) }, el("div", { class: "av", "aria-hidden": "true", text: initials(nm) }),
         el("div", {}, el("strong", { text: nm + (p.email === me.email ? " (" + t("me_tag") + ")" : "") }), nickOf(p) ? el("div", { class: "muted small", text: nickOf(p) }) : null,
@@ -1816,16 +1982,18 @@ VIEWS.overview = async (body, my) => {
           el("div", {}, el("span", { class: "badge", text: t("role_" + p.role) })))); })) : el("div", { class: "empty", text: t("cp_no_lead") })));
   // (5) the organization chart: the same family tree as Members -> Org chart, read-only here
   if (dir) {
-    const foot = el("div", { class: "muted small" }, admin
-      ? el("a", { href: "#/members", text: t("oc_edit"), onclick: () => { try { sessionStorage.setItem("center_mtab", "chart"); } catch { /* ignore */ } } })
-      : el("a", { href: "#/account", text: t("oc_set") }));
-    const card = orgChart(dir, [], { readonly: true, title: "org_chart", foot, only: "chart" }); card.id = "ov-chart";
+    const action = admin
+      ? el("a", { class: "btn ghost sm", href: "#/members", onclick: () => { try { sessionStorage.setItem("center_mtab", "chart"); } catch { /* ignore */ } } }, ic("pencil"), t("oc_edit_b"))
+      : el("a", { class: "btn ghost sm", href: "#/account" }, ic("user"), t("oc_mine"));
+    const card = orgChart(dir, [], { readonly: true, title: "org_chart", foot: false, only: "chart" }); card.id = "ov-chart";
+    card.querySelector(".pline").append(action); // the chart's own header takes the tile and the action, like the other sections
+    card.classList.add("info"); card.replaceChildren(el("span", { class: "itile", "aria-hidden": "true" }, ic("tree")), el("div", { class: "ibody" }, [...card.children]));
     out.push(card);
     requestAnimationFrame(() => { const w = card.querySelector(".orgwrap"); if (w) { try { w.scrollLeft = Math.max(0, (w.scrollWidth - w.clientWidth) / 2); } catch { /* ignore */ } } });
   }
   // (6) departments with people counts (directory), (7) documents in short
   const dgroups = dir ? items(dir, "departments").filter((g) => g.department) : deptNames.map((n) => ({ department: n, people: null }));
-  out.push(el("div", { class: "card" }, el("h2", { text: t("cp_depts") }),
+  out.push(infoCard("grid", t("cp_depts"), null,
     dgroups.length ? el("div", { class: "dchips" }, dgroups.map((g) => el("span", { class: "chip", style: dstyle(g.department) }, g.department, g.people ? [" ", el("b", { text: String(items(g, "people").length) })] : null))) : el("div", { class: "muted small", text: t("cp_no_depts") })));
   // (8) Dory & systems (admins): onboarding, platforms, what Dory does, license / workspaces, tasks, activity: collapsed unless onboarding is pending
   if (canManage()) {
@@ -2109,38 +2277,61 @@ const HAPPY_RE = /สวัสดี|ขอบคุณ|ยินดี|ดี�
 const SORRY_RE = /^\s*(ขอโทษ|ขออภัย|เสียใจ|ต้องขอโทษ|sorry|apolog|i'?m afraid|unfortunately)/i;
 const CURIOUS_RE = /(\?|ไหม|มั้ย|คะ|เปล่า|หรือยัง)\s*[.!]?\s*$/;
 const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
-const STAGE_HTML = '<div class="ring r3"></div><div class="ring r2"></div><div class="ring r1"></div><div class="halo"></div>'
-  + '<div class="bars l"><i></i><i></i><i></i><i></i></div><div class="orb"><i class="face"></i><i class="face talk"></i><i class="face blink"></i></div><div class="bars r"><i></i><i></i><i></i><i></i></div>'
+// The voice stage: bubbles rising (decoration), the waveform's bars (a bell of fixed weights, so it reads as a voice), and
+// the owner's painted Dory on her ring of light with the emotion overlays.
+const WAVE_HTML = Array.from({ length: 23 }, (_, i) => '<i style="--k:' + (0.3 + 0.7 * Math.sin(Math.PI * (i + 0.5) / 23) * (0.55 + 0.45 * ((i * 7) % 5) / 4)).toFixed(2) + '"></i>').join("");
+const BUB_HTML = [[7, 10, 9, 0], [20, 6, 12, 3], [33, 9, 14, 9], [62, 14, 10, 1.5], [78, 8, 13, 5], [90, 12, 11, 7], [48, 6, 12, 10.5]]
+  .map(([x, s, d, dl]) => '<i style="--x:' + x + '%;--s:' + s + 'px;--d:' + d + 's;--dl:-' + dl + 's"></i>').join("");
+const FISH_HTML = '<div class="ring"></div><div class="fish"><img src="/static/dory/dory-painted-700.webp" srcset="/static/dory/dory-painted-700.webp 700w, /static/dory/dory-painted-1200.webp 1200w" sizes="344px" width="700" height="650" alt=""></div>'
   + '<div class="dots"><span></span><span></span><span></span></div>'
   + '<div class="ovl sparkle">' + icHtml("spark") + '</div><div class="ovl sparkle2">' + icHtml("spark") + '</div><div class="ovl tear">' + ICON.drop + '</div><div class="ovl q">?</div>';
+ICON.spk = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5v5h3.5L12 19V5L7.5 9.5z"/><path d="M15.5 9a4 4 0 0 1 0 6M18.5 6.5a7.5 7.5 0 0 1 0 11"/></svg>';
+ICON.spkOff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M4 9.5v5h3.5L12 19V5L7.5 9.5z"/><path d="m16 9.5 5 5M21 9.5l-5 5"/></svg>';
 
-// One live call per chat widget. wrap = the .chat element the call view covers; addMsg(who, text) writes finished turns to the chat log.
-function liveCall(wrap, addMsg) {
+// One live call per chat widget. wrap = the .chat element the call view covers (in the panel: the whole panel); addMsg(who,
+// text) writes finished turns to the chat log; page = the #/chat page, whose call has no Close (the page stays).
+function liveCall(wrap, addMsg, page) {
   const S = {};
   const reset = () => { clearTimeout(S.closeT); if (S.view) S.view.remove();
     Object.assign(S, { ws: null, ac: null, out: null, an: null, anBuf: null, stream: null, pipe: null, raf: 0, timer: 0, closeT: 0, emoT: 0, view: null, state: "", emo: "", forced: null, forcedMouth: null,
-      starting: false, ready: false, muted: false, ended: false, failed: false, t0: 0, next: 0, sources: new Set(), chunks: [], mouth: 0, lvl: 0, wasSpeaking: false,
+      starting: false, ready: false, muted: false, spkOff: false, max: false, ended: false, failed: false, t0: 0, next: 0, sources: new Set(), chunks: [], mouth: 0, lvl: 0, wasSpeaking: false,
       said: "", lastSaid: "", saidNew: true, heard: "", heardSealed: false, typedTurn: false, thinking: false, thinkQ: "" }); };
   reset();
   const active = () => !!S.ws;
   const V = () => S.view;
   const build = () => {
-    const stage = el("div", { class: "stage", "aria-hidden": "true" }); stage.innerHTML = STAGE_HTML;
-    const tx = el("span", { class: "tx" }), tm = el("span", { class: "tm" });
-    const st = el("div", { class: "st", role: "status", "aria-live": "polite" }, el("span", { class: "dot", "aria-hidden": "true" }), tx, tm);
+    const tm = el("span", { class: "tm" });
+    const expandB = el("button", { class: "cx", type: "button", "aria-label": t("live_expand"), title: t("live_expand"), onclick: () => setMax(!S.max) }, ic("expand"));
+    const head = el("div", { class: "ch" }, el("span", { class: "mark", "aria-hidden": "true" }),
+      el("div", { class: "ttl" }, el("h2", { text: t("talk") }), el("div", { class: "sub" }, el("i", { "aria-hidden": "true" }), el("span", { text: t("live_conv") }), tm)),
+      expandB, page ? null : el("button", { class: "cx", type: "button", "aria-label": t("close"), title: t("close"), onclick: closePanel }, ic("x")));
+    const tx = el("span", { class: "sx" }), wave = el("span", { class: "wave", "aria-hidden": "true" }); wave.innerHTML = WAVE_HTML;
+    const speech = el("div", { class: "speech", role: "status", "aria-live": "polite" }, tx, wave); // the state in words
+    const bub = el("div", { class: "bub", "aria-hidden": "true" }); bub.innerHTML = BUB_HTML;
+    const dory = el("div", { class: "dory", "aria-hidden": "true" }); dory.innerHTML = FISH_HTML;
     const bubble = el("div", { class: "bubble" }), heard = el("div", { class: "heard" }), hint = el("div", { class: "hint", text: t("live_hint") });
     const caps = el("div", { class: "caps", "aria-live": "polite" }, bubble, heard, hint);
     const muteB = el("button", { class: "rb mute", type: "button", "aria-pressed": "false", "aria-label": t("live_mute"), title: t("live_mute"), onclick: () => setMute(!S.muted) }); muteB.innerHTML = ICON.mic;
     const muteL = el("span", { class: "lb", text: t("live_mute") });
     const endB = el("button", { class: "rb end", type: "button", "aria-label": t("live_end"), title: t("live_end"), onclick: () => end("user") }); endB.innerHTML = ICON.end;
-    const ctl = el("div", { class: "ctl" }, el("div", {}, muteB, muteL), el("div", {}, endB, el("span", { class: "lb", text: t("live_end") })));
+    const spkB = el("button", { class: "rb spk", type: "button", "aria-pressed": "false", "aria-label": t("live_spk_mute"), title: t("live_spk_mute"), onclick: () => setSpeaker(S.spkOff) }); spkB.innerHTML = ICON.spk;
+    const spkL = el("span", { class: "lb", text: t("live_spk") });
+    const ctl = el("div", { class: "ctl" }, el("div", {}, muteB, muteL), el("div", {}, endB, el("span", { class: "lb", text: t("live_end") })), el("div", {}, spkB, spkL));
     const inp = el("input", { type: "text", maxlength: "500", placeholder: t("live_type_ph"), "aria-label": t("live_type_ph"), autocomplete: "off" });
     const sendB = el("button", { type: "submit", "aria-label": t("live_send"), title: t("live_send") }); sendB.innerHTML = ICON.send;
     const f = el("form", { class: "say" }, inp, sendB);
     f.addEventListener("submit", (ev) => { ev.preventDefault(); const x = inp.value.trim(); if (x) { inp.value = ""; say(x); } });
-    const v = el("div", { class: "call connecting", role: "region", "aria-label": t("live_title"), "data-theme": "deep" }, st, stage, caps, ctl, f);
-    S.view = Object.assign(v, { tx, tm, bubble, heard, muteB, muteL, endB, inp });
+    const v = el("div", { class: "call connecting", role: "region", "aria-label": t("live_title"), "data-theme": "deep" }, bub, head, el("div", { class: "mid" }, speech, dory), caps, ctl, f);
+    S.view = Object.assign(v, { tx, tm, bubble, heard, muteB, muteL, endB, spkB, spkL, expandB, inp, unmax: () => setMax(false) });
     return v;
+  };
+  // Expand: the call fills the window (Esc restores it); Speaker: Dory's voice off on this device only (the call goes on)
+  const setMax = (on) => { const v = V(); if (!v) return; S.max = !!on; v.classList.toggle("max", S.max);
+    const l = t(S.max ? "live_restore" : "live_expand"); v.expandB.setAttribute("aria-label", l); v.expandB.title = l; v.expandB.replaceChildren(ic(S.max ? "collapse" : "expand")); };
+  const setSpeaker = (on) => {
+    S.spkOff = !on; if (S.out) S.out.gain.value = S.spkOff ? 0 : 1; const v = V(); if (!v) return;
+    v.spkB.setAttribute("aria-pressed", String(S.spkOff)); v.spkB.innerHTML = S.spkOff ? ICON.spkOff : ICON.spk;
+    const l = t(S.spkOff ? "live_spk_unmute" : "live_spk_mute"); v.spkB.setAttribute("aria-label", l); v.spkB.title = l; v.spkL.textContent = t(S.spkOff ? "live_spk_off" : "live_spk");
   };
   const STATUS = { connecting: "live_connecting", idle: "live_muted", listening: "live_listening", thinking: "live_thinking", speaking: "live_speaking", ended: "live_ended" };
   const status = () => { const v = V(); if (!v) return; v.tx.textContent = S.state === "thinking" && S.thinkQ ? t("live_checking", { q: S.thinkQ }) : t(STATUS[S.state] || "live_listening"); };
@@ -2222,7 +2413,7 @@ function liveCall(wrap, addMsg) {
     try {
       if (AC) {
         S.ac = new AC(); try { await S.ac.resume(); } catch { /* starts on the next gesture */ }
-        S.out = S.ac.createGain(); S.out.connect(S.ac.destination);
+        S.out = S.ac.createGain(); S.out.gain.value = S.spkOff ? 0 : 1; S.out.connect(S.ac.destination);
         S.an = S.ac.createAnalyser(); S.an.fftSize = 512; S.anBuf = new Uint8Array(S.an.fftSize);
         if (S.stream) { S.pipe = await micPipe(S.ac, S.stream, (buf) => { if (S.ws && S.ws.readyState === 1) S.ws.send(buf); }); S.pipe.src.connect(S.an); }
       }
@@ -2245,7 +2436,7 @@ function liveCall(wrap, addMsg) {
     if (S.said.trim()) addMsg("bot", S.said.trim()); S.said = ""; S.saidNew = true;
     liveLabel();
     if (!v) return;
-    setState("ended"); v.classList.remove("happy", "sorry", "curious"); v.style.setProperty("--mouth", "0"); v.style.setProperty("--lvl", "0"); v.muteB.disabled = true; v.inp.disabled = true;
+    setState("ended"); v.classList.remove("happy", "sorry", "curious"); v.style.setProperty("--mouth", "0"); v.style.setProperty("--lvl", "0"); v.muteB.disabled = true; v.spkB.disabled = true; v.inp.disabled = true;
     const gone = () => { v.remove(); if (S.view === v) S.view = null; const ta = wrap.querySelector("textarea"); if (ta && why === "user") ta.focus(); };
     if (why === "now") gone(); else S.closeT = setTimeout(gone, 900);
   };
@@ -2286,14 +2477,20 @@ function copyText(s) {
   const p = navigator.clipboard && navigator.clipboard.writeText ? navigator.clipboard.writeText(s) : Promise.reject(new Error("no clipboard"));
   p.then(() => toast(t("copied")), () => toast(t("copy_fail"), "error"));
 }
-// First visit: who Dory is, what she can see, four things to try (a chip sends its words, as if typed)
-function chatEmpty(onAsk, onUpload) {
-  const fish = el("div", { class: "fish", "aria-hidden": "true" }); fish.innerHTML = '<img src="/static/dory/dory3d-poster.webp" width="160" height="160" alt="">';
-  const chips = [["chip_missed"], ["chip_tasks"], canManage() ? ["chip_spend"] : null, ["chip_upload", true]].filter(Boolean);
-  return el("div", { class: "chat-empty" }, fish,
+// The empty chat: two speech bubbles and a spark (drawn here, flat), what Dory does, what she can see, and three asks
+// (each sends its words, as if typed)
+const CHAT_ART = '<svg class="art" viewBox="0 0 200 150" aria-hidden="true" focusable="false">'
+  + '<rect x="20" y="40" width="106" height="66" rx="16" fill="#D9DCFA"/><path d="M40 104l-7 19 22-17z" fill="#D9DCFA"/><rect x="38" y="58" width="58" height="12" rx="6" fill="#B4BAF4"/>'
+  + '<rect x="79" y="71" width="104" height="62" rx="16" fill="#EEF0FE" stroke="#D3D7FA" stroke-width="2"/><rect x="97" y="89" width="66" height="9" rx="4.5" fill="#C6CBF8"/><rect x="97" y="107" width="44" height="9" rx="4.5" fill="#DCDFFB"/>'
+  + '<path d="M150 5c1.4 8.6 4.4 11.6 13 13-8.6 1.4-11.6 4.4-13 13-1.4-8.6-4.4-11.6-13-13 8.6-1.4 11.6-4.4 13-13z" fill="#6E76E8"/>'
+  + '<path d="M177 33c.8 4.6 2.4 6.2 7 7-4.6.8-6.2 2.4-7 7-.8-4.6-2.4-6.2-7-7 4.6-.8 6.2-2.4 7-7z" fill="#A9AEF5"/></svg>';
+const chatArt = () => { const tp = document.createElement("template"); tp.innerHTML = CHAT_ART; return tp.content.firstChild; };
+function chatEmpty(onAsk) {
+  const asks = [["sug_docs", "file"], ["sug_meet", "calendar"], ["sug_people", "users"]];
+  return el("div", { class: "chat-empty" }, chatArt(),
     el("h2", { text: t("chat_hi") }), el("p", { text: t("chat_intro") }), el("p", { class: "trust", text: t("chat_trust") }),
-    el("div", { class: "chips", role: "group", "aria-label": t("chat_try") },
-      chips.map(([k, up]) => el("button", { type: "button", class: "chipbtn", onclick: () => (up ? onUpload() : onAsk(t(k))) }, t(k)))));
+    el("div", { class: "sugs", role: "group", "aria-label": t("chat_try") },
+      asks.map(([k, icon]) => el("button", { type: "button", class: "sugbtn", onclick: () => onAsk(t(k)) }, ic(icon), t(k)))));
 }
 function chatWidget(hist, prefix, opts = {}) {
   const msgs = el("div", { class: "msgs", role: "log", "aria-live": "polite", "aria-relevant": "additions", "aria-label": t("talk"), tabindex: "0" });
@@ -2329,12 +2526,12 @@ function chatWidget(hist, prefix, opts = {}) {
   const clip = el("button", { class: "ib clip", type: "button", "aria-label": t("up_attach"), title: t("up_attach") }); clip.innerHTML = ICON.clip;
   const fileIn = el("input", { type: "file", class: "sr", id: prefix + "-file", accept: UP_ACCEPT, multiple: true, "aria-label": t("up_attach") });
   const offNote = el("div", { class: "notice", role: "status", hidden: true, text: t("offline_p") });
-  const form = el("form", { class: "compose" }, clip, ta, btn);
+  const form = el("form", { class: "compose" }, ta, clip, btn);
   const wrap = el("div", { class: "chat", "data-drop": t("drop_files") }, msgs, status, offNote, form, el("div", { class: "hintline", "aria-hidden": "true", text: t("send_hint") }), fileIn);
   const h = items(hist, "turns");
   let asked = "";
   for (const m of h) { const me = m.role === "user"; add(m.role, m.text || "", m.at, me ? null : asked); asked = me ? m.text || "" : ""; }
-  if (!h.length) msgs.append(chatEmpty((x) => send(x), () => fileIn.click()));
+  if (!h.length) msgs.append(chatEmpty((x) => send(x)));
   const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 192) + "px"; };
   const syncSend = () => { offNote.hidden = navigator.onLine; btn.disabled = !busy && (!navigator.onLine || !ta.value.trim()); };
   const setMode = (stop) => {
@@ -2346,7 +2543,7 @@ function chatWidget(hist, prefix, opts = {}) {
   // shortcut: these listeners outlive a replaced widget (it is rebuilt only on a company or language change); syncSend
   // then only touches detached nodes
   addEventListener("online", syncSend); addEventListener("offline", syncSend);
-  const live = liveCall(wrap, (who, text) => { unEmpty(); add(who, text); }); // finished call turns land in the chat log too
+  const live = liveCall(wrap, (who, text) => { unEmpty(); add(who, text); }, !!opts.page); // finished call turns land in the chat log too
   // attach a document: upload to the company's Documents, say so in the log, then ask Dory about it (through the call when one is on)
   // several files at once (e.g. all the company's registration papers): each is uploaded and
   // filed, then ONE request hands them all to Dory, who reads them together
@@ -2428,7 +2625,7 @@ function chatWidget(hist, prefix, opts = {}) {
     wrap.addEventListener("dragleave", (ev) => { if (!wrap.contains(ev.relatedTarget)) wrap.classList.remove("drag"); });
     wrap.addEventListener("drop", (ev) => { if (!files(ev)) return; ev.preventDefault(); wrap.classList.remove("drag"); attach(ev.dataTransfer.files); });
   }
-  return { wrap, msgs, form, focus: () => ta.focus(), end, stop: () => live.end("now"), live, attach, send };
+  return { wrap, msgs, form, focus: () => ta.focus(), end, stop: () => live.end("now"), live, attach, send, ask: (x) => sendWhenFree(x) };
 }
 
 /* ---------- #/chat: the same chat as the panel, full width, with a history rail (search, jump to a day) ---------- */
@@ -2478,33 +2675,43 @@ VIEWS.chat = async (body, my) => {
 const chatData = () => api(O("/chat/history")).catch(() => ({ turns: [] }));
 
 /* ---------- floating "Talk to Dory" panel (every page of the logged-in shell) ---------- */
-const panel = { key: null, open: false, w: null };
+const panel = { key: null, open: false, w: null, ask: null }; // ask = a question waiting for the chat (search box, help)
 const PANEL_KEY = "dory_center_panel"; // this tab only: a reload keeps the panel open
 function panelWanted(v) {
   try { if (v === true) sessionStorage.setItem(PANEL_KEY, "1"); else if (v === false) sessionStorage.removeItem(PANEL_KEY); else return sessionStorage.getItem(PANEL_KEY) === "1"; } catch { /* ignore */ }
   return v === true;
 }
+// Ask Dory on the person's behalf (the top bar's search, "Need help getting started?"): the #/chat page when it is open,
+// else the panel. Without a company there is no chat yet: the panel says so and asks once the company exists.
+function askDory(text) {
+  if (cur === "chat" && chatPage.w) { chatPage.w.ask(text); return; }
+  panel.ask = text; panelOpen();
+}
+const sendAsk = () => { if (panel.ask && panel.w) { const x = panel.ask; panel.ask = null; panel.w.ask(x); } };
+const panelNoOrg = () => el("div", { class: "chat-empty" }, chatArt(), el("h2", { text: t("no_org_h") }),
+  el("p", { text: panel.ask ? t("ask_after_org", { q: panel.ask }) : t("no_org_p") }), el("button", { class: "btn", type: "button", onclick: openOrgDlg }, ic("plus"), t("new_org")));
 function panelOpen() {
   if (!me || $("app").hidden) return;
   const p = $("panel"), pb = $("panel-body");
   p.classList.add("open"); p.setAttribute("aria-hidden", "false"); $("fab").setAttribute("aria-expanded", "true"); panel.open = true; panelWanted(true);
   liveLabel();
   const key = orgId + ":" + lang; // reload when the org or the UI language changed
-  if (panel.key === key) { const ta = pb.querySelector("textarea"); if (ta) ta.focus(); return; }
+  if (panel.key === key) { if (!orgId) pb.replaceChildren(panelNoOrg()); const ta = pb.querySelector("textarea"); if (ta) ta.focus(); sendAsk(); return; }
   if (panel.w) panel.w.stop(); // a live call never outlives its widget
   panel.key = key; panel.w = null;
-  if (!orgId) { pb.replaceChildren(noOrg()); return; }
+  if (!orgId) { pb.replaceChildren(panelNoOrg()); return; }
   pb.replaceChildren(loading());
   chatData().then((hist) => {
     if (panel.key !== key) return;
     const w = chatWidget(hist, "p"); panel.w = w;
     if (MOCK) window.doryLive = w.live; // screenshot hooks: doryLive.show("speaking", { mouth: .6, emotion: "happy" })
     pb.replaceChildren(w.wrap);
-    w.end(); w.focus();
+    w.end(); w.focus(); sendAsk();
   }).catch((e) => { panel.key = null; if (!handleAuth(e)) pb.replaceChildren(errBox(e, panelOpen)); });
 }
 function closePanel() {
   if (!panel.open) return;
+  panel.ask = null;
   const p = $("panel"); p.classList.remove("open"); p.setAttribute("aria-hidden", "true"); $("fab").setAttribute("aria-expanded", "false"); panel.open = false; panelWanted(false);
   if (panel.w) panel.w.stop();
   if (p.contains(document.activeElement)) $("fab").focus();
@@ -3030,12 +3237,13 @@ function orgChart(dir, members, opts) {
   const hasLines = tree.some((n) => items(n, "children").length);
   const legend = el("div", { class: "legend" }, el("b", { text: t("legend") + ":" }), names.map((d) => el("span", { class: "lg", style: style(d) }, el("i", { "aria-hidden": "true" }), d || t("no_dept"))), el("span", { class: "lg you" }, el("i", { "aria-hidden": "true" }), t("me_tag")));
   const stats = el("div", { class: "muted small", text: nPeople(dir.members ?? members.length) + " · " + t("with_manager_n", { n: dir.with_manager ?? 0, m: dir.members ?? members.length }) });
-  const wrapEl = el("div", { class: "orgwrap" }, el("ul", { class: "tree", role: "tree" }, groupKids(shown)));
+  // a nested list (not a tree widget: nothing in it moves focus); the scrolling frame takes focus so keys can scroll it
+  const wrapEl = el("div", { class: "orgwrap", tabindex: "0", role: "region", "aria-label": t(opts.title || "tab_chart") }, el("ul", { class: "tree" }, groupKids(shown)));
   const chart = el("div", { class: "card" }, el("div", { class: "pline" }, el("h2", { text: t(opts.title || "tab_chart") }), stats), legend,
     tree.length ? wrapEl : el("div", { class: "empty", text: t("mem_none") }),
     placed.length && loose.length ? el("div", { class: "loose" }, el("div", { class: "muted small", text: t("chart_unplaced") }), el("div", { class: "cards" }, loose.map(pcard))) : null,
     !hasLines && tree.length ? el("div", { class: "notice", role: "note", text: t("chart_empty") }) : null,
-    opts.foot || el("div", { class: "muted small" }, el("a", { href: "#/account", text: t("chart_hint") })));
+    opts.foot === false ? null : opts.foot || el("div", { class: "muted small" }, el("a", { href: "#/account", text: t("chart_hint") })));
   if (opts.only === "chart") return chart;
   const byDept = el("div", { class: "card" }, el("h2", { text: t("by_dept") }), el("div", { class: "deptgrid" }, depts.map((g) => el("div", { class: "deptbox", style: style(g.department) },
     el("h3", {}, g.department || t("no_dept"), el("span", { text: nPeople(items(g, "people").length) })),
@@ -3448,8 +3656,12 @@ async function monFetch(path, etag) {
 const monBadge = { org: null, asked: null, n: 0, timer: 0 };
 function monPaintBadge() {
   const a = document.querySelector('#nav a[href="#/monitor"]');
-  if (!a) return;
   const n = monBadge.org === orgId ? monBadge.n : 0;
+  // the top bar's bell: the same count, and its name says what it opens
+  const bell = $("bell"), bn = bell.querySelector(".n");
+  bn.hidden = !(n > 0); bn.textContent = n > 99 ? "99+" : String(n);
+  const bl = t("mon_t_attention") + (n > 0 ? ": " + n : ""); bell.setAttribute("aria-label", bl); bell.title = bl;
+  if (!a) return;
   let b = a.querySelector(".mon-nbadge");
   if (n > 0) {
     if (!b) { b = el("span", { class: "mon-nbadge", "aria-hidden": "true" }); a.append(b); }
@@ -4155,13 +4367,20 @@ function openOrgDlg() { $("org-name").value = ""; note($("org-err"), ""); const 
 $("org-cancel").addEventListener("click", () => $("org-dlg").close());
 $("org-form").addEventListener("submit", async (ev) => {
   ev.preventDefault(); const name = $("org-name").value.trim(); if (!name) return;
-  try { const o = await api("/api/center/orgs", J("POST", { name })); $("org-dlg").close(); await start(); if (o && o.id) { orgId = o.id; renderNav(); route(); } }
+  try { const o = await api("/api/center/orgs", J("POST", { name })); $("org-dlg").close(); await start(); if (o && o.id) { orgId = o.id; renderNav(); route(); } panelReset(); }
   catch (e) { if (!handleAuth(e)) note($("org-err"), errText(e)); }
 });
 $("new-org").addEventListener("click", openOrgDlg);
 $("org-switch").addEventListener("change", (ev) => { orgId = ev.target.value || null; route(); closeNav(); panelReset(); });
 $("burger").addEventListener("click", () => { const o = document.body.classList.toggle("nav-open"); $("burger").setAttribute("aria-expanded", String(o)); });
-document.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { closeNav(); closePanel(); } });
+document.addEventListener("keydown", (ev) => {
+  if (ev.key !== "Escape") return;
+  const big = document.querySelector(".call.max"); if (big) { big.unmax(); return; } // Esc first restores an expanded call
+  closeNav(); closePanel();
+});
+// the top bar's search asks Dory (her search covers chat, files, wiki, tasks and meetings); Cmd/Ctrl+K jumps to it
+$("qs-form").addEventListener("submit", (ev) => { ev.preventDefault(); const x = $("qs").value.trim(); if (!x) return; $("qs").value = ""; askDory(t("search_ask", { q: x })); });
+document.addEventListener("keydown", (ev) => { if ((ev.metaKey || ev.ctrlKey) && !ev.altKey && ev.key.toLowerCase() === "k" && !$("app").hidden) { ev.preventDefault(); $("qs").focus(); } });
 document.addEventListener("keydown", (ev) => {
   if (ev.key !== "/" || ev.ctrlKey || ev.metaKey || ev.altKey) return;
   const a = document.activeElement;
@@ -4181,7 +4400,7 @@ $("panel-live").addEventListener("click", () => { if (panel.w) panel.w.live.togg
   p.addEventListener("dragleave", () => { if (--n <= 0) { n = 0; p.classList.remove("over"); } });
   p.addEventListener("drop", (ev) => { ev.preventDefault(); n = 0; p.classList.remove("over"); const f = ev.dataTransfer && ev.dataTransfer.files; if (f && f.length && panel.w) panel.w.attach(f); }); }
 window.addEventListener("pagehide", () => { if (panel.w) panel.w.stop(); });
-$("lang").addEventListener("click", () => setLang(lang === "th" ? "en" : "th"));
+$("lang").addEventListener("change", (ev) => setLang(ev.target.value === "th" ? "th" : "en"));
 $("login-lang").addEventListener("click", () => setLang(lang === "th" ? "en" : "th"));
 $("signout").addEventListener("click", () => { try { if (window.google && google.accounts) google.accounts.id.disableAutoSelect(); } catch { /* ignore */ } toLogin(""); });
 window.addEventListener("hashchange", () => { closeNav(); route(); });
@@ -4381,6 +4600,7 @@ function mockApi(method, path, body) {
         { id: "A-0002", kind: "create_event", args: { name: "Town hall Q4", start: "2026-10-24T10:00:00+07:00", end: "2026-10-24T11:00:00+07:00", where: "ห้องประชุมใหญ่" }, by: "mali@example.co.th", status: "failed", result: {}, error: "Missing permission: Manage Events", created_at: d(0.4), done_at: d(0.4) },
         { id: "A-0001", kind: "post_message", args: { channel: "general", text: "ประชุมทีมขาย 10 โมงพรุ่งนี้นะคะ" }, by: "owner@example.co.th", status: "done", result: { message_id: "99", url: "https://discord.com/channels/1/2/99", channel: "general" }, error: "", created_at: d(1), done_at: d(1) }],
       reqs: [{ id: "r1", org_id: "org_b2", org_name: "กลุ่มร้านอาหารใหม่", plan: "yearly", seats: 8, note: "อยากได้รายปี", requested_by: "boss@example.co.th", status: "pending" }] };
+    if (new URLSearchParams(location.search).get("orgs") === "0") mockApi.s.orgs = []; // ?mock=1&orgs=0: the first-run screen
   }
   const s = mockApi.s; const [p, qs] = path.split("?"); const qp = new URLSearchParams(qs || "");
   const ok = (v) => new Promise((r) => setTimeout(() => r(v), 120));
