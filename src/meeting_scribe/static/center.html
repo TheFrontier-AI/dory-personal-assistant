@@ -105,10 +105,16 @@ textarea { resize: vertical; min-height: 80px; }
 #me-av { width: 42px; height: 42px; font-size: 15px; background: var(--indigo-2); }
 #side #signout { width: 100%; }
 #mainwrap { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-/* the pale coral edges sit under the last card of every page, never behind text */
-#mainwrap { background: url("/static/dory/coral-edge-left.svg") left bottom / auto 190px no-repeat, url("/static/dory/coral-edge-right.svg") right bottom / auto 190px no-repeat;
-  background-origin: content-box; }
-#mainwrap:has(.chatpage) { background: none; }
+/* the pale coral frames the whole page area on every view and at every scroll position: a fixed layer from the
+   sidebar to the docked panel, both edges rising from the bottom corners plus a reef along the bottom. It sits
+   under every card (cards are opaque), so words on a card never sit on it. */
+#mainwrap { position: relative; isolation: isolate; }
+#mainwrap::before { content: ""; position: fixed; z-index: -1; left: 264px; right: 0; bottom: 0; height: min(64vh, 620px); pointer-events: none;
+  background: url("/static/dory/coral-edge-left.svg") left bottom / auto 100% no-repeat, url("/static/dory/coral-edge-right.svg") right bottom / auto 100% no-repeat,
+    url("/static/dory/coral-scene-light.svg") center bottom / min(1200px, 100%) auto no-repeat; }
+@media (min-width: 1200px) { body:has(#panel.open) #mainwrap::before { right: var(--panel-w); } }
+@media (max-width: 720px) { #mainwrap::before { left: 0; height: 38vh; } }
+#mainwrap:has(.chatpage)::before { display: none; }
 #topbar { position: sticky; top: 0; z-index: 30; min-height: var(--top-h); display: flex; align-items: center; gap: 12px; padding: 12px 24px 12px 40px;
   background: var(--card); border-bottom: 1px solid var(--mist-200); }
 #topbar #burger, #topbar .t { display: none; }
@@ -313,8 +319,11 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 #panel .card { margin: 0; }
 
 /* platforms, identities */
-.plat.line { background: #06C755; } .plat.google { background: #fff; color: var(--ink); border: 1px solid var(--line); }
 .plat.sm { width: 30px; height: 30px; border-radius: 9px; font-size: 13px; }
+/* a connected server: its own icon, with the platform's icon as a small badge at the corner */
+.plat.srv { position: relative; padding: 0; background: var(--mist-100, #EEF2FB); }
+.plat.srv > img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; display: block; }
+.plat.srv > .plat { position: absolute; right: -6px; bottom: -6px; width: 20px; height: 20px; border-radius: 6px; font-size: 10px; box-shadow: 0 0 0 2px var(--card); }
 .pchips { display: flex; flex-wrap: wrap; gap: 8px; }
 .pchip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 99px; border: 1px solid var(--line); background: #fff; font-size: 14px; font-weight: 500; color: var(--ink); text-decoration: none; }
 .pchip.ok { border-color: #BFE3CF; background: #F3FBF6; }
@@ -342,7 +351,10 @@ input[readonly] { background: var(--bg-2); color: var(--muted); }
 .wsgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
 .wsgrid > .card { margin: 0; }
 .plat { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; font-weight: 700; flex: none; }
-.plat.discord { background: #5865F2; } .plat.google_calendar, .plat.google { background: #1A73E8; } .plat.telegram { background: #229ED9; } .plat.whatsapp { background: #25D366; } .plat.slack { background: #4A154B; } .plat.clickup { background: #7B68EE; } .plat.web { background: var(--indigo-2); } .plat.soon { background: var(--faint); }
+/* each platform's official app icon (static/dory/brands, sources in SOURCES.md); the web workspace is Dory herself */
+.plat.brand { background: none; padding: 0; } .plat.brand, .plat.web { display: block; } /* a grid track would grow to the image's own size */
+.plat.brand > img, .plat.web > img { width: 100%; height: 100%; display: block; }
+.plat.web { background: var(--ocean-800); border-radius: 50%; overflow: hidden; } .plat.web > img { object-fit: cover; } .plat.soon { background: var(--faint); }
 .hd { display: flex; gap: 12px; align-items: center; min-width: 0; }
 .hd > div { min-width: 0; overflow-wrap: anywhere; }
 .matrix td, .matrix th { text-align: center; }
@@ -576,10 +588,13 @@ input[type=datetime-local]:focus { outline: none; border-color: var(--indigo-2);
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .call .speech, .call .speech::after { background: rgba(16, 32, 68, .86); } }
 /* company profile: the org header, one card per section (icon tile, title, its action), the collapsed "Dory & systems" */
 .card.hero { flex-direction: row; flex-wrap: wrap; gap: 18px 24px; align-items: flex-start; container-type: inline-size; }
-/* pale coral at the card's right edge: its own column, so it never sits behind text; gone when the card is narrow */
-.hero .hcoral { flex: 0 0 120px; align-self: stretch; min-height: 120px; margin: -24px -28px -24px -8px; border-radius: 0 16px 16px 0;
-  background: url("/static/dory/coral-edge-right.svg") right bottom / contain no-repeat; }
-@container (max-width: 680px) { .hero .hcoral { display: none; } }
+/* pale coral across the whole card: the right edge at full height and a reef along the bottom, behind the card's
+   content (the coral is pale enough that muted text on it stays above 4.5:1) */
+.card.hero { position: relative; overflow: hidden; }
+.card.hero > :not(.hcoral) { position: relative; z-index: 1; }
+.hero .hcoral { position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: url("/static/dory/coral-edge-right.svg") right bottom / auto 112% no-repeat, url("/static/dory/coral-scene-light.svg") center bottom / 100% auto no-repeat; }
+@container (max-width: 680px) { .hero .hcoral { background-size: auto 46%, 100% auto; } } /* a tall phone card: coral low, words clear */
 .hero .logo { width: 88px; height: 88px; border-radius: 20px; flex: none; object-fit: cover; background: #fff; border: 1px solid var(--mist-200); }
 .hero .lettermark { display: grid; place-items: center; font-size: 32px; font-weight: 700; color: #fff; border: 0; background: var(--indigo-2); }
 .hero .hx { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -1681,10 +1696,13 @@ async function start() {
 }
 
 /* ---------- helpers ---------- */
-const PLAT = { discord: "D", slack: "S", clickup: "C", web: "W", line: "L", google: "G", google_calendar: "G", telegram: "T", whatsapp: "W" };
+const BRAND = { discord: "discord", slack: "slack", clickup: "clickup", line: "line", telegram: "telegram", whatsapp: "whatsapp", google: "google", google_calendar: "google-calendar", gmail: "gmail", google_drive: "google-drive" };
 const PNAME = { discord: "Discord", slack: "Slack", clickup: "ClickUp", line: "LINE", telegram: "Telegram", whatsapp: "WhatsApp", web: "Web", google: "Google", google_drive: "Google Drive", gmail: "Gmail", google_calendar: "Google Calendar" };
 const pname = (p) => PNAME[p] || p;
-const platBadge = (p, sm) => el("div", { class: "plat " + (p in PLAT ? p : "soon") + (sm ? " sm" : ""), "aria-hidden": "true" }, PLAT[p] || "?");
+// a connected workspace: the server's own icon when the platform gives one (Discord), else the platform's icon
+const wsBadge = (w) => /^https:\/\//.test(w.icon_url || "") ? el("span", { class: "plat srv", "aria-hidden": "true" }, el("img", { src: w.icon_url, alt: "", width: "40", height: "40", loading: "lazy", referrerpolicy: "no-referrer" }), platBadge(w.platform, true)) : platBadge(w.platform);
+const platBadge = (p, sm) => el("span", { class: "plat " + (p === "web" ? "web" : BRAND[p] ? "brand" : "soon") + (sm ? " sm" : ""), "aria-hidden": "true" },
+  p === "web" ? el("img", { src: "/static/dory/dory-mark.webp", alt: "" }) : BRAND[p] ? el("img", { src: "/static/dory/brands/" + BRAND[p] + ".svg", alt: "" }) : "?");
 // a person's identity on one platform: Google = the sign-in (grey), verified = filled with a check, typed by hand = outline
 const idBadge = (i) => i.platform === "google" ? el("span", { class: "idb ok", title: t("verified") }, ic("check"), "Google")
   : i.verified ? el("span", { class: "idb ok", title: t("verified") }, ic("check"), pname(i.platform))
@@ -2725,7 +2743,7 @@ VIEWS.ws = async (body, my) => {
   const out = [];
   // cards
   const cards = wsx.length ? el("div", { class: "wsgrid" }, wsx.map((w) => el("div", { class: "card" },
-    el("div", { class: "hd" }, platBadge(w.platform), el("div", {}, el("strong", { text: w.name }), el("div", { class: "muted small", text: w.platform }))),
+    el("div", { class: "hd" }, wsBadge(w), el("div", {}, el("strong", { text: w.name }), el("div", { class: "muted small", text: pname(w.platform) }))),
     el("div", {}, w.settings_url ? [el("a", { class: "small", href: w.settings_url, text: t("n_settings") }), " "] : null, el("span", { class: "badge " + (w.status === "connected" ? "ok" : w.status === "pending" ? "warn" : "err"), text: t("st_" + w.status) })),
     admin && w.platform !== "web" ? el("button", { class: "btn danger sm", type: "button", onclick: async () => {
       if (!confirm(t("confirm_disc", { n: w.name }))) return;
@@ -2738,7 +2756,7 @@ VIEWS.ws = async (body, my) => {
     const f = el("form", { class: "row" }, field(t("code"), code), el("button", { class: "btn", type: "submit" }, t("link")));
     f.addEventListener("submit", async (ev) => {
       ev.preventDefault(); if (!code.value.trim()) return;
-      try { await api(O("/workspaces/discord/link"), J("POST", { code: code.value.trim() })); toast(t("linked")); route(); }
+      try { await api(O("/workspaces/discord/link"), J("POST", { code: code.value.trim() })); toast(t("linked")); await refreshMe(); route(); }
       catch (e) { if (!handleAuth(e)) msg.replaceChildren(el("div", { class: "notice error", role: "alert", text: errText(e) })); }
     });
     out.push(el("div", { class: "card" }, el("h2", { text: t("add_discord") }), el("p", { text: t("add_d1") }),
@@ -2788,7 +2806,7 @@ VIEWS.apps = async (body, my) => {
     else if (c.status === "not_configured" || !c.enabled) action = el("span", { class: "badge", text: t("not_enabled") });
     else action = el("div", { class: "row" }, c.connected ? el("span", { class: "badge ok", text: t("connected_n", { n: c.connected }) }) : null,
       isAdmin() ? el("button", { class: "btn" + (c.connected ? " ghost" : ""), type: "button", onclick: () => startConnector(c.platform) }, c.platform === "discord" ? t("add_discord") : c.platform === "slack" ? t("add_slack") : t("connect")) : null);
-    return el("div", { class: "card" }, el("div", { class: "hd" }, platBadge(c.platform.startsWith("google") || c.platform === "gmail" ? "soon" : c.platform), el("div", {}, el("strong", { text: c.name }), el("div", { class: "muted small", text: t(names[c.platform] || "") }))), action);
+    return el("div", { class: "card" }, el("div", { class: "hd" }, platBadge(c.platform), el("div", {}, el("strong", { text: c.name }), el("div", { class: "muted small", text: t(names[c.platform] || "") }))), action);
   };
   body.replaceChildren(el("div", { class: "wsgrid" }, items(cx).filter((c) => !["clickup", "google_drive", "gmail"].includes(c.platform)).map((c) => c.platform === "google_calendar" ? calendarCard(c) : card(c))),
     linkedCard(), isAdmin() ? attachCard() : null);
@@ -4354,15 +4372,22 @@ function confirmDlg({ title, body, ok, danger, info }) {
 // person is looking at reloads its data, so a change she made shows without a manual refresh.
 // Never while a dialog is open or the person is typing in the page (their input would be lost).
 let refreshTimer = null;
+// who I am, my orgs and my linked accounts, fetched again (after a link or a change made in another tab)
+async function refreshMe() { try { const m = await api("/api/center/me"); m.orgs = items(m, "orgs"); me = m; renderNav(); } catch { /* keep the view */ } }
 function refreshView() {
   clearTimeout(refreshTimer);
   refreshTimer = setTimeout(async () => {
     const editing = document.querySelector("dialog[open]") || (document.activeElement && $("content") && $("content").contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
     if (editing) { refreshView(); return; }
-    try { const m = await api("/api/center/me"); m.orgs = items(m, "orgs"); me = m; renderNav(); } catch { /* keep the view */ }
+    await refreshMe();
     if (cur !== "chat") route(); // the chat page already shows the answer; a rebuild would move the conversation under the reader
   }, 600);
 }
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (token && me && hiddenAt && Date.now() - hiddenAt > 10000) refreshView(); // refreshView waits while a field or dialog is in use
+});
 function openOrgDlg() { $("org-name").value = ""; note($("org-err"), ""); const d = $("org-dlg"); if (d.showModal) d.showModal(); else d.setAttribute("open", ""); $("org-name").focus(); }
 $("org-cancel").addEventListener("click", () => $("org-dlg").close());
 $("org-form").addEventListener("submit", async (ev) => {
@@ -4663,7 +4688,9 @@ function mockApi(method, path, body) {
     return ok({ actions: s.actions }); }
   if (sub === "/tasks") return ok({ tasks: [{ id: "t1", title: "ส่งใบเสนอราคาลูกค้า A", assignee: "มาลี", due: day(2), status: "open", url: "", workspace: "discord-1", platform: "discord" }, { id: "t2", title: "ตามบิลค่าเช่า", assignee: "สมชาย", due: day(-1), status: "overdue", url: "", workspace: "discord-1", platform: "discord" }] });
   if (sub === "/workspaces") return ok(s.ws);
-  if (sub === "/workspaces/discord/link") { if (!body.code || body.code.length < 4) return fail("invalid or expired code", 400); const w = { id: "discord-" + Date.now(), platform: "discord", external_id: "9", name: "เซิร์ฟเวอร์ใหม่", status: "connected", settings_url: "/hub" }; s.ws.push(w); return ok(w); }
+  if (sub === "/workspaces/discord/link") { if (!body.code || body.code.length < 4) return fail("invalid or expired code", 400); const w = { id: "discord-" + Date.now(), platform: "discord", external_id: "9", name: "เซิร์ฟเวอร์ใหม่", status: "connected", settings_url: "/hub" }; s.ws.push(w);
+    // like the server: the code was handed to one Discord user, so linking also verifies my Discord account
+    s.me.identities = s.me.identities.filter((i) => i.platform !== "discord"); s.me.identities.unshift({ platform: "discord", external_id: "987654321098765432", name: "somsak", verified: true, linked_at: d(0) }); return ok(w); }
   if ((m = sub.match(/^\/workspaces\/([^/]+)$/)) && method === "DELETE") { s.ws = s.ws.filter((w) => w.id !== decodeURIComponent(m[1])); return ok(s.ws); }
   if (sub === "/sharing") {
     if (method === "POST") { s.share = s.share.filter((l) => !(l.from_workspace === body.from_workspace && l.to_workspace === body.to_workspace)); s.share.push(body); }

@@ -394,6 +394,17 @@ def test_workspaces_list(w):
     )
 
 
+def test_workspaces_show_the_discord_server_as_the_bot_last_synced_it(w):
+    # the bot renames / re-icons the guild after it was linked: the website shows it at once
+    w.guilds.upsert_guild(1000, name="Renamed Server", icon_url="https://cdn/i.png", channels=[])
+    r = w.client.get("/api/center/orgs/org_t/workspaces", headers=H["mem"]).json()
+    d = next(x for x in r if x["id"] == "discord-1000")
+    assert d["name"] == "Renamed Server" and d["icon_url"] == "https://cdn/i.png"
+    # a guild the bot never synced keeps the stored name
+    d2 = next(x for x in r if x["id"] == "discord-2000")
+    assert d2["name"]
+
+
 def test_link_discord_with_code(w):
     c = 3000
     w.guilds.upsert_guild(c, name="New Guild", icon_url="i", channels=[], installed=True)
