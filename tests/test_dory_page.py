@@ -184,6 +184,27 @@ def test_water_layer_and_the_3d_hero_follow_the_shared_contract():
     assert "window.doryWater?.drop(" in html and "window.doryWater?.lantern(" in html
 
 
+def test_the_living_reef_sits_under_the_water_and_the_words():
+    """#reef fills the hero's first screen (the same grid cell as .hero-top) at z 0: over the field,
+    under #water (z 1) and the words (z 2). Its still is a CSS background that crossfades to the live
+    canvas, never preloaded, so Dory's poster stays the largest paint."""
+    _, html = _dict_and_html()
+    hero = _chapter(html, "sunlight")
+    assert hero.split(">", 1)[1].lstrip().startswith('<div id="reef" aria-hidden="true"></div>')
+    assert hero.index('id="reef"') < hero.index('class="g hero-top"')
+    assert '<script type="module" src="/static/dory/reef.js"></script>' in html
+    assert ".hero { display: grid; background: var(--reef); }" in html
+    assert "#reef, .hero-top { grid-area: 1 / 1; }" in html
+    assert "#reef { position: relative; z-index: 0;" in html
+    assert "url(/static/dory/reef-poster.webp)" in html
+    assert "url(/static/dory/reef-poster-800.webp)" in html
+    assert (
+        "#reef.is-live canvas { opacity: 1; }" in html
+        and "#reef.is-live::before { opacity: 0; }" in html
+    )
+    assert not re.search(r"<link[^>]*preload[^>]*reef", html)  # never preloaded
+
+
 def test_motion_can_always_be_paused_and_starts_off_under_reduced_motion():
     _, html = _dict_and_html()
     head = html.split("</head>", 1)[0]
