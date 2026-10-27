@@ -38,7 +38,7 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, field_validator
 from starlette.concurrency import run_in_threadpool
 
 from dory import monitor
@@ -359,6 +359,18 @@ class ProfileBody(BaseModel):
     job_description: str | None = Field(default=None, max_length=50_000)
 
 
+class MyProfileBody(ProfileBody):
+    """My profile requires both names; leaving one out is a partial save. (An admin's "Edit
+    profile" may leave a member's names blank: `MemberProfileBody` does not inherit this.)"""
+
+    @field_validator("first_name", "last_name")
+    @classmethod
+    def _not_blank(cls, v: str | None) -> str | None:
+        if v is not None and not v.strip():
+            raise ValueError("first and last name are required")
+        return v
+
+
 class IdentityBody(BaseModel):
     platform: str
     external_id: str = Field(min_length=1, max_length=120)
@@ -559,7 +571,7 @@ async def set_my_language(
 # Both are separate on purpose: the profile follows the person into every org they belong to.
 @router.put("/me/profile")
 async def set_my_profile(
-    body: ProfileBody, email: str = Depends(hub.require_user), orgs: OrgStore = Depends(get_orgs)
+    body: MyProfileBody, email: str = Depends(hub.require_user), orgs: OrgStore = Depends(get_orgs)
 ) -> MeView:
     await run_in_threadpool(
         orgs.set_user_profile,
@@ -923,7 +935,7 @@ class CompanyProfileBody(BaseModel):
     email: str | None = Field(default=None, max_length=320)
     phone: str | None = Field(default=None, max_length=1_000)
     size: str | None = Field(default=None, max_length=1_000)
-    values: list[str] | None = Field(default=None, max_length=8)
+    values: list[str] | None = Field(default=None, max_length=1_000)  # sizes: set_company_profile
     registered_name: str | None = Field(default=None, max_length=1_000)
     registration_no: str | None = Field(default=None, max_length=1_000)
     tax_id: str | None = Field(default=None, max_length=1_000)
@@ -2335,10 +2347,15 @@ async def overview(
     lib: Library = Depends(get_library),
     orgs: OrgStore = Depends(get_orgs),
     connectors: dict = Depends(get_connectors),
+    g: Any = Depends(lambda orgs=Depends(get_orgs): get_google_oauth(orgs)),
 ) -> dict:
-    """The organization's profile card: documents, platforms (org-level connections), members
-    (how many have linked their own accounts), license, recent activity."""
+    """The organization's profile card: documents, platforms (org-level connections; Google
+    Calendar is per member, "connected" when the caller connected theirs), members (how many
+    have linked their own accounts), license, recent activity."""
     available = [p for p in ("discord", "slack", "clickup") if connectors[p].enabled()]
+    gcal = g.enabled()
+    if gcal:
+        available.append("google_calendar")
 
     def run() -> dict:
         # The company profile only: no document scan here (it took 5-7 s on a real company;
@@ -2387,6 +2404,11 @@ async def overview(
                         for w in ctx.org.workspaces
                         if w.platform != "web" and w.status == "connected"
                     }
+                    | (
+                        {"google_calendar"}
+                        if gcal and g.is_connected(ctx.org.id, ctx.email)
+                        else set()
+                    )
                 ),
                 "coming_soon": list(COMING_SOON),
             },
@@ -2454,8 +2476,27 @@ def command_center_tools(ctx: Ctx, orgs: OrgStore, guilds: Any) -> list:
             "why": "this needs a sign-in in the browser",
         }
 
+    def typed_code(r: dict, to: str) -> dict:
+        """An issued code as the person must type it into the chat app."""
+        if "error" in r:
+            return r
+        return {
+            "code": r["code"],
+            "kind": r["kind"],
+            "expires_at": r["expires_at"],
+            "say": f"send `{r['command']}` to {to} in a private chat within 15 minutes",
+        }
+
+    def link_my_chat_account(platform: str) -> dict:
+        """Link the person's OWN LINE / Telegram / WhatsApp / Slack account to their Dory
+        account: a one-time code they send to Dory there. Read back `say` exactly. Discord is
+        linked with connect_link("discord")."""
+        p = (platform or "").strip().casefold()
+        r = _route(create_identity_code(p, _fresh(ctx, orgs), get_identity_links(orgs)))
+        return typed_code(r, f"Dory on {p}")
+
     if not ctx.is_exec:
-        return [connect_link]
+        return [connect_link, link_my_chat_account]
 
     def org_now() -> Org:
         return orgs.get(ctx.org.id) or ctx.org
@@ -2637,18 +2678,9 @@ def command_center_tools(ctx: Ctx, orgs: OrgStore, guilds: Any) -> list:
     ) -> dict:
         """Write who somebody on the platforms is (also people without an account): title,
         department, what they do, nickname, or hide them (a bot or guest)."""
-        book = get_people()
-        w = company_workspace(org_now())
-        if w is None or w.platform != "discord":
-            return {"error": "no connected Discord workspace"}
-        want = person.strip().casefold()
-        hits = [
-            p
-            for p in book.list(w.memory_id)
-            if want in (p.display_name().casefold(), p.name.casefold(), p.nickname.casefold())
-        ]
-        if len(hits) != 1:
-            return {"error": f"no unique person matches {person!r}"}
+        book, hit = platform_person(person)
+        if isinstance(hit, dict):
+            return hit
         body = PersonBody(
             title=title or None,
             department=department or None,
@@ -2656,8 +2688,123 @@ def command_center_tools(ctx: Ctx, orgs: OrgStore, guilds: Any) -> list:
             nickname=nickname or None,
             hidden=hidden,
         )
-        r = _route(edit_person(hits[0].id, body, None, _fresh(ctx, orgs), book))
+        r = _route(edit_person(hit.id, body, None, _fresh(ctx, orgs), book))
         return r if "error" in r else {"status": "ok", "person": r["display_name"]}
+
+    def platform_person(person: str) -> tuple[PeopleBook, Person | dict]:
+        """The one person in the company Discord's people directory called `person`."""
+        book = get_people()
+        w = company_workspace(org_now())
+        if w is None or w.platform != "discord":
+            return book, {"error": "no connected Discord workspace"}
+        want = person.strip().casefold()
+        hits = [
+            p
+            for p in book.list(w.memory_id)
+            if want in (p.display_name().casefold(), p.name.casefold(), p.nickname.casefold())
+        ]
+        if len(hits) != 1:
+            return book, {"error": f"no unique person matches {person!r}"}
+        return book, hits[0]
+
+    def observe_person_tool(person: str) -> dict:
+        """Read what a person on the company's Discord (account or not) seems to do, from
+        their own messages: role, responsibilities, who they work with (the "Ask Dory" button
+        in the people directory; one model call, owners / admins only)."""
+        book, hit = platform_person(person)
+        if isinstance(hit, dict):
+            return hit
+        r = _route(
+            observe_person(
+                hit.id, None, _fresh(ctx, orgs), get_library(), guilds, book, get_observer()
+            )
+        )
+        return r if "error" in r else {"person": r["display_name"], "observed": r["observed"]}
+
+    def workspace_of(name: str) -> dict:
+        """The org's workspace called `name` (its name, id, or a platform it has only one of),
+        as the Workspaces page lists it; else {"error", "workspaces"}."""
+        rows = _route(list_workspaces(_fresh(ctx, orgs), guilds))
+        if isinstance(rows, dict):
+            return rows
+        want = (name or "").strip().casefold()
+        hits = [r for r in rows if want in (r["id"].casefold(), (r["name"] or "").casefold())]
+        hits = hits or [r for r in rows if r["platform"] == want]
+        if len(hits) == 1:
+            return hits[0]
+        return {
+            "error": f"no unique workspace matches {name!r}",
+            "workspaces": [f"{r['name'] or r['id']} ({r['platform']}, id {r['id']})" for r in rows],
+        }
+
+    def disconnect_workspace(workspace: str, confirm: bool = False) -> dict:
+        """Disconnect a workspace (a Discord server, Slack, LINE...) from the organization; its
+        sharing links go too. Two steps: first call without confirm, read the summary back,
+        call again with confirm=true only after a clear yes."""
+        ws = workspace_of(workspace)
+        if "error" in ws:
+            return ws
+        if not confirm:
+            return {
+                "needs_confirmation": f"Disconnect {ws['name'] or ws['id']} ({ws['platform']}) "
+                f"from {org_now().name}; what it shares with other workspaces stops."
+            }
+        r = _route(delete_workspace(ws["id"], _fresh(ctx, orgs), orgs, get_library()))
+        if isinstance(r, dict):
+            return r
+        return {"status": "disconnected", "workspace": ws["name"] or ws["id"]}
+
+    def set_workspace_sharing(from_workspace: str, to_workspace: str, categories: str) -> dict:
+        """The sharing matrix (one direction): `to_workspace` may read these `categories` of
+        `from_workspace`, comma separated, among documents, wiki, places, minutes, ledger,
+        tasks (the WHOLE set; "none" = share nothing). Chat memory is never shared."""
+        a, b = workspace_of(from_workspace), workspace_of(to_workspace)
+        for x in (a, b):
+            if "error" in x:
+                return x
+        cats = [c.strip() for c in (categories or "").casefold().split(",") if c.strip()]
+        lib = get_library()
+        if cats in ([], ["none"], ["nothing"], ["off"]):
+            r = _route(delete_sharing(a["id"], b["id"], _fresh(ctx, orgs), orgs, lib))
+            if isinstance(r, dict) and "No such" not in r.get("error", ""):
+                return r
+        else:
+            body = ShareBody(from_workspace=a["id"], to_workspace=b["id"], categories=cats)
+            r = _route(put_sharing(body, _fresh(ctx, orgs), orgs, lib))
+            if isinstance(r, dict):
+                return r
+        names = {w.id: w.name or w.id for w in org_now().workspaces}
+        return {
+            "status": "ok",
+            "sharing": [
+                f"{names.get(s.to_workspace, s.to_workspace)} reads "
+                f"{', '.join(s.categories)} of {names.get(s.from_workspace, s.from_workspace)}"
+                for s in org_now().sharing
+            ],
+        }
+
+    def link_discord_server(code: str) -> dict:
+        """Link a Discord server to the organization with the code Dory gave in that server
+        (/ตั้งค่า or /setup there, then paste the code here)."""
+        try:
+            body = LinkBody(code=(code or "").strip())
+        except ValueError:
+            return {"error": "that is not a /setup code; run /setup in the Discord server"}
+        r = _route(link_discord(body, _fresh(ctx, orgs), orgs, guilds, get_library()))
+        return r if "error" in r else {"status": "linked", "workspace": r["name"]}
+
+    def attach_chat_bot(platform: str) -> dict:
+        """Attach the company's LINE / Telegram / WhatsApp bot to this organization: a one-time
+        code to send to that bot. Read back `say` exactly."""
+        p = (platform or "").strip().casefold()
+        r = _route(create_attach_code(p, _fresh(ctx, orgs), get_identity_links(orgs)))
+        return typed_code(r, f"the company's {p} bot")
+
+    def rebuild_document_index() -> dict:
+        """Rebuild the search notes of the documents uploaded on the website (when Dory cannot
+        find a file people know is there)."""
+        r = _route(reindex_documents(_fresh(ctx, orgs), get_library()))
+        return r if "error" in r else {"status": "ok", "indexed": r["indexed"]}
 
     def request_plan(plan: str = "monthly", seats: int = 10, note: str = "") -> dict:
         """Ask for a plan / more seats (trial, monthly, yearly, enterprise); the team approves it."""
@@ -2676,7 +2823,15 @@ def command_center_tools(ctx: Ctx, orgs: OrgStore, guilds: Any) -> list:
 
     transfer_ownership_tool.__name__ = "transfer_ownership"
     delete_position_tool.__name__ = "delete_position"
+    observe_person_tool.__name__ = "observe_person"
     return [
+        disconnect_workspace,
+        set_workspace_sharing,
+        link_discord_server,
+        attach_chat_bot,
+        observe_person_tool,
+        rebuild_document_index,
+        link_my_chat_account,
         add_or_change_member,
         remove_member,
         transfer_ownership_tool,
@@ -4604,9 +4759,11 @@ async def list_connectors(
     email: str = Depends(hub.require_user),
     orgs: OrgStore = Depends(get_orgs),
     connectors: dict = Depends(get_connectors),
+    g: Any = Depends(lambda orgs=Depends(get_orgs): get_google_oauth(orgs)),
 ) -> list[dict]:
     """Integration cards. `status`: available | not_configured | coming_soon. With `org` also
-    the number of connected workspaces per platform (only for members of that org)."""
+    the number of connected workspaces per platform (only for members of that org); Google
+    Calendar is per member: 1 when the caller connected their own."""
     connected: dict[str, int] = defaultdict(int)
     if org:
         o = await run_in_threadpool(orgs.get, org)
@@ -4614,9 +4771,13 @@ async def list_connectors(
             for w in o.workspaces:
                 if w.platform != "web" and w.status == "connected":
                     connected[w.platform] += 1
+            if g.enabled():
+                connected["google_calendar"] = int(
+                    await run_in_threadpool(g.is_connected, o.id, email)
+                )
     out = []
-    for platform in ("discord", "slack", "clickup"):
-        on = connectors[platform].enabled()
+    for platform in ("discord", "slack", "clickup", "google_calendar"):
+        on = g.enabled() if platform == "google_calendar" else connectors[platform].enabled()
         out.append(
             {
                 "platform": platform,
