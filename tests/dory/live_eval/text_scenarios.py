@@ -755,7 +755,7 @@ def build_scenarios() -> list[Scn]:
 
     # 49-55 contests, business finance, security, company learning ------------------------------
     rules = (
-        "hackathon 2026 (Hack2skill). Prototype submission deadline 18 Oct 2026 23:59 IST. "
+        "Bangkok AI Innovation Cup 2026. Prototype submission deadline 18 Oct 2026 23:59 IST. "
         "Deliverables: working deployed link, demo video max 3 minutes, pitch deck, public GitHub repo. "
         "Judging: innovation 30%, technical implementation with Google Cloud 30%, business impact 25%, demo 15%. "
         "Suggested technologies: Gemini on Vertex AI, ADK, Cloud Run, Firestore, BigQuery."

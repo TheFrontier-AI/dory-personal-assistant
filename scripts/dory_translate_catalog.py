@@ -5,7 +5,7 @@ the second-tier languages with Gemini, into `src/dory/locales/<lang>.json`.
     uv run python scripts/dory_translate_catalog.py --langs zh,ja    # some
     uv run python scripts/dory_translate_catalog.py --only-missing   # only keys with no entry yet
 
-Offline tool: it calls Gemini on Vertex via ADC (project `dory-personal-assistant`, location
+Offline tool: it calls Gemini on Vertex via ADC (the project in `DORY_GCP_PROJECT`, which needs Vertex AI, location
 `global`, the cheap model of `Settings.gate_model`) and is NOT part of the bot. File format:
 
     {"_meta": {"source_hash": {key: sha1(english text)}}, "strings": {key: translated text}}
@@ -20,6 +20,7 @@ from __future__ import annotations
 import argparse
 import hashlib
 import json
+import os
 import re
 import sys
 from concurrent.futures import ThreadPoolExecutor
@@ -46,7 +47,7 @@ def import_all_modules() -> None:
 
 
 LOCALES = Path(__file__).resolve().parent.parent / "src" / "dory" / "locales"
-PROJECT = "dory-personal-assistant"
+PROJECT = os.environ.get("DORY_GCP_PROJECT", "dory-personal-assistant")
 LOCATION = "global"
 MODEL = "gemini-3.5-flash-lite"  # = Settings.gate_model (the cheap model memory summaries use)
 BATCH = 40

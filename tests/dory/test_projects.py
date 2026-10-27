@@ -257,7 +257,7 @@ def test_on_hold_for_over_a_week_is_flagged():
 # ------------------------------------------------------------------ deadlines
 def test_deadlines_window_collects_project_milestone_and_hackathon_dates():
     hack = P.apply_template(proj(name="Cup", kind="hackathon", deadline="2026-11-30"))
-    hack.hackathon.competition = "Demo Cup"
+    hack.hackathon.competition = "Innovation Cup"
     hack.hackathon.official_deadline = "2026-10-18T23:59"
     a = proj(
         name="Alpha", deadline="2026-10-20",
@@ -271,7 +271,7 @@ def test_deadlines_window_collects_project_milestone_and_hackathon_dates():
     gone = proj(name="Old", deadline="2026-10-15", status="completed")
     out = P.deadlines_window([a, hack, gone], 14, TODAY)
     assert [(d["kind"], d["title"]) for d in out] == [
-        ("milestone", "Demo"), ("hackathon", "Demo Cup"), ("project", "Alpha"),
+        ("milestone", "Demo"), ("hackathon", "Innovation Cup"), ("project", "Alpha"),
     ]  # fmt: skip
     assert out[1]["when"] == "2026-10-18T23:59"
     assert P.deadlines_window([a], 1, TODAY) == []
@@ -659,7 +659,7 @@ def test_project_show_is_a_short_markdown_summary(docs):
         P.Milestone(id=f"m{i}", title=f"M{i}", due=f"2026-11-0{i}") for i in range(1, 6)
     ]
     p.risks = [P.Risk(id=f"r{i}", title=f"Risk{i}", severity="high") for i in range(1, 6)]
-    p.hackathon.competition, p.hackathon.official_deadline = "Demo Cup", "2026-10-18T23:59"
+    p.hackathon.competition, p.hackathon.official_deadline = "Innovation Cup", "2026-10-18T23:59"
     p.hackathon.deliverables[0].done = True
     ctx.repo.save(GUILD, p)
     tl["project_add_task"]("cup", "late thing", due="2026-10-01")
@@ -668,7 +668,7 @@ def test_project_show_is_a_short_markdown_summary(docs):
     assert len(lines) <= 25 and lines[0].startswith("**Cup**")
     assert "Tasks: 0/1 done, 1 overdue, 1 unassigned" in md
     assert "- M1 (2026-11-01)" in md and "M4" not in md  # only the next three
-    assert "Demo Cup" in md and "1/4" in md and "Needs review" in md
+    assert "Innovation Cup" in md and "1/4" in md and "Needs review" in md
     th = tools(docs, lang="th")[0]["project_show"]("cup")["markdown"]
     assert "เจ้าของ" in th and "ต้องทบทวน" in th
 

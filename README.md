@@ -2,7 +2,7 @@
 
 Record a Google Meet from your browser, get a live Thai transcript with speaker labels, and have a
 structured summary (key points, decisions, action items with owners, open questions) posted to Discord
-when the meeting ends. Built for the hackathon.
+when the meeting ends.
 
 The code, UI and docs are English; the meeting audio and the transcript/summary are Thai.
 

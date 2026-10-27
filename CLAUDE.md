@@ -1,19 +1,20 @@
-# Meeting Scribe — project context for people and AI agents
+# Dory — project context for people and AI agents
 
 Read this first, then `README.md` (product, architecture, how to use it with Google Meet).
 
 ## What this is
 
-A hackathon prototype (theme: Future of Work & Enterprise Productivity).
-A host opens the web app next to a Google Meet, clicks Record and shares the Meet tab with
+Dory is an AI coworker for teams on Discord (also Slack, LINE, Telegram and WhatsApp) with a web command
+center. Two packages: `src/meeting_scribe/` (the FastAPI web service: the public site, `/start`, `/center`,
+`/hub`, `/pm` and the Meeting Scribe recorder) and `src/dory/` (the bot and everything it does).
+
+The Meeting Scribe recorder (`/recorder`): a host opens it next to a Google Meet, clicks Record and shares the Meet tab with
 "Share tab audio". The browser mixes tab audio + mic and uploads ~45 s audio segments.
 The server transcribes each segment in Thai with speaker labels (Gemini on Vertex AI), and on
 Stop an ADK multi-agent summarizer produces decisions, action items and speaker names, saves
 them to Firestore and posts a Discord embed with the transcript attached.
 
 - Code, comments, docs and UI are **English**. Meeting audio, transcripts and summaries are **Thai**.
-- Submission deadline: **18 Oct 2026**.
-- Judging: Gen AI technical merit 40%, problem fit 25%, innovation 25%, UX 10%.
 - Repo: https://github.com/TheFrontier-AI/dory-personal-assistant
 
 ## Pipeline in one line
@@ -118,7 +119,7 @@ Discord bot "ดอรี่" (display name Dory), **multi-tenant**: tenant key 
 | Calendar = the company calendar (v0.17.0) | `GET /orgs/{id}/calendar[?mine=1]`, `center.calendar_view`: company layer = meetings (held + scheduled), Discord events, project deadlines and open milestones (`project_calendar_items`: team projects, all for admins); `mine=1` overlays the caller's reminders and task dues (`layer: personal`, dashed on the page). Nav: Company → Calendar with an "Overlay my calendar" switch (localStorage `dory_cal_overlay`); the Google Calendar card shows the member's real connection (`/google/calendar`). `/me/calendar` still returns both layers. v0.18.0: the overlay also merges the person's own Google Calendar (primary, a month back to three months ahead, `center.google_events` with the stored per-member token from `google_oauth`, one retry after a 401, items `kind: gcal`, `layer: personal`); `with_google_events` is fail-soft (`google: {connected, error}`); tests override `center.get_google_oauth` / `get_google_http`. |
 | Chat upload = secretary (`center.uploaded_doc_block`, `ChatBody.document_id`) | A file attached in the Talk-to-Dory panel is stored and auto-filed (Documents group), then the chat request carries the record's group, summary and text (<= 6,000 chars) with instructions: say where it was filed, and for a company record (registration, articles, regulations, shareholders, licences) call `update_company_profile` with the legal-entity fields (`CompanyProfile.registered_name` / `registration_no` / `tax_id` / `registered_capital` / `registered_address` / `directors` / `objectives`, `founded`) and `teach_company` for work rules; members are told an admin can do it. The chat log keeps only what the person typed. Company profile shows a Legal entity card. The overview API no longer scans documents (it took 5-7 s). |
 | Document groups (`library.DOC_GROUPS`, `classify_group`) | Every FILE is filed under company (registration, articles / regulations, shareholders, licences) / legal / finance (invoices, receipts, quotes, tax, expenses) / hr / other by Thai + English keywords on the analyzer tag (`docs.PROMPT` now offers doc_type `company`), file name and summary; an admin's choice (`group` on the `dory_org_docs` record, `PUT /orgs/{id}/documents/{doc_id}/group`) wins. `GET /documents?group=`, `GET /documents/groups` (counts); the Documents page shows group pills (Company records first, starred) and a re-file select for admins. |
-| `files.py` | `FileArchive`: originals of documents Dory reads in Discord (`media_bot._doc_note` -> `_archive_original`, only when `DORY_RECEIPT_BUCKET` is set) stored with the web uploads (`library.make_blobs`, prefix `discord-<guild>/`, one record per sha256 per guild in `dory_org_docs` keyed by the guild id) so the command center lists them as REAL files (`DocItem.kind` = `file` for uploads/originals, `knowledge` for wiki/minutes/ideas/reports/chat notes; `GET /documents?kind=`; the download route serves any workspace's originals, Discord ones only to people who may read that channel). Bucket `gs://dory-personal-assistant-dory` (created 17 Oct 2026, private; web + bot point at it). |
+| `files.py` | `FileArchive`: originals of documents Dory reads in Discord (`media_bot._doc_note` -> `_archive_original`, only when `DORY_RECEIPT_BUCKET` is set) stored with the web uploads (`library.make_blobs`, prefix `discord-<guild>/`, one record per sha256 per guild in `dory_org_docs` keyed by the guild id) so the command center lists them as REAL files (`DocItem.kind` = `file` for uploads/originals, `knowledge` for wiki/minutes/ideas/reports/chat notes; `GET /documents?kind=`; the download route serves any workspace's originals, Discord ones only to people who may read that channel). Bucket `gs://dory-personal-assistant-files` (private; the web service and the bot point at it through `DORY_RECEIPT_BUCKET`). |
 | `votes.py` / `votes_bot.py` | Meeting votes (flags `votes`, `vote_offers`): `call_vote` `close_vote` `vote_status` agent tools (in `_agent_kwargs`; `call_vote` / `close_vote` are voice action tools). Each voter gets one button ballot (`VoteButton` DynamicItem) in their private channel via `send_dm`; one tally message in the meeting chat edited per ballot (counts only); closes when all voted / deadline (`_votes_due` tick) / on request; result line posted, added to the minutes (`MeetingManager.record_vote`) and announced in voice via `LiveVoice.announce_cue`. Majority of ballots cast, tie = no conclusion. Offers from untagged talk: `looks_like_vote_call` + cheap gate, one text offer per channel per 10 min, `VoteOfferButton`. DocStore kinds `dory_votes`, `dory_vote_offers`. |
 | `reminders.py` / `reminders_bot.py` | Personal reminders, once and recurring (flag `reminders`): `set_reminder(message, at, every, weekdays, until, for_user, where, quiet_hours)` `list_reminders` `cancel_reminder(which)` agent tools (in `_agent_kwargs`; all three are voice action tools bound to the speaker). The model turns natural language into `YYYY-MM-DD HH:MM` / `HH:MM` / `+2h`; code does limits (min 15 min interval, 20 active per person, no past, <= 1 year), quiet hours 22:00-08:00 for `every`, exec-only `for_user`, `where` = `me` (`deliver_to_person`) or `here`. `ReminderBook` on the DocStore (kind `dory_reminders`, ids `R-0001`). `_reminders_due` (bot tick, every 30 s): ONCE late > 30 min still sent with a note, recurring skip missed slots (no burst), member gone -> deactivated. |
 | `projects.py` / `projects_bot.py` / `projects_listen.py` / `meeting_scribe/pm_api.py` | PM dashboard (`/pm`, `/api/center/orgs/{org}/pm/*`, flag `projects`): projects in DocStore `dory_projects` (guild = workspace memory id; Discord workspace preferred, else web), one owner each, templates `standard` / `hackathon` (4 default deliverables), tasks ARE Dory's `Task`s (`project_id` `assignee_email` `milestone_id`), status / owner / deadline / priority changes need a reason (`ReasonRequired`, logged in `changes`), `project_stats` + `needs_review` (high priority and late), finance (`budget`) only for admins and `Member.finance`, `Member.department`. Pure `can_read` `can_contribute` `can_edit` decide access in code. Agent tools `project_create` `project_update` `project_list` `project_show` `project_add_task` `my_projects_and_tasks` (in `_agent_kwargs`; all but list/show are voice action tools); `TaskTracker.ingest` links a task to a project named in its text (progress pictures and Gantt import: see `progress.py` below) ("โปรเจกต์ X" / "project X"). `/pm` serves `static/pm.html` (503 until built); risk proposals (`risks/assess`) use the cheap model and fail soft. `projects_listen.ProjectListener` (chained after `TaskTracker.on_summary` by `coo._on_summary_all`, flag `projects`, needs `memory`): one cheap-model call per summary batch hears project changes in normal chat (status / deadline / priority via `apply_updates` with the quoted line as the reason, milestone done, new team risk, a short `Project.updates` line, last 5 in `project_show` and the /pm Overview). Code drops unknown ids, no-op values, owner changes (never from chat), quotes not in the messages, and everything but a note on a completed / cancelled project; one "📌" note per batch via `ProjectsMixin._project_note` (bot loop, no mentions), once per channel per 10 min, never in DM scope or a private channel, per-guild flag `project_notes`. |
@@ -233,14 +234,8 @@ build order: `docs/superpowers/specs/2026-10-18-dory-workspace-parity-design.md`
 
 ## Infrastructure that already exists — never recreate
 
-- GCP project `dory-personal-assistant`, region `asia-southeast1`, Vertex Gemini location `global`
-- Bucket `gs://dory-personal-assistant-audio`, Firestore `(default)` native DB
-- Pub/Sub topic `meeting-finalize` + push subscription `meeting-finalize-push`
-- Cloud Run service `meeting-scribe` (**max-instances=1 on purpose**: the finalize lock is per-process)
-- Service accounts `meeting-scribe-run` (runtime) and `meeting-scribe-pusher` (Pub/Sub push)
-- Secret Manager secret `discord-webhook-url`
-- Deployed URL: `gcloud run services describe meeting-scribe --region asia-southeast1 --format='value(status.url)'`
-  (keep it private: there is no auth on the app)
+- The web service `meeting-scribe` runs with **max-instances=1 on purpose** (the recorder's finalize lock
+  and the in-process caches are per process).
 - **Dory's own project `dory-personal-assistant` (number 941598007773), deployed 25 Oct 2026 evening
   from branch `rename/dory` (image tag `e881902`)** for the Nebius x NVIDIA hackathon: Cloud Run
   service `meeting-scribe` (web + command center) at
@@ -274,24 +269,6 @@ build order: `docs/superpowers/specs/2026-10-18-dory-workspace-parity-design.md`
   `https://dory.frontier-tech.app/api/center/auth/discord/callback` and `.../api/center/identity/discord/callback`
   in its Developer Portal (the API's `PATCH /applications/@me` ignores `redirect_uris`). Not done yet: Google
   Calendar connector.
-- **Rename 25 Oct 2026: the product, package, env prefix, store names and scripts are now Dory
-  (`dory`, `DORY_*`, `dory_*`), but everything deployed before that date in the OLD project
-  `dory-personal-assistant` still carries the old name Dory.** What is LIVE there (do not recreate, do
-  not assume it was renamed): custom domain **https://dory.frontier-tech.app** (Cloud Run domain mapping
-  created 17 Oct 2026; GoDaddy CNAME `dory` → `ghs.googlehosted.com`; domain verified by the owner's
-  gcloud account), env on the `meeting-scribe` service set 17 Oct 2026 with the OLD prefix
-  (`DORY_STORE=firestore`, `DORY_HUB_URL=https://dory.frontier-tech.app`,
-  `DORY_DISCORD_CLIENT_ID=1560235651545309284`, `DORY_DISCORD_CLIENT_SECRET` from Secret Manager
-  `dory-discord-client-secret`; `HUB_GOOGLE_CLIENT_ID` = that project's public OAuth web client, origins =
-  both run.app URLs + the custom domain + `http://localhost:8080`), Cloud Run worker pool `dory-bot`
-  (1 instance since 17 Oct 2026 19:12 UTC, secret `dory-discord-token`; stop with `gcloud run
-  worker-pools update dory-bot --region asia-southeast1 --instances 0`), Secret Manager
-  `dory-session-secret`, bucket `gs://dory-personal-assistant-dory`, Firestore collections `dory_*`
-  holding the real company's data. The Dory bot user is a member of guild `TheFrontier`
-  (1548606556583501945), linked to org `org_aef43a633f` (The Frontier Company Limited) on 17 Oct 2026.
-  The renamed code reads `DORY_*` env and `dory_*` collections, so it runs in the NEW project
-  `dory-personal-assistant` (above) as a fresh install next to the old one; the `dory_*` data is not
-  migrated unless somebody writes that script.
 - `.gcloudignore` exists (includes `.gitignore`, drops `.claude/`, `.git/`, `tests/`), so a source deploy no
   longer relies on `.gitignore` alone.
 
@@ -340,17 +317,7 @@ pytest (`uv run env DYLD_FALLBACK_LIBRARY_PATH=... pytest`): `libopus` (`brew in
 - No auth on the web app or API; keep the URL private.
 - About 0.1 s of audio is lost at each 45 s segment boundary.
 - No retention policy on audio or Firestore (deleting data needs approval).
-- Old Cloud Run logs may contain the webhook URL; rotate it after the hackathon.
 - Desktop Chrome/Edge only (tab-audio capture).
-
-## Reference data
-
-Firestore meeting `e6379be86dfd` ("Meet1", 25 min, 34 chunks, 309 utterances, participants
-Peat / Toey / Jems) is the first real recording. It showed the two bugs fixed on 13 Oct 2026:
-speaker labels drifting between real names and `Speaker B/C/D`, and a spoken instruction to the
-recorder ("หยุดบันทึกและสรุปข้อมูลการประชุม") extracted as an action item. Use
-`uv run python scripts/resummarize_dry_run.py e6379be86dfd` to check regressions without writing
-anything.
 
 ## How to work here
 
