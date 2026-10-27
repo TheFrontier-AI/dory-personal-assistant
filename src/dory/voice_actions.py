@@ -80,6 +80,8 @@ ACTION_TOOL_NAMES: frozenset[str] = frozenset(
         "forget_place",
         "set_place_secret",
         "track_flight",
+        "book_trip",
+        "travel_profile",
         "market_watch",
         "market_brief",
         "track_news_topic",

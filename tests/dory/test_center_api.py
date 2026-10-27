@@ -1813,7 +1813,11 @@ def test_live_voice_socket_streams_audio_both_ways_and_answers_tools(w):
                     events.append(json.loads(m["text"]))
                 if any(e["type"] == "interrupted" for e in events):
                     break
-            sock.send_bytes(bytes(640))  # 20 ms of mic silence
+            for _ in range(300):  # ask_dory answers in the background: let it finish
+                if sent["tools"]:
+                    break
+                time.sleep(0.01)
+            sock.send_bytes(bytes(640))  # 20 ms of mic silence: the gate drops it
             sock.send_json({"type": "say", "text": "and last month?"})
             sock.send_json({"type": "close"})
         kinds = [e["type"] for e in events]
@@ -1859,7 +1863,7 @@ def test_web_live_waits_for_the_person_but_lets_them_interrupt():
     cfg = live.config()
     ad = cfg.realtime_input_config.automatic_activity_detection
     assert (
-        ad.silence_duration_ms == 2000
+        ad.silence_duration_ms == 800  # live_web_silence_ms default
         and ad.end_of_speech_sensitivity == types.EndSensitivity.END_SENSITIVITY_LOW
     )
     assert cfg.realtime_input_config.activity_handling is None  # talking over her interrupts her

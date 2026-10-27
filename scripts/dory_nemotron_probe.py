@@ -10,7 +10,7 @@ Nothing here touches the project environment: litellm (ADK's OpenAI-compatible a
 
 Stage 1 = raw API: tool call, JSON-schema gate, Thai reply, and which knob switches reasoning off.
 Stage 2 = the real `qa.ask` agent (ADK) on a throwaway seeded SQLite ledger, six questions.
-The key comes from NEBIUS_API_KEY (env, else a line in .env) and is never printed.
+The key comes from DORY_NEBIUS_API_KEY (env, else a line in .env) and is never printed.
 Results: stdout + data/nemotron_probe.json (data/ is gitignored for .db only: delete the json after).
 """
 
@@ -40,7 +40,7 @@ NO_THINK = {
 
 
 def api_key() -> str:
-    names = ("DORY_NEBIUS_API_KEY", "NEBIUS_API_KEY")
+    names = ("DORY_NEBIUS_API_KEY",)
     k = next((os.environ[n].strip() for n in names if os.environ.get(n, "").strip()), "")
     if not k and (REPO / ".env").exists():
         for line in (REPO / ".env").read_text().splitlines():

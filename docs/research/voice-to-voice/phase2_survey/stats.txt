@@ -1,0 +1,42 @@
+{
+  "total": 80,
+  "peer_reviewed": 49,
+  "preprint_only": 31,
+  "sources": {
+    "arxiv": 80
+  },
+  "years": {
+    "2020": 1,
+    "2022": 5,
+    "2023": 9,
+    "2024": 18,
+    "2025": 31,
+    "2026": 16
+  },
+  "top_venues": {
+    "Interspeech 2025": 3,
+    "ICASSP 2026": 3,
+    "ICML 2023": 2,
+    "ICLR 2024": 2,
+    "ACL 2025": 2,
+    "ICLR 2025": 2,
+    "ICASSP (per OpenAlex)": 2,
+    "ASRU 2025": 2,
+    "ACL 2026": 2,
+    "Findings of EMNLP 2020": 1
+  },
+  "with_abstract": 80,
+  "with_pdf": 80,
+  "total_citations": 2839,
+  "avg_citations": 35.5,
+  "tags": {
+    "turn_taking": 13,
+    "e2e_s2s": 18,
+    "full_duplex": 14,
+    "streaming_asr": 11,
+    "thai_lowresource": 11,
+    "streaming_tts": 9,
+    "benchmark": 11,
+    "architecture_survey": 2
+  }
+}

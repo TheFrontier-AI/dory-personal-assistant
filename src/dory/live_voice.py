@@ -2299,10 +2299,10 @@ class LiveVoice:
             # the people this answer is for: whoever spoke just before it (and overlapped them)
             self._partners = set(self.recent_speakers())
             self._talkover.clear()
-            if self._latency_pending:
+            if self._latency_pending:  # same line as the web path: `grep voice_latency`
                 logger.info(
-                    "live: user audio ended -> first audio %.1fs",
-                    time.monotonic() - self._last_voice,
+                    "voice_latency path=discord e2e_ms=%d",
+                    round((time.monotonic() - self._last_voice) * 1000),
                 )
                 self._latency_pending = False
         self._awaiting_answer = False
