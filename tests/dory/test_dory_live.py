@@ -71,7 +71,7 @@ def test_live_firestore_store_and_gcs_archive():
     coll = f"dory_receipts_test_{token}"
     client = firestore.Client(project=s.gcp_project)
     store = FirestoreStore(client=client, collection=coll)
-    bucket = "meeting-scribe-hackathon-audio"
+    bucket = "dory-personal-assistant-audio"
     arch = ReceiptArchive(bucket, f"dory-receipts/test-{token}/", project=s.gcp_project)
     uri = None
     try:

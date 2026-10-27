@@ -796,6 +796,20 @@ def test_hub_has_language_toggle_with_safe_storage_and_english_default():
     assert "toLocaleString(locale()" in html
 
 
+def test_hub_sign_in_screen_is_plain_and_has_ways_out():
+    """No internal variable names or stale hosting claims; links home and to the center; the
+    language pill sits at the page's top right, not inside the left column."""
+    d, html = _page_dict_and_html()
+    shown = " ".join(v for e in d.values() for v in e.values())
+    assert "HUB_GOOGLE_CLIENT_ID" not in shown and "Google Cloud" not in shown
+    login = html.split('<div id="login" hidden>', 1)[1].split('<div id="app" hidden>', 1)[0]
+    for href in ('href="/"', 'href="/center"', 'href="/recorder"'):
+        assert href in login, href
+    pitch = login.split('<section class="pitch">', 1)[1].split("</section>", 1)[0]
+    assert "langsw" not in pitch and "langsw" in login
+    assert "#login > .langsw { position: absolute;" in html
+
+
 def test_activity_item_carries_currency(client, env):
     from meeting_scribe.hub import ActivityItem
 

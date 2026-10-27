@@ -23,15 +23,13 @@ from dory.qa import system_prompt, tool_files
 
 BKK = ZoneInfo("Asia/Bangkok")
 NOW = datetime(2026, 10, 14, 12, 0, tzinfo=BKK)
-RULES = (
-    "Google Cloud AI Builder Cup. Submit by 18 Oct 2026 23:59 ICT. Judging: Gen AI 40%, fit 25%."
-)
+RULES = "Bangkok AI Innovation Cup. Submit by 18 Oct 2026 23:59 ICT. Judging: Gen AI 40%, fit 25%."
 
 
 def extract_json(**over):
     d = {
-        "name": "AI Builder Cup",
-        "organizer": "Google Cloud",
+        "name": "AI Innovation Cup",
+        "organizer": "Example Foundation",
         "kind": "hackathon",
         "track": "Future of Work",
         "language": "en",
@@ -87,7 +85,7 @@ def added(repo, uid=STAFF, extra=None, **over):
 def test_add_extracts_and_saves_a_summary_and_checklist(repo):
     c = ctx_for(repo, client=FakeClient([text_resp(extract_json())]))
     r = c.contest_add(RULES)
-    assert r["status"] == "saved" and r["name"] == "AI Builder Cup" and r["open_items"] == 3
+    assert r["status"] == "saved" and r["name"] == "AI Innovation Cup" and r["open_items"] == 3
     assert r["deadlines"] == [{"label": "Final submission", "at": "2026-10-18T23:59+07:00"}]
     assert r["checklist"][0] == "- [ ] Demo video"
     assert "Gen AI technical merit 40%" in r["criteria"]
@@ -182,52 +180,56 @@ def test_only_the_owner_sees_it_by_default_and_a_room_shows_team_contests_only(r
     assert mine.contest_list()["count"] == 1
     room = ctx_for(repo, private=False)
     assert room.contest_list()["count"] == 0 and room.contest_list()["hidden_here"] == 1
-    assert room.contest_get("AI Builder")["status"] == "use_private_chat"
-    mine.contest_share("AI Builder", "team")
-    assert room.contest_list()["count"] == 1 and room.contest_get("AI Builder")["status"] == "ok"
-    assert ctx_for(repo, INTERN).contest_get("builder")["status"] == "ok"
+    assert room.contest_get("AI Innovation")["status"] == "use_private_chat"
+    mine.contest_share("AI Innovation", "team")
+    assert room.contest_list()["count"] == 1 and room.contest_get("AI Innovation")["status"] == "ok"
+    assert ctx_for(repo, INTERN).contest_get("innovation")["status"] == "ok"
 
 
 def test_share_with_superiors_a_person_private_and_not_by_a_stranger(repo):
     added(repo)
     me = ctx_for(repo)
-    assert me.contest_share("AI Builder", "superiors")["visibility"] == "normal"
-    assert ctx_for(repo, BOSS, outranked={STAFF}).contest_get("AI Builder")["status"] == "ok"
-    r = me.contest_share("AI Builder", "peer")
+    assert me.contest_share("AI Innovation", "superiors")["visibility"] == "normal"
+    assert ctx_for(repo, BOSS, outranked={STAFF}).contest_get("AI Innovation")["status"] == "ok"
+    r = me.contest_share("AI Innovation", "peer")
     assert (
         r["shared_with"] == ["Peer"]
-        and ctx_for(repo, PEER).contest_get("AI Builder")["status"] == "ok"
+        and ctx_for(repo, PEER).contest_get("AI Innovation")["status"] == "ok"
     )
-    assert me.contest_share("AI Builder", "nobody")["status"] == "person_not_found"
-    assert me.contest_share("AI Builder", "private")["shared_with"] == []
-    assert ctx_for(repo, PEER).contest_get("AI Builder")["status"] == "not_found"
-    assert ctx_for(repo, PEER).contest_share("AI Builder", "team")["status"] == "not_found"
+    assert me.contest_share("AI Innovation", "nobody")["status"] == "person_not_found"
+    assert me.contest_share("AI Innovation", "private")["shared_with"] == []
+    assert ctx_for(repo, PEER).contest_get("AI Innovation")["status"] == "not_found"
+    assert ctx_for(repo, PEER).contest_share("AI Innovation", "team")["status"] == "not_found"
 
 
 # ------------------------------------------------------------------ updates
 def test_mark_done_assign_add_deadline_and_link(repo):
     c0, c = added(repo)
-    r = c.contest_update("AI Builder", "mark_done", "demo")
+    r = c.contest_update("AI Innovation", "mark_done", "demo")
     assert r["status"] == "ok" and r["open_items"] == 2 and r["checklist"][0] == "- [x] Demo video"
-    assert c.contest_update("AI Builder", "mark_undone", "demo video")["open_items"] == 3
-    r = c.contest_update("AI Builder", "assign", "repo", "peer")
+    assert c.contest_update("AI Innovation", "mark_undone", "demo video")["open_items"] == 3
+    r = c.contest_update("AI Innovation", "assign", "repo", "peer")
     assert r["checklist"][1] == "- [ ] Repo link (Peer)"
-    assert c.contest_update("AI Builder", "assign", "deck", "me")["status"] == "ok"
-    assert c.contest_update("AI Builder", "assign", "d", "me")["status"] == "ambiguous"  # Demo/Deck
-    assert c.contest_update("AI Builder", "mark_done", "nothing")["status"] == "not_found"
-    assert c.contest_update("AI Builder", "add_deadline", "Finals", "2026-11-20")["status"] == "ok"
+    assert c.contest_update("AI Innovation", "assign", "deck", "me")["status"] == "ok"
+    assert (
+        c.contest_update("AI Innovation", "assign", "d", "me")["status"] == "ambiguous"
+    )  # Demo/Deck
+    assert c.contest_update("AI Innovation", "mark_done", "nothing")["status"] == "not_found"
+    assert (
+        c.contest_update("AI Innovation", "add_deadline", "Finals", "2026-11-20")["status"] == "ok"
+    )
     got = repo.get(GUILD, c0.id)
     assert any(d.label == "Finals" and d.at.startswith("2026-11-20T23:59") for d in got.deadlines)
-    assert c.contest_update("AI Builder", "add_deadline", "X", "someday")["status"] == "error"
-    c.contest_update("AI Builder", "add_deliverable", "Slides PDF", "2026-10-17")
-    c.contest_update("AI Builder", "add_requirement", "Open source")
-    c.contest_update("AI Builder", "add_tech", "BigQuery")
-    c.contest_update("AI Builder", "note", value="ask judges about quota")
+    assert c.contest_update("AI Innovation", "add_deadline", "X", "someday")["status"] == "error"
+    c.contest_update("AI Innovation", "add_deliverable", "Slides PDF", "2026-10-17")
+    c.contest_update("AI Innovation", "add_requirement", "Open source")
+    c.contest_update("AI Innovation", "add_tech", "BigQuery")
+    c.contest_update("AI Innovation", "note", value="ask judges about quota")
     got = repo.get(GUILD, c0.id)
     assert got.deliverables[-1].due.startswith("2026-10-17") and "Open source" in got.requirements
     assert "BigQuery" in got.suggested_tech and "quota" in got.notes
-    assert c.contest_update("AI Builder", "dance")["status"] == "error"
-    c.contest_update("AI Builder", "remove_deadline", "Finals")
+    assert c.contest_update("AI Innovation", "dance")["status"] == "error"
+    c.contest_update("AI Innovation", "remove_deadline", "Finals")
     assert [d.label for d in repo.get(GUILD, c0.id).deadlines] == ["Final submission"]
 
 
@@ -235,30 +237,34 @@ def test_link_idea_uses_the_ideas_visibility_result(repo):
     ideas = {"CCTV Watch": {"status": "ok", "title": "CCTV Watch", "markdown": "# CCTV Watch"}}
     c0, _ = added(repo)
     c = ctx_for(repo, idea_get=lambda t_: ideas.get(t_, {"status": "use_private_chat"}))
-    assert c.contest_update("AI Builder", "link_idea", value="CCTV Watch")["status"] == "ok"
+    assert c.contest_update("AI Innovation", "link_idea", value="CCTV Watch")["status"] == "ok"
     assert repo.get(GUILD, c0.id).linked_idea == "CCTV Watch"
-    assert c.contest_update("AI Builder", "link_idea", value="secret")["status"] == "idea_not_found"
+    assert (
+        c.contest_update("AI Innovation", "link_idea", value="secret")["status"] == "idea_not_found"
+    )
 
 
 def test_writes_need_owner_or_team_and_a_deliverable_owner_may_tick_their_own_item(repo):
     c0, owner = added(repo)
-    owner.contest_share("AI Builder", "team")
+    owner.contest_share("AI Innovation", "team")
     stranger = ctx_for(repo, PEER, "Peer")
-    assert stranger.contest_update("AI Builder", "mark_done", "demo")["status"] == "not_allowed"
-    assert stranger.contest_update("AI Builder", "note", value="x")["status"] == "not_allowed"
-    owner.contest_update("AI Builder", "assign", "demo", "peer")
-    assert stranger.contest_update("AI Builder", "mark_done", "demo")["status"] == "ok"
-    assert stranger.contest_update("AI Builder", "mark_done", "repo")["status"] == "not_allowed"
-    assert stranger.contest_update("AI Builder", "add_team", value="me")["status"] == "not_allowed"
-    r = owner.contest_update("AI Builder", "add_team", value="peer")
+    assert stranger.contest_update("AI Innovation", "mark_done", "demo")["status"] == "not_allowed"
+    assert stranger.contest_update("AI Innovation", "note", value="x")["status"] == "not_allowed"
+    owner.contest_update("AI Innovation", "assign", "demo", "peer")
+    assert stranger.contest_update("AI Innovation", "mark_done", "demo")["status"] == "ok"
+    assert stranger.contest_update("AI Innovation", "mark_done", "repo")["status"] == "not_allowed"
+    assert (
+        stranger.contest_update("AI Innovation", "add_team", value="me")["status"] == "not_allowed"
+    )
+    r = owner.contest_update("AI Innovation", "add_team", value="peer")
     assert "reminders only if" in r["note"]
     assert repo.get(GUILD, c0.id).team_user_ids == [PEER]
     # the team can now edit
     assert (
-        stranger.contest_update("AI Builder", "add_requirement", "Video under 3 min")["status"]
+        stranger.contest_update("AI Innovation", "add_requirement", "Video under 3 min")["status"]
         == "ok"
     )
-    owner.contest_update("AI Builder", "remove_team", value="peer")
+    owner.contest_update("AI Innovation", "remove_team", value="peer")
     assert repo.get(GUILD, c0.id).team_user_ids == []
 
 
@@ -274,8 +280,8 @@ def test_per_user_cap(repo):
 # ------------------------------------------------------------------ plan
 def test_plan_has_milestones_before_the_deadline_with_owners_and_a_buffer(repo):
     c0, c = added(repo)
-    c.contest_update("AI Builder", "assign", "demo", "peer")
-    r = c.contest_plan("AI Builder")
+    c.contest_update("AI Innovation", "assign", "demo", "peer")
+    r = c.contest_plan("AI Innovation")
     md = r["markdown"]
     assert r["status"] == "ok" and "Final submission" in md and "4 days left" in md
     days = [line.split("**")[1] for line in md.splitlines() if line.startswith("- **")]
@@ -289,12 +295,12 @@ def test_plan_has_milestones_before_the_deadline_with_owners_and_a_buffer(repo):
 
 def test_plan_is_deterministic_and_uses_team_in_turn_and_skips_done_items(repo):
     c0, c = added(repo)
-    c.contest_update("AI Builder", "add_team", value="peer")
-    c.contest_update("AI Builder", "mark_done", "deck")
-    md = c.contest_plan("AI Builder")["markdown"]
+    c.contest_update("AI Innovation", "add_team", value="peer")
+    c.contest_update("AI Innovation", "mark_done", "deck")
+    md = c.contest_plan("AI Innovation")["markdown"]
     assert "Deck" not in md and "(Peer)" in md and "(Somchai)" in md
     assert "(unassigned)" in ct.build_plan(c0, NOW, BKK, "en")  # nobody to give the items to
-    assert md == c.contest_plan("AI Builder")["markdown"]
+    assert md == c.contest_plan("AI Innovation")["markdown"]
 
 
 def test_plan_moves_milestones_to_the_teams_free_days():
@@ -334,14 +340,14 @@ def test_plan_for_a_past_or_missing_deadline_and_when_due_today():
 
 def test_plan_pdf_and_long_plans_are_attached(repo):
     c0, c = added(repo)
-    r = c.contest_plan("AI Builder", pdf=True)
+    r = c.contest_plan("AI Innovation", pdf=True)
     assert r["attached_file"].endswith("-plan.pdf") and c.outbox[0][1][:5] == b"%PDF-"
-    c.contest_update("AI Builder", "add_deliverable", "x" * 190)
+    c.contest_update("AI Innovation", "add_deliverable", "x" * 190)
     for i in range(40):
         c.contest_update(
-            "AI Builder", "add_deliverable", f"Extra deliverable number {i} " + "y" * 60
+            "AI Innovation", "add_deliverable", f"Extra deliverable number {i} " + "y" * 60
         )
-    r = c.contest_plan("AI Builder")
+    r = c.contest_plan("AI Innovation")
     assert "markdown" not in r and "markdown_summary" in r and r["attached_file"].endswith(".md")
     assert c.outbox[-1][0].endswith("-plan.md")
 
@@ -355,7 +361,7 @@ def test_plan_asks_the_free_time_callback_for_the_team_and_survives_its_failure(
 
     c0, _ = added(repo)
     c = ctx_for(repo, free_days=free)
-    assert c.contest_plan("AI Builder")["status"] == "ok"
+    assert c.contest_plan("AI Innovation")["status"] == "ok"
     assert calls == [([STAFF], date(2026, 10, 14), date(2026, 10, 18))]
 
 
@@ -392,7 +398,7 @@ def test_judge_output_shape_label_and_total(repo):
     c0, _ = added(repo)
     crit = [(k.name, s) for k, s in zip(c0.judging_criteria, (8, 6, 7, 5), strict=True)]
     c = ctx_for(repo, client=FakeClient([text_resp(judge_json(crit))]))
-    r = c.contest_judge("AI Builder", text="Dory is a Discord teammate that ...")
+    r = c.contest_judge("AI Innovation", text="Dory is a Discord teammate that ...")
     assert r["status"] == "ok" and r["label"] == "Dory's estimate" and r["criteria_from_contest"]
     assert r["total_out_of_10"] == round((8 * 40 + 6 * 25 + 7 * 25 + 5 * 10) / 100, 1)
     md = r["markdown"]
@@ -408,14 +414,14 @@ def test_judge_output_shape_label_and_total(repo):
     )  # the project text reaches the model
     th = ctx_for(repo, client=FakeClient([text_resp(judge_json(crit))]))
     th.lang = "th"
-    assert "ประมาณการโดยดอรี่" in th.contest_judge("AI Builder", text="x")["label"]
+    assert "ประมาณการโดยดอรี่" in th.contest_judge("AI Innovation", text="x")["label"]
 
 
 def test_judge_without_criteria_uses_generic_ones_and_says_so(repo):
     c0, _ = added(repo, judging_criteria=[])
     names = [en for en, _th in ct.DEFAULT_CRITERIA]
     c = ctx_for(repo, client=FakeClient([text_resp(judge_json([(n, 6) for n in names]))]))
-    r = c.contest_judge("AI Builder", text="x")
+    r = c.contest_judge("AI Innovation", text="x")
     assert r["criteria_from_contest"] is False and r["total_out_of_10"] == 6.0
     assert "generic" in r["markdown"]
 
@@ -432,13 +438,13 @@ def test_judge_reads_the_idea_through_the_ideas_visibility_or_asks(repo):
     c = ctx_for(
         repo, client=FakeClient([text_resp(judge_json([(n, 5) for n in names]))]), idea_get=idea
     )
-    assert c.contest_judge("AI Builder")["status"] == "needs_project"
-    r = c.contest_judge("AI Builder", idea="cctv")
+    assert c.contest_judge("AI Innovation")["status"] == "needs_project"
+    r = c.contest_judge("AI Innovation", idea="cctv")
     assert r["project"] == "CCTV Watch" and seen == ["cctv"]
     blocked = ctx_for(
         repo, client=FakeClient([]), idea_get=lambda t_: {"status": "use_private_chat"}
     )
-    assert blocked.contest_judge("AI Builder", idea="secret")["status"] == "idea_unavailable"
+    assert blocked.contest_judge("AI Innovation", idea="secret")["status"] == "idea_unavailable"
 
 
 # ------------------------------------------------------------------ fit / pitch
@@ -453,12 +459,12 @@ def test_fit_tech_covers_every_suggested_technology_once_in_order(repo):
         ]}
     )  # fmt: skip
     c = ctx_for(repo, client=FakeClient([text_resp(reply)]))
-    r = c.contest_fit_tech("AI Builder", "Discord bot on Cloud Run with Firestore")
+    r = c.contest_fit_tech("AI Innovation", "Discord bot on Cloud Run with Firestore")
     assert r["counts"] == {"used": 1, "could_use_cheaply": 1, "not_relevant": 1}
     md = r["markdown"]
     assert md.index("Already used") < md.index("Could use cheaply") < md.index("Not relevant")
     assert "**Firestore**: stores state" in md and "Invented" not in md
-    assert c.contest_fit_tech("AI Builder", " ")["status"] == "needs_project"
+    assert c.contest_fit_tech("AI Innovation", " ")["status"] == "needs_project"
     added(repo, name="Bare Cup", suggested_tech=[])
     assert c.contest_fit_tech("Bare Cup", "x")["status"] == "no_tech"
 
@@ -478,7 +484,7 @@ def test_scene_durations_add_up_exactly():
 
 def test_pitch_video_script_is_timed_and_in_the_contest_language(repo):
     c0, owner = added(repo)
-    owner.contest_update("AI Builder", "note", value="Dory: Discord teammate for Thai SMEs")
+    owner.contest_update("AI Innovation", "note", value="Dory: Discord teammate for Thai SMEs")
     script = json.dumps(
         {"scenes": [
             {"title": "Problem", "visual": "chaos", "narration": "Teams drown in chat", "seconds": 10},
@@ -487,7 +493,7 @@ def test_pitch_video_script_is_timed_and_in_the_contest_language(repo):
         ]}
     )  # fmt: skip
     c = ctx_for(repo, client=FakeClient([text_resp(script)]))
-    r = c.contest_pitch("AI Builder", "video_script", 90)
+    r = c.contest_pitch("AI Innovation", "video_script", 90)
     assert r["status"] == "ok" and r["language"] == "en" and "(1:30)" in r["markdown"]
     rows = [
         ln for ln in r["markdown"].splitlines() if ln.startswith("| 0:") or ln.startswith("| 1:")
@@ -499,7 +505,7 @@ def test_pitch_video_script_is_timed_and_in_the_contest_language(repo):
     )
     assert (
         "Write in English" in c.client.models.calls[0][1]
-        and "AI Builder Cup" in c.client.models.calls[0][1]
+        and "AI Innovation Cup" in c.client.models.calls[0][1]
     )
 
 
@@ -510,19 +516,19 @@ def test_pitch_other_kinds_language_override_and_errors(repo):
         client=FakeClient([text_resp("# Deck\n- slide 1"), text_resp("Pitch"), text_resp("Text")]),
     )
     assert (
-        c.contest_pitch("AI Builder", "deck", 0)["status"] == "needs_project"
+        c.contest_pitch("AI Innovation", "deck", 0)["status"] == "needs_project"
     )  # nothing to base it on
-    owner.contest_update("AI Builder", "note", value="Dory is a teammate")
-    c.contest_update("AI Builder", "note", value="Dory is a teammate")
-    assert c.contest_pitch("AI Builder", "deck_outline")["markdown"].startswith("# Deck")
-    r = c.contest_pitch("AI Builder", "elevator", 30, "th")
+    owner.contest_update("AI Innovation", "note", value="Dory is a teammate")
+    c.contest_update("AI Innovation", "note", value="Dory is a teammate")
+    assert c.contest_pitch("AI Innovation", "deck_outline")["markdown"].startswith("# Deck")
+    r = c.contest_pitch("AI Innovation", "elevator", 30, "th")
     assert (
         r["language"] == "th"
         and "Write in Thai" in c.client.models.calls[-1][1]
         and "about 30 seconds" in c.client.models.calls[-1][1]
     )
-    assert c.contest_pitch("AI Builder", "submission", 0)["kind"] == "submission_text"
-    assert c.contest_pitch("AI Builder", "haiku")["status"] == "error"
+    assert c.contest_pitch("AI Innovation", "submission", 0)["kind"] == "submission_text"
+    assert c.contest_pitch("AI Innovation", "haiku")["status"] == "error"
 
 
 # ------------------------------------------------------------------ reminders
@@ -798,10 +804,10 @@ def test_rules_pasted_in_a_room_stay_usable_there_by_their_owner_only(repo):
     c = ctx_for(repo, private=False, room_id=77, client=FakeClient([text_resp(extract_json())]))
     r = c.contest_add(RULES)
     assert r["status"] == "saved" and repo.get(GUILD, r["id"]).room_id == 77
-    assert c.contest_get("AI Builder")["status"] == "ok"
+    assert c.contest_get("AI Innovation")["status"] == "ok"
     # another room, or another person in the same room, still sees nothing
     assert (
-        ctx_for(repo, private=False, room_id=78).contest_get("AI Builder")["status"]
+        ctx_for(repo, private=False, room_id=78).contest_get("AI Innovation")["status"]
         == "use_private_chat"
     )
     assert ctx_for(repo, PEER, private=False, room_id=77).contest_list()["count"] == 0

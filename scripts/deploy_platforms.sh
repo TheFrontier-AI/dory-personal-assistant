@@ -26,7 +26,7 @@ for arg in "$@"; do
   esac
 done
 
-PROJECT="${GCP_PROJECT:-meeting-scribe-hackathon}"
+PROJECT="${GCP_PROJECT:-dory-personal-assistant}"
 REGION="${GCP_REGION:-asia-southeast1}"
 SERVICE="dory-platforms"
 SA="dory-bot@$PROJECT.iam.gserviceaccount.com"

@@ -398,6 +398,17 @@ def test_workspaces_list(w):
     )
 
 
+def test_workspaces_show_the_discord_server_as_the_bot_last_synced_it(w):
+    # the bot renames / re-icons the guild after it was linked: the website shows it at once
+    w.guilds.upsert_guild(1000, name="Renamed Server", icon_url="https://cdn/i.png", channels=[])
+    r = w.client.get("/api/center/orgs/org_t/workspaces", headers=H["mem"]).json()
+    d = next(x for x in r if x["id"] == "discord-1000")
+    assert d["name"] == "Renamed Server" and d["icon_url"] == "https://cdn/i.png"
+    # a guild the bot never synced keeps the stored name
+    d2 = next(x for x in r if x["id"] == "discord-2000")
+    assert d2["name"]
+
+
 def test_link_discord_with_code(w):
     c = 3000
     w.guilds.upsert_guild(c, name="New Guild", icon_url="i", channels=[], installed=True)
@@ -904,9 +915,9 @@ def test_connectors_status_cards(w):
     }
     assert cards["discord"]["status"] == "available" and cards["discord"]["connected"] == 2
     assert cards["slack"]["enabled"] and cards["clickup"]["configured"]
-    assert {cards[p]["status"] for p in ("google_drive", "gmail", "google_calendar")} == {
-        "coming_soon"
-    }
+    assert {cards[p]["status"] for p in ("google_drive", "gmail")} == {"coming_soon"}
+    # Google Calendar is real (per-member OAuth): off until configured, never "coming soon"
+    assert cards["google_calendar"]["status"] == "not_configured"
     # strangers get no counts for an org that is not theirs
     cards = {
         c["platform"]: c
@@ -1320,6 +1331,31 @@ def test_overview_reports_org_platforms_and_how_many_members_linked_accounts(w):
     assert ov["members_linked"] == 1
 
 
+def test_google_calendar_is_a_working_connector_not_coming_soon(w, monkeypatch):
+    """Per-member Google OAuth: available once configured, "connected" for whoever connected
+    their own calendar (the Integrations card and Overview chip agree)."""
+    g = SimpleNamespace(
+        enabled=lambda: True, is_connected=lambda org_id, email: email == "boss@example.com"
+    )
+    monkeypatch.setattr(center, "get_google_oauth", lambda orgs: g)
+    url = f"/api/center/orgs/{w.org.id}/overview"
+    ov = w.client.get(url, headers=H["boss"]).json()["platforms"]
+    assert "google_calendar" in ov["available"] and "google_calendar" not in ov["coming_soon"]
+    assert ov["connected"] == ["discord", "google_calendar"]
+    assert (
+        "google_calendar"
+        not in w.client.get(url, headers=H["mem"]).json()["platforms"]["connected"]
+    )
+    cards = {
+        c["platform"]: c
+        for c in w.client.get("/api/center/connectors?org=org_t", headers=H["boss"]).json()
+    }
+    assert (
+        cards["google_calendar"]["status"] == "available"
+        and cards["google_calendar"]["connected"] == 1
+    )
+
+
 def test_web_chat_tells_the_ai_who_is_talking(w):
     w.client.put("/api/center/me/profile", json={"name": "Boss Lee"}, headers=H["boss"])
     w.client.put(
@@ -1546,6 +1582,21 @@ def test_web_voice_parser_drops_silence_and_same_language_translations():
     )
     assert quiet.text == "" and quiet.language == ""
     assert calls["flac"] == 1
+
+
+def test_my_profile_refuses_a_blank_first_or_last_name_but_not_a_partial_save(w):
+    """My profile requires both names: a blank one is refused (422), a save that leaves them out
+    is a partial update. The admin's "Edit profile" dialog may still leave them blank."""
+    for blank in ({"first_name": "  "}, {"last_name": ""}):
+        r = w.client.put("/api/center/me/profile", json=blank, headers=H["adm"])
+        assert r.status_code == 422, blank
+    ok = {"first_name": "Adam", "last_name": "Smith"}
+    assert w.client.put("/api/center/me/profile", json=ok, headers=H["adm"]).status_code == 200
+    r = w.client.put("/api/center/me/profile", json={"title": "CTO"}, headers=H["adm"])
+    assert r.status_code == 200
+    url = f"/api/center/orgs/{w.org.id}/members/adm@example.com/profile"
+    blank = {"first_name": "", "last_name": "", "title": "CTO"}
+    assert w.client.put(url, json=blank, headers=H["boss"]).status_code == 200
 
 
 # ------------------------------------------------------------------ directory & org chart
@@ -2798,6 +2849,18 @@ def items_text(hist):
 
 
 # ------------------------------------------------------------------ no short caps on what people write
+def test_company_values_are_not_cut_to_eight_short_ones(w):
+    vals = [f"Value {i}: care for every customer,   every single day" for i in range(20)]
+    r = w.client.put("/api/center/orgs/org_t", json={"profile": {"values": vals}}, headers=H["adm"])
+    assert r.status_code == 200, r.text
+    assert r.json()["profile"]["values"] == [" ".join(v.split()) for v in vals]
+    # only the 1 MiB guard: one value <= SHORT_TEXT, all of them together <= LONG_TEXT
+    from dory.orgs import LONG_TEXT, SHORT_TEXT
+
+    org = w.orgs.set_company_profile("org_t", values=["x" * 5000] * 100 + ["  ", "ok"])
+    assert org.profile.values == ["x" * SHORT_TEXT] * (LONG_TEXT // SHORT_TEXT)
+
+
 def test_long_profile_and_company_text_is_kept_whole_with_line_breaks(w):
     """Owner's rule (18 Oct 2026): never cut what people write about themselves or the
     company. A 20,000-character job description with paragraphs comes back intact."""
@@ -3204,6 +3267,13 @@ WEB_UI_PARITY = {
     "write about a person": "note_about_person",
     "request a plan / seats": "request_plan",
     "connect Google Calendar / Discord / Slack": "connect_link",
+    "disconnect a workspace": "disconnect_workspace",
+    "share between workspaces (the sharing matrix)": "set_workspace_sharing",
+    "link a Discord server with a /setup code": "link_discord_server",
+    "link my LINE / Telegram / WhatsApp / Slack account": "link_my_chat_account",
+    "attach a LINE / Telegram / WhatsApp bot": "attach_chat_bot",
+    "ask Dory what a person does (observe)": "observe_person",
+    "rebuild the document search index": "rebuild_document_index",
 }
 
 
@@ -3261,7 +3331,61 @@ def test_every_web_ui_action_has_a_dory_tool_that_works(w, monkeypatch):
         "connect_link",
         "update_my_profile",
         "read_document",
-    } <= mt and "remove_member" not in mt
+        "link_my_chat_account",
+    } <= mt and not {"remove_member", "attach_chat_bot", "disconnect_workspace"} & mt
+
+
+def test_workspace_code_people_and_index_tools_do_what_the_buttons_do(w, monkeypatch):
+    from dory.identity_links import IdentityLinks
+    from dory.people_directory import PeopleBook
+
+    book = PeopleBook(w.docs)
+    monkeypatch.setattr(center, "get_people", lambda: book)
+    monkeypatch.setattr(center, "get_library", lambda: w.lib)
+    monkeypatch.setattr(
+        center, "get_observer", lambda: lambda prompt: {"role": "Handles quotes", "works_with": []}
+    )
+    w.client.post("/api/center/orgs/org_t/chat", json={"message": "hi"}, headers=H["boss"])
+    tools = {getattr(t, "__name__", ""): t for t in w.asks[-1][1]["extra_tools"]}
+    # the sharing matrix: one direction, the whole set of categories; "none" switches it off
+    r = tools["set_workspace_sharing"]("Cafe A", "discord-2000", "wiki, places")
+    assert r["status"] == "ok", r
+    links = [(s.from_workspace, s.to_workspace, s.categories) for s in w.orgs.get("org_t").sharing]
+    assert links == [("discord-1000", "discord-2000", ["wiki", "places"])]
+    assert "error" in tools["set_workspace_sharing"]("Cafe A", "Cafe B", "chat")  # never shared
+    assert "workspaces" in tools["set_workspace_sharing"]("Cafe Z", "Cafe B", "wiki")
+    assert tools["set_workspace_sharing"]("Cafe A", "Cafe B", "none")["status"] == "ok"
+    assert w.orgs.get("org_t").sharing == []
+    # a Discord server's /setup code
+    w.guilds.upsert_guild(3000, name="New Guild", icon_url="i", channels=[], installed=True)
+    code = w.guilds.create_link_code(3000, 1, "u")
+    assert tools["link_discord_server"](code)["workspace"] == "New Guild"
+    assert w.orgs.org_of_guild(3000).id == "org_t"
+    assert "error" in tools["link_discord_server"](code)  # used up
+    assert "error" in tools["link_discord_server"]("short")
+    # codes the person types into a chat app: their own account, the company's bot
+    mine = tools["link_my_chat_account"]("Telegram")
+    assert f"link {mine['code']}" in mine["say"] and mine["kind"] == "identity"
+    IdentityLinks(w.orgs).redeem(mine["code"], "telegram", "8629001234", "bot1")
+    assert w.orgs.member_by_identity("org_t", "telegram", "8629001234") is not None
+    bot = tools["attach_chat_bot"]("line")
+    assert bot["kind"] == "attach" and f"link {bot['code']}" in bot["say"]
+    assert "error" in tools["attach_chat_bot"]("discord")  # Discord uses /setup
+    # what a person seems to do, from their own messages
+    note(w, A, PUBLIC, 1, "quote for customer A sent", author="Ann", day="2026-10-20")
+    assert tools["scan_platform_people"]()["people"] == 1
+    r = tools["observe_person"]("Ann")
+    assert r.get("person") == "Ann" and r["observed"]["role"] == "Handles quotes", r
+    assert "error" in tools["observe_person"]("Nobody")
+    # the document search index
+    upload(w, "adm")
+    assert tools["rebuild_document_index"]() == {"status": "ok", "indexed": 1}
+    # disconnecting is destructive: two steps
+    first = tools["disconnect_workspace"]("Cafe B")
+    assert "needs_confirmation" in first and w.orgs.org_of_guild(B).id == "org_t"
+    r = tools["disconnect_workspace"]("Cafe B", confirm=True)
+    assert r["status"] == "disconnected" and w.orgs.org_of_guild(B) is None
+    assert "error" in tools["disconnect_workspace"]("web", confirm=True)
 
 
 def test_command_center_tools_also_work_inside_the_agents_event_loop(w, monkeypatch):

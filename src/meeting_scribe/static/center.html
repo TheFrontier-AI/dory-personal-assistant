@@ -105,10 +105,16 @@ textarea { resize: vertical; min-height: 80px; }
 #me-av { width: 42px; height: 42px; font-size: 15px; background: var(--indigo-2); }
 #side #signout { width: 100%; }
 #mainwrap { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; }
-/* the pale coral edges sit under the last card of every page, never behind text */
-#mainwrap { background: url("/static/dory/coral-edge-left.svg") left bottom / auto 190px no-repeat, url("/static/dory/coral-edge-right.svg") right bottom / auto 190px no-repeat;
-  background-origin: content-box; }
-#mainwrap:has(.chatpage) { background: none; }
+/* the pale coral frames the whole page area on every view and at every scroll position: a fixed layer from the
+   sidebar to the docked panel, both edges rising from the bottom corners plus a reef along the bottom. It sits
+   under every card (cards are opaque), so words on a card never sit on it. */
+#mainwrap { position: relative; isolation: isolate; }
+#mainwrap::before { content: ""; position: fixed; z-index: -1; left: 264px; right: 0; bottom: 0; height: min(64vh, 620px); pointer-events: none;
+  background: url("/static/dory/coral-edge-left.svg") left bottom / auto 100% no-repeat, url("/static/dory/coral-edge-right.svg") right bottom / auto 100% no-repeat,
+    url("/static/dory/coral-scene-light.svg") center bottom / min(1200px, 100%) auto no-repeat; }
+@media (min-width: 1200px) { body:has(#panel.open) #mainwrap::before { right: var(--panel-w); } }
+@media (max-width: 720px) { #mainwrap::before { left: 0; height: 38vh; } }
+#mainwrap:has(.chatpage)::before { display: none; }
 #topbar { position: sticky; top: 0; z-index: 30; min-height: var(--top-h); display: flex; align-items: center; gap: 12px; padding: 12px 24px 12px 40px;
   background: var(--card); border-bottom: 1px solid var(--mist-200); }
 #topbar #burger, #topbar .t { display: none; }
@@ -156,7 +162,7 @@ ol.steps li.done::before { content: "\2713"; background: var(--ok-bg); color: va
   transition: background .15s, color .15s, border-color .15s; }
 .tabs button:hover { border-color: var(--lavender); color: var(--indigo); }
 .tabs button[aria-selected=true] { background: var(--indigo); color: var(--on-accent); border-color: var(--indigo); font-weight: 600; }
-.ktabs { display: inline-flex; gap: 4px; padding: 4px; border-radius: 12px; background: var(--bg-2); align-self: flex-start; max-width: 100%; }
+.ktabs { display: inline-flex; flex-wrap: wrap; gap: 4px; padding: 4px; border-radius: 12px; background: var(--bg-2); align-self: flex-start; max-width: 100%; }
 .ktabs button { background: transparent; border: 0; border-radius: 9px; padding: 7px 16px; min-height: 38px; font-size: 15px; font-weight: 500; color: var(--muted); white-space: nowrap;
   display: inline-flex; align-items: center; gap: 8px; transition: background .15s, color .15s, box-shadow .15s; }
 .ktabs button:hover { color: var(--indigo); }
@@ -313,8 +319,11 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 #panel .card { margin: 0; }
 
 /* platforms, identities */
-.plat.line { background: #06C755; } .plat.google { background: #fff; color: var(--ink); border: 1px solid var(--line); }
 .plat.sm { width: 30px; height: 30px; border-radius: 9px; font-size: 13px; }
+/* a connected server: its own icon, with the platform's icon as a small badge at the corner */
+.plat.srv { position: relative; padding: 0; background: var(--mist-100, #EEF2FB); }
+.plat.srv > img { width: 100%; height: 100%; border-radius: inherit; object-fit: cover; display: block; }
+.plat.srv > .plat { position: absolute; right: -6px; bottom: -6px; width: 20px; height: 20px; border-radius: 6px; font-size: 10px; box-shadow: 0 0 0 2px var(--card); }
 .pchips { display: flex; flex-wrap: wrap; gap: 8px; }
 .pchip { display: inline-flex; align-items: center; gap: 8px; padding: 5px 12px 5px 6px; border-radius: 99px; border: 1px solid var(--line); background: #fff; font-size: 14px; font-weight: 500; color: var(--ink); text-decoration: none; }
 .pchip.ok { border-color: #BFE3CF; background: #F3FBF6; }
@@ -342,7 +351,10 @@ input[readonly] { background: var(--bg-2); color: var(--muted); }
 .wsgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(250px, 1fr)); gap: 16px; }
 .wsgrid > .card { margin: 0; }
 .plat { width: 40px; height: 40px; border-radius: 12px; display: grid; place-items: center; color: #fff; font-weight: 700; flex: none; }
-.plat.discord { background: #5865F2; } .plat.google_calendar, .plat.google { background: #1A73E8; } .plat.telegram { background: #229ED9; } .plat.whatsapp { background: #25D366; } .plat.slack { background: #4A154B; } .plat.clickup { background: #7B68EE; } .plat.web { background: var(--indigo-2); } .plat.soon { background: var(--faint); }
+/* each platform's official app icon (static/dory/brands, sources in SOURCES.md); the web workspace is Dory herself */
+.plat.brand { background: none; padding: 0; } .plat.brand, .plat.web { display: block; } /* a grid track would grow to the image's own size */
+.plat.brand > img, .plat.web > img { width: 100%; height: 100%; display: block; }
+.plat.web { background: var(--ocean-800); border-radius: 50%; overflow: hidden; } .plat.web > img { object-fit: cover; } .plat.soon { background: var(--faint); }
 .hd { display: flex; gap: 12px; align-items: center; min-width: 0; }
 .hd > div { min-width: 0; overflow-wrap: anywhere; }
 .matrix td, .matrix th { text-align: center; }
@@ -576,10 +588,13 @@ input[type=datetime-local]:focus { outline: none; border-color: var(--indigo-2);
 @supports not ((backdrop-filter: blur(1px)) or (-webkit-backdrop-filter: blur(1px))) { .call .speech, .call .speech::after { background: rgba(16, 32, 68, .86); } }
 /* company profile: the org header, one card per section (icon tile, title, its action), the collapsed "Dory & systems" */
 .card.hero { flex-direction: row; flex-wrap: wrap; gap: 18px 24px; align-items: flex-start; container-type: inline-size; }
-/* pale coral at the card's right edge: its own column, so it never sits behind text; gone when the card is narrow */
-.hero .hcoral { flex: 0 0 120px; align-self: stretch; min-height: 120px; margin: -24px -28px -24px -8px; border-radius: 0 16px 16px 0;
-  background: url("/static/dory/coral-edge-right.svg") right bottom / contain no-repeat; }
-@container (max-width: 680px) { .hero .hcoral { display: none; } }
+/* pale coral across the whole card: the right edge at full height and a reef along the bottom, behind the card's
+   content (the coral is pale enough that muted text on it stays above 4.5:1) */
+.card.hero { position: relative; overflow: hidden; }
+.card.hero > :not(.hcoral) { position: relative; z-index: 1; }
+.hero .hcoral { position: absolute; inset: 0; z-index: 0; pointer-events: none;
+  background: url("/static/dory/coral-edge-right.svg") right bottom / auto 112% no-repeat, url("/static/dory/coral-scene-light.svg") center bottom / 100% auto no-repeat; }
+@container (max-width: 680px) { .hero .hcoral { background-size: auto 46%, 100% auto; } } /* a tall phone card: coral low, words clear */
 .hero .logo { width: 88px; height: 88px; border-radius: 20px; flex: none; object-fit: cover; background: #fff; border: 1px solid var(--mist-200); }
 .hero .lettermark { display: grid; place-items: center; font-size: 32px; font-weight: 700; color: #fff; border: 0; background: var(--indigo-2); }
 .hero .hx { flex: 1 1 240px; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
@@ -753,15 +768,16 @@ details.sys > .inner { padding-top: 12px; }
 @media (max-width: 900px) { #login { grid-template-columns: 1fr; gap: 28px; align-items: start; padding: 32px 16px 40px; } #login .panel { place-items: start; } #login .box { max-width: 480px; } }
 @media (max-width: 720px) {
   #app { flex-direction: column; }
-  #side { position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; height: auto; width: min(290px, 86%); transform: translateX(-102%); transition: transform .2s var(--ease); }
-  body.nav-open #side { transform: none; box-shadow: var(--shadow-lg); }
+  #side { position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; height: auto; width: min(290px, 86%); transform: translateX(-102%); visibility: hidden; transition: transform .2s var(--ease), visibility 0s .2s; }
+  body.nav-open #side { transform: none; visibility: visible; transition: transform .2s var(--ease); box-shadow: var(--shadow-lg); }
   body.nav-open::after { content: ""; position: fixed; inset: 0; background: rgba(27, 31, 59, .4); z-index: 45; }
   #topbar { min-height: 60px; padding: 8px 16px; color: var(--indigo); }
   #topbar #burger { display: grid; place-items: center; background: #fff; border: 1px solid var(--color-border-control); color: var(--indigo); border-radius: 10px; min-height: 44px; min-width: 44px; font-size: 18px; }
   #topbar .t { display: block; flex: 1; font-weight: 600; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
   #topbar .qs { display: none; } /* phones ask Dory in the chat itself */
   #mainwrap { background: none; }
-  #content { padding: 16px 16px 40px; }
+  #content { padding: 16px 16px 96px; }
+  body:has(#content :is(input, textarea, select):focus) #fab { display: none; }
   #content > h1 { font-size: 24px; margin-bottom: 16px; }
   #content > .sub { font-size: 15px; margin-bottom: 18px; }
   .card { padding: 16px; }
@@ -842,9 +858,9 @@ details.sys > .inner { padding-top: 12px; }
 .cal-legend .cal-chip { font-size: 11px; }
 @media (max-width: 720px) { .cal-cell { min-height: 64px; padding: 4px; } .cal-cell .cal-chip { font-size: 0; padding: 0; height: 6px; border-radius: 3px; border-left: 0; } .cal-cell .cal-chip b { display: none; } .cal-cell .more { font-size: 10px; } .cal-week { grid-template-columns: 1fr; } .wk-col { min-height: 0; } .board { grid-template-columns: 1fr; } }
 /* everyone on platforms */
-.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(290px, 1fr)); gap: 14px; margin-top: 12px; }
-.pcard { border: 1px solid var(--line-soft); border-radius: 14px; background: #fff; padding: 14px; display: flex; flex-direction: column; gap: 10px; }
-.pcard.hid { opacity: .6; }
+.pgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(min(290px, 100%), 1fr)); gap: 14px; margin-top: 12px; }
+.dcard { border: 1px solid var(--line-soft); border-radius: 14px; background: #fff; padding: 14px; display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.dcard.hid { opacity: .6; }
 .phd { display: flex; gap: 10px; align-items: flex-start; }
 .pav { width: 40px; height: 40px; border-radius: 50%; display: grid; place-items: center; font-weight: 700; color: #fff; background: hsl(var(--h, 250) 55% 55%); flex: none; }
 .pwho { flex: 1; min-width: 0; }
@@ -854,7 +870,10 @@ details.sys > .inner { padding-top: 12px; }
 .pobs h4 { font-size: 13px; margin: 0; }
 .pdl { display: grid; grid-template-columns: auto 1fr; gap: 2px 10px; font-size: 13px; margin: 6px 0; }
 .pdl dt { color: var(--muted); } .pdl dd { margin: 0; }
-.pact { display: flex; justify-content: flex-end; }
+.pact { display: flex; justify-content: flex-end; gap: 8px; flex-wrap: wrap; }
+/* a directory card on a narrow column: the badges go under the name instead of past the card's edge */
+.dcard:not(.poscard) .phd { display: grid; grid-template-columns: auto minmax(0, 1fr); }
+.dcard:not(.poscard) .pbadges { grid-column: 2; justify-content: flex-start; }
 .chk { display: flex; align-items: center; gap: 6px; font-size: 14px; }
 /* document groups */
 .gpills { display: flex; gap: 8px; flex-wrap: wrap; margin: 6px 0 12px; }
@@ -932,6 +951,11 @@ textarea.grow { field-sizing: content; min-height: 5.5em; max-height: 60vh; resi
 @media (max-width: 640px) { .viewer { padding: 0; } .vbar, .vbody { border-radius: 0; } }
 /* invite links */
 .invlist { display: grid; gap: 10px; margin-top: 8px; }
+/* Linked accounts (Integrations): one grid per row, so the account and "Not linked" sit in the same column */
+.larow { display: grid; grid-template-columns: auto 6.5em max-content minmax(0, 1fr); gap: 8px 12px; align-items: center; padding: 6px 0; }
+.larow > :nth-child(4) { justify-self: end; }
+.laact { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; justify-content: flex-end; }
+@media (max-width: 720px) { .larow { grid-template-columns: auto minmax(0, 1fr); } .larow > :nth-child(n+3) { grid-column: 2; justify-self: start; } .laact { justify-content: flex-start; } }
 .invrow { display: flex; gap: 12px; align-items: flex-start; justify-content: space-between; padding: 12px 14px; border: 1px solid var(--line); border-radius: 10px; background: var(--bg); }
 .invrow.past { opacity: .65; }
 .invmain { display: grid; gap: 6px; min-width: 0; flex: 1 1 auto; }
@@ -953,7 +977,7 @@ h3 .n { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99
   <aside id="side" aria-label="Main">
     <div class="brand"><div class="mark" aria-hidden="true">D</div><strong>Dory</strong></div>
     <label class="f"><span class="sr" data-i="org"></span>
-      <select id="org-switch" aria-label="Organization"></select></label>
+      <select id="org-switch"></select></label>
     <button class="btn sm" id="new-org" type="button"><i data-ic="plus"></i><span data-i="new_org"></span></button>
     <nav id="nav"></nav>
     <div class="foot">
@@ -965,7 +989,7 @@ h3 .n { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99
   </aside>
   <div id="mainwrap">
     <header id="topbar">
-      <button id="burger" type="button" aria-label="Menu" aria-controls="side" aria-expanded="false"><i data-ic="menu"></i></button>
+      <button id="burger" type="button" aria-controls="side" aria-expanded="false"><i data-ic="menu"></i></button>
       <span class="t" id="topbar-title">Dory</span>
       <!-- search asks Dory: Enter opens Talk to Dory with the query; Cmd/Ctrl+K focuses it -->
       <form class="qs" id="qs-form" role="search"><div><i data-ic="search"></i><input type="search" id="qs" maxlength="200" autocomplete="off" enterkeyhint="search"><kbd id="qs-k" aria-hidden="true"></kbd></div></form>
@@ -1128,7 +1152,7 @@ th: {
   live_err_voice_down:"เซิร์ฟเวอร์เสียงยังไม่ทำงานตอนนี้ (กำลังปิดหรือกำลังติดตั้ง) ลองใหม่ในอีกสักครู่ หรือพิมพ์คุยกับดอรี่แทนได้เลยค่ะ", live_err_auth:"เซสชันหมดอายุ กรุณาเข้าสู่ระบบอีกครั้ง", live_err_forbidden:"บัญชีนี้ไม่มีสิทธิ์คุยสดในองค์กรนี้", live_err_unavailable:"คุยสดยังใช้ไม่ได้: องค์กรนี้ยังไม่มีแพ็กเกจที่ใช้งานได้ หรือยังไม่ได้เชื่อมต่อพื้นที่ทำงาน", live_err_already:"มีสายคุยสดเปิดอยู่ในแท็บอื่น ปิดสายนั้นก่อนนะคะ", live_err_limit:"คุยครบ 30 นาทีแล้ว กดคุยสดใหม่ได้เลยค่ะ", live_err_goaway:"ดอรี่ต้องพักสายสักครู่ ลองคุยสดใหม่นะคะ", live_err_generic:"คุยสดขัดข้อง ({e})",
   si_h:"วิธีเข้าสู่ระบบ", si_discord_ok:"เข้าสู่ระบบด้วย Discord ได้แล้ว", si_discord_no:"ยืนยัน Discord ด้านบน เพื่อเข้าสู่ระบบด้วย Discord ได้ด้วย", si_code_hint:"ใช้รหัสจากคำสั่ง /linkaccount",
   ws_h:"พื้นที่ทำงาน", ws_empty:"ยังไม่มีพื้นที่ทำงานที่เชื่อมต่อ", st_connected:"เชื่อมต่อแล้ว", st_pending:"รอยืนยัน", st_disconnected:"ตัดการเชื่อมต่อ", disconnect:"ตัดการเชื่อมต่อ", confirm_disc:"ตัดการเชื่อมต่อ “{n}” ใช่ไหม?",
-  add_discord:"เพิ่มเซิร์ฟเวอร์ Discord", add_slack:"เพิ่มเข้า Slack workspace", slack_off:"การเชื่อม Slack ยังไม่ได้ตั้งค่าบนเซิร์ฟเวอร์ ติดต่อทีม Dory เพื่อเปิดใช้งาน", add_d1:"1. เชิญดอรี่เข้าเซิร์ฟเวอร์", add_d2:"2. พิมพ์ /ตั้งค่า ใน Discord แล้วคัดลอกรหัสที่ได้", add_d3:"3. วางรหัสที่นี่", code:"รหัสเชื่อมต่อ", link:"เชื่อมต่อ", invite_btn:"เปิดลิงก์เชิญ", linked:"เชื่อมต่อเซิร์ฟเวอร์แล้ว",
+  add_discord:"เพิ่มเซิร์ฟเวอร์ Discord", add_slack:"เพิ่มเข้า Slack workspace", add_d1:"1. เชิญดอรี่เข้าเซิร์ฟเวอร์", add_d2:"2. พิมพ์ /ตั้งค่า ใน Discord แล้วคัดลอกรหัสที่ได้", add_d3:"3. วางรหัสที่นี่", code:"รหัสเชื่อมต่อ", link:"เชื่อมต่อ", invite_btn:"เปิดลิงก์เชิญ", linked:"เชื่อมต่อเซิร์ฟเวอร์แล้ว",
   share_h:"การแชร์ข้อมูลระหว่างพื้นที่", share_warn:"แชร์ได้เฉพาะรายการที่มาจากช่องสาธารณะเท่านั้น ข้อมูลในช่องส่วนตัวจะไม่ถูกแชร์ และประวัติแชทจะไม่ถูกแชร์ข้ามพื้นที่เด็ดขาด", share_need2:"ต้องมีอย่างน้อย 2 พื้นที่ทำงานจึงจะตั้งค่าการแชร์ได้", share_sentence:"ให้ {b} เห็น {c} ของ {a}", share_only_admin:"เฉพาะเจ้าของและผู้ดูแลที่แก้ไขการแชร์ได้",
   apps_h:"เชื่อมต่อแอป", connect:"เชื่อมต่อ", not_enabled:"ยังไม่เปิดใช้", connected_n:"เชื่อมต่อแล้ว {n} เซิร์ฟเวอร์", app_discord:"แชทและเอกสารในเซิร์ฟเวอร์", app_slack:"ข้อความจาก Slack workspace", app_clickup:"งานและรายการจาก ClickUp (อ่านอย่างเดียว)", app_drive:"ไฟล์ใน Drive", app_gmail:"อีเมล", app_calendar:"ปฏิทิน",
   mem_h:"สมาชิก", mem_email:"อีเมล", mem_role:"บทบาท", mem_invite:"เชิญสมาชิก", mem_none:"ยังไม่มีสมาชิก", mem_ro:"เฉพาะเจ้าของและผู้ดูแลที่จัดการสมาชิกได้", confirm_rm:"ลบ {e} ออกจากองค์กร?", invited:"เชิญแล้ว",
@@ -1150,13 +1174,13 @@ th: {
   lic_h:"แพ็กเกจ", plan:"แพ็กเกจ", status:"สถานะ", seats:"จำนวนที่นั่ง", valid_until:"ใช้ได้ถึง", req_h:"ขอเปลี่ยนแพ็กเกจ", req_note:"หมายเหตุ", req_send:"ส่งคำขอ", req_sent:"ส่งคำขอแล้ว ทีมงานจะติดต่อกลับ", req_p:"ยังไม่มีการชำระเงินออนไลน์ ส่งคำขอแล้วทีมงานจะอนุมัติให้",
   super_h:"ผู้ดูแลระบบ: กำหนดแพ็กเกจ", notes:"บันทึก",
   gc_h:"Google Calendar", gc_connected:"เชื่อมต่อแล้ว: {e}", gc_none:"ยังไม่ได้เชื่อมต่อปฏิทินของคุณ", gc_disconnect:"ยกเลิกการเชื่อมต่อ", gc_confirm:"ยกเลิกการเชื่อมต่อ Google Calendar?", gc_off:"ยกเลิกการเชื่อมต่อแล้ว", gc_ok:"เชื่อมต่อ Google Calendar แล้ว", gc_err:"เชื่อมต่อ Google Calendar ไม่สำเร็จ ({r})",
-  la_h:"บัญชีที่เชื่อม", la_p:"เชื่อมบัญชีแชทของคุณเพื่อให้ดอรี่รู้ว่าคุณเป็นสมาชิกคนไหน", la_get:"รับรหัส", la_unlink:"ยกเลิกการเชื่อม", la_confirm:"ยกเลิกการเชื่อมบัญชี {p}?", la_none:"ยังไม่ได้เชื่อม", la_ro:"จัดการใน Discord ด้วย /ตั้งค่า", la_unlinked:"ยกเลิกการเชื่อมแล้ว", la_linked:"เชื่อมบัญชีแล้ว", la_busy:"ขอรหัสมากเกินไป รอสักครู่แล้วลองใหม่", la_send:"ส่งข้อความนี้ถึงดอรี่ในแชทส่วนตัว (ไม่ใช่ในกลุ่ม)", la_cmd:"เชื่อมบัญชี {c}", la_left:"หมดอายุใน {m}:{s}", la_expired:"รหัสหมดอายุแล้ว", la_account:"บัญชี …{h}",
+  la_h:"บัญชีที่เชื่อม", la_p:"เชื่อมบัญชีแชทของคุณเพื่อให้ดอรี่รู้ว่าคุณเป็นสมาชิกคนไหน", la_get:"รับรหัส", la_unlink:"ยกเลิกการเชื่อม", la_confirm:"ยกเลิกการเชื่อมบัญชี {p}?", la_none:"ยังไม่ได้เชื่อม", la_unlinked:"ยกเลิกการเชื่อมแล้ว", la_linked:"เชื่อมบัญชีแล้ว", la_busy:"ขอรหัสมากเกินไป รอสักครู่แล้วลองใหม่", la_send:"ส่งข้อความนี้ถึงดอรี่ในแชทส่วนตัว (ไม่ใช่ในกลุ่ม)", la_cmd:"เชื่อมบัญชี {c}", la_left:"หมดอายุใน {m}:{s}", la_expired:"รหัสหมดอายุแล้ว", la_account:"บัญชี …{h}",
   ab_h:"เชื่อมบอทเข้าองค์กร", ab_p:"สำหรับผู้ดูแล: ขอรหัสแล้วส่งให้บอทของ LINE, Telegram หรือ WhatsApp", ab_instr:"ส่งรหัสนี้ให้บอทในแชทส่วนตัว",
   set_h:"ตั้งค่าเซิร์ฟเวอร์", set_p:"การตั้งค่าเฉพาะเซิร์ฟเวอร์ เช่น เปิด/ปิดฟีเจอร์ อยู่ที่หน้า Hub", set_go:"เปิดหน้า Hub",
   org_settings:"ตั้งค่าองค์กร",
   n_account:"โปรไฟล์ของฉัน", n_mytasks:"งานของฉัน", n_mycal:"ปฏิทินบริษัท", cal_overlay:"ซ้อนปฏิทินของฉัน", cal_g_off:"ยังไม่ได้เชื่อม Google Calendar: เชื่อมด้านล่างเพื่อให้นัดใน Google ของคุณแสดงที่นี่ด้วย", cal_g_fail:"ดึง Google Calendar ไม่สำเร็จในตอนนี้ ส่วนอื่นของปฏิทินยังใช้ได้", cal_company:"บริษัท", cal_mine:"ของฉัน", mc_deadline:"กำหนดส่งโปรเจกต์", mc_milestone:"เป้าหมายย่อย", talk:"คุยกับดอรี่", panel_p:"ถามเรื่องบริษัทได้เลย ทั้งใบเสร็จ เอกสาร การประชุม และงานค่ะ", typing_dots:"ดอรี่กำลังพิมพ์…",
   platforms:"แพลตฟอร์ม", connected_of:"เชื่อมต่อแล้ว {x} จาก {y}", p_not_connected:"ยังไม่เชื่อมต่อ", members_linked:"เชื่อมบัญชีของตัวเองแล้ว {n} คน", members_n:"สมาชิก {n} คน",
-  mem_name:"สมาชิก", mem_linked:"บัญชีที่เชื่อม", linked_n:"เชื่อมแล้ว {n} แพลตฟอร์ม", linked_none:"ยังไม่ได้เชื่อมบัญชี",
+  mem_name:"สมาชิก", mem_linked:"บัญชีที่เชื่อม", linked_n:"เชื่อมแพลตฟอร์มแชตแล้ว {n} แห่ง", linked_none:"ยังไม่ได้เชื่อมแพลตฟอร์มแชต",
   verified:"ยืนยันแล้ว", unverified:"ยังไม่ยืนยัน", not_linked:"ยังไม่เชื่อม",
   acc_profile:"โปรไฟล์", acc_name:"ชื่อเล่น", acc_name_ph:"ชื่อที่เพื่อนร่วมงานและดอรี่เรียกคุณ เช่น เจมส์", acc_email:"อีเมล", acc_google:"เข้าสู่ระบบด้วย Google", acc_lang:"ภาษา", lang_th:"ไทย", lang_en:"English",
   acc_plat_h:"บัญชีของฉันบนแพลตฟอร์ม", acc_plat_p:"ยืนยันแล้ว = แพลตฟอร์มยืนยันตัวตนให้ · ยังไม่ยืนยัน = พิมพ์เอง ดอรี่ใช้ข้อมูลนี้เพื่อรู้ว่ากำลังคุยกับใครค่ะ",
@@ -1171,12 +1195,12 @@ th: {
   cal_month:"เดือน", cal_week:"สัปดาห์", cal_agenda:"กำหนดการ", cal_today:"วันนี้", cal_prev:"ก่อนหน้า", cal_next:"ถัดไป", cal_more:"+{n} รายการ", cal_none_day:"ไม่มีนัดหมายในวันนี้", mc_meeting:"ประชุม", mc_event:"กิจกรรม",
   due_over:"เลยกำหนด", due_today:"วันนี้", due_tomorrow:"พรุ่งนี้", due_in:"อีก {n} วัน", no_due:"ไม่มีกำหนด",
   mc_gcal_on:"เชื่อมต่อแล้ว {e}", mc_gcal_on_p:"ดอรี่ใช้ดูเวลาว่างและนัดประชุมลงปฏิทินของคุณ", mc_gcal_off_p:"เชื่อม Google Calendar เพื่อให้ดอรี่เห็นเวลาว่างและนัดประชุมให้คุณ", mc_gcal_connect:"เชื่อม Google Calendar", mc_gcal_na:"ยังไม่เปิดใช้การเชื่อม Google Calendar",
-  mc_empty:"ยังไม่มีนัดหมาย", mc_empty_hint:"การเตือนที่ตั้งไว้กับดอรี่และกำหนดส่งงานของคุณจะแสดงที่นี่", mc_sources:"จาก: การเตือนของดอรี่ และกำหนดส่งงาน", mc_gcal:"Google Calendar", mc_gcal_soon:"เร็วๆ นี้: นัดหมายจาก Google Calendar ของคุณจะมาแสดงที่นี่ด้วย", mc_reminder:"การเตือน", mc_task:"งาน", mc_repeat:"ทุก {x}", today:"วันนี้", tomorrow:"พรุ่งนี้",
+  mc_empty:"ยังไม่มีนัดหมาย", mc_empty_hint:"การเตือนที่ตั้งไว้กับดอรี่และกำหนดส่งงานของคุณจะแสดงที่นี่", mc_sources:"จาก: การเตือนของดอรี่ และกำหนดส่งงาน", mc_gcal:"Google Calendar", mc_reminder:"การเตือน", mc_task:"งาน", mc_repeat:"ทุก {x}", today:"วันนี้", tomorrow:"พรุ่งนี้",
   acc_first:"ชื่อจริง", acc_last:"นามสกุล", acc_real_hint:"ระบบกรอกให้จากบัญชี Google ตอนเข้าสู่ระบบ แก้ไขให้ถูกต้องได้เลยค่ะ",
   act_h:"คำสั่งที่ส่งไป Discord", act_hint:"บอทดอรี่จะทำให้ภายในไม่กี่วินาที หรือจะบอกดอรี่ในแชทเฉย ๆ ก็ได้ค่ะ", act_none:"ยังไม่มีคำสั่ง", act_queue:"ส่งคำสั่ง", act_kind:"คำสั่ง", act_by:"โดย", act_result:"ผล", act_open:"เปิด", act_queued:"ส่งคำสั่งแล้ว", act_no_discord:"ต้องเชื่อมต่อเซิร์ฟเวอร์ Discord ก่อน",
   k_post_message:"โพสต์ข้อความ", k_create_event:"สร้างอีเวนต์", k_create_channel:"สร้างช่อง", k_send_dm:"ส่ง DM", a_channel:"ช่อง", a_text:"ข้อความ", a_user_id:"ไอดีผู้ใช้ Discord", a_name:"ชื่อ", a_start:"เริ่ม", a_end:"สิ้นสุด", a_where:"ที่ไหน (ช่องเสียงหรือสถานที่)", a_description:"รายละเอียด", a_ckind:"ประเภท", a_topic:"หัวข้อ", as_pending:"รอดำเนินการ", as_done:"สำเร็จ", as_failed:"ล้มเหลว",
   lg_h:"ข้อมูลนิติบุคคล", lg_p:"ตามหนังสือรับรองและเอกสารจดทะเบียน อัปโหลดเอกสารในแชทให้ดอรี่ ดอรี่จะกรอกให้", lg_registered_name:"ชื่อนิติบุคคล", lg_registration_no:"เลขทะเบียนนิติบุคคล", lg_tax_id:"เลขประจำตัวผู้เสียภาษี", lg_registered_capital:"ทุนจดทะเบียน", lg_registered_address:"ที่ตั้งสำนักงานใหญ่", lg_directors:"กรรมการผู้มีอำนาจ", lg_objectives:"วัตถุประสงค์",
-  cp_edit:"แก้ไขโปรไฟล์", cp_name:"ชื่อบริษัท", cp_logo:"ลิงก์โลโก้ (https://…)", cp_tagline:"สโลแกน", cp_about:"เกี่ยวกับบริษัท", cp_industry:"ธุรกิจ", cp_founded:"ก่อตั้ง", cp_location:"ที่ตั้ง", cp_size:"ขนาดองค์กร", cp_website:"เว็บไซต์", cp_email:"อีเมล", cp_phone:"โทรศัพท์", cp_values:"ค่านิยม", cp_values_hint:"คั่นด้วยจุลภาค ไม่เกิน 8 ข้อ",
+  cp_edit:"แก้ไขโปรไฟล์", cp_name:"ชื่อบริษัท", cp_logo:"ลิงก์โลโก้ (https://…)", cp_tagline:"สโลแกน", cp_about:"เกี่ยวกับบริษัท", cp_industry:"ธุรกิจ", cp_founded:"ก่อตั้ง", cp_location:"ที่ตั้ง", cp_size:"ขนาดองค์กร", cp_website:"เว็บไซต์", cp_email:"อีเมล", cp_phone:"โทรศัพท์", cp_values:"ค่านิยม", cp_values_hint:"คั่นด้วยจุลภาค",
   cp_leadership:"ผู้บริหาร", cp_no_lead:"ยังไม่มีรายชื่อผู้บริหาร", cp_depts:"แผนก", cp_no_depts:"ยังไม่มีแผนก (สมาชิกตั้งค่าได้ในหน้า โปรไฟล์ของฉัน)", cp_sys:"ดอรี่และระบบ", cp_sys_p:"การเชื่อมต่อ แพ็กเกจ และสิ่งที่ดอรี่ทำ (เฉพาะผู้ดูแล)", cp_empty:"ยังไม่มีข้อมูลบริษัท", cp_empty_hint:"ผู้ดูแล: เล่าเรื่องบริษัทให้ดอรี่ฟังในแชท หรือกด “แก้ไขโปรไฟล์”", cp_about_empty:"เล่าสั้น ๆ ว่าบริษัททำอะไร เพื่อใคร", cp_people:"พนักงาน {n} คน",
   up_attach:"แนบเอกสารให้ดอรี่", up_dup:"{name} มีอยู่ในระบบแล้ว (ไฟล์เดียวกัน ไม่เก็บซ้ำ) —", up_ask_n:"ฉันเพิ่งอัปโหลดเอกสาร {n} ไฟล์: {names} ช่วยอ่าน จัดเก็บให้ถูกแฟ้ม และอัปเดตข้อมูลบริษัทให้ด้วย", up_drop:"วางไฟล์เพื่ออัปโหลด", up_sys:"อัปโหลด {name} แล้ว — เก็บไว้ที่", up_ask:"ฉันเพิ่งอัปโหลด \"{name}\" ช่วยอ่านแล้วสรุปให้หน่อย", up_too_big:"ไฟล์ใหญ่เกินไป (สูงสุด 20 MB)", up_bad_type:"ไม่รองรับไฟล์ชนิดนี้ (PDF, Word, Excel, PowerPoint, รูปภาพ, ข้อความ)",
   org_chart:"ผังองค์กร", oc_edit:"แก้ไขที่ สมาชิก → ผังองค์กร", oc_set:"ตั้งค่า “ฉันรายงานต่อ” ในหน้า โปรไฟล์ของฉัน",
@@ -1217,6 +1241,20 @@ th: {
   help_h:"ต้องการความช่วยเหลือในการเริ่มต้น?", help_p:"ถามดอรี่ในแชทได้เลย ดอรี่จะพาทำทีละขั้นค่ะ", help_b:"ถามดอรี่", help_q:"เริ่มต้นใช้งานยังไง", ask_after_org:"สร้างองค์กรก่อน แล้วดอรี่จะตอบ “{q}” ให้ทันทีค่ะ",
   cp_manage:"จัดการสมาชิก", oc_edit_b:"แก้ผังองค์กร", oc_mine:"ตั้งหัวหน้าของฉัน", live_conv:"สนทนาด้วยเสียงสด", live_expand:"ขยายเต็มจอ", live_restore:"ย่อกลับ (Esc)",
   live_spk:"ลำโพง", live_spk_off:"ปิดลำโพง", live_spk_mute:"ปิดเสียงดอรี่บนเครื่องนี้", live_spk_unmute:"เปิดเสียงดอรี่อีกครั้ง",
+  err_400:"ทำรายการไม่สำเร็จ ลองตรวจข้อมูลที่กรอกแล้วลองใหม่ค่ะ", err_402:"แพ็กเกจขององค์กรยังไม่ครอบคลุมเรื่องนี้ ดูที่หน้าใบอนุญาตได้ค่ะ", err_403:"บัญชีนี้ไม่มีสิทธิ์ทำรายการนี้ค่ะ", err_404:"ไม่พบรายการนี้ อาจถูกลบไปแล้วค่ะ",
+  err_409:"ข้อมูลเปลี่ยนไปแล้ว ลองโหลดหน้าใหม่แล้วทำอีกครั้งค่ะ", err_503:"ส่วนนี้ยังไม่ได้เปิดใช้งาน ติดต่อทีมดอรี่เพื่อเปิดใช้ได้ค่ะ", err_5xx:"ดอรี่ทำรายการนี้ไม่ได้ในตอนนี้ ลองใหม่อีกสักครู่ค่ะ",
+  err_code:"รหัสไม่ถูกต้องหรือหมดอายุแล้ว ขอรหัสใหม่ได้เลยค่ะ", err_seats:"ที่นั่งในแพ็กเกจเต็มแล้ว ให้เจ้าขององค์กรขอเพิ่มที่นั่งค่ะ", conn_off:"{p} ยังไม่ได้เปิดใช้งาน ติดต่อทีมดอรี่เพื่อเปิดใช้ได้ค่ะ",
+  pp_no_discord:"ยังไม่ได้เชื่อมเซิร์ฟเวอร์ Discord", pp_no_discord_p:"ดอรี่จะแสดงทุกคนที่คุยกันใน Discord ของบริษัทที่นี่ เมื่อเชื่อมเซิร์ฟเวอร์แล้วค่ะ เชื่อมได้ที่", po_del_p:"ลบแล้วกู้คืนไม่ได้ค่ะ",
+  live_no_org:"สร้างองค์กรก่อน แล้วจึงคุยสดกับดอรี่ได้ค่ะ", live_waking:"กำลังปลุกเครื่องเสียงของดอรี่ ใช้เวลาราว 2 นาทีค่ะ…",
+  acc_name_req:"กรอกชื่อและนามสกุลจริงก่อนบันทึกค่ะ", not_saved:"ยังไม่ได้บันทึก: {e}",
+  confirm_disc_p:"ดอรี่จะหยุดทำงานในพื้นที่ทำงานนี้ เชื่อมใหม่ได้ภายหลังค่ะ", gc_confirm_p:"ดอรี่จะไม่เห็นปฏิทิน Google ของคุณอีก เชื่อมใหม่ได้ภายหลังค่ะ", la_confirm_p:"ดอรี่จะจำบัญชี {p} ของคุณไม่ได้แล้ว จนกว่าจะเชื่อมใหม่ค่ะ",
+  confirm_rm_p:"คนนี้จะเข้าองค์กรนี้ไม่ได้อีก จนกว่าจะเพิ่มกลับเข้ามาค่ะ", copy_manual:"คัดลอกลิงก์เอง", copy_manual_p:"เบราว์เซอร์ไม่ให้คัดลอกอัตโนมัติ เลือกลิงก์ด้านล่างแล้วคัดลอกได้เลยค่ะ", inv_revoke_q:"ยกเลิกลิงก์เชิญนี้ไหม?",
+  unlink_p:"ดอรี่จะจำบัญชี {p} ของคุณไม่ได้แล้ว จนกว่าจะเชื่อมใหม่ค่ะ", unlink_discord_p:"เมื่อเอาออก คุณจะเข้าสู่ระบบด้วย Discord ไม่ได้อีก และดอรี่จะจำบัญชี Discord ของคุณไม่ได้ จนกว่าจะยืนยันใหม่ค่ะ",
+  si_unlink_q:"เลิกเชื่อม {e} ไหม?", si_unlink_p:"หลังจากนี้เข้าสู่ระบบด้วย {e} ได้อย่างเดียวค่ะ",
+  la_dc_change:"เปลี่ยนได้ที่โปรไฟล์ของฉัน", la_dc_how:"พิมพ์ /ลิงก์บัญชี ใน Discord แล้วนำรหัสมาใส่ที่โปรไฟล์ของฉันค่ะ", menu:"เมนู", c_cat:"หมวดหมู่",
+  linked_n_1:"เชื่อมแพลตฟอร์มแชตแล้ว 1 แห่ง", ex_n_1:"พิจารณาจาก 1 คน", po_people_n_1:"1 คน", pp_count_1:"1 คน · มีบัญชี {a} คน", connected_n_1:"เชื่อมต่อแล้ว 1 เซิร์ฟเวอร์",
+  mon_notify_blocked:"เบราว์เซอร์บล็อกการแจ้งเตือนของเว็บนี้อยู่ อนุญาตได้ในการตั้งค่าเว็บไซต์ของเบราว์เซอร์ค่ะ",
+  ts_open:"ยังไม่เสร็จ", ts_overdue:"เลยกำหนด", ts_done:"เสร็จแล้ว", ts_other:"อื่นๆ", seats_unl:"ไม่จำกัด", lic_noend:"ไม่มีวันหมดอายุ",
 },
 en: {
   login_h:"Your company's command center", login_p:"Manage documents, workspaces and members in one place, and chat with Dory right from the web.",
@@ -1246,7 +1284,7 @@ en: {
   live_err_voice_down:"The voice server is not running right now (off or still installing). Try again in a few minutes, or type to Dory instead.", live_err_auth:"Session expired, please sign in again.", live_err_forbidden:"This account cannot call Dory in this organization", live_err_unavailable:"Live calls are not available: this organization has no active plan or no connected workspace yet", live_err_already:"A live call is already open in another tab. End it there first.", live_err_limit:"That was 30 minutes. Press Live again to keep talking", live_err_goaway:"Dory had to hang up for a moment. Please press Live again.", live_err_generic:"Live call failed ({e})",
   si_h:"Sign-in methods", si_discord_ok:"You can sign in with Discord too", si_discord_no:"Verify your Discord above to sign in with Discord as well", si_code_hint:"Use the /linkaccount code",
   ws_h:"Workspaces", ws_empty:"No connected workspaces yet", st_connected:"Connected", st_pending:"Pending", st_disconnected:"Disconnected", disconnect:"Disconnect", confirm_disc:"Disconnect “{n}”?",
-  add_slack:"Add to a Slack workspace", slack_off:"Slack sign-in is not switched on for this Dory yet. Ask the Dory team to turn it on.", add_discord:"Add a Discord server", add_d1:"1. Invite Dory to your server", add_d2:"2. Type /ตั้งค่า in Discord and copy the code", add_d3:"3. Paste the code here", code:"Link code", link:"Link", invite_btn:"Open invite link", linked:"Server linked",
+  add_slack:"Add to a Slack workspace", add_discord:"Add a Discord server", add_d1:"1. Invite Dory to your server", add_d2:"2. Type /ตั้งค่า in Discord and copy the code", add_d3:"3. Paste the code here", code:"Link code", link:"Link", invite_btn:"Open invite link", linked:"Server linked",
   share_h:"Sharing between workspaces", share_warn:"Only items that came from public channels can be shared. Private-channel items are never shared, and chat history is never shared across workspaces.", share_need2:"You need at least 2 workspaces to set up sharing.", share_sentence:"Let {b} see {c} of {a}", share_only_admin:"Only owners and admins can change sharing.",
   apps_h:"Integrations", connect:"Connect", not_enabled:"Not enabled yet", connected_n:"{n} servers connected", app_discord:"Server chat and documents", app_slack:"Messages from a Slack workspace", app_clickup:"Tasks and lists from ClickUp (read-only)", app_drive:"Files in Drive", app_gmail:"Email", app_calendar:"Calendar",
   mem_h:"Members", mem_email:"Email", mem_role:"Role", mem_invite:"Invite a member", mem_none:"No members yet", mem_ro:"Only owners and admins can manage members.", confirm_rm:"Remove {e} from the organization?", invited:"Invited",
@@ -1268,13 +1306,13 @@ en: {
   lic_h:"License", plan:"Plan", status:"Status", seats:"Seats", valid_until:"Valid until", req_h:"Request a plan", req_note:"Note", req_send:"Send request", req_sent:"Request sent. We will get back to you.", req_p:"No online payment yet. Send a request and our team will approve it.",
   super_h:"Admin: set license", notes:"Notes",
   gc_h:"Google Calendar", gc_connected:"Connected: {e}", gc_none:"Your calendar is not connected", gc_disconnect:"Disconnect", gc_confirm:"Disconnect Google Calendar?", gc_off:"Disconnected", gc_ok:"Google Calendar connected", gc_err:"Could not connect Google Calendar ({r})",
-  la_h:"Linked accounts", la_p:"Link your chat accounts so Dory knows which member you are", la_get:"Get code", la_unlink:"Unlink", la_confirm:"Unlink your {p} account?", la_none:"Not linked", la_ro:"Managed in Discord with /setup", la_unlinked:"Unlinked", la_linked:"Account linked", la_busy:"Too many codes. Wait a moment and try again", la_send:"Send this to Dory in a private chat (not in a group)", la_cmd:"link {c}", la_left:"Expires in {m}:{s}", la_expired:"Code expired", la_account:"Account …{h}",
+  la_h:"Linked accounts", la_p:"Link your chat accounts so Dory knows which member you are", la_get:"Get code", la_unlink:"Unlink", la_confirm:"Unlink your {p} account?", la_none:"Not linked", la_unlinked:"Unlinked", la_linked:"Account linked", la_busy:"Too many codes. Wait a moment and try again", la_send:"Send this to Dory in a private chat (not in a group)", la_cmd:"link {c}", la_left:"Expires in {m}:{s}", la_expired:"Code expired", la_account:"Account …{h}",
   ab_h:"Connect a bot workspace", ab_p:"For admins: get a code and send it to your LINE, Telegram or WhatsApp bot", ab_instr:"Send this code to the bot in a private chat",
   set_h:"Server settings", set_p:"Per-server settings such as feature toggles live on the Hub page.", set_go:"Open Hub",
   org_settings:"Organization settings",
   n_account:"My profile", n_mytasks:"My tasks", n_mycal:"Calendar", cal_overlay:"Overlay my calendar", cal_g_off:"Google Calendar is not connected: connect it below to see your Google events here too.", cal_g_fail:"Could not read Google Calendar right now; the rest of the calendar is up to date.", cal_company:"Company", cal_mine:"Mine", mc_deadline:"Project deadline", mc_milestone:"Milestone", talk:"Talk to Dory", panel_p:"Ask about the company: receipts, documents, meetings, tasks.", typing_dots:"Dory is typing…",
   platforms:"Platforms", connected_of:"Connected {x} of {y}", p_not_connected:"Not connected", members_linked:"{n} linked their accounts", members_n:"Members: {n}",
-  mem_name:"Member", mem_linked:"Linked accounts", linked_n:"Linked: {n} platforms", linked_none:"No linked accounts",
+  mem_name:"Member", mem_linked:"Linked accounts", linked_n:"{n} chat platforms linked", linked_none:"No chat platform linked yet",
   verified:"Verified", unverified:"Unverified", not_linked:"Not linked",
   acc_profile:"Profile", acc_name:"Nickname", acc_name_ph:"What colleagues and Dory call you, e.g. Jems", acc_email:"Email", acc_google:"Signed in with Google", acc_lang:"Language", lang_th:"ไทย", lang_en:"English",
   acc_plat_h:"My accounts on platforms", acc_plat_p:"Verified = proven by the platform · Unverified = typed by hand. Dory uses these to know who is talking.",
@@ -1289,12 +1327,12 @@ en: {
   cal_month:"Month", cal_week:"Week", cal_agenda:"Agenda", cal_today:"Today", cal_prev:"Previous", cal_next:"Next", cal_more:"+{n} more", cal_none_day:"Nothing on this day", mc_meeting:"Meeting", mc_event:"Event",
   due_over:"Overdue", due_today:"Today", due_tomorrow:"Tomorrow", due_in:"In {n} days", no_due:"No due date",
   mc_gcal_on:"Connected {e}", mc_gcal_on_p:"Dory uses it to see when you are free and to put meetings in your calendar.", mc_gcal_off_p:"Connect Google Calendar so Dory can see when you are free and book meetings for you.", mc_gcal_connect:"Connect Google Calendar", mc_gcal_na:"Google Calendar connection is not enabled",
-  mc_empty:"Nothing scheduled yet", mc_empty_hint:"Reminders you set with Dory and your task due dates show up here.", mc_sources:"From: Dory reminders and task due dates", mc_gcal:"Google Calendar", mc_gcal_soon:"Coming soon: your Google Calendar events will appear here too.", mc_reminder:"Reminder", mc_task:"Task", mc_repeat:"Every {x}", today:"Today", tomorrow:"Tomorrow",
+  mc_empty:"Nothing scheduled yet", mc_empty_hint:"Reminders you set with Dory and your task due dates show up here.", mc_sources:"From: Dory reminders and task due dates", mc_gcal:"Google Calendar", mc_reminder:"Reminder", mc_task:"Task", mc_repeat:"Every {x}", today:"Today", tomorrow:"Tomorrow",
   acc_first:"First name", acc_last:"Last name", acc_real_hint:"Filled from your Google account at sign-in; you can correct it.",
   act_h:"Actions on Discord", act_hint:"Dory's bot performs these within seconds; you can also just ask Dory in chat.", act_none:"No actions yet", act_queue:"Queue action", act_kind:"Action", act_by:"By", act_result:"Result", act_open:"Open", act_queued:"Action queued", act_no_discord:"Connect a Discord server first",
   k_post_message:"Post a message", k_create_event:"Create an event", k_create_channel:"Create a channel", k_send_dm:"Send a DM", a_channel:"Channel", a_text:"Text", a_user_id:"Discord user id", a_name:"Name", a_start:"Start", a_end:"End", a_where:"Where (voice channel or place)", a_description:"Description", a_ckind:"Type", a_topic:"Topic", as_pending:"Pending", as_done:"Done", as_failed:"Failed",
   lg_h:"Legal entity", lg_p:"As on the registration certificate. Upload the papers to Dory in the chat and she fills this in.", lg_registered_name:"Registered name", lg_registration_no:"Registration number", lg_tax_id:"Tax ID", lg_registered_capital:"Registered capital", lg_registered_address:"Head office address", lg_directors:"Authorised directors", lg_objectives:"Business objectives",
-  cp_edit:"Edit profile", cp_name:"Company name", cp_logo:"Logo URL (https://…)", cp_tagline:"Tagline", cp_about:"About", cp_industry:"Industry", cp_founded:"Founded", cp_location:"Location", cp_size:"Company size", cp_website:"Website", cp_email:"Email", cp_phone:"Phone", cp_values:"Values", cp_values_hint:"Comma-separated, up to 8",
+  cp_edit:"Edit profile", cp_name:"Company name", cp_logo:"Logo URL (https://…)", cp_tagline:"Tagline", cp_about:"About", cp_industry:"Industry", cp_founded:"Founded", cp_location:"Location", cp_size:"Company size", cp_website:"Website", cp_email:"Email", cp_phone:"Phone", cp_values:"Values", cp_values_hint:"Comma-separated",
   cp_leadership:"Leadership", cp_no_lead:"No leaders listed yet", cp_depts:"Departments", cp_no_depts:"No departments yet (members set theirs on My profile)", cp_sys:"Dory & systems", cp_sys_p:"Connections, license and what Dory does (admins only)", cp_empty:"No company profile yet", cp_empty_hint:"Admins: tell Dory about the company in chat, or press “Edit profile”", cp_about_empty:"A few lines on what the company does, and for whom", cp_people:"{n} people",
   up_attach:"Attach documents for Dory", up_dup:"{name} is already on file (same file, not stored twice) —", up_ask_n:"I just uploaded {n} documents: {names}. Please read them, file them in the right place and update the company information.", up_drop:"Drop a file to upload it", up_sys:"Uploaded {name} — saved under", up_ask:"I just uploaded \"{name}\" — please read it and tell me what it is about", up_too_big:"File too large (20 MB max)", up_bad_type:"Unsupported file type (PDF, Word, Excel, PowerPoint, images, text)",
   org_chart:"Organization chart", oc_edit:"Edit in Members → Org chart", oc_set:"Set “I report to” on My profile",
@@ -1335,11 +1373,26 @@ en: {
   help_h:"Need help getting started?", help_p:"Ask Dory in the chat: she walks you through each step.", help_b:"Ask Dory", help_q:"How do I get started?", ask_after_org:"Create your organization first, then Dory answers “{q}” right away.",
   cp_manage:"Manage members", oc_edit_b:"Edit chart", oc_mine:"Set my manager", live_conv:"Live voice conversation", live_expand:"Expand", live_restore:"Restore size (Esc)",
   live_spk:"Speaker", live_spk_off:"Speaker off", live_spk_mute:"Mute Dory's voice on this device", live_spk_unmute:"Turn Dory's voice back on",
+  err_400:"That didn't work. Check what you entered and try again.", err_402:"Your organization's plan doesn't cover this. See the License page.", err_403:"You don't have permission to do that.", err_404:"That could not be found. It may have been removed.",
+  err_409:"Something changed in the meantime. Reload the page and try again.", err_503:"This isn't switched on yet. Ask the Dory team to turn it on.", err_5xx:"Dory couldn't do that right now. Try again in a moment.",
+  err_code:"That code is invalid or has expired. Ask for a new one.", err_seats:"All seats in the plan are taken. Ask the owner to request more seats.", conn_off:"{p} is not switched on yet. Ask the Dory team to turn it on.",
+  pp_no_discord:"No Discord server is connected yet", pp_no_discord_p:"Once a server is connected, everyone who talks on the company's Discord shows up here. Connect one in", po_del_p:"This cannot be undone.",
+  live_no_org:"Create your organization first, then you can call Dory.", live_waking:"Waking up Dory's voice server, about two minutes…",
+  acc_name_req:"Enter your first and last name before saving.", not_saved:"Not saved: {e}",
+  confirm_disc_p:"Dory stops working in this workspace. You can connect it again later.", gc_confirm_p:"Dory will no longer see your Google Calendar. You can connect it again later.", la_confirm_p:"Dory will no longer recognise your {p} account until you link it again.",
+  confirm_rm_p:"They lose access to this organization until someone adds them again.", copy_manual:"Copy the link", copy_manual_p:"The browser did not allow copying. Select the link below and copy it.", inv_revoke_q:"Cancel this invite link?",
+  unlink_p:"Dory will no longer recognise your {p} account until you link it again.", unlink_discord_p:"You will no longer be able to sign in with Discord, and Dory will not recognise your Discord account until you verify it again.",
+  si_unlink_q:"Unlink {e}?", si_unlink_p:"From now on you sign in with {e} only.",
+  la_dc_change:"Change it on My profile", la_dc_how:"Type /linkaccount in Discord, then enter the code on My profile.", menu:"Menu", c_cat:"Categories",
+  linked_n_1:"1 chat platform linked", ex_n_1:"Considered 1 person", po_people_n_1:"1 person", pp_count_1:"1 person · {a} with an account", connected_n_1:"1 server connected",
+  mon_notify_blocked:"Your browser blocks notifications from this site. Allow them in the browser's site settings to turn this on.",
+  ts_open:"Open", ts_overdue:"Overdue", ts_done:"Done", ts_other:"Other", seats_unl:"Unlimited", lic_noend:"No end date",
 }};
 let lang = "en"; // English by default; a saved choice wins
 const LANG_KEY = "dory-language"; // one key for every Dory page (landing, start, hub, center)
 try { const s = localStorage.getItem(LANG_KEY); if (s === "en" || s === "th") lang = s; } catch { /* ignore */ }
 const t = (k, vars) => { let s = (I[lang] && I[lang][k]) ?? I.th[k] ?? k; for (const [a, b] of Object.entries(vars || {})) s = s.replaceAll("{" + a + "}", b); return s; };
+const tn = (k, n, vars) => t(n === 1 ? k + "_1" : k, { n, ...vars }); // a count: key_1 is the singular (both languages have it)
 function applyStatic() {
   document.documentElement.lang = lang;
   document.querySelectorAll("[data-i]").forEach((n) => { n.textContent = t(n.dataset.i); });
@@ -1349,7 +1402,7 @@ function applyStatic() {
   $("qs-k").textContent = /Mac|iPhone|iPad/.test(navigator.platform || navigator.userAgent) ? "⌘K" : "Ctrl K";
   $("me-av").setAttribute("aria-label", t("n_account")); $("me-av").title = t("n_account");
   $("fab").setAttribute("aria-label", t("talk")); $("fab").title = t("talk");
-  $("panel-x").setAttribute("aria-label", t("close")); $("who").title = t("n_account"); $("panel").dataset.drop = t("up_drop");
+  $("panel-x").setAttribute("aria-label", t("close")); $("burger").setAttribute("aria-label", t("menu")); $("org-switch").setAttribute("aria-label", t("org")); $("who").title = t("n_account"); $("panel").dataset.drop = t("up_drop");
   liveLabel();
 }
 function setLang(l, { remember = true } = {}) {
@@ -1393,7 +1446,18 @@ async function exchangeSession(googleCredential) {
 }
 class AuthError extends Error {}
 class ApiError extends Error { constructor(d, s) { super(d); this.status = s; } }
-const errText = (e) => e instanceof ApiError ? t("err_generic", { status: e.status }) + (e.message ? " [" + e.message + "]" : "") : (e instanceof AuthError ? e.message : t("err_net"));
+// An API error in plain words: a few known details, else (English UI) the server's own sentence, else a line per status.
+const ERR_BY_STATUS = { 400: "err_400", 402: "err_402", 403: "err_403", 404: "err_404", 409: "err_409", 413: "up_too_big", 415: "up_bad_type", 422: "err_400", 429: "la_busy", 503: "err_503" };
+function errText(e) {
+  if (e instanceof AuthError) return t("err_expired");
+  if (!(e instanceof ApiError)) return t("err_net");
+  const d = String(e.message || "");
+  if (/code/i.test(d) && /invalid|expired/i.test(d)) return t("err_code");
+  if (/seat limit/i.test(d)) return t("err_seats");
+  if (lang === "en" && / /.test(d) && !/_/.test(d) && e.status < 500) return d[0].toUpperCase() + d.slice(1) + (/[.!?]$/.test(d) ? "" : ".");
+  return t(ERR_BY_STATUS[e.status] || (e.status >= 500 ? "err_5xx" : "err_generic"), { status: e.status });
+}
+// Only the sign-in calls (start(): /api/center/me) read a 503 as "sign-in is not configured"; a feature's 503 is an ApiError.
 async function api(path, opts = {}) {
   if (MOCK) return Promise.resolve(mockApi(opts.method || "GET", path, opts.body && typeof opts.body === "string" ? JSON.parse(opts.body) : opts.body)).then(mockLang);
   let res;
@@ -1401,7 +1465,6 @@ async function api(path, opts = {}) {
     res = await fetch(path, { ...opts, headers: { ...(opts.body && !(opts.body instanceof FormData) ? { "Content-Type": "application/json" } : {}), Authorization: "Bearer " + token } });
   } catch { throw new Error(t("err_net")); }
   if (res.status === 401) throw new AuthError("expired");
-  if (res.status === 503) throw new AuthError("not_configured");
   if (!res.ok) {
     let detail = ""; try { const j = await res.json(); detail = typeof j.detail === "string" ? j.detail : ""; } catch { /* ignore */ }
     if (res.status === 403 && !detail) detail = "forbidden";
@@ -1674,6 +1737,7 @@ async function start() {
     if (!me.orgs.find((o) => o.id === orgId)) orgId = me.orgs.length ? me.orgs[0].id : null;
     route();
   } catch (e) {
+    if (e instanceof ApiError && e.status === 503) e = new AuthError("not_configured"); // the hub has no sign-in set up
     if (handleAuth(e)) return;
     if (e instanceof ApiError && e.status === 403) { toLogin("err_forbidden"); return; }
     show("login"); note($("login-msg"), errText(e)); renderGoogleButton();
@@ -1681,10 +1745,13 @@ async function start() {
 }
 
 /* ---------- helpers ---------- */
-const PLAT = { discord: "D", slack: "S", clickup: "C", web: "W", line: "L", google: "G", google_calendar: "G", telegram: "T", whatsapp: "W" };
+const BRAND = { discord: "discord", slack: "slack", clickup: "clickup", line: "line", telegram: "telegram", whatsapp: "whatsapp", google: "google", google_calendar: "google-calendar", gmail: "gmail", google_drive: "google-drive" };
 const PNAME = { discord: "Discord", slack: "Slack", clickup: "ClickUp", line: "LINE", telegram: "Telegram", whatsapp: "WhatsApp", web: "Web", google: "Google", google_drive: "Google Drive", gmail: "Gmail", google_calendar: "Google Calendar" };
 const pname = (p) => PNAME[p] || p;
-const platBadge = (p, sm) => el("div", { class: "plat " + (p in PLAT ? p : "soon") + (sm ? " sm" : ""), "aria-hidden": "true" }, PLAT[p] || "?");
+// a connected workspace: the server's own icon when the platform gives one (Discord), else the platform's icon
+const wsBadge = (w) => /^https:\/\//.test(w.icon_url || "") ? el("span", { class: "plat srv", "aria-hidden": "true" }, el("img", { src: w.icon_url, alt: "", width: "40", height: "40", loading: "lazy", referrerpolicy: "no-referrer" }), platBadge(w.platform, true)) : platBadge(w.platform);
+const platBadge = (p, sm) => el("span", { class: "plat " + (p === "web" ? "web" : BRAND[p] ? "brand" : "soon") + (sm ? " sm" : ""), "aria-hidden": "true" },
+  p === "web" ? el("img", { src: "/static/dory/dory-mark.webp", alt: "" }) : BRAND[p] ? el("img", { src: "/static/dory/brands/" + BRAND[p] + ".svg", alt: "" }) : "?");
 // a person's identity on one platform: Google = the sign-in (grey), verified = filled with a check, typed by hand = outline
 const idBadge = (i) => i.platform === "google" ? el("span", { class: "idb ok", title: t("verified") }, ic("check"), "Google")
   : i.verified ? el("span", { class: "idb ok", title: t("verified") }, ic("check"), pname(i.platform))
@@ -1716,6 +1783,26 @@ function md(src) {
     else { if (inList) { out += "</ul>"; inList = false; } if (line.trim()) out += "<p>" + inline(line) + "</p>"; }
   }
   return out + (inList ? "</ul>" : "");
+}
+// ARIA tabs on a tablist whose tabs carry aria-selected: Left / Right / Home / End move and select (the tab's own click),
+// and only the selected tab is a Tab stop. The tabs may be re-rendered; the list element stays.
+function tabKeys(list) {
+  const tabs = () => [...list.querySelectorAll("[role=tab]")];
+  const sync = () => { for (const b of tabs()) b.tabIndex = b.getAttribute("aria-selected") === "true" ? 0 : -1; };
+  new MutationObserver(sync).observe(list, { childList: true, subtree: true, attributeFilter: ["aria-selected"] });
+  list.addEventListener("keydown", (ev) => {
+    const all = tabs(), i = all.indexOf(document.activeElement); if (i < 0) return;
+    const j = { ArrowRight: i + 1, ArrowLeft: i - 1, Home: 0, End: all.length - 1 }[ev.key]; if (j == null) return;
+    ev.preventDefault(); all[(j + all.length) % all.length].click();
+    const s = list.querySelector('[role=tab][aria-selected="true"]'); if (s) s.focus();
+  });
+  sync(); return list;
+}
+// a person and everyone under them (direct and indirect reports): never offered as that person's manager (a loop)
+function selfAndReports(members, email) {
+  const below = new Set([email]);
+  for (let grew = true; grew;) { grew = false; for (const m of members) if (m.reports_to && below.has(m.reports_to) && !below.has(m.email)) { below.add(m.email); grew = true; } }
+  return below;
 }
 const field = (label, input, cls) => el("label", { class: "f" + (cls ? " " + cls : "") }, el("span", {}, label), input);
 const loc = () => (lang === "th" ? "th-TH" : "en-GB");
@@ -1816,7 +1903,7 @@ async function viewDoc(r) {
 }
 async function startConnector(p) {
   try { const r = await api("/api/center/connectors/" + p + "/start" + q({ org: orgId })); if (MOCK) { toast("mock: " + r.url); return; } if (r.kind === "invite") window.open(r.url, "_blank", "noopener"); else location.href = r.url; }
-  catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); }
+  catch (e) { if (!handleAuth(e)) toast(e instanceof ApiError && e.status === 503 ? t("conn_off", { p: pname(p) }) : errText(e), "error"); }
 }
 async function workspaces() { return await api(O("/workspaces")); }
 
@@ -1850,6 +1937,9 @@ const ACTION_KINDS = { post_message: ["channel", "text"], create_event: ["name",
 // datetime-local value -> ISO 8601 with the browser's UTC offset (what the bot expects)
 const isoLocal = (v) => { if (!v) return ""; const d = new Date(v); if (isNaN(d)) return ""; const off = -d.getTimezoneOffset(), pad = (n) => String(Math.abs(n)).padStart(2, "0");
   return v.slice(0, 16) + ":00" + (off >= 0 ? "+" : "-") + pad(Math.trunc(off / 60)) + ":" + pad(off % 60); };
+// the bot's stored error as one of the monitor's plain messages (the same codes as monitor_sources.action_error_code)
+const actionErrCode = (e) => { const x = String(e || "").trim().toLowerCase();
+  return x.startsWith("missing permission") ? "missing_permission" : x.startsWith("expired") ? "expired" : x.startsWith("channel not found") ? "not_found" : x.startsWith("discord:") ? "discord_error" : x === "bad request" ? "bad_request" : "error"; };
 function actionsCard(my) {
   const card = el("div", { class: "card", id: "ov-actions" }), list = el("div"), msg = el("div", { role: "status" });
   let timer = 0;
@@ -1866,11 +1956,11 @@ function actionsCard(my) {
       el("thead", {}, el("tr", {}, [t("act_kind"), t("act_by"), t("status"), t("act_result")].map((h) => el("th", { scope: "col", text: h })))),
       el("tbody", {}, rows.map((a) => { const r = a.result && typeof a.result === "object" ? a.result : {}, url = safeUrl(r.url);
         return el("tr", {},
-          el("td", {}, el("div", {}, el("span", { class: "chip kind", text: a.kind })), el("div", { class: "args", text: shortArgs(a.args) })),
+          el("td", {}, el("div", {}, el("span", { class: "chip", title: a.kind, text: I.en["k_" + a.kind] ? t("k_" + a.kind) : a.kind })), el("div", { class: "args", text: shortArgs(a.args) })),
           el("td", {}, el("div", { class: "small", text: a.by || "" }), el("div", { class: "muted small", text: fmtTime(a.created_at) })),
           el("td", {}, badge(a.status)),
           el("td", {}, url ? el("a", { href: url, target: "_blank", rel: "noopener noreferrer", text: t("act_open") }) : null,
-            a.error ? el("div", { class: "small", style: "color:var(--err-ink)", text: a.error }) : (!url && Object.keys(r).length ? el("div", { class: "muted small", text: shortArgs(r) }) : null))); }))))
+            a.error ? el("div", { class: "small", style: "color:var(--err-ink)", title: a.error, text: t("mon_err_" + actionErrCode(a.error)) }) : (!url && Object.keys(r).length ? el("div", { class: "muted small", text: shortArgs(r) }) : null))); }))))
       : el("div", { class: "empty", text: t("act_none") }));
     if (rows.some((a) => a.status === "pending") && card.isConnected) timer = setTimeout(draw, 5000);
   };
@@ -1950,7 +2040,7 @@ VIEWS.overview = async (body, my) => {
     f.addEventListener("submit", async (ev) => {
       ev.preventDefault(); saveB.disabled = true;
       const profile = {}; for (const k of PF) profile[k] = k === "about" ? about.value.trim() : F[k].value.trim();
-      profile.values = F.values.value.split(/[,\n、，]/).map((x) => x.trim()).filter(Boolean).slice(0, 8);
+      profile.values = F.values.value.split(/[,\n、，]/).map((x) => x.trim()).filter(Boolean);
       try {
         const r = await api(O(""), J("PUT", { name: F.name.value.trim() || org.name, logo_url: F.logo_url.value.trim(), profile }));
         if (r && r.name) { org.name = r.name; const o = curOrg(); if (o) o.name = r.name; }
@@ -1983,7 +2073,7 @@ VIEWS.overview = async (body, my) => {
   // (5) the organization chart: the same family tree as Members -> Org chart, read-only here
   if (dir) {
     const action = admin
-      ? el("a", { class: "btn ghost sm", href: "#/members", onclick: () => { try { sessionStorage.setItem("center_mtab", "chart"); } catch { /* ignore */ } } }, ic("pencil"), t("oc_edit_b"))
+      ? el("a", { class: "btn ghost sm", href: "#/members", onclick: () => { try { sessionStorage.setItem("center_mtab", "chart"); localStorage.setItem("dory_chart_view", "people"); } catch { /* ignore */ } } }, ic("pencil"), t("oc_edit_b"))
       : el("a", { class: "btn ghost sm", href: "#/account" }, ic("user"), t("oc_mine"));
     const card = orgChart(dir, [], { readonly: true, title: "org_chart", foot: false, only: "chart" }); card.id = "ov-chart";
     card.querySelector(".pline").append(action); // the chart's own header takes the tile and the action, like the other sections
@@ -2036,8 +2126,8 @@ VIEWS.overview = async (body, my) => {
     const tasks = tk ? items(tk, "tasks") : null;
     if (tasks) sys.push(el("div", { class: "card" }, el("h2", { text: t("tasks") }),
       tasks.length ? el("div", { class: "tblwrap" }, el("table", { class: "tbl stack" }, el("thead", {}, el("tr", {}, ["c_title", "assignee", "due", "status"].map((k) => el("th", { scope: "col", text: t(k) })))),
-        el("tbody", {}, tasks.slice(0, 10).map((k) => el("tr", {}, el("td", {}, safeUrl(k.url) ? el("a", { href: k.url, target: "_blank", rel: "noopener noreferrer", text: k.title }) : k.title, " ", el("span", { class: "chip", text: k.platform || "" })),
-          el("td", { text: k.assignee || (k.assignees || []).join(", ") }), el("td", { text: fmtDate(k.due) }), el("td", { text: k.status || "" })))))) : el("div", { class: "empty", text: t("no_tasks") })));
+        el("tbody", {}, tasks.slice(0, 10).map((k) => el("tr", {}, el("td", {}, safeUrl(k.url) ? el("a", { href: k.url, target: "_blank", rel: "noopener noreferrer", text: k.title }) : k.title, " ", k.platform ? el("span", { class: "chip", text: pname(k.platform) }) : null),
+          el("td", { text: k.assignee || (k.assignees || []).join(", ") }), el("td", { text: fmtDate(k.due) }), el("td", { text: k.status ? t(I.en["ts_" + k.status] ? "ts_" + k.status : "ts_other") : "" })))))) : el("div", { class: "empty", text: t("no_tasks") })));
     sys.push(actionsCard(my));
     out.push(el("details", { class: "sys", id: "ov-sys", open: !nDisc }, el("summary", {}, t("cp_sys"), el("span", { class: "muted", text: t("cp_sys_p") })), el("div", { class: "inner" }, sys)));
   }
@@ -2167,7 +2257,7 @@ VIEWS.docs = async (body, my) => {
     if (r.id) { try { const full = await api(O("/documents/" + encodeURIComponent(r.id))); pre.textContent = full.text || full.preview || t("no_preview"); } catch { /* keep */ } }
   };
   // upload
-  const fileIn = el("input", { type: "file", class: "sr", id: "d-file", "aria-label": t("upload"), accept: UP_ACCEPT });
+  const fileIn = el("input", { type: "file", class: "sr", id: "d-file", "aria-label": t("upload"), accept: UP_ACCEPT, tabindex: "-1" }); // the drop zone is the control
   const prog = el("progress", { max: "100", value: "0", hidden: true }), upMsg = el("div", { role: "status" });
   const drop = el("div", { class: "drop", tabindex: "0", role: "button", "aria-label": t("upload") }, t("drop_here"));
   const doUpload = async (file) => {
@@ -2292,10 +2382,12 @@ ICON.spkOff = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke
 // text) writes finished turns to the chat log; page = the #/chat page, whose call has no Close (the page stays).
 function liveCall(wrap, addMsg, page) {
   const S = {};
-  const reset = () => { clearTimeout(S.closeT); if (S.view) S.view.remove();
+  const reset = () => { clearTimeout(S.closeT); if (S.view) { S.view.remove(); cover(false); }
     Object.assign(S, { ws: null, ac: null, out: null, an: null, anBuf: null, stream: null, pipe: null, raf: 0, timer: 0, closeT: 0, emoT: 0, view: null, state: "", emo: "", forced: null, forcedMouth: null,
-      starting: false, ready: false, muted: false, spkOff: false, max: false, ended: false, failed: false, t0: 0, next: 0, sources: new Set(), chunks: [], mouth: 0, lvl: 0, wasSpeaking: false,
+      starting: false, ready: false, waking: false, muted: false, spkOff: false, max: false, ended: false, failed: false, t0: 0, next: 0, sources: new Set(), chunks: [], mouth: 0, lvl: 0, wasSpeaking: false,
       said: "", lastSaid: "", saidNew: true, heard: "", heardSealed: false, typedTurn: false, thinking: false, thinkQ: "" }); };
+  // the chat the call covers is out of reach (Tab, Shift+Tab, screen readers) while the call view is up
+  const cover = (on) => { for (const c of wrap.children) if (!c.classList.contains("call")) c.inert = on; };
   reset();
   const active = () => !!S.ws;
   const V = () => S.view;
@@ -2334,7 +2426,7 @@ function liveCall(wrap, addMsg, page) {
     const l = t(S.spkOff ? "live_spk_unmute" : "live_spk_mute"); v.spkB.setAttribute("aria-label", l); v.spkB.title = l; v.spkL.textContent = t(S.spkOff ? "live_spk_off" : "live_spk");
   };
   const STATUS = { connecting: "live_connecting", idle: "live_muted", listening: "live_listening", thinking: "live_thinking", speaking: "live_speaking", ended: "live_ended" };
-  const status = () => { const v = V(); if (!v) return; v.tx.textContent = S.state === "thinking" && S.thinkQ ? t("live_checking", { q: S.thinkQ }) : t(STATUS[S.state] || "live_listening"); };
+  const status = () => { const v = V(); if (!v) return; v.tx.textContent = S.state === "thinking" && S.thinkQ ? t("live_checking", { q: S.thinkQ }) : S.state === "connecting" && S.waking ? t("live_waking") : t(STATUS[S.state] || "live_listening"); };
   const setState = (s) => { const v = V(); if (!v) return; if (S.state !== s) { S.state = s; v.classList.remove("connecting", "idle", "listening", "thinking", "speaking", "ended"); v.classList.add(s); } status(); };
   const emote = (e, ms = 1200) => { const v = V(); if (!v) return; clearTimeout(S.emoT); v.classList.remove("happy", "sorry", "curious"); S.emo = e || ""; if (e) { v.classList.add(e); S.emoT = setTimeout(() => { v.classList.remove(e); S.emo = ""; }, ms); } };
   const afterSpeech = () => { const x = (S.lastSaid || S.said).trim(); if (!x || S.emo === "sorry") return; if (HAPPY_RE.test(x)) emote("happy"); else if (CURIOUS_RE.test(x)) emote("curious"); };
@@ -2372,7 +2464,8 @@ function liveCall(wrap, addMsg, page) {
   const onEvent = (m) => {
     const v = V(); if (!v) return; const text = String(m.text || "");
     switch (m.type) {
-      case "ready": S.ready = true; S.t0 = Date.now(); setState(S.muted ? "idle" : "listening"); break;
+      case "waking": S.waking = true; status(); break;
+      case "ready": S.ready = true; S.waking = false; S.t0 = Date.now(); setState(S.muted ? "idle" : "listening"); break;
       case "heard": if (S.heardSealed) { S.heard = ""; S.heardSealed = false; } S.heard += text; v.heard.textContent = S.heard.trim(); break;
       case "said": S.heardSealed = true; if (S.saidNew) { S.said = ""; S.saidNew = false; } S.said += text; v.bubble.textContent = S.said.trim(); if (!S.emo && SORRY_RE.test(S.said.trim())) emote("sorry"); break;
       case "thinking": S.thinking = true; S.usedTool = true; S.thinkQ = text.slice(0, 80); status(); break;
@@ -2400,12 +2493,13 @@ function liveCall(wrap, addMsg, page) {
   };
   // ---- start / end / say / mute
   const start = async () => {
-    if (active() || S.starting || !orgId) return;
+    if (active() || S.starting) return;
+    if (!orgId) { toast(t("live_no_org"), "error"); return; }
     if (!LIVE_OK && !MOCK) { toast(t("live_na"), "error"); return; }
-    reset(); S.starting = true; const v = build(); wrap.append(v); setState("connecting"); v.style.setProperty("--mouth", "0");
+    reset(); S.starting = true; const v = build(); wrap.append(v); cover(true); setState("connecting"); v.style.setProperty("--mouth", "0");
     try { S.stream = await navigator.mediaDevices.getUserMedia({ audio: { echoCancellation: true, noiseSuppression: true, autoGainControl: true, channelCount: 1 } }); }
     catch (e) {
-      if (!MOCK) { v.remove(); S.view = null; S.starting = false; const nm = (e && e.name) || "";
+      if (!MOCK) { v.remove(); cover(false); S.view = null; S.starting = false; const nm = (e && e.name) || "";
         toast(nm === "NotAllowedError" || nm === "SecurityError" || nm === "PermissionDeniedError" ? t("live_mic_denied") : t("live_mic_err", { e: nm || "?" }), "error"); return; }
       S.stream = null; // mock mode: a call without a microphone still shows every state
     }
@@ -2437,7 +2531,7 @@ function liveCall(wrap, addMsg, page) {
     liveLabel();
     if (!v) return;
     setState("ended"); v.classList.remove("happy", "sorry", "curious"); v.style.setProperty("--mouth", "0"); v.style.setProperty("--lvl", "0"); v.muteB.disabled = true; v.spkB.disabled = true; v.inp.disabled = true;
-    const gone = () => { v.remove(); if (S.view === v) S.view = null; const ta = wrap.querySelector("textarea"); if (ta && why === "user") ta.focus(); };
+    const gone = () => { v.remove(); if (S.view === v) S.view = null; if (!S.view) cover(false); const ta = wrap.querySelector("textarea"); if (ta && why === "user") ta.focus(); };
     if (why === "now") gone(); else S.closeT = setTimeout(gone, 900);
   };
   const say = (text) => {
@@ -2452,7 +2546,7 @@ function liveCall(wrap, addMsg, page) {
   };
   // screenshot / demo hook: force a state (and optionally mouth level, emotion, captions); show(null) hands control back
   const show = (state, o = {}) => {
-    if (!V()) wrap.append(build()); const v = V();
+    if (!V()) { wrap.append(build()); cover(true); } const v = V();
     S.forced = state || null; if (state) setState(state);
     S.forcedMouth = o.mouth != null ? o.mouth : null; if (o.mouth != null) v.style.setProperty("--mouth", String(o.mouth));
     if (o.lvl != null) { S.lvl = o.lvl; v.style.setProperty("--lvl", String(o.lvl)); }
@@ -2524,7 +2618,7 @@ function chatWidget(hist, prefix, opts = {}) {
   const ta = el("textarea", { id: prefix + "-in", rows: "1", placeholder: t("chat_ph"), "aria-label": t("chat_ph"), enterkeyhint: coarse ? "enter" : "send" });
   const btn = el("button", { class: "ib send", type: "submit" });
   const clip = el("button", { class: "ib clip", type: "button", "aria-label": t("up_attach"), title: t("up_attach") }); clip.innerHTML = ICON.clip;
-  const fileIn = el("input", { type: "file", class: "sr", id: prefix + "-file", accept: UP_ACCEPT, multiple: true, "aria-label": t("up_attach") });
+  const fileIn = el("input", { type: "file", class: "sr", id: prefix + "-file", accept: UP_ACCEPT, multiple: true, "aria-label": t("up_attach"), tabindex: "-1" });
   const offNote = el("div", { class: "notice", role: "status", hidden: true, text: t("offline_p") });
   const form = el("form", { class: "compose" }, ta, clip, btn);
   const wrap = el("div", { class: "chat", "data-drop": t("drop_files") }, msgs, status, offNote, form, el("div", { class: "hintline", "aria-hidden": "true", text: t("send_hint") }), fileIn);
@@ -2575,7 +2669,21 @@ function chatWidget(hist, prefix, opts = {}) {
     const again = el("button", { type: "button", onclick: () => { n.remove(); send(q, null, true); } }, t(err ? "retry" : "ask_again"));
     const n = el("div", { class: "msg cnote" + (err ? " err" : ""), role: err ? "alert" : "status" }, el("p", { text }),
       el("div", { class: "mact" }, again, err ? el("button", { type: "button", onclick: () => copyText(q) }, t("copy_q")) : null));
-    msgs.append(n); end();
+    msgs.append(n); end(); return n;
+  };
+  // After Stop waiting the server may still answer and save it: the history is read again a few times (from where it
+  // ended when the person stopped) and the answer lands in the log; Ask again (which removes the note) ends the search.
+  const lateAnswer = async (q, noteEl) => {
+    let from = null;
+    try { from = items(await api(O("/chat/history")), "turns").length; } catch { return; }
+    for (const s of [5, 10, 20, 40]) {
+      await new Promise((r) => setTimeout(r, s * 1000));
+      if (!noteEl.isConnected) return;
+      let turns; try { turns = items(await api(O("/chat/history")), "turns"); } catch { continue; }
+      const i = turns.findIndex((m, k) => k >= from - 2 && m.role === "user" && m.text === q);
+      const a = i >= 0 ? turns.slice(i + 1).find((m) => m.role !== "user") : null;
+      if (a) { noteEl.remove(); add("bot", a.text || "", a.at, q); return; }
+    }
   };
   // again = the question is already on screen (Retry after an error, Ask again after Stop waiting)
   const send = async (preset, docId, again) => {
@@ -2602,7 +2710,7 @@ function chatWidget(hist, prefix, opts = {}) {
       row.remove(); add("bot", r.answer || "", null, text); refreshView();
     } catch (e) {
       row.remove();
-      if (e === STOPPED) note(false, t("stopped"), text);
+      if (e === STOPPED) lateAnswer(text, note(false, t("stopped"), text));
       else if (!handleAuth(e)) note(true, t("chat_err", { e: errText(e) }), text);
     } finally { clearInterval(tick); busy = null; setMode(false); status.textContent = ""; }
     if (wrap.isConnected) ta.focus();
@@ -2693,7 +2801,7 @@ const panelNoOrg = () => el("div", { class: "chat-empty" }, chatArt(), el("h2", 
 function panelOpen() {
   if (!me || $("app").hidden) return;
   const p = $("panel"), pb = $("panel-body");
-  p.classList.add("open"); p.setAttribute("aria-hidden", "false"); $("fab").setAttribute("aria-expanded", "true"); panel.open = true; panelWanted(true);
+  p.classList.add("open"); p.setAttribute("aria-hidden", "false"); $("fab").setAttribute("aria-expanded", "true"); panel.open = true; panelWanted(true); panelModal();
   liveLabel();
   const key = orgId + ":" + lang; // reload when the org or the UI language changed
   if (panel.key === key) { if (!orgId) pb.replaceChildren(panelNoOrg()); const ta = pb.querySelector("textarea"); if (ta) ta.focus(); sendAsk(); return; }
@@ -2712,23 +2820,33 @@ function panelOpen() {
 function closePanel() {
   if (!panel.open) return;
   panel.ask = null;
-  const p = $("panel"); p.classList.remove("open"); p.setAttribute("aria-hidden", "true"); $("fab").setAttribute("aria-expanded", "false"); panel.open = false; panelWanted(false);
+  const p = $("panel"); p.classList.remove("open"); p.setAttribute("aria-hidden", "true"); $("fab").setAttribute("aria-expanded", "false"); panel.open = false; panelWanted(false); panelModal();
   if (panel.w) panel.w.stop();
   if (p.contains(document.activeElement)) $("fab").focus();
 }
 const panelReset = () => { panel.key = null; if (panel.open) panelOpen(); };
+// Below 1200 px the panel covers the page: it is a modal dialog then (the page behind is inert, so Tab stays in it);
+// docked at 1200 px and up it is part of the page.
+const DOCKED = matchMedia("(min-width: 1200px)");
+function panelModal() {
+  const modal = panel.open && !DOCKED.matches;
+  if (modal) $("panel").setAttribute("aria-modal", "true"); else $("panel").removeAttribute("aria-modal");
+  for (const id of ["side", "mainwrap", "fab"]) $(id).inert = modal;
+}
+DOCKED.addEventListener("change", panelModal);
 
 VIEWS.ws = async (body, my) => {
-  const [wsx, sh] = await Promise.all([workspaces(), api(O("/sharing"))]);
+  const [wsx, sh, cx] = await Promise.all([workspaces(), api(O("/sharing")), api("/api/center/connectors" + q({ org: orgId })).catch(() => null)]);
   if (stale(my)) return; done(body);
+  const dc = items(cx).find((c) => c.platform === "discord"), discordOn = !cx || !!(dc && dc.enabled && dc.status !== "not_configured"); // the same rule as Integrations
   const admin = isAdmin(); let links = items(sh);
   const out = [];
   // cards
   const cards = wsx.length ? el("div", { class: "wsgrid" }, wsx.map((w) => el("div", { class: "card" },
-    el("div", { class: "hd" }, platBadge(w.platform), el("div", {}, el("strong", { text: w.name }), el("div", { class: "muted small", text: w.platform }))),
+    el("div", { class: "hd" }, wsBadge(w), el("div", {}, el("strong", { text: w.name }), el("div", { class: "muted small", text: pname(w.platform) }))),
     el("div", {}, w.settings_url ? [el("a", { class: "small", href: w.settings_url, text: t("n_settings") }), " "] : null, el("span", { class: "badge " + (w.status === "connected" ? "ok" : w.status === "pending" ? "warn" : "err"), text: t("st_" + w.status) })),
     admin && w.platform !== "web" ? el("button", { class: "btn danger sm", type: "button", onclick: async () => {
-      if (!confirm(t("confirm_disc", { n: w.name }))) return;
+      if (!(await confirmDlg({ title: t("confirm_disc", { n: w.name }), body: t("confirm_disc_p"), ok: t("disconnect"), danger: true }))) return;
       try { await api(O("/workspaces/" + encodeURIComponent(w.id)), { method: "DELETE" }); toast(t("saved")); route(); } catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); }
     } }, t("disconnect")) : null))) : el("div", { class: "empty", text: t("ws_empty") });
   out.push(el("div", { class: "card" }, el("h2", { text: t("ws_h") }), cards));
@@ -2738,11 +2856,11 @@ VIEWS.ws = async (body, my) => {
     const f = el("form", { class: "row" }, field(t("code"), code), el("button", { class: "btn", type: "submit" }, t("link")));
     f.addEventListener("submit", async (ev) => {
       ev.preventDefault(); if (!code.value.trim()) return;
-      try { await api(O("/workspaces/discord/link"), J("POST", { code: code.value.trim() })); toast(t("linked")); route(); }
+      try { await api(O("/workspaces/discord/link"), J("POST", { code: code.value.trim() })); toast(t("linked")); await refreshMe(); route(); }
       catch (e) { if (!handleAuth(e)) msg.replaceChildren(el("div", { class: "notice error", role: "alert", text: errText(e) })); }
     });
     out.push(el("div", { class: "card" }, el("h2", { text: t("add_discord") }), el("p", { text: t("add_d1") }),
-      el("p", {}, el("button", { class: "btn ghost sm", type: "button", onclick: () => startConnector("discord") }, t("invite_btn"))),
+      el("p", {}, discordOn ? el("button", { class: "btn ghost sm", type: "button", onclick: () => startConnector("discord") }, t("invite_btn")) : el("span", { class: "badge", text: t("not_enabled") })),
       el("p", { text: t("add_d2") }), el("p", { text: t("add_d3") }), f, msg));
   }
   // sharing matrix
@@ -2784,13 +2902,12 @@ VIEWS.apps = async (body, my) => {
   const card = (c) => {
     let action;
     if (c.status === "coming_soon") action = el("span", { class: "badge", text: t("soon") });
-    else if (c.platform === "slack" && !c.enabled) action = isAdmin() ? el("button", { class: "btn", type: "button", onclick: () => toast(t("slack_off")) }, t("add_slack")) : null;
     else if (c.status === "not_configured" || !c.enabled) action = el("span", { class: "badge", text: t("not_enabled") });
-    else action = el("div", { class: "row" }, c.connected ? el("span", { class: "badge ok", text: t("connected_n", { n: c.connected }) }) : null,
+    else action = el("div", { class: "row" }, c.connected ? el("span", { class: "badge ok", text: tn("connected_n", c.connected) }) : null,
       isAdmin() ? el("button", { class: "btn" + (c.connected ? " ghost" : ""), type: "button", onclick: () => startConnector(c.platform) }, c.platform === "discord" ? t("add_discord") : c.platform === "slack" ? t("add_slack") : t("connect")) : null);
-    return el("div", { class: "card" }, el("div", { class: "hd" }, platBadge(c.platform.startsWith("google") || c.platform === "gmail" ? "soon" : c.platform), el("div", {}, el("strong", { text: c.name }), el("div", { class: "muted small", text: t(names[c.platform] || "") }))), action);
+    return el("div", { class: "card" }, el("div", { class: "hd" }, platBadge(c.platform), el("div", {}, el("strong", { text: c.name }), el("div", { class: "muted small", text: t(names[c.platform] || "") }))), action);
   };
-  body.replaceChildren(el("div", { class: "wsgrid" }, items(cx).filter((c) => !["clickup", "google_drive", "gmail"].includes(c.platform)).map((c) => c.platform === "google_calendar" ? calendarCard(c) : card(c))),
+  body.replaceChildren(el("div", { class: "wsgrid" }, items(cx).filter((c) => !["google_drive", "gmail"].includes(c.platform)).map((c) => c.platform === "google_calendar" ? calendarCard(c) : card(c))),
     linkedCard(), isAdmin() ? attachCard() : null);
 };
 
@@ -2804,11 +2921,11 @@ function calendarCard(c) {
   const draw = (g) => {
     status.replaceChildren(g.connected ? el("span", { class: "badge ok", text: t("gc_connected", { e: g.email || "" }) }) : el("span", { class: "muted small", text: t("gc_none") }));
     act.replaceChildren(g.connected
-      ? el("button", { class: "btn ghost", type: "button", onclick: async () => { if (!confirm(t("gc_confirm"))) return; try { await api(GC, { method: "DELETE" }); toast(t("gc_off")); draw({ connected: false }); } catch (e) { fail(e); } } }, t("gc_disconnect"))
+      ? el("button", { class: "btn ghost", type: "button", onclick: async () => { if (!(await confirmDlg({ title: t("gc_confirm"), body: t("gc_confirm_p"), ok: t("gc_disconnect"), danger: true }))) return; try { await api(GC, { method: "DELETE" }); toast(t("gc_off")); draw({ connected: false }); } catch (e) { fail(e); } } }, t("gc_disconnect"))
       : el("button", { class: "btn", type: "button", onclick: async () => { try { const r = await api(GC + "/connect", { method: "POST" }); if (MOCK) { toast("mock: " + r.auth_url); return; } window.location = r.auth_url; } catch (e) { fail(e); } } }, t("connect")));
   };
-  // api() reports 503 as AuthError("not_configured"); for this feature that only means "not switched on"
-  const fail = (e) => { if (e instanceof AuthError && e.message === "not_configured") off(); else if (!handleAuth(e)) toast(errText(e), "error"); };
+  // a 503 here only means "not switched on"
+  const fail = (e) => { if (e instanceof ApiError && e.status === 503) off(); else if (!handleAuth(e)) toast(errText(e), "error"); };
   api(GC).then(draw).catch(fail);
   return card;
 }
@@ -2842,10 +2959,12 @@ function linkedCard() {
   const draw = () => {
     list.replaceChildren(...["discord", ...LINKABLE].map((p) => {
       const slot = el("div"), has = p in linked;
-      const row = el("div", { class: "row", style: "align-items:center" }, platBadge(p), el("strong", { text: PNAME[p] }),
-        has ? el("span", { class: "chip", text: t("la_account", { h: linked[p] }) }) : el("span", { class: "muted small", text: t("la_none") }),
-        p === "discord" ? (has ? el("span", { class: "muted small", text: t("la_ro") }) : null)
-          : has ? el("button", { class: "btn danger sm", type: "button", onclick: () => { if (confirm(t("la_confirm", { p: PNAME[p] }))) run(async () => { await api(O("/identities/" + p), { method: "DELETE" }); toast(t("la_unlinked")); await load(); }); } }, t("la_unlink"))
+      // Discord is verified by the member (/linkaccount in Discord, or the Discord sign-in), on My profile
+      const row = el("div", { class: "larow" }, platBadge(p), el("strong", { text: PNAME[p] }),
+        el("div", {}, has ? el("span", { class: "chip", text: t("la_account", { h: linked[p] }) }) : el("span", { class: "muted small", text: t("la_none") })),
+        p === "discord" ? el("div", { class: "laact" }, has ? el("a", { class: "small", href: "#/account", text: t("la_dc_change") })
+            : [el("span", { class: "muted small", text: t("la_dc_how") }), me.discord_verify ? el("button", { class: "btn sm", type: "button", onclick: verifyDiscord }, t("verify_discord")) : null, el("a", { class: "btn ghost sm", href: "#/account", style: "text-decoration:none" }, t("have_code"))])
+          : has ? el("button", { class: "btn danger sm", type: "button", onclick: async () => { if (await confirmDlg({ title: t("la_confirm", { p: PNAME[p] }), body: t("la_confirm_p", { p: PNAME[p] }), ok: t("la_unlink"), danger: true })) run(async () => { await api(O("/identities/" + p), { method: "DELETE" }); toast(t("la_unlinked")); await load(); }); } }, t("la_unlink"))
             : el("button", { class: "btn sm", type: "button", onclick: () => run(async () => { const r = await api(O("/identities/" + p + "/code"), { method: "POST" }); shown = p; slot.replaceChildren(codeBox(r, () => run(load))); }) }, t("la_get")));
       return el("div", {}, row, slot);
     }));
@@ -2893,7 +3012,8 @@ VIEWS.members = async (body, my) => {
     const title = inp("mp-title", m.title, t("prof_title_ph")), dept = inp("mp-dept", m.department, t("prof_dept_ph")), first = inp("mp-first", m.first_name), last = inp("mp-last", m.last_name), nick = inp("mp-nick", m.name, t("acc_name_ph"));
     const about = el("textarea", { id: "mp-about", rows: 3, class: "grow" }); about.value = m.about || "";
     const jd = el("textarea", { id: "mp-jd", rows: 5, class: "grow", placeholder: t("prof_jd_ph") }); jd.value = m.job_description || "";
-    const boss = el("select", { id: "mp-boss" }, el("option", { value: "" }, t("mp_boss_none")), list.filter((x) => x.email !== m.email).map((x) => el("option", { value: x.email, selected: x.email === (m.reports_to || "") }, personName(x) + " · " + x.email)));
+    const below = selfAndReports(list, m.email);
+    const boss = el("select", { id: "mp-boss" }, el("option", { value: "" }, t("mp_boss_none")), list.filter((x) => !below.has(x.email)).map((x) => el("option", { value: x.email, selected: x.email === (m.reports_to || "") }, personName(x) + " · " + x.email)));
     const body = el("div", {}, el("p", { class: "muted small", text: t("mp_p") }),
       el("div", { class: "row" }, field(t("acc_first"), first), field(t("acc_last"), last)),
       el("div", { class: "row" }, field(t("acc_name"), nick), field(t("prof_title"), title), field(t("prof_dept"), dept)),
@@ -2934,8 +3054,8 @@ VIEWS.members = async (body, my) => {
         el("td", {}, el("div", {}, el("strong", { text: personName(m) }), m.title || m.department ? el("span", { class: "muted small", text: " · " + [m.title, m.department].filter(Boolean).join(", ") }) : null), el("div", { class: "muted small", text: [nickOf(m), m.email].filter(Boolean).join(" · ") }),
           admin || m.email === me.email ? el("button", { class: "btn ghost sm", type: "button", style: "margin-top:6px", onclick: () => editProfile(m) }, t("mp_edit")) : null),
         el("td", {}, roleCell(m)),
-        el("td", {}, el("div", { class: "small" + (n ? "" : " muted"), text: n ? t("linked_n", { n }) : t("linked_none") }), el("div", { class: "idbs" }, el("span", { class: "idb ok", title: t("verified") }, ic("check"), "Google"), ids.map(idBadge))),
-        el("td", {}, admin && m.role !== "owner" && (isOwner() || m.role === "member") ? el("button", { class: "btn danger sm", type: "button", onclick: () => { if (confirm(t("confirm_rm", { e: m.email }))) act(() => api(O("/members") + q({ email: m.email }), { method: "DELETE" })); } }, t("remove")) : null)); })))) : el("div", { class: "empty", text: t("mem_none") }));
+        el("td", {}, el("div", { class: "small" + (n ? "" : " muted"), text: n ? tn("linked_n", n) : t("linked_none") }), el("div", { class: "idbs" }, el("span", { class: "idb ok", title: t("verified") }, ic("check"), "Google"), ids.map(idBadge))),
+        el("td", {}, admin && m.role !== "owner" && (isOwner() || m.role === "member") ? el("button", { class: "btn danger sm", type: "button", onclick: async () => { if (await confirmDlg({ title: t("confirm_rm", { e: m.email }), body: t("confirm_rm_p"), ok: t("remove"), danger: true })) act(() => api(O("/members") + q({ email: m.email }), { method: "DELETE" })); } }, t("remove")) : null)); })))) : el("div", { class: "empty", text: t("mem_none") }));
   };
   draw();
   const people = el("div");
@@ -2973,14 +3093,14 @@ VIEWS.members = async (body, my) => {
       t("tab_" + k), k === "people" ? el("span", { class: "n", text: list.length }) : null)));
     if (tab !== "people") { try { sessionStorage.setItem("center_mtab", tab); } catch { /* ignore */ } }
     people.hidden = tab !== "people"; chartBox.hidden = tab !== "chart"; everyoneBox.hidden = tab !== "everyone"; posBox.hidden = tab !== "positions"; expBox.hidden = tab !== "experts";
-    if (tab === "positions" && !posLoaded) { posLoaded = true; posBox.replaceChildren(loading()); positionsView(posBox, list, admin, (pid) => { tab = "experts"; expLoaded = true; drawTabs(); expertsView(expBox, list, pid); }); }
+    if (tab === "positions" && !posLoaded) { posLoaded = true; posBox.replaceChildren(loading()); positionsView(posBox, list, admin, (pid) => { tab = "experts"; expLoaded = true; drawTabs(); expertsView(expBox, list, pid); }, () => { posRows = null; expLoaded = false; }); }
     if (tab === "experts" && !expLoaded) { expLoaded = true; expBox.replaceChildren(loading()); expertsView(expBox, list, null); }
-    if (tab === "chart") centerChart();
+    if (tab === "chart") { if (!posRows && chartView === "positions") drawChart().then(centerChart); else centerChart(); }
     if (tab === "everyone" && !everyoneLoaded) { everyoneLoaded = true; everyoneBox.replaceChildren(loading()); peopleDirectory(everyoneBox, list, admin); }
   };
   // a wide chart opens centred on the root (only measurable once the tab is shown)
   function centerChart() { requestAnimationFrame(() => { const w = chartBox.querySelector(".orgwrap"); if (w) { try { w.scrollLeft = Math.max(0, (w.scrollWidth - w.clientWidth) / 2); } catch { /* ignore */ } } }); }
-  drawTabs();
+  drawTabs(); tabKeys(ktabs);
   body.replaceChildren(el("div", { style: "margin-bottom:16px" }, ktabs), people, everyoneBox, posBox, expBox, chartBox);
 };
 
@@ -3012,15 +3132,16 @@ function positionChart(rows, members) {
 }
 
 // Positions: the company's jobs (filled or vacant) as organisational knowledge.
-async function positionsView(box, members, admin, onFind) {
+// onChanged: a position was saved or deleted (the org chart and Find an expert fetch the list again)
+async function positionsView(box, members, admin, onFind, onChanged = () => {}) {
   let rows;
-  try { rows = items(await api(O("/positions"))); } catch (e) { if (!handleAuth(e)) box.replaceChildren(errBox(e, () => positionsView(box, members, admin, onFind))); return; }
+  try { rows = items(await api(O("/positions"))); } catch (e) { if (!handleAuth(e)) box.replaceChildren(errBox(e, () => positionsView(box, members, admin, onFind, onChanged))); return; }
   const nameOf = (email) => { const m = members.find((x) => x.email === email); return m ? personName(m) : email; };
   const titleOf = (id) => (rows.find((x) => x.id === id) || {}).title || "";
-  const card = (p) => el("article", { class: "pcard poscard" + (p.holders.length ? "" : " vacant") },
+  const card = (p) => el("article", { class: "dcard poscard" + (p.holders.length ? "" : " vacant") },
     el("div", { class: "phd" }, el("div", { class: "pwho" }, el("strong", { text: p.title }), p.department ? el("span", { class: "muted small", text: " · " + p.department }) : null,
       p.reports_to ? el("div", { class: "muted small", text: "↑ " + titleOf(p.reports_to) }) : null),
-      p.holders.length || (p.placeholders || []).length ? el("span", { class: "badge ok", text: t("po_people_n", { n: p.holders.length + (p.placeholders || []).length }) }) : el("span", { class: "badge warn", text: t("po_vacant") })),
+      p.holders.length || (p.placeholders || []).length ? el("span", { class: "badge ok", text: tn("po_people_n", p.holders.length + (p.placeholders || []).length) }) : el("span", { class: "badge warn", text: t("po_vacant") })),
     p.holders.length || (p.placeholders || []).length ? el("div", { class: "idbs" }, p.holders.map((e) => el("span", { class: "chip", text: nameOf(e) })), (p.placeholders || []).map((n) => el("span", { class: "chip ghostp", title: t("po_noacc"), text: n }))) : null,
     p.summary ? el("p", { class: "small pre", text: p.summary }) : null,
     p.responsibilities ? el("details", {}, el("summary", { class: "small", text: t("po_resp") }), el("p", { class: "small pre", text: p.responsibilities })) : null,
@@ -3039,12 +3160,16 @@ async function positionsView(box, members, admin, onFind) {
     const holders = el("select", { id: "po-holders", multiple: true, size: Math.min(6, Math.max(2, members.length)) }, members.map((m) => el("option", { value: m.email, selected: p.holders.includes(m.email) }, personName(m) + " · " + m.email)));
     const body = el("div", {}, el("div", { class: "row" }, field(t("po_title"), title), field(t("prof_dept"), dept)), field(t("po_summary"), summary), field(t("po_resp"), resp), field(t("po_skills"), skills), field(t("po_policies"), pol),
       el("div", { class: "row" }, field(t("po_reports"), rep2), field(t("po_holders"), holders)), field(t("po_ph"), phs),
-      isNew ? null : el("p", {}, el("button", { class: "btn danger sm", type: "button", onclick: async () => { if (!confirm(t("po_confirm_del", { t: p.title }))) return; try { await api(O("/positions/" + p.id), { method: "DELETE" }); $("confirm-dlg").close("cancel"); rows = rows.filter((x) => x.id !== p.id); redraw(); } catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); } } }, t("po_delete"))));
+      isNew ? null : el("p", {}, el("button", { class: "btn danger sm", type: "button", onclick: () => $("confirm-dlg").close("delete") }, t("po_delete"))));
     const ok = await confirmDlg({ title: isNew ? t("po_new") : p.title, body, ok: t("save") });
-    if (!ok) return;
+    if (!ok) { // Delete closes the editor; the standard confirmation then asks
+      if ($("confirm-dlg").returnValue !== "delete" || !(await confirmDlg({ title: t("po_confirm_del", { t: p.title }), body: t("po_del_p"), ok: t("po_delete"), danger: true }))) return;
+      try { await api(O("/positions/" + encodeURIComponent(p.id)), { method: "DELETE" }); rows = rows.filter((x) => x.id !== p.id); redraw(); onChanged(); toast(t("saved")); } catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); }
+      return;
+    }
     const payload = { title: title.value.trim(), department: dept.value.trim(), summary: summary.value.trim(), responsibilities: resp.value.trim(), policies: pol.value.trim(),
       skills: skills.value.split(",").map((x) => x.trim()).filter(Boolean), reports_to: rep2.value, holders: [...holders.selectedOptions].map((o) => o.value), placeholders: phs.value.split("\n").map((x) => x.trim()).filter(Boolean) };
-    try { const np = await api(O("/positions" + (isNew ? "" : "/" + p.id)), J(isNew ? "POST" : "PUT", payload)); rows = isNew ? rows.concat(np) : rows.map((x) => (x.id === np.id ? np : x)); redraw(); toast(t("po_saved")); }
+    try { const np = await api(O("/positions" + (isNew ? "" : "/" + p.id)), J(isNew ? "POST" : "PUT", payload)); rows = isNew ? rows.concat(np) : rows.map((x) => (x.id === np.id ? np : x)); redraw(); onChanged(); toast(t("po_saved")); }
     catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); }
   }
   redraw();
@@ -3071,7 +3196,7 @@ async function expertsView(box, members, positionId) {
     ev.preventDefault(); go.disabled = true; out.replaceChildren(el("div", { class: "muted", text: t("ex_wait") }));
     try {
       const r = await api(O("/experts"), J("POST", { need: need.value.trim(), position_id: pos.value || null, exclude: excl.value || null }));
-      out.replaceChildren(el("div", { class: "muted small", text: t("ex_n", { n: r.candidates }) }),
+      out.replaceChildren(el("div", { class: "muted small", text: tn("ex_n", r.candidates) }),
         r.picks.length ? el("div", { class: "exlist" }, r.picks.map(pickCard)) : el("div", { class: "empty", text: t("ex_none") }),
         r.gaps ? el("div", { class: "notice" }, el("strong", { text: t("ex_gaps") + ": " }), r.gaps) : null);
     } catch (e) { if (!handleAuth(e)) out.replaceChildren(el("div", { class: "notice error", text: errText(e) })); }
@@ -3084,7 +3209,11 @@ async function expertsView(box, members, positionId) {
 // Everyone on the platforms: floating profiles (account or not), admin notes, what Dory sees.
 async function peopleDirectory(box, members, admin) {
   let data;
-  try { data = await api(O("/people")); } catch (e) { if (!handleAuth(e)) box.replaceChildren(errBox(e, () => peopleDirectory(box, members, admin))); return; }
+  try { data = await api(O("/people")); } catch (e) {
+    if (e instanceof ApiError && e.status === 404) box.replaceChildren(el("div", { class: "card" }, el("div", { class: "empty" }, el("p", { text: t("pp_no_discord") }), el("p", { class: "small" }, t("pp_no_discord_p"), " ", el("a", { href: "#/ws", text: t("n_ws") })))));
+    else if (!handleAuth(e)) box.replaceChildren(errBox(e, () => peopleDirectory(box, members, admin)));
+    return;
+  }
   // first visit by an admin: scan the platforms at once (automatic detection), no button needed
   if (admin && !items(data, "people").length) { try { data = await api(O("/people/discover"), { method: "POST" }); } catch (e) { if (handleAuth(e)) return; } }
   const initial = (n) => (String(n || "?").trim()[0] || "?").toUpperCase();
@@ -3104,7 +3233,7 @@ async function peopleDirectory(box, members, admin) {
       o && o.at ? el("div", { class: "muted small", text: t("pp_obs_at", { d: fmtTime(o.at), n: o.messages || 0 }) }) : null);
     return wrap;
   };
-  const card = (p) => el("article", { class: "pcard" + (p.hidden ? " hid" : "") },
+  const card = (p) => el("article", { class: "dcard" + (p.hidden ? " hid" : "") },
     el("div", { class: "phd" }, el("div", { class: "pav", style: "--h:" + hue(p.id), "aria-hidden": "true", text: initial(p.display_name) }),
       el("div", { class: "pwho" }, el("strong", { text: p.display_name }), p.nickname && p.name && p.nickname !== p.name ? el("span", { class: "muted small", text: " · " + p.name }) : null,
         el("div", { class: "small" }, [p.title, p.department].filter(Boolean).join(", ") || el("span", { class: "muted", text: "—" }))),
@@ -3120,7 +3249,7 @@ async function peopleDirectory(box, members, admin) {
   const grid = el("div", { class: "pgrid" }), head = el("div", { class: "pline" });
   const redraw = () => {
     const rows = items(data, "people");
-    head.replaceChildren(el("div", {}, el("span", { class: "chip", text: t("pp_count", { n: rows.length, a: data.with_account || 0 }) }), data.scanned_at ? el("span", { class: "muted small", text: " " + t("pp_scanned", { d: fmtTime(data.scanned_at) }) }) : null),
+    head.replaceChildren(el("div", {}, el("span", { class: "chip", text: tn("pp_count", rows.length, { a: data.with_account || 0 }) }), data.scanned_at ? el("span", { class: "muted small", text: " " + t("pp_scanned", { d: fmtTime(data.scanned_at) }) }) : null),
       admin ? el("button", { class: "btn sm", type: "button", onclick: async (ev) => { const b = ev.currentTarget; b.disabled = true; b.textContent = t("pp_scanning");
         try { data = await api(O("/people/discover"), { method: "POST" }); redraw(); toast(t("saved")); } catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); } b.disabled = false; b.textContent = t("pp_scan"); } }, t("pp_scan")) : null);
     grid.replaceChildren(rows.length ? rows.map(card) : el("div", { class: "empty", text: t("pp_none") }));
@@ -3153,7 +3282,10 @@ function inviteLinksCard() {
   const roleOpts = ["member", "admin"]; // ownership is transferred, never handed out by link
   const role = el("select", { id: "inv-role" }, roleOpts.map((x) => el("option", { value: x }, t("role_" + x))));
   const f = el("form", { class: "row" }, field(t("inv_days"), days), field(t("inv_uses"), uses), field(t("mem_role"), role), field(t("inv_label"), label), el("button", { class: "btn", type: "submit" }, t("inv_make")));
-  const copy = async (url) => { try { await navigator.clipboard.writeText(url); toast(t("copied")); } catch { prompt(t("copy"), url); } };
+  // no clipboard (permission, plain http): the link in a dialog, selected, to copy by hand
+  const copy = async (url, quiet) => { try { await navigator.clipboard.writeText(url); toast(t("copied")); } catch { if (quiet) return; // the new link is on screen anyway
+    const box = el("input", { type: "text", readonly: true, value: url, "aria-label": t("inv_h"), onfocus: (ev) => ev.target.select() });
+    confirmDlg({ title: t("copy_manual"), body: el("div", {}, el("p", { class: "small", text: t("copy_manual_p") }), box), ok: t("close"), info: true }); box.focus(); } };
   const linkRow = (i) => {
     const st = i.status || "active", live = st === "active";
     const meta = [i.label ? i.label : null, i.expires_at ? t("inv_expires", { d: fmtTime(i.expires_at) }) : t("inv_forever"), i.max_uses ? t("inv_used_of", { n: i.uses, m: i.max_uses }) : t("inv_used", { n: i.uses }), t("inv_by", { e: i.created_by })].filter(Boolean);
@@ -3161,7 +3293,7 @@ function inviteLinksCard() {
       el("div", { class: "invmain" }, el("div", {}, el("span", { class: "chip " + (live ? "ok" : "muted"), text: t("inv_st_" + st) }), " ", el("span", { class: "chip", text: t("role_" + i.role) })),
         el("code", { class: "invurl", text: i.url }), el("div", { class: "muted small", text: meta.join(" · ") }), i.used && i.used.length ? el("div", { class: "muted small", text: i.used.join(", ") }) : null),
       el("div", { class: "invact" }, live ? el("button", { class: "btn ghost sm", type: "button", onclick: () => copy(i.url) }, t("copy")) : null,
-        live ? el("button", { class: "btn danger sm", type: "button", onclick: async () => { if (!confirm(t("inv_confirm_rv"))) return; try { await api(O("/invites/" + encodeURIComponent(i.code)), { method: "DELETE" }); toast(t("inv_revoked_ok")); out.replaceChildren(); load(); } catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); } } }, t("inv_revoke")) : null));
+        live ? el("button", { class: "btn danger sm", type: "button", onclick: async () => { if (!(await confirmDlg({ title: t("inv_revoke_q"), body: t("inv_confirm_rv"), ok: t("inv_revoke"), danger: true }))) return; try { await api(O("/invites/" + encodeURIComponent(i.code)), { method: "DELETE" }); toast(t("inv_revoked_ok")); out.replaceChildren(); load(); } catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); } } }, t("inv_revoke")) : null));
   };
   const load = async () => {
     try {
@@ -3178,7 +3310,7 @@ function inviteLinksCard() {
       const i = await api(O("/invites"), J("POST", { days: Number(days.value), max_uses: Number(uses.value), role: role.value, label: label.value.trim() }));
       label.value = "";
       out.replaceChildren(el("div", { class: "notice ok" }, el("div", { text: t("inv_new") }), el("div", { class: "invnew" }, el("code", { class: "invurl", text: i.url }), el("button", { class: "btn sm", type: "button", onclick: () => copy(i.url) }, t("copy")))));
-      copy(i.url); load();
+      copy(i.url, true); load();
     } catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); }
   });
   box.replaceChildren(el("h2", { text: t("inv_h") }), el("p", { class: "muted small", text: t("inv_p") }), f, out, listBox);
@@ -3252,18 +3384,19 @@ function orgChart(dir, members, opts) {
   return el("div", {}, chart, byDept);
 }
 
+const SEATS_UNLIMITED = 10000; // orgs.TRIAL_SEATS: the launch trial's "no limit"
 VIEWS.license = async (body, my) => {
   const l = await api(O("/license")); if (stale(my)) return; done(body);
   const lic = l.license, d = lic.days_left;
   const parts = [el("div", { class: "card" }, el("h2", { text: t("lic_h") }),
     el("div", { class: "kv" }, el("span", { text: t("plan") }), el("b", { text: t("plan_" + lic.plan) })),
     el("div", { class: "kv" }, el("span", { text: t("status") }), licBadge(lic)),
-    el("div", { class: "kv" }, el("span", { text: t("seats") }), el("b", { text: lic.seats ?? "-" })),
-    el("div", { class: "kv" }, el("span", { text: t("valid_until") }), el("b", { text: fmtDate(lic.valid_until) + (d != null ? " (" + daysText(d) + ")" : "") })),
+    el("div", { class: "kv" }, el("span", { text: t("seats") }), el("b", { text: lic.seats >= SEATS_UNLIMITED ? t("seats_unl") : lic.seats ?? "-" })),
+    el("div", { class: "kv" }, el("span", { text: t("valid_until") }), el("b", { text: lic.valid_until ? fmtDate(lic.valid_until) + (d != null ? " (" + daysText(d) + ")" : "") : t("lic_noend") })),
     d != null && d <= 7 ? el("div", { class: "notice error", role: "alert", text: daysText(d) }) : null)];
   if (isAdmin()) {
     const plan = el("select", { id: "l-plan" }, ["monthly", "yearly", "enterprise"].map((p) => el("option", { value: p }, t("plan_" + p))));
-    const seats = el("input", { type: "number", id: "l-seats", min: "1", value: String(lic.seats || 5) }), notes = el("textarea", { id: "l-note", maxlength: "500" }), msg = el("div", { role: "status" });
+    const seats = el("input", { type: "number", id: "l-seats", min: "1", value: String(lic.seats >= SEATS_UNLIMITED ? 5 : lic.seats || 5) }), notes = el("textarea", { id: "l-note", maxlength: "500" }), msg = el("div", { role: "status" });
     const f = el("form", { class: "card" }, el("h2", { text: t("req_h") }), el("p", { class: "muted small", text: t("req_p") }),
       el("div", { class: "row" }, field(t("plan"), plan), field(t("seats"), seats)), field(t("req_note"), notes), msg, el("div", {}, el("button", { class: "btn", type: "submit" }, t("req_send"))));
     f.addEventListener("submit", async (ev) => { ev.preventDefault();
@@ -3305,7 +3438,7 @@ async function verifyDiscord() {
     if (MOCK) { toast("mock: " + r.url); return; }
     location.href = r.url; // Discord sends the browser back to /center?linked=discord#/account
   } catch (e) {
-    if (e instanceof AuthError && e.message === "not_configured") toast(t("verify_unavailable"), "error");
+    if (e instanceof ApiError && e.status === 503) toast(t("verify_unavailable"), "error");
     else if (!handleAuth(e)) toast(errText(e), "error");
   }
 }
@@ -3324,23 +3457,33 @@ VIEWS.account = async (body, my) => {
   const dl = el("datalist", { id: "a-depts" }, depts.map((d) => el("option", { value: d })));
   const aboutIn = el("textarea", { id: "a-about", rows: "4", class: "grow", placeholder: t("prof_about_ph") }); aboutIn.value = me.about || "";
   const jdIn = el("textarea", { id: "a-jd", rows: "6", class: "grow", placeholder: t("prof_jd_ph") }); jdIn.value = me.job_description || "";
+  const below = selfAndReports(mem || [], me.email);
   const bossSel = el("select", { id: "a-boss", disabled: !myRow }, el("option", { value: "" }, t("prof_boss_none")),
-    (mem || []).filter((m) => m.email !== me.email).map((m) => el("option", { value: m.email, selected: !!myRow && myRow.reports_to === m.email }, (m.name ? m.name + " · " : "") + m.email + (m.title ? " (" + m.title + ")" : ""))));
-  const saveB = el("button", { class: "btn", type: "submit" }, t("save"));
+    (mem || []).filter((m) => !below.has(m.email)).map((m) => el("option", { value: m.email, selected: !!myRow && myRow.reports_to === m.email }, (m.name ? m.name + " · " : "") + m.email + (m.title ? " (" + m.title + ")" : ""))));
+  const saveB = el("button", { class: "btn", type: "submit" }, t("save")), pmsg = el("div", { id: "a-msg" });
   const pf = el("form", {}, el("div", { class: "prof-grid" }, field(t("acc_first") + " *", firstIn), field(t("acc_last") + " *", lastIn), el("p", { class: "muted small wide", text: t("acc_real_hint") }), field(t("acc_name"), nameIn), field(t("prof_title"), titleIn), field(t("prof_dept"), deptIn), field(t("prof_boss"), bossSel), field(t("prof_about"), aboutIn, "wide"), field(t("prof_jd"), jdIn, "wide")), dl,
-    el("p", { class: "muted small", text: myRow ? t("prof_hint") : t("prof_no_org") }), el("div", {}, saveB));
+    el("p", { class: "muted small", text: myRow ? t("prof_hint") : t("prof_no_org") }), pmsg, el("div", {}, saveB));
+  const fail = (text) => pmsg.replaceChildren(el("div", { class: "notice error", role: "alert", text }));
   pf.addEventListener("submit", async (ev) => {
-    ev.preventDefault(); saveB.disabled = true;
+    ev.preventDefault(); pmsg.replaceChildren();
+    const needName = (bad) => { for (const x of [firstIn, lastIn]) { if (bad.includes(x)) { x.setAttribute("aria-invalid", "true"); x.setAttribute("aria-describedby", "a-msg"); } else { x.removeAttribute("aria-invalid"); x.removeAttribute("aria-describedby"); } }
+      if (bad.length) { fail(t("acc_name_req")); bad[0].focus(); } };
+    const missing = [firstIn, lastIn].filter((x) => !x.value.trim()); // the real name comes first on every page
+    needName(missing); if (missing.length) return;
+    saveB.disabled = true;
+    const boss = bossSel.value || null, was = myRow ? myRow.reports_to || null : null, moved = !!myRow && boss !== was;
+    const structure = (v) => api(O("/members/" + encodeURIComponent(me.email) + "/structure"), J("PUT", { reports_to: v }));
     try {
+      // the manager first, the change the server may refuse; when the profile then fails, the manager goes back
+      if (moved) { await structure(boss); myRow.reports_to = boss; }
       const want = { first_name: firstIn.value.trim(), last_name: lastIn.value.trim(), name: nameIn.value.trim(), title: titleIn.value.trim(), department: deptIn.value.trim(), about: aboutIn.value.trim(), job_description: jdIn.value.trim() };
-      const r = await api("/api/center/me/profile", J("PUT", want));
+      let r;
+      try { r = await api("/api/center/me/profile", J("PUT", want)); }
+      catch (e) { if (moved) { try { await structure(was); myRow.reports_to = was; } catch { /* the error below is what the person needs */ } } if (e instanceof ApiError && e.status === 422) e.names = true; throw e; }
       for (const k of Object.keys(want)) me[k] = r && typeof r[k] === "string" ? r[k] : want[k];
       me.full_name = r && typeof r.full_name === "string" ? r.full_name : [me.first_name, me.last_name].filter(Boolean).join(" ");
-      if (myRow && (bossSel.value || null) !== (myRow.reports_to || null)) {
-        await api(O("/members/" + encodeURIComponent(me.email) + "/structure"), J("PUT", { reports_to: bossSel.value || null })); myRow.reports_to = bossSel.value || null;
-      }
       renderNav(); toast(t("saved"));
-    } catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); }
+    } catch (e) { if (e.names) needName([firstIn, lastIn]); else if (!handleAuth(e)) fail(t("not_saved", { e: errText(e) })); } // 422: the server wants both names
     saveB.disabled = false;
   });
   const profile = el("div", { class: "card" }, el("h2", { text: t("prof_who") }), pf);
@@ -3362,7 +3505,7 @@ VIEWS.account = async (body, my) => {
     siBox.replaceChildren(el("h3", { text: t("si_h") }),
       el("div", { class: "sirow", id: "a-google" }, el("span", { class: "idb ok" }, "\u2713 Google"), el("span", { class: "badge ok" }, "\u2713 " + t("acc_google")), el("span", { class: "muted small", text: t("si_google_main") + ": " + me.email })),
       googles.map((g) => el("div", { class: "sirow" }, el("span", { class: "idb ok" }, "\u2713 Google"), el("span", { class: "badge ok" }, "\u2713 " + t("si_google_ok")), el("span", { class: "muted small", text: (g.name ? g.name + " · " : "") + g.external_id }),
-        el("button", { class: "btn ghost sm", type: "button", onclick: () => act(() => api("/api/center/me/identity/google", { method: "DELETE" }), t("saved")) }, t("si_unlink")))),
+        el("button", { class: "btn ghost sm", type: "button", onclick: async () => { if (await confirmDlg({ title: t("si_unlink_q", { e: g.external_id }), body: t("si_unlink_p", { e: me.email }), ok: t("si_unlink"), danger: true })) act(() => api("/api/center/me/identity/google", { method: "DELETE" }), t("saved")); } }, t("si_unlink")))),
       googles.length ? null : linkRow,
       el("div", { class: "sirow", id: "a-discord-signin" }, el("span", { class: ok ? "idb ok" : "idb g" }, (ok ? "\u2713 " : "") + "Discord"), ok ? el("span", { class: "badge ok" }, "\u2713 " + t("si_discord_ok"))
         : [el("span", { class: "muted small", text: t("si_discord_no") }), me.discord_verify ? el("button", { class: "btn ghost sm", type: "button", onclick: verifyDiscord }, t("verify_discord")) : el("span", { class: "muted small", text: t("si_code_hint") })]));
@@ -3405,7 +3548,10 @@ VIEWS.account = async (body, my) => {
         acts.append(el("button", { class: "btn ghost sm", type: "button", "aria-expanded": "false", onclick: (ev) => toggle("code", ev.currentTarget) }, t("have_code")));
       }
       if (!(cur && cur.verified)) acts.append(el("button", { class: "btn ghost sm", type: "button", "aria-expanded": "false", onclick: (ev) => toggle("id", ev.currentTarget) }, t("type_id")));
-      if (cur) acts.append(el("button", { class: "btn danger sm", type: "button", onclick: () => { if (confirm(t("confirm_unlink", { p: pname(p) }))) act(() => api("/api/center/me/identity/" + encodeURIComponent(p), { method: "DELETE" }), t("saved")); } }, t("remove")));
+      if (cur) acts.append(el("button", { class: "btn danger sm", type: "button", onclick: async () => {
+        // unlinking a verified Discord also ends "Sign in with Discord": say so before it happens
+        const ok = await confirmDlg({ title: t("confirm_unlink", { p: pname(p) }), body: t(p === "discord" && cur.verified ? "unlink_discord_p" : "unlink_p", { p: pname(p) }), ok: t("remove"), danger: true });
+        if (ok) act(() => api("/api/center/me/identity/" + encodeURIComponent(p), { method: "DELETE" }), t("saved")); } }, t("remove")));
       return el("div", { class: "idrow" }, platBadge(p), info, acts, sub);
     }));
   };
@@ -3470,10 +3616,10 @@ VIEWS.mytasks = async (body, my) => {
     if (finished.length || nDone) out.push(el("details", { class: "sys tasks", id: "mt-done" }, el("summary", {}, t("mt_done_h"), el("span", { class: "chip", text: t("mt_done_n", { n: nDone }) })),
       el("div", { class: "inner" }, finished.length ? el("div", { class: "tlist" }, finished.map((k) => row(k, false))) : el("div", { class: "muted small", text: t("mt_empty") }))));
     return el("div", {}, out); };
-  const host = el("div");
-  const toggle = el("div", { class: "ktabs", role: "tablist" }, ["board", "list"].map((k) => el("button", { type: "button", role: "tab", "aria-selected": String(mode === k), onclick: () => { mode = k; try { localStorage.setItem("dory_tasks_view", k); } catch { /* ignore */ } redraw(); } }, t("tv_" + k))));
-  const redraw = () => { for (const b of toggle.children) b.setAttribute("aria-selected", String(b.textContent === t("tv_" + mode))); host.replaceChildren(mode === "board" ? drawBoard() : drawList()); };
-  redraw();
+  const host = el("div", { role: "tabpanel", id: "mt-panel", tabindex: "0" });
+  const toggle = el("div", { class: "ktabs", role: "tablist", "aria-label": t("n_mytasks") }, ["board", "list"].map((k) => el("button", { type: "button", role: "tab", id: "mt-tab-" + k, "aria-controls": "mt-panel", "aria-selected": String(mode === k), onclick: () => { mode = k; try { localStorage.setItem("dory_tasks_view", k); } catch { /* ignore */ } redraw(); } }, t("tv_" + k))));
+  const redraw = () => { for (const b of toggle.children) b.setAttribute("aria-selected", String(b.id === "mt-tab-" + mode)); host.setAttribute("aria-labelledby", "mt-tab-" + mode); host.replaceChildren(mode === "board" ? drawBoard() : drawList()); };
+  redraw(); tabKeys(toggle);
   body.replaceChildren(el("div", { class: "card" }, el("div", { class: "pline" }, el("p", { class: "muted small", text: t("mt_intro") }), toggle), host));
 };
 VIEWS.mycal = async (body, my) => {
@@ -3500,8 +3646,9 @@ VIEWS.mycal = async (body, my) => {
   const drawDetail = () => { const d = parse(selected), list = byDate[selected] || [];
     detail.replaceChildren(el("h3", { text: d.toLocaleDateString(loc(), { weekday: "long", day: "numeric", month: "long", year: "numeric" }) }),
       list.length ? el("div", { class: "cal-items" }, list.map(item)) : el("div", { class: "muted small", text: t("cal_none_day") })); };
+  const pick = (k) => { selected = k; draw(); const b = grid.querySelector('[data-k="' + k + '"]'); if (b) b.focus(); };
   const cell = (d, outside) => { const k = ymd(d), list = byDate[k] || [], max = 3;
-    const c = el("button", { type: "button", class: "cal-cell" + (k === todayKey ? " today" : "") + (outside ? " outside" : "") + (k === selected ? " sel" : ""), "aria-label": d.toLocaleDateString(loc(), { dateStyle: "full" }) + (list.length ? " · " + list.length : ""), onclick: () => { selected = k; draw(); } },
+    const c = el("button", { type: "button", "data-k": k, class: "cal-cell" + (k === todayKey ? " today" : "") + (outside ? " outside" : "") + (k === selected ? " sel" : ""), "aria-label": d.toLocaleDateString(loc(), { dateStyle: "full" }) + (list.length ? " · " + list.length : ""), "aria-pressed": String(k === selected), onclick: () => pick(k) },
       el("span", { class: "dn", text: d.getDate() }), list.slice(0, max).map(chip), list.length > max ? el("span", { class: "more", text: t("cal_more", { n: list.length - max }) }) : null);
     return c; };
   const drawMonth = () => { const first = new Date(cursor.getFullYear(), cursor.getMonth(), 1), start = monday(first), cells = [];
@@ -3511,7 +3658,7 @@ VIEWS.mycal = async (body, my) => {
   const drawWeek = () => { const start = monday(cursor), end = addDays(start, 6);
     title.textContent = start.toLocaleDateString(loc(), { day: "numeric", month: "short" }) + " – " + end.toLocaleDateString(loc(), { day: "numeric", month: "short", year: "numeric" });
     grid.replaceChildren(el("div", { class: "cal-week" }, [...Array(7)].map((_, i) => { const d = addDays(start, i), k = ymd(d), list = byDate[k] || [];
-      return el("div", { class: "wk-col" + (k === todayKey ? " today" : "") + (k === selected ? " sel" : "") }, el("button", { type: "button", class: "wk-head", onclick: () => { selected = k; draw(); } }, el("span", { text: weekdayNames[i] }), el("b", { text: d.getDate() })),
+      return el("div", { class: "wk-col" + (k === todayKey ? " today" : "") + (k === selected ? " sel" : "") }, el("button", { type: "button", class: "wk-head", "data-k": k, "aria-pressed": String(k === selected), onclick: () => pick(k) }, el("span", { text: weekdayNames[i] }), el("b", { text: d.getDate() })),
         el("div", { class: "wk-items" }, list.length ? list.map(chip) : el("span", { class: "muted small", text: "–" }))); }))); };
   const drawAgenda = () => { title.textContent = t("cal_agenda");
     const upcoming = days.filter((dd) => (daysUntil(dd.date) ?? -1) >= -1);
@@ -3857,8 +4004,9 @@ VIEWS.monitor = async (body, my) => {
   const stateEl = el("span", { class: "mon-state" }), botEl = el("span", { class: "mon-bot", hidden: true });
   const pauseBtn = el("button", { class: "btn ghost sm", type: "button", onclick: () => setPaused(!S.paused) });
   const canNotify = "Notification" in window;
-  const notifyBtn = el("button", { class: "btn ghost sm", type: "button", hidden: !canNotify, onclick: toggleNotify }, t("mon_notify"));
-  const health = el("div", { class: "mon-health" }, stateEl, botEl, el("div", { class: "mon-acts" }, pauseBtn, notifyBtn));
+  const notifyBtn = el("button", { class: "btn ghost sm", type: "button", hidden: !canNotify, onclick: toggleNotify, "aria-describedby": "mon-notify-why" }, t("mon_notify"));
+  const notifyWhy = el("span", { class: "muted small", id: "mon-notify-why", hidden: true, text: t("mon_notify_blocked") }); // why the switch is off
+  const health = el("div", { class: "mon-health" }, stateEl, botEl, el("div", { class: "mon-acts" }, pauseBtn, notifyBtn, notifyWhy));
   const botBanner = el("div", { class: "notice error mon-banner", hidden: true }), feedBanner = el("div", { class: "notice mon-banner", hidden: true });
   // ---- tiles: a click applies the tile's filter
   const TILES = [
@@ -3887,13 +4035,13 @@ VIEWS.monitor = async (body, my) => {
   const sheetSum = el("summary", {}, t("mon_filters"));
   const fsheet = el("details", { class: "mon-fsheet" }, sheetSum, el("div", { class: "mon-filters" },
     field(t("mon_f_kind"), selKind), field(t("mon_f_status"), selStatus), field(t("mon_f_owner"), inOwner), field(t("mon_f_workspace"), selWs),
-    field(t("mon_f_from"), inFrom), field(t("mon_f_to"), inTo), field(t("mon_f_priority"), selPri), field(t("mon_f_q"), inQ)));
+    field(t("mon_f_from"), inFrom), field(t("mon_f_to"), inTo), field(t("mon_f_q"), inQ))); // Priority: shown once it filters (phase 3)
   fsheet.open = !mq.matches;
   const chips = el("div", { class: "mon-chips" });
   const CHIPS = [
     ["kind", "mon_f_kind", (v) => v.map(monKindLabel).join(", "), selKind], ["status", "mon_f_status", (v) => v.map(monStatusLabel).join(", "), selStatus],
     ["owner", "mon_f_owner", (v) => v, inOwner], ["workspace", "mon_f_workspace", wsName, selWs], ["from", "mon_f_from", fmtDate, inFrom], ["to", "mon_f_to", fmtDate, inTo],
-    ["priority", "mon_f_priority", (v) => monLabel("mon_p_", v), selPri], ["q", "mon_f_q", (v) => "“" + v + "”", inQ],
+    ["q", "mon_f_q", (v) => "“" + v + "”", inQ],
   ];
   // ---- the list
   const newPill = el("button", { class: "mon-newpill", type: "button", hidden: true, onclick: () => showNew() });
@@ -4130,7 +4278,7 @@ VIEWS.monitor = async (body, my) => {
     feedBanner.textContent = t("mon_banner_delayed", { t: S.lastOk ? new Date(S.lastOk).toLocaleTimeString(loc(), { timeZone: "Asia/Bangkok", hour: "2-digit", minute: "2-digit" }) : "–" });
     pauseBtn.textContent = t(S.paused ? "mon_resume" : "mon_pause");
     notifyBtn.setAttribute("aria-pressed", String(notifyArmed()));
-    notifyBtn.disabled = canNotify && Notification.permission === "denied";
+    notifyBtn.disabled = canNotify && Notification.permission === "denied"; notifyWhy.hidden = !notifyBtn.disabled;
     monPaintTimes(stateEl, S);
   }
   // OS notifications are armed: opted in and allowed. Only then does a hidden tab keep polling (R10)
@@ -4328,7 +4476,7 @@ VIEWS.settings = async (body) => {
   body.replaceChildren(el("div", { class: "card frame" },
     el("div", { class: "fh" }, el("div", {}, el("h2", { text: t("set_h") }), el("div", { class: "muted small", text: t("set_embed_p") })),
       el("a", { class: "btn ghost sm", href: "/hub", target: "_blank", rel: "noopener", style: "text-decoration:none" }, t("set_open_tab") + " ↗")),
-    el("iframe", { class: "hubframe", src: "/hub", title: t("set_h"), loading: "lazy" })));
+    el("iframe", { class: "hubframe", src: "/hub?embed=1", title: t("set_h"), loading: "lazy" }))); // embed: no links bar, language or sign-out of its own
 };
 
 /* ---------- org dialog ---------- */
@@ -4354,15 +4502,22 @@ function confirmDlg({ title, body, ok, danger, info }) {
 // person is looking at reloads its data, so a change she made shows without a manual refresh.
 // Never while a dialog is open or the person is typing in the page (their input would be lost).
 let refreshTimer = null;
+// who I am, my orgs and my linked accounts, fetched again (after a link or a change made in another tab)
+async function refreshMe() { try { const m = await api("/api/center/me"); m.orgs = items(m, "orgs"); me = m; renderNav(); } catch { /* keep the view */ } }
 function refreshView() {
   clearTimeout(refreshTimer);
   refreshTimer = setTimeout(async () => {
     const editing = document.querySelector("dialog[open]") || (document.activeElement && $("content") && $("content").contains(document.activeElement) && /^(INPUT|TEXTAREA|SELECT)$/.test(document.activeElement.tagName));
     if (editing) { refreshView(); return; }
-    try { const m = await api("/api/center/me"); m.orgs = items(m, "orgs"); me = m; renderNav(); } catch { /* keep the view */ }
+    await refreshMe();
     if (cur !== "chat") route(); // the chat page already shows the answer; a rebuild would move the conversation under the reader
   }, 600);
 }
+let hiddenAt = 0;
+document.addEventListener("visibilitychange", () => {
+  if (document.hidden) { hiddenAt = Date.now(); return; }
+  if (token && me && hiddenAt && Date.now() - hiddenAt > 10000) refreshView(); // refreshView waits while a field or dialog is in use
+});
 function openOrgDlg() { $("org-name").value = ""; note($("org-err"), ""); const d = $("org-dlg"); if (d.showModal) d.showModal(); else d.setAttribute("open", ""); $("org-name").focus(); }
 $("org-cancel").addEventListener("click", () => $("org-dlg").close());
 $("org-form").addEventListener("submit", async (ev) => {
@@ -4373,10 +4528,11 @@ $("org-form").addEventListener("submit", async (ev) => {
 $("new-org").addEventListener("click", openOrgDlg);
 $("org-switch").addEventListener("change", (ev) => { orgId = ev.target.value || null; route(); closeNav(); panelReset(); });
 $("burger").addEventListener("click", () => { const o = document.body.classList.toggle("nav-open"); $("burger").setAttribute("aria-expanded", String(o)); });
+document.addEventListener("click", (ev) => { if (ev.target === document.body && document.body.classList.contains("nav-open")) closeNav(); });
 document.addEventListener("keydown", (ev) => {
   if (ev.key !== "Escape") return;
   const big = document.querySelector(".call.max"); if (big) { big.unmax(); return; } // Esc first restores an expanded call
-  closeNav(); closePanel();
+  closeNav(); if (!(panel.w && panel.w.live.active())) closePanel(); // closing the panel would end its call
 });
 // the top bar's search asks Dory (her search covers chat, files, wiki, tasks and meetings); Cmd/Ctrl+K jumps to it
 $("qs-form").addEventListener("submit", (ev) => { ev.preventDefault(); const x = $("qs").value.trim(); if (!x) return; $("qs").value = ""; askDory(t("search_ask", { q: x })); });
@@ -4392,7 +4548,7 @@ if (window.visualViewport) { const vv = () => document.documentElement.style.set
 $("who").addEventListener("click", closeNav);
 $("fab").addEventListener("click", () => (panel.open ? closePanel() : panelOpen()));
 $("panel-x").addEventListener("click", closePanel);
-$("panel-live").addEventListener("click", () => { if (panel.w) panel.w.live.toggle(); });
+$("panel-live").addEventListener("click", () => { if (!orgId) toast(t("live_no_org"), "error"); else if (panel.w) panel.w.live.toggle(); });
 // drop a file anywhere on the panel = attach it
 { const p = $("panel"); let n = 0;
   p.addEventListener("dragenter", (ev) => { if (!panel.w) return; ev.preventDefault(); n++; p.classList.add("over"); });
@@ -4608,7 +4764,7 @@ function mockApi(method, path, body) {
   let m;
   const ME = "owner@example.co.th";
   const google = (email, name) => ({ platform: "google", external_id: email, name: name || "", verified: true, linked_at: "" });
-  const myIds = () => [google(ME, s.me.name), ...s.me.identities];
+  const myIds = () => [google(ME, s.me.name), ...(s.me.google || []), ...s.me.identities];
   const fullName = (x) => [x.first_name, x.last_name].filter(Boolean).map(mockLang).join(" ");
   const meView = () => ({ email: ME, is_super: true, orgs: s.orgs, language: null, name: s.me.name, first_name: s.me.first_name || "", last_name: s.me.last_name || "", full_name: fullName(s.me), title: s.me.title, department: s.me.department, about: s.me.about, identities: myIds(), identity_platforms: ["discord", "slack", "clickup", "line"], discord_verify: true });
   const prof = (x) => (x.email === ME ? s.me : x);
@@ -4634,8 +4790,8 @@ function mockApi(method, path, body) {
     { platform: "clickup", name: "ClickUp", enabled: false, configured: false, status: "not_configured", connected: 0 },
     { platform: "google_drive", name: "Google Drive", enabled: false, configured: false, status: "coming_soon", connected: 0 },
     { platform: "gmail", name: "Gmail", enabled: false, configured: false, status: "coming_soon", connected: 0 },
-    { platform: "google_calendar", name: "Google Calendar", enabled: false, configured: false, status: "coming_soon", connected: 0 }]);
-  if (p === "/api/center/me/identity/google") { s.me = s.me || {}; s.me.google = method === "PUT" ? [{ platform: "google", external_id: "me.other@gmail.com", name: "Me Other", verified: true }] : []; return ok([{ platform: "google", external_id: "owner@example.co.th", verified: true }, ...s.me.google]); }
+    { platform: "google_calendar", name: "Google Calendar", enabled: true, configured: true, status: "available", connected: 0 }]);
+  if (p === "/api/center/me/identity/google") { s.me.google = method === "PUT" ? [{ platform: "google", external_id: "me.other@gmail.com", name: "Me Other", verified: true }] : []; return ok(myIds()); } // every identity, like the server
   if ((m = p.match(/^\/api\/center\/invites\/([^/]+)$/))) return ok({ code: m[1], status: "active", org_name: s.orgs[0].name, logo_url: "", role: "member", invited_by: "owner@example.co.th", expires_at: "" });
   if ((m = p.match(/^\/api\/center\/invites\/([^/]+)\/accept$/))) return ok({ org_id: s.orgs[0].id, org_name: s.orgs[0].name, role: "member", joined: true });
   if ((m = p.match(/^\/api\/center\/connectors\/(\w+)\/start$/))) return ok({ url: "https://example.com/" + m[1], kind: m[1] === "discord" ? "invite" : "oauth" });
@@ -4652,7 +4808,7 @@ function mockApi(method, path, body) {
     const rows = s.members.map(memView), rk = { owner: 0, admin: 1, member: 2 };
     const leadership = rows.filter((x) => x.role === "owner" || x.role === "admin").sort((a, b) => rk[a.role] - rk[b.role] || a.email.localeCompare(b.email)).map((x) => ({ email: x.email, name: x.name, first_name: x.first_name, last_name: x.last_name, full_name: x.full_name, title: x.title, department: x.department, role: x.role }));
     return ok({ org: { id: org.id, name: org.name, logo_url: org.logo_url || "", profile: org.profile || {}, created_at: org.created_at }, leadership, departments: [...new Set(rows.map((x) => x.department).filter(Boolean))].sort(), headcount: s.members.length, documents: { total: mockDocs.length, by_category: c }, workspaces: { total: s.ws.length, connected: s.ws.length, by_platform: bp },
-      platforms: { available: ["discord", "slack", "clickup"], connected: [...new Set(s.ws.filter((w) => w.platform !== "web").map((w) => w.platform))], coming_soon: ["google_drive", "gmail", "google_calendar"] },
+      platforms: { available: ["discord", "slack", "google_calendar"], connected: [...new Set(s.ws.filter((w) => w.platform !== "web").map((w) => w.platform)), ...(s.gcal ? ["google_calendar"] : [])], coming_soon: ["google_drive", "gmail"] },
       members: s.members.length, members_linked: s.members.map(memView).filter((x) => x.linked_platforms).length, license: org.license, license_days_left: org.license.days_left,
       recent_activity: [{ id: "a1", category: "minutes", title: "ประชุมทีมขาย 12 ต.ค.", at: d(0.1), workspace: "discord-2", workspace_name: "ทีมเชียงใหม่", who: "ดอรี่" }, { id: "a2", category: "receipts", title: "ใบเสร็จ ร้านกาแฟ บางรัก", at: d(1), workspace: "discord-1", workspace_name: "ออฟฟิศกรุงเทพ", who: "สมชาย" }] }); }
   if (sub.startsWith("/monitor/")) return mockMonitor(sub, qp, false);
@@ -4663,7 +4819,9 @@ function mockApi(method, path, body) {
     return ok({ actions: s.actions }); }
   if (sub === "/tasks") return ok({ tasks: [{ id: "t1", title: "ส่งใบเสนอราคาลูกค้า A", assignee: "มาลี", due: day(2), status: "open", url: "", workspace: "discord-1", platform: "discord" }, { id: "t2", title: "ตามบิลค่าเช่า", assignee: "สมชาย", due: day(-1), status: "overdue", url: "", workspace: "discord-1", platform: "discord" }] });
   if (sub === "/workspaces") return ok(s.ws);
-  if (sub === "/workspaces/discord/link") { if (!body.code || body.code.length < 4) return fail("invalid or expired code", 400); const w = { id: "discord-" + Date.now(), platform: "discord", external_id: "9", name: "เซิร์ฟเวอร์ใหม่", status: "connected", settings_url: "/hub" }; s.ws.push(w); return ok(w); }
+  if (sub === "/workspaces/discord/link") { if (!body.code || body.code.length < 4) return fail("invalid or expired code", 400); const w = { id: "discord-" + Date.now(), platform: "discord", external_id: "9", name: "เซิร์ฟเวอร์ใหม่", status: "connected", settings_url: "/hub" }; s.ws.push(w);
+    // like the server: the code was handed to one Discord user, so linking also verifies my Discord account
+    s.me.identities = s.me.identities.filter((i) => i.platform !== "discord"); s.me.identities.unshift({ platform: "discord", external_id: "987654321098765432", name: "somsak", verified: true, linked_at: d(0) }); return ok(w); }
   if ((m = sub.match(/^\/workspaces\/([^/]+)$/)) && method === "DELETE") { s.ws = s.ws.filter((w) => w.id !== decodeURIComponent(m[1])); return ok(s.ws); }
   if (sub === "/sharing") {
     if (method === "POST") { s.share = s.share.filter((l) => !(l.from_workspace === body.from_workspace && l.to_workspace === body.to_workspace)); s.share.push(body); }

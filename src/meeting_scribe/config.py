@@ -9,14 +9,14 @@ from pydantic_settings import BaseSettings, SettingsConfigDict
 class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", extra="ignore")
 
-    gcp_project: str = "meeting-scribe-hackathon"
+    gcp_project: str = "dory-personal-assistant"
     gcp_region: str = "asia-southeast1"  # Cloud Run, GCS, Firestore
     gemini_location: str = "global"  # Vertex AI endpoint for summary_model (Pro is global-only)
     # Regional endpoint for the flash models: own quota pool (the global flash quota was
     # exhausted on 13 Oct) and the same region as Cloud Run.
     flash_location: str = "asia-southeast1"
 
-    audio_bucket: str = "meeting-scribe-hackathon-audio"
+    audio_bucket: str = "dory-personal-assistant-audio"
     firestore_collection: str = "meetings"
     pubsub_topic: str = "meeting-finalize"
     # When false, /finish runs the finalize step in-process instead of via Pub/Sub.

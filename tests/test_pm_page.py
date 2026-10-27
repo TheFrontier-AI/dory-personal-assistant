@@ -57,7 +57,8 @@ def test_five_pages_and_bilingual_nav():
 def test_only_google_identity_script_and_no_secrets():
     src = html()
     scripts = re.findall(r"<script[^>]+src=[\"']([^\"']+)", src)
-    assert scripts == ["https://accounts.google.com/gsi/client"]
+    # hl=en like every page: Google otherwise picks the button language from the visitor's IP
+    assert scripts == ["https://accounts.google.com/gsi/client?hl=en"]
     assert "cdn." not in src and "unpkg" not in src and "jsdelivr" not in src
     assert not re.search(r"localStorage[^;\n]*token", src, re.I)  # token stays in memory
     assert not re.search(r"AIza|sk-[A-Za-z0-9]{20}|BEGIN (RSA )?PRIVATE", src)
@@ -139,3 +140,55 @@ def test_review_reasons_are_shown_as_words_not_keys():
     src = html()
     assert "const reasonsText" in src and "review_reasons_text" in src
     assert ".review_reasons.join" not in src
+
+
+def test_page_is_on_the_one_dory_theme():
+    """/pm links the shared stylesheet before its own CSS, keeps no tokens of its own and never
+    follows the system dark mode, so every visitor sees the command center's light look."""
+    src = html()
+    head, style = src.split("</head>", 1)[0], between(src, "<style>", "</style>")
+    link = '<link rel="stylesheet" href="/static/dory/theme.css">'
+    assert link in head and head.index(link) < head.index("<style>")
+    assert '<link rel="icon" type="image/png" href="/static/dory/favicon.png">' in head
+    assert '<link rel="apple-touch-icon" href="/static/dory/apple-touch-icon.png">' in head
+    assert "prefers-color-scheme" not in src and 'content="light"' in head
+    # tokens come from theme.css; the page only maps them (the mist ground, no navy bars)
+    assert not re.search(r"--(bg|ink|card|line|accent|muted):\s*#", style)
+    assert "--mist-50" in style and "var(--navy)" not in style
+    for sel_, body in re.findall(r"([^{}]*\.mark\b[^{}]*)\{([^}]*)\}", style):
+        assert "background" not in body, sel_  # the round painted head comes from the theme
+    assert src.count('<div class="mark" aria-hidden="true">D</div>') == 2  # sign-in + sidebar
+
+
+def test_language_is_the_shared_th_en_pill():
+    src = html()
+    pill = (
+        '<div class="langsw" role="group"><button type="button" data-lang="th">TH</button>'
+        '<button type="button" data-lang="en">EN</button></div>'
+    )
+    assert src.count(pill) == 2  # sign-in box and sidebar
+    assert 'id="login-lang"' not in src and 'id="lang"' not in src and "ภาษาไทย" not in src
+    assert 'b.setAttribute("aria-pressed", String(b.dataset.lang === lang))' in src
+    assert 'setAttribute("aria-label", t("lang_switch"))' in src
+    assert 'addEventListener("click", () => setLang(b.dataset.lang))' in src
+
+
+def test_nav_uses_line_icons_and_every_progress_bar_has_a_name():
+    src = html()
+    assert "const NAV_IC" in src and "navIcon(ic)" in src
+    assert not re.search(r'\["home", "n_home", "[^a-z]', src)  # no text glyphs as icons
+    assert '"aria-label": label || false' in src  # bar(): axe aria-progressbar-name
+    calls = re.findall(r"\bbar\(", src)
+    assert len(calls) >= 4 and len(calls) == len(re.findall(r'\bbar\([^\n]*?, t\("\w+"\)\)', src))
+
+
+def test_pm_reuses_the_dory_session_of_the_other_pages():
+    """Signed in on /center or /start = signed in on /pm: the saved session is reused, a Google sign-in
+    is exchanged for one, and an expired or rejected one is forgotten (it never loops)."""
+    src = html()
+    assert 'const SESSION_KEY = "dory_session"' in src
+    assert '"/api/hub/session"' in src
+    boot = src[src.rindex("if (DEMO) {") :]
+    assert 'session("get")' in boot or "session()" in boot
+    to_login = src[src.index("function toLogin(") :]
+    assert 'session("clear")' in to_login[: to_login.index("\n")]
