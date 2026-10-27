@@ -8,6 +8,7 @@
 #   vm.sh sa                    once: the VM's service account (tokens from the metadata service, no key file);
 #                               the role grant itself needs a tenant admin (printed)
 #   vm.sh create [--on-demand]  VM + static IP (preemptible unless --on-demand); prints id and ip
+#   vm.sh update               copy server.py + cascade.py to a running box and restart (after a code change)
 #   vm.sh provision             install GLM-4-Voice + the services over SSH (idempotent, 20-40 min)
 #   vm.sh idle-check | watch | watch-install | watch-uninstall
 #                               no-IAM idle stop from THIS machine with your profile (launchd every 5 min)
@@ -218,6 +219,16 @@ cmd_watch_uninstall() { launchctl bootout "gui/$(id -u)" "$PLIST" 2>/dev/null ||
 
 cmd_ssh() { ssh "${SSH_OPTS[@]}" "$SSH_USER@$(vm_ip)" "$@"; }
 
+cmd_update() {
+  # Ship a changed server.py / cascade.py to a RUNNING box and restart its service (no reinstall)
+  [ "$(vm_state)" = "RUNNING" ] || die "VM is $(vm_state): run vm.sh start"
+  local ip; ip=$(vm_ip)
+  scp -q "${SSH_OPTS[@]}" "$HERE/server.py" "$HERE/cascade.py" "$SSH_USER@$ip:glm_voice/"
+  ssh "${SSH_OPTS[@]}" "$SSH_USER@$ip" 'cp glm_voice/server.py glm_voice/cascade.py GLM-4-Voice/ && cd GLM-4-Voice \
+    && ~/cascade/.venv/bin/python cascade.py --selftest && sudo systemctl restart glm-cascade glm-voice \
+    && sleep 45 && systemctl is-active glm-cascade glm-voice | tr "\n" " " && curl -s localhost:8766/health && echo'
+}
+
 cmd_provision() {
   [ "$(vm_state)" = "RUNNING" ] || die "VM is $(vm_state): run vm.sh start"
   [ -f "$STATE/vm.env" ] || echo "vm.sh: no identity file yet (vm.sh sa): the idle stop will only log until provision runs again" >&2
@@ -250,6 +261,7 @@ case "${1:-}" in
   watch-install) cmd_watch_install ;;
   watch-uninstall) cmd_watch_uninstall ;;
   provision) cmd_provision ;;
+  update) cmd_update ;;
   start) nb compute instance start --id "$(vm_id)" >/dev/null; echo "state=$(vm_state) ip=$(vm_ip)" ;;
   stop) nb compute instance stop --id "$(vm_id)" >/dev/null; echo "state=$(vm_state)" ;;
   status) echo "id=$(vm_id) state=$(vm_state) ip=$(vm_ip)" ;;
