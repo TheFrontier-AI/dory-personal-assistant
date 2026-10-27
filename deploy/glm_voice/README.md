@@ -27,6 +27,23 @@ existed has no identity attached: recreate it afterwards (`vm.sh delete`, `vm.sh
 Nebius access keys (an id plus a secret, made for Object Storage and other AWS-compatible services)
 authenticate nothing in the control API and are never what this needs.
 
+## "Live call failed" on the website: what it means
+
+The web call and the Discord room both open ONE WebSocket to `DORY_GLM_VOICE_URL`; nothing else is
+involved (no WebRTC, no third-party relay). The error the page shows names the cause:
+
+| Page says | Cause | Fix |
+| --- | --- | --- |
+| voice server not running (`voice_server_down`, 27 Oct 2026; before that the raw `ConnectionRefusedError`) | the VM is stopped (idle stop, nightly timer, spot preemption) or still installing, or the URL's port has no server (8765 = GLM-4-Voice, 8766 = cascade) | `vm.sh status`; `vm.sh start` then wait for `curl :8766/health`; `vm.sh provision` if the install never finished. With the Nebius identity settings Dory starts the box herself (`nebius_vm.VmWaker`, "Waking the voice server") |
+| `busy` | one call at a time per server: a Discord room or another browser tab holds it | end the other call |
+| `Agent Platform API has not been used in project` (log) | the service has NO `DORY_GLM_VOICE_URL`, so it fell back to Gemini Live, which this project does not have | set the URL on the service (`.env` + `scripts/deploy.sh`, or `gcloud run services update --update-env-vars`) |
+| 4401 in the server log | token mismatch between Secret Manager `dory-glm-voice-token` and the box's `/etc/glm-voice.env` | copy the secret to the box before `install.sh` reaches its token step (a fresh box mints a new token otherwise) |
+
+Root cause of the 27 Oct 2026 failure: the website was deployed with the cascade URL (:8766) while the
+box was still being provisioned (and the spot VM had been preempted three times mid-install), so the
+connect was refused. Prevention: provision on an ON-DEMAND VM for demo days, check `/health` on the
+port named in `DORY_GLM_VOICE_URL` before announcing voice, and keep the Mac watchdog's install grace.
+
 ## The cascade sidecar: voice WITH tools (booking, calendar, ledger)
 
 GLM-4-Voice cannot call tools, so `cascade.py` (27 Oct 2026) runs next to it on the same VM, port
