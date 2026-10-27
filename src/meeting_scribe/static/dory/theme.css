@@ -114,10 +114,10 @@ button { cursor: pointer; }
   backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px); border-bottom: 1px solid var(--line); }
 .nav .wrap { display: flex; align-items: center; gap: 16px; min-height: 64px; }
 .logo { display: flex; align-items: center; gap: 10px; color: var(--indigo); text-decoration: none; font-weight: 700; font-size: 18px; }
-/* The brand mark is Dory herself (static/dory/dory-mark.svg); the letter inside stays for screen
+/* The brand mark is Dory herself (static/dory/dory-mark.webp, rendered from the 3D model); the letter inside stays for screen
    readers and is hidden visually. */
 .mark, .logo .mark { width: 32px; height: 32px; border-radius: 10px; display: grid; place-items: center; color: transparent; font-weight: 700;
-  font-size: 15px; flex: none; overflow: hidden; background: var(--ocean-800) url("/static/dory/dory-mark.svg") center / cover no-repeat;
+  font-size: 15px; flex: none; overflow: hidden; background: var(--ocean-800) url("/static/dory/dory-mark.webp") center / cover no-repeat;
   box-shadow: 0 4px 12px rgba(26, 47, 92, .25); }
 .grow { flex: 1 1 auto; }
 .langsw { display: flex; border: 1px solid var(--line); border-radius: 99px; padding: 2px; background: var(--card); }
@@ -197,25 +197,6 @@ td { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); vertical-ali
 .lantern.on::before { opacity: 1; }
 .lantern.pulse::before { opacity: 1; animation: dory-lantern var(--dur-ambient) var(--ease-in-out) infinite; }
 
-/* ---------- the rigged fish (inline SVG, see static/dory/dory.svg); CSS variables drive it ---------- */
-.dory-fish .df-eyes { transform-box: fill-box; transform-origin: center; transition: transform var(--dur-gentle) var(--ease); }
-.dory-fish .df-eye { transform-box: fill-box; transform-origin: center; }
-.dory-fish .df-pupil { transform: translate(var(--look-x, 0px), var(--look-y, 0px)); transition: transform var(--dur-fast) var(--ease); }
-.dory-fish .df-mouth { transform-box: fill-box; transform-origin: 50% 0; transform: scaleY(calc(.85 + var(--mouth, 0) * .5)); }
-.dory-fish .df-bars rect { transform-box: fill-box; transform-origin: center; transform: scaleY(calc(.55 + var(--mouth, 0) * .9)); }
-.dory-fish .df-lights { opacity: calc(.6 + var(--glow, 0) * .4); transition: opacity var(--dur-gentle) var(--ease); }
-.dory-fish .df-tail, .dory-fish .df-dorsal { transform-box: fill-box; }
-.dory-fish .df-tail { transform-origin: 100% 50%; }
-.dory-fish .df-dorsal { transform-origin: 80% 100%; }
-.fish-blink .df-eye { animation: dory-blink 120ms var(--ease-in-out); }
-@keyframes dory-blink { 50% { transform: scaleY(.1); } }
-@keyframes dory-sway { 0%, 100% { transform: rotate(-4deg); } 50% { transform: rotate(4deg); } }
-.fish-alive .df-tail { animation: dory-sway 3s var(--ease-in-out) infinite; }
-.fish-alive .df-dorsal { animation: dory-sway 3.4s var(--ease-in-out) infinite reverse; }
-.fish-happy .df-eye { transform: scaleY(.82); }
-.fish-curious .df-brow { transform: translateY(-3px); }
-.fish-sorry .df-brow { transform: rotate(6deg); transform-box: fill-box; transform-origin: center; }
-.motion-off .fish-alive .df-tail, .motion-off .fish-alive .df-dorsal { animation: none; }
 
 @media (prefers-reduced-motion: reduce) {
   *, *::before, *::after { transition-duration: .01ms !important; animation-duration: .01ms !important; animation-iteration-count: 1 !important; scroll-behavior: auto !important; }
@@ -229,5 +210,5 @@ td { padding: 10px 12px; border-bottom: 1px solid var(--line-soft); vertical-ali
 }
 
 /* The floating "talk to Dory" button on /center is Dory's face too (overrides the page's #fab). */
-body #fab { background: var(--ocean-800) url("/static/dory/dory-mark.svg") center / cover no-repeat; color: transparent;
+body #fab { background: var(--ocean-800) url("/static/dory/dory-mark.webp") center / cover no-repeat; color: transparent;
   box-shadow: 0 10px 24px rgba(26, 47, 92, .3); border: 3px solid #fff; }

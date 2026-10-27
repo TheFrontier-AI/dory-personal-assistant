@@ -9,6 +9,7 @@
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=IBM+Plex+Sans+Thai:wght@400;500;600;700&amp;family=IBM+Plex+Mono:wght@500&amp;display=swap">
 <link rel="icon" type="image/png" href="/static/dory/favicon.png">
+<link rel="apple-touch-icon" href="/static/dory/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/dory/theme.css">
 <script src="https://accounts.google.com/gsi/client?hl=en" async defer></script>
 <style>
@@ -187,7 +188,7 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 .day::before, .day::after { content: ""; flex: 1; height: 1px; background: var(--line); }
 .chat-empty { margin: auto; display: flex; flex-direction: column; align-items: center; gap: 8px; text-align: center; max-width: 420px; padding: 12px 8px; }
 .chat-empty .fish { width: 160px; animation: glowup var(--dur-gentle) var(--ease) forwards; }
-.chat-empty .fish svg { width: 100%; height: auto; display: block; }
+.chat-empty .fish img { width: 100%; height: auto; display: block; }
 @keyframes glowup { from { filter: drop-shadow(0 0 0 rgba(11, 122, 114, 0)); } to { filter: drop-shadow(0 6px 18px rgba(11, 122, 114, .3)); } }
 .chat-empty h2 { font-size: 22px; font-family: var(--font-display); }
 .chat-empty p { color: var(--muted); font-size: 15px; }
@@ -317,7 +318,7 @@ fieldset { border-color: var(--line-soft); }
 .titem:first-child { padding-top: 4px; }
 .titem .tk { width: 30px; height: 30px; border-radius: 9px; flex: none; display: grid; place-items: center; font-size: 15px; background: var(--chip); color: var(--indigo); }
 .titem.done .tk { background: var(--ok-bg); color: var(--ok-ink); }
-.titem .tk.mark, .titem.done .tk.mark { border-radius: 9px; box-shadow: none; font-size: 0; color: transparent; background: var(--ocean-800) url("/static/dory/dory-mark.svg") center / cover no-repeat; }
+.titem .tk.mark, .titem.done .tk.mark { border-radius: 9px; box-shadow: none; font-size: 0; color: transparent; background: var(--ocean-800) url("/static/dory/dory-mark.webp") center / cover no-repeat; }
 details.sys.tasks { margin: 4px 0 0; } details.sys.tasks > .inner { padding-top: 4px; }
 .titem.done .tt { color: var(--muted); text-decoration: line-through; }
 .titem .tx { flex: 1; min-width: 0; display: flex; flex-direction: column; gap: 4px; }
@@ -447,12 +448,13 @@ input[type=datetime-local]:focus { outline: none; border-color: var(--indigo-2);
   border: 3px solid rgba(163, 183, 221, .35); background: radial-gradient(circle at 50% 38%, var(--ocean-700), var(--ocean-900));
   box-shadow: 0 14px 34px rgba(0, 0, 0, .45), 0 0 0 calc(2px + var(--mouth) * 9px) rgba(95, 242, 224, calc(.18 + var(--mouth) * .45));
   transition: box-shadow .08s linear, rotate .45s var(--ease), translate .45s var(--ease); }
-.call .orb .fish-svg { width: 186px; height: auto; display: block; transform: translate(-30px, 8px); } /* a portrait: her face centred */
-.call.listening .dory-fish, .call.thinking .dory-fish, .call.speaking .dory-fish { --glow: 1; }
-.call.thinking .df-pupil { transform: translate(1.5px, -3px); }
-.call.happy .df-eye { transform: scaleY(.78); }
-.call.curious .df-brow { transform: translateY(-3px); }
-.call.sorry .df-brow { transform: translateY(2px); }
+/* Her face: three frames rendered from the 3D model (static/dory/dory-voice.webp: idle, talking, blink). The talking
+   frame fades in with her voice (--mouth); "happy" holds the closed-eye smile. 2.5D on purpose: no WebGL in the app. */
+.call .orb .face { position: absolute; inset: 0; background: url("/static/dory/dory-voice.webp") 0 0 / 300% 100% no-repeat; }
+.call .orb .talk { background-position: 50% 0; opacity: calc(var(--mouth) * 1.8); }
+.call .orb .blink { background-position: 100% 0; opacity: 0; animation: dory-blink-frame 5.3s linear infinite; }
+.call.happy .orb .blink { opacity: 1; animation: none; }
+@keyframes dory-blink-frame { 0%, 97% { opacity: 0; } 97.5%, 99.5% { opacity: 1; } 100% { opacity: 0; } }
 .call.connecting .orb, .call.idle .orb, .call.ended .orb { animation: breathe 3.8s ease-in-out infinite, tilt 11s ease-in-out infinite; }
 .call.listening .orb { animation: listen 2.6s ease-in-out infinite; }
 .call.speaking .orb { animation: bob 1.15s ease-in-out infinite; }
@@ -643,7 +645,7 @@ details.sys > .inner { padding-top: 12px; }
 }
 /* monitor:css:end */
 
-@media (prefers-reduced-motion: reduce) { .skeleton, .typing span, .call .ring, .call .orb, .call .dots span, .call .ovl, .livebtn i, .mon-flash { animation: none !important; } }
+@media (prefers-reduced-motion: reduce) { .skeleton, .typing span, .call .ring, .call .orb, .call .orb .blink, .call .dots span, .call .ovl, .livebtn i, .mon-flash { animation: none !important; } }
 @media (max-width: 900px) { #login { grid-template-columns: 1fr; gap: 28px; align-items: start; padding: 32px 16px 40px; } #login .panel { place-items: start; } #login .box { max-width: 480px; } }
 @media (max-width: 720px) {
   #app { flex-direction: column; }
@@ -684,7 +686,7 @@ details.sys > .inner { padding-top: 12px; }
 .note.pink { background: #FFC9D6; } .note.orange { background: #FFD9A8; } .note.blue { background: #CDE6FF; } .note.green { background: #D6F5D0; }
 .note.done .nt { text-decoration: line-through; color: #6B6B5E; }
 .note .pin { position: absolute; top: 8px; left: 50%; width: 14px; height: 14px; margin-left: -7px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #ff8a8a, #c62828); box-shadow: 0 2px 3px rgba(0,0,0,.3); }
-.note .pin.mark { width: 26px; height: 26px; margin-left: -13px; top: 4px; border-radius: 50%; background: var(--ocean-800) url("/static/dory/dory-mark.svg") center / cover no-repeat; }
+.note .pin.mark { width: 26px; height: 26px; margin-left: -13px; top: 4px; border-radius: 50%; background: var(--ocean-800) url("/static/dory/dory-mark.webp") center / cover no-repeat; }
 .note .nt { font-weight: 600; font-size: 15px; line-height: 1.35; overflow-wrap: anywhere; }
 .note .nm { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
 .note .nf { margin-top: 8px; display: flex; justify-content: space-between; gap: 8px; flex-wrap: wrap; font-size: 12.5px; }
@@ -907,7 +909,6 @@ h3 .n { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99
   </form>
 </dialog>
 <div id="toast" role="status" aria-live="polite"></div>
-<svg id="dory-defs" width="0" height="0" style="position:absolute" aria-hidden="true" focusable="false"><defs><linearGradient id="df-fin" x1="1" y1="0" x2="0" y2="0"><stop offset="0" stop-color="#6A9BF5"/><stop offset=".5" stop-color="#B9B4F2"/><stop offset="1" stop-color="#FFDDB8"/></linearGradient><linearGradient id="df-dorsal" x1="0" y1="1" x2=".3" y2="0"><stop offset="0" stop-color="#5B8DF2"/><stop offset=".55" stop-color="#B9B4F2"/><stop offset="1" stop-color="#FFE4C8"/></linearGradient><linearGradient id="df-side" x1="0" y1="0" x2=".4" y2="1"><stop offset="0" stop-color="#C9C4F7"/><stop offset="1" stop-color="#FFE0C2"/></linearGradient><radialGradient id="df-body" cx=".62" cy=".62" r=".7"><stop offset="0" stop-color="#FFFFFF"/><stop offset=".7" stop-color="#F3F7FE"/><stop offset="1" stop-color="#D4E2F8"/></radialGradient><linearGradient id="df-back" x1=".2" y1="0" x2=".7" y2="1"><stop offset="0" stop-color="#2140A8"/><stop offset="1" stop-color="#5F93F4"/></linearGradient><radialGradient id="df-iris" cx=".45" cy=".35" r=".75"><stop offset="0" stop-color="#5A93F7"/><stop offset="1" stop-color="#1A3484"/></radialGradient><clipPath id="df-clip"><path d="M64 104C64 74 100 50 142 50C186 50 210 78 210 106C210 138 182 160 140 160C100 160 64 134 64 104Z"/></clipPath><clipPath id="df-mouth-clip"><path d="M173 117Q187 120 200 114Q198 133 186 134Q175 133 173 117Z"/></clipPath><filter id="df-glow" x="-1" y="-1" width="3" height="3"><feGaussianBlur stdDeviation="2.2"/></filter></defs></svg>
 
 <script>
 "use strict";
@@ -2108,10 +2109,8 @@ const HAPPY_RE = /สวัสดี|ขอบคุณ|ยินดี|ดี�
 const SORRY_RE = /^\s*(ขอโทษ|ขออภัย|เสียใจ|ต้องขอโทษ|sorry|apolog|i'?m afraid|unfortunately)/i;
 const CURIOUS_RE = /(\?|ไหม|มั้ย|คะ|เปล่า|หรือยัง)\s*[.!]?\s*$/;
 const mmss = (ms) => { const s = Math.max(0, Math.floor(ms / 1000)); return String(Math.floor(s / 60)).padStart(2, "0") + ":" + String(s % 60).padStart(2, "0"); };
-// Dory the fish, rigged (static/dory/dory.svg is the master; the gradients live once in #dory-defs).
-const FISH_SVG = '<svg class="fish-svg" viewBox="2 6 216 162" aria-hidden="true" focusable="false"><g class="dory-fish"><g class="df-tail"><path d="M72 96C60 84 46 66 26 58C16 54 8 58 12 66C18 78 24 92 32 104C24 116 18 130 12 142C8 150 16 154 26 150C46 142 60 124 72 112Z" fill="url(#df-fin)"/><path d="M68 101Q42 80 20 64M68 104Q46 94 28 90M68 107Q46 116 28 120M68 110Q42 128 20 144" stroke="#FFFFFF" stroke-opacity=".45" stroke-width="1.4" stroke-linecap="round" fill="none"/></g><g class="df-dorsal"><path d="M146 54C141 37 128 22 108 15C98 12 90 15 91 22C93 31 96 42 88 52C84 58 80 66 80 75Z" fill="url(#df-dorsal)"/><path d="M132 58Q122 36 106 22M116 63Q106 46 96 30M100 70Q94 58 90 48" fill="none" stroke="#FFFFFF" stroke-opacity=".4" stroke-width="1.2" stroke-linecap="round"/></g><g class="df-body"><path d="M64 104C64 74 100 50 142 50C186 50 210 78 210 106C210 138 182 160 140 160C100 160 64 134 64 104Z" fill="url(#df-body)"/><path clip-path="url(#df-clip)" d="M48 122C80 97 110 77 150 66C171 60 190 59 216 70V30H48Z" fill="url(#df-back)"/><path clip-path="url(#df-clip)" d="M48 122C80 97 110 77 150 66C171 60 190 59 216 70" fill="none" stroke="#FFFFFF" stroke-opacity=".55" stroke-width="1.6"/><path d="M206 122C198 146 176 159 140 159C104 159 76 141 67 118" fill="none" stroke="#9FF7EC" stroke-opacity=".45" stroke-width="1.6" stroke-linecap="round"/><g class="df-lights" fill="#9FF7EC"><g class="df-halo" filter="url(#df-glow)" opacity=".85"><circle cx="86" cy="96" r="3.4"/><circle cx="102" cy="86" r="3.6"/><circle cx="119" cy="77" r="3.8"/><circle cx="136" cy="70" r="3.8"/><circle cx="153" cy="65" r="3.6"/><circle cx="170" cy="62" r="3.2"/></g><circle cx="86" cy="96" r="2.2"/><circle cx="102" cy="86" r="2.4"/><circle cx="119" cy="77" r="2.6"/><circle cx="136" cy="70" r="2.6"/><circle cx="153" cy="65" r="2.4"/><circle cx="170" cy="62" r="2.1"/></g></g><path class="df-pectoral" d="M147 123C136 126 125 133 118 144C115 149 119 153 125 151C136 147 146 141 153 134Z" fill="url(#df-side)" stroke="#FFFFFF" stroke-opacity=".7" stroke-width="1.2"/><g class="df-headset"><path d="M114 82C116 60 132 48 150 47C166 46 180 52 188 61" fill="none" stroke="#1A2F5C" stroke-width="5.6" stroke-linecap="round"/><path d="M116 79C119 61 133 51 150 50C163 49 174 54 182 60" fill="none" stroke="#5F93F4" stroke-opacity=".7" stroke-width="1.6" stroke-linecap="round"/><path d="M124 113Q133 133 154 135" fill="none" stroke="#1A2F5C" stroke-width="3.4" stroke-linecap="round"/><ellipse cx="158" cy="135" rx="6.2" ry="4.4" fill="#1A2F5C"/><circle cx="161.5" cy="135" r="2" fill="#5FF2E0"/><circle cx="114" cy="98" r="18.5" fill="#EEF3FB" stroke="#1A2F5C" stroke-width="3"/><circle cx="114" cy="98" r="12.5" fill="#10204A"/><g class="df-bars" fill="#5FF2E0"><rect x="107" y="94" width="3.2" height="8" rx="1.6"/><rect x="112.4" y="91.5" width="3.2" height="13" rx="1.6"/><rect x="117.8" y="94" width="3.2" height="8" rx="1.6"/></g></g><ellipse class="df-blush" cx="150" cy="121" rx="8.5" ry="4.8" fill="#FFB0B8" opacity=".55"/><g class="df-eyes"><g class="df-eye df-eye-near"><ellipse cx="164" cy="96" rx="15" ry="17" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1.2"/><circle cx="166.5" cy="98" r="11" fill="url(#df-iris)"/><circle class="df-pupil" cx="167.5" cy="99" r="5.8" fill="#0A1530"/><circle cx="162.5" cy="93" r="3.6" fill="#FFFFFF"/><circle cx="170.5" cy="103.5" r="1.6" fill="#FFFFFF"/></g><g class="df-eye df-eye-far"><ellipse cx="194" cy="94" rx="10" ry="13" fill="#FFFFFF" stroke="#C9D6EE" stroke-width="1"/><circle cx="195.6" cy="96" r="7.8" fill="url(#df-iris)"/><circle class="df-pupil" cx="196.4" cy="97" r="4.2" fill="#0A1530"/><circle cx="192.6" cy="92.2" r="2.6" fill="#FFFFFF"/></g><path class="df-brow" d="M152 74Q163 68 175 74M187 75Q194 71 201 76" fill="none" stroke="#1A2F5C" stroke-width="2.6" stroke-linecap="round"/></g><g class="df-mouth"><path d="M173 117Q187 120 200 114Q198 133 186 134Q175 133 173 117Z" fill="#1A2F5C"/><ellipse clip-path="url(#df-mouth-clip)" cx="187" cy="131" rx="8" ry="5" fill="#FF8A9A"/></g></g></svg>';
 const STAGE_HTML = '<div class="ring r3"></div><div class="ring r2"></div><div class="ring r1"></div><div class="halo"></div>'
-  + '<div class="bars l"><i></i><i></i><i></i><i></i></div><div class="orb">' + FISH_SVG + '</div><div class="bars r"><i></i><i></i><i></i><i></i></div>'
+  + '<div class="bars l"><i></i><i></i><i></i><i></i></div><div class="orb"><i class="face"></i><i class="face talk"></i><i class="face blink"></i></div><div class="bars r"><i></i><i></i><i></i><i></i></div>'
   + '<div class="dots"><span></span><span></span><span></span></div>'
   + '<div class="ovl sparkle">' + icHtml("spark") + '</div><div class="ovl sparkle2">' + icHtml("spark") + '</div><div class="ovl tear">' + ICON.drop + '</div><div class="ovl q">?</div>';
 
@@ -2289,7 +2288,7 @@ function copyText(s) {
 }
 // First visit: who Dory is, what she can see, four things to try (a chip sends its words, as if typed)
 function chatEmpty(onAsk, onUpload) {
-  const fish = el("div", { class: "fish", "aria-hidden": "true" }); fish.innerHTML = FISH_SVG;
+  const fish = el("div", { class: "fish", "aria-hidden": "true" }); fish.innerHTML = '<img src="/static/dory/dory3d-poster.webp" width="160" height="160" alt="">';
   const chips = [["chip_missed"], ["chip_tasks"], canManage() ? ["chip_spend"] : null, ["chip_upload", true]].filter(Boolean);
   return el("div", { class: "chat-empty" }, fish,
     el("h2", { text: t("chat_hi") }), el("p", { text: t("chat_intro") }), el("p", { class: "trust", text: t("chat_trust") }),

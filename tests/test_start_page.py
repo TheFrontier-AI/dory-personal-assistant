@@ -18,7 +18,7 @@ def test_brand_is_the_fish_mark_and_the_theme_tokens():
     html, style = page()
     assert (
         '<span class="mark" aria-hidden="true">D</span>' in html
-    )  # theme.css paints dory-mark.svg
+    )  # theme.css paints dory-mark.webp
     assert ".logo .mark { box-shadow: none; }" in style
     for old in ("#7A6CF0", "--indigo", "#EEF0FF", "#F7F7FF", "linear-gradient"):
         assert old not in style, old

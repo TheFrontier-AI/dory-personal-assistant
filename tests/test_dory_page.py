@@ -368,10 +368,16 @@ def test_landing_page_names_the_models_from_the_live_config(client, monkeypatch)
 
 
 def test_mascot_and_photo_assets_are_served_but_not_the_page_templates(client):
-    for name in ("dory.svg", "dory-mark.svg"):
-        r = client.get(f"/static/dory/{name}")
-        assert r.status_code == 200 and r.headers["content-type"].startswith("image/svg+xml"), name
+    for name in (
+        "dory.svg",
+        "dory-mark.svg",
+    ):  # the vector drawing gave way to the 3D model's renders
+        assert client.get(f"/static/dory/{name}").status_code == 404, name
     for name, kind in (
+        ("dory-mark.webp", "image/webp"),
+        ("dory-voice.webp", "image/webp"),
+        ("favicon.png", "image/png"),
+        ("apple-touch-icon.png", "image/png"),
         ("dory.webp", "image/webp"),
         ("dory.jpg", "image/jpeg"),
         ("meet-dory.mp4", "video/mp4"),
@@ -457,6 +463,13 @@ def test_every_page_shares_the_dory_theme(client):
     for name in ("dory.html", "start.html", "hub.html", "center.html", "index.html"):
         html = (PAGE.parent / name).read_text("utf-8")
         assert '<link rel="stylesheet" href="/static/dory/theme.css">' in html, name
+        assert '<link rel="icon" type="image/png" href="/static/dory/favicon.png">' in html, name
+        assert '<link rel="apple-touch-icon" href="/static/dory/apple-touch-icon.png">' in html, (
+            name
+        )
+        assert 'rel="icon" type="image/svg+xml"' not in html, (
+            name
+        )  # an SVG icon would win in Chrome
         assert "prefers-color-scheme" not in html, (
             name
         )  # light theme only, same on every judge's machine

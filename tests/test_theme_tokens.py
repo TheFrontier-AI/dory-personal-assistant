@@ -67,4 +67,6 @@ def test_dark_is_a_scope_and_old_names_follow_it():
     assert (
         "border: 1px solid var(--color-border-control)" in CSS
     )  # inputs no longer use the 1.3:1 divider
-    assert 'url("/static/dory/dory-mark.svg")' in CSS and "cat-avatar" not in CSS
+    assert (
+        'url("/static/dory/dory-mark.webp")' in CSS and "df-" not in CSS and "cat-avatar" not in CSS
+    )
