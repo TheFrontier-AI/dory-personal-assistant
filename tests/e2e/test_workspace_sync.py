@@ -23,6 +23,7 @@ def test_linking_a_discord_server_shows_my_discord_account_without_a_reload(page
     page.locator("#side").get_by_role("link", name="Workspaces").click()
     page.get_by_label("Link code").fill("ABCD-1234")
     page.get_by_role("button", name="Link", exact=True).click()
+    page.locator("#confirm-ok").click()  # the page names the server and who ran /setup first
     expect(
         page.locator(".wsgrid .card strong", has_text="New server")
     ).to_be_visible()  # the new card

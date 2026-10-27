@@ -1878,6 +1878,29 @@ class LinkBody(BaseModel):
     code: str = Field(min_length=10, max_length=200)
 
 
+@router.get("/link-codes/{code}")
+async def link_code_preview(
+    code: str, email: str = Depends(hub.require_user), guilds=Depends(hub.get_guild_store)
+) -> dict:
+    """What a `/setup` code would link, without using it: the server and the Discord user who ran
+    /setup. The page shows it and asks before linking, because a link someone else sends must
+    never add their server, or verify their Discord account as yours, on its own."""
+
+    def run() -> dict:
+        try:
+            info = guilds.link_code_info(code.strip())
+        except LinkError as exc:
+            raise HTTPException(404, "Link code is invalid, expired or already used") from exc
+        g = guilds.get(int(info["guild_id"]))
+        return {
+            "guild_name": g.guild_name or str(info["guild_id"]),
+            "icon_url": g.icon_url,
+            "created_by": str(info.get("discord_user_name") or ""),
+        }
+
+    return await run_in_threadpool(run)
+
+
 @router.post("/orgs/{org_id}/workspaces/discord/link")
 async def link_discord(
     body: LinkBody,
