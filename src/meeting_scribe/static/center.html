@@ -78,7 +78,8 @@ textarea { resize: vertical; min-height: 80px; }
 #side nav { display: flex; flex-direction: column; gap: 2px; margin-top: 6px; }
 #side nav a { display: flex; align-items: center; gap: 12px; padding: 9px 12px; border-radius: 10px; color: var(--ink); text-decoration: none; font-weight: 500;
   transition: background .15s, color .15s; }
-#side nav a > span { width: 22px; text-align: center; color: var(--faint); font-size: 15px; }
+#side nav a > span { width: 22px; display: grid; place-items: center; color: var(--faint); }
+#side nav a > span svg.ic { width: 20px; height: 20px; }
 #side nav a:hover { background: var(--bg-2); color: var(--indigo); }
 #side nav a[aria-current=page] { background: var(--nav-active); color: var(--indigo); font-weight: 600; }
 #side nav a[aria-current=page] > span { color: var(--indigo-2); }
@@ -139,6 +140,9 @@ ol.steps li.done::before { content: "\2713"; background: var(--ok-bg); color: va
 .drop { border: 2px dashed var(--line); border-radius: var(--radius); padding: 24px; text-align: center; color: var(--muted); background: var(--bg); transition: border-color .15s, background .15s; }
 .drop.over { border-color: var(--indigo-2); background: var(--chip); }
 progress { width: 100%; height: 10px; accent-color: var(--indigo-2); }
+
+/* icons: one stroke set (see IC), sized from the text around them */
+svg.ic { width: 1.15em; height: 1.15em; flex: none; vertical-align: -.2em; }
 
 /* drawer & dialog */
 .scrim { position: fixed; inset: 0; background: rgba(27, 31, 59, .45); z-index: 40; }
@@ -212,13 +216,14 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 /* #/chat: rail + a 720 px conversation column */
 .chatpage { display: grid; grid-template-columns: 240px minmax(0, 1fr); gap: 24px; height: calc(var(--vvh, 100dvh) - 96px); min-height: 420px; }
 .chatpage .rail { display: flex; flex-direction: column; gap: 8px; min-height: 0; overflow-y: auto; padding-right: 16px; border-right: 1px solid var(--line); }
-.chatpage .rail-h { font-size: 12px; font-weight: 600; letter-spacing: .06em; text-transform: uppercase; color: var(--muted); margin-top: 10px; }
+.chatpage .rail-h { font-size: 15px; font-weight: 600; color: var(--ink); margin-top: 12px; }
 .chatpage .days { display: flex; flex-direction: column; gap: 2px; }
 .chatpage .dayb { text-align: left; min-height: 40px; padding: 8px 10px; border: 0; border-radius: 10px; background: none; color: var(--ink); }
 .chatpage .dayb:hover { background: var(--nav-active); }
 .chatpage .convo { display: flex; flex-direction: column; min-height: 0; min-width: 0; }
 .chat-head { display: flex; align-items: center; gap: 12px; padding-bottom: 12px; margin-bottom: 8px; border-bottom: 1px solid var(--line); }
-.chat-head .mark { width: 44px; height: 44px; border-radius: 13px; }
+.chat-head .mark { width: 44px; height: 44px; border-radius: 13px; box-shadow: none; }
+.chat-head h1 { font-size: 22px; line-height: 1.3; }
 .chat-head .hist { display: none; }
 .chatpage .chat { flex: 1; }
 .chatpage .msgs { padding-inline: max(2px, calc((100% - 720px) / 2)); }
@@ -229,7 +234,7 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
   .chat-head .hist { display: inline-flex; }
   .chatpage.rail-open .rail { display: flex; position: fixed; left: 0; right: 0; bottom: 0; z-index: 70; max-height: 70vh; padding: 16px; border: 0; border-radius: 16px 16px 0 0; background: var(--card); box-shadow: var(--shadow-lg); }
 }
-@media (max-width: 720px) { .chatpage { gap: 0; } .chat-head .grow .muted { display: none; } }
+@media (max-width: 720px) { .chatpage { gap: 0; } .chat-head .grow .muted, .chat-head .mark { display: none; } .chat-head h1 { font-size: 20px; } }
 
 /* floating "Talk to Dory" button + side panel (logged-in shell only: both live inside #app) */
 #fab { position: fixed; right: 20px; bottom: 20px; z-index: 60; width: 60px; height: 60px; border-radius: 50%; border: 3px solid #fff; padding: 0; font-size: 0;
@@ -247,11 +252,11 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 #panel .x:hover { color: var(--indigo); border-color: var(--lavender); }
 #panel .ph .mark { width: 42px; height: 42px; border-radius: 13px; }
 /* "Live": a real voice call (header button, pill with the handset icon; red with a pulsing dot while the call is on) */
-.livebtn { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 15px 0 12px; border: 0; border-radius: 99px; color: #fff; font-weight: 700; font-size: 14px;
-  background: linear-gradient(135deg, #B9B4F2, #7A6CF0 55%, var(--indigo-2)); box-shadow: 0 6px 16px rgba(122, 108, 240, .38); transition: transform .15s var(--ease), box-shadow .15s var(--ease), background .2s; }
-.livebtn:hover { transform: translateY(-1px); box-shadow: 0 10px 22px rgba(122, 108, 240, .45); }
+.livebtn { flex: none; display: inline-flex; align-items: center; gap: 7px; height: 40px; padding: 0 15px 0 12px; border: 0; border-radius: 99px; font-weight: 700; font-size: 14px;
+  background: var(--color-action); color: var(--color-on-action); transition: background .15s; }
+.livebtn:hover { background: var(--color-action-hover); }
 .livebtn svg { width: 18px; height: 18px; display: block; }
-.livebtn[aria-pressed=true] { background: #E5484D; box-shadow: 0 6px 16px rgba(229, 72, 77, .32); }
+.livebtn[aria-pressed=true], .livebtn[aria-pressed=true]:hover { background: var(--err-ink); }
 .livebtn i { width: 9px; height: 9px; border-radius: 50%; background: #fff; animation: livedot 1.2s ease-in-out infinite; }
 @keyframes livedot { 50% { opacity: .3; } }
 #panel .pb { flex: 1; display: flex; flex-direction: column; min-height: 0; padding: 12px 16px 16px; gap: 10px; }
@@ -471,6 +476,7 @@ input[type=datetime-local]:focus { outline: none; border-color: var(--indigo-2);
 @keyframes b { 50% { transform: translateY(-4px); opacity: .5; } }
 .call.thinking .dots { opacity: 1; scale: 1; }
 .call .ovl { position: absolute; z-index: 3; opacity: 0; scale: .5; transition: opacity .2s, scale .3s var(--ease); line-height: 1; pointer-events: none; }
+.call .ovl.sparkle, .call .ovl.sparkle2 { color: var(--lantern-300); } .call .ovl svg.ic { display: block; }
 .call .ovl.sparkle { top: 30px; left: 36px; font-size: 30px; filter: drop-shadow(0 2px 6px rgba(255, 196, 107, .7)); }
 .call .ovl.sparkle2 { top: 150px; right: 26px; font-size: 20px; }
 .call.happy .ovl.sparkle, .call.happy .ovl.sparkle2 { opacity: 1; scale: 1; animation: twinkle 1.2s ease-in-out; }
@@ -641,8 +647,8 @@ details.sys > .inner { padding-top: 12px; }
 @media (max-width: 900px) { #login { grid-template-columns: 1fr; gap: 28px; align-items: start; padding: 32px 16px 40px; } #login .panel { place-items: start; } #login .box { max-width: 480px; } }
 @media (max-width: 720px) {
   #app { flex-direction: column; }
-  #side { position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; height: auto; width: min(290px, 86%); transform: translateX(-102%); transition: transform .2s var(--ease); box-shadow: var(--shadow-lg); }
-  body.nav-open #side { transform: none; }
+  #side { position: fixed; z-index: 50; top: 0; bottom: 0; left: 0; height: auto; width: min(290px, 86%); transform: translateX(-102%); transition: transform .2s var(--ease); }
+  body.nav-open #side { transform: none; box-shadow: var(--shadow-lg); }
   body.nav-open::after { content: ""; position: fixed; inset: 0; background: rgba(27, 31, 59, .4); z-index: 45; }
   #topbar { display: flex; align-items: center; gap: 12px; padding: 10px 16px; background: rgba(250, 249, 246, .9); backdrop-filter: blur(10px); -webkit-backdrop-filter: blur(10px);
     color: var(--indigo); border-bottom: 1px solid var(--line); position: sticky; top: 0; z-index: 30; }
@@ -834,29 +840,10 @@ h3 .n { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99
 <body>
 <div id="mockbar" hidden>MOCK MODE: sample data only</div>
 
-<section id="login" hidden>
-  <div class="pitch">
-    <a class="brand" href="/"><div class="mark" aria-hidden="true">D</div><strong>Dory Command Center</strong></a>
-    <h1 data-i="login_h"></h1>
-    <p data-i="login_p"></p>
-    <ul><li data-i="vp1"></li><li data-i="vp2"></li><li data-i="vp3"></li></ul>
-  </div>
-  <div class="panel"><div class="box">
-    <h2 data-i="login_title"></h2>
-    <div id="login-msg" class="notice" role="alert" hidden></div>
-    <div id="not-configured" class="notice error" hidden data-i="not_configured"></div>
-    <div id="signins">
-      <div id="gsi-button"></div>
-      <button id="discord-login" type="button" disabled aria-disabled="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg><span data-i="discord_login"></span><span class="badge" id="discord-soon" data-i="soon"></span></button>
-    </div>
-    <p class="muted small" data-i="login_note"></p>
-    <button class="btn ghost sm" id="login-lang" type="button"></button>
-  </div></div>
-</section>
 
 <div id="app" hidden>
   <div id="topbar">
-    <button id="burger" type="button" aria-label="Menu" aria-controls="side" aria-expanded="false">&#9776;</button>
+    <button id="burger" type="button" aria-label="Menu" aria-controls="side" aria-expanded="false"><svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" aria-hidden="true" focusable="false"><path d="M4 7h16M4 12h16M4 17h16"/></svg></button>
     <span class="t" id="topbar-title">Dory</span>
   </div>
   <aside id="side" aria-label="Main">
@@ -883,6 +870,26 @@ h3 .n { font-size: 12.5px; font-weight: 600; padding: 1px 8px; border-radius: 99
     <div class="pb" id="panel-body"></div>
   </aside>
 </div>
+
+<section id="login" hidden>
+  <div class="pitch">
+    <a class="brand" href="/"><div class="mark" aria-hidden="true">D</div><strong>Dory Command Center</strong></a>
+    <h1 data-i="login_h"></h1>
+    <p data-i="login_p"></p>
+    <ul><li data-i="vp1"></li><li data-i="vp2"></li><li data-i="vp3"></li></ul>
+  </div>
+  <div class="panel"><div class="box">
+    <h2 data-i="login_title"></h2>
+    <div id="login-msg" class="notice" role="alert" hidden></div>
+    <div id="not-configured" class="notice error" hidden data-i="not_configured"></div>
+    <div id="signins">
+      <div id="gsi-button"></div>
+      <button id="discord-login" type="button" disabled aria-disabled="true"><svg viewBox="0 0 24 24" fill="currentColor" aria-hidden="true"><path d="M20.317 4.37a19.791 19.791 0 0 0-4.885-1.515.074.074 0 0 0-.079.037c-.21.375-.444.864-.608 1.25a18.27 18.27 0 0 0-5.487 0 12.64 12.64 0 0 0-.617-1.25.077.077 0 0 0-.079-.037A19.736 19.736 0 0 0 3.677 4.37a.07.07 0 0 0-.032.027C.533 9.046-.32 13.58.099 18.057a.082.082 0 0 0 .031.057 19.9 19.9 0 0 0 5.993 3.03.078.078 0 0 0 .084-.028c.462-.63.874-1.295 1.226-1.994a.076.076 0 0 0-.041-.106 13.107 13.107 0 0 1-1.872-.892.077.077 0 0 1-.008-.128 10.2 10.2 0 0 0 .372-.292.074.074 0 0 1 .077-.01c3.928 1.793 8.18 1.793 12.062 0a.074.074 0 0 1 .078.01c.12.098.246.198.373.292a.077.077 0 0 1-.006.127 12.299 12.299 0 0 1-1.873.892.077.077 0 0 0-.041.107c.36.698.772 1.362 1.225 1.993a.076.076 0 0 0 .084.028 19.839 19.839 0 0 0 6.002-3.03.077.077 0 0 0 .032-.054c.5-5.177-.838-9.674-3.549-13.66a.061.061 0 0 0-.031-.03zM8.02 15.33c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.956-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.956 2.418-2.157 2.418zm7.975 0c-1.183 0-2.157-1.085-2.157-2.419 0-1.333.955-2.419 2.157-2.419 1.21 0 2.176 1.096 2.157 2.42 0 1.333-.946 2.418-2.157 2.418z"/></svg><span data-i="discord_login"></span><span class="badge" id="discord-soon" data-i="soon"></span></button>
+    </div>
+    <p class="muted small" data-i="login_note"></p>
+    <button class="btn ghost sm" id="login-lang" type="button"></button>
+  </div></div>
+</section>
 
 <dialog id="org-dlg" aria-labelledby="org-dlg-t">
   <form method="dialog" id="org-form">
@@ -924,6 +931,44 @@ function el(tag, attrs, ...kids) {
   for (const c of kids.flat(Infinity)) if (c != null && c !== false) n.append(c.nodeType ? c : document.createTextNode(String(c)));
   return n;
 }
+// Interface icons: one stroke set (24 grid, 1.75 stroke, currentColor), always aria-hidden; the control carries the name.
+const IC = {
+  building: '<path d="M5 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16"/><path d="M16 9h2a2 2 0 0 1 2 2v10M3 21h18M9 7h3M9 11h3M9 15h3"/>',
+  activity: '<path d="M3 12h4l3-8 4 16 3-8h4"/>',
+  calendar: '<rect x="3.5" y="5" width="17" height="15.5" rx="2"/><path d="M3.5 10h17M8 3v4M16 3v4"/>',
+  file: '<path d="M14 3H7a2 2 0 0 0-2 2v14a2 2 0 0 0 2 2h10a2 2 0 0 0 2-2V8z"/><path d="M14 3v5h5M9 13h6M9 17h4"/>',
+  grid: '<rect x="3.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="3.5" width="7" height="7" rx="1.5"/><rect x="3.5" y="13.5" width="7" height="7" rx="1.5"/><rect x="13.5" y="13.5" width="7" height="7" rx="1.5"/>',
+  plug: '<path d="M9 3v4M15 3v4M6.5 7h11v3.5a5.5 5.5 0 0 1-11 0zM12 16v5"/>',
+  users: '<circle cx="9" cy="8" r="3.5"/><path d="M2.5 20a6.5 6.5 0 0 1 13 0M16 4.7a3.5 3.5 0 0 1 0 6.6M18 14.2a6.5 6.5 0 0 1 3.5 5.8"/>',
+  ticket: '<path d="M3 8a2 2 0 0 1 2-2h14a2 2 0 0 1 2 2v1.5a2.5 2.5 0 0 0 0 5V16a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-1.5a2.5 2.5 0 0 0 0-5z"/><path d="M14.5 6v2M14.5 11v2M14.5 16v2"/>',
+  sliders: '<path d="M4 6h9M17 6h3M4 12h3M11 12h9M4 18h11M19 18h1"/><circle cx="15" cy="6" r="2"/><circle cx="9" cy="12" r="2"/><circle cx="17" cy="18" r="2"/>',
+  chat: '<path d="M20.5 12a8.5 8.5 0 0 1-12.3 7.6L3.5 21l1.4-4.6A8.5 8.5 0 1 1 20.5 12z"/>',
+  user: '<circle cx="12" cy="12" r="9"/><circle cx="12" cy="10" r="3"/><path d="M6.6 18.3a6 6 0 0 1 10.8 0"/>',
+  tasks: '<rect x="3.5" y="3.5" width="17" height="17" rx="3"/><path d="m8 12.2 2.8 2.8L16 9.5"/>',
+  check: '<path d="m5 12.5 4.5 4.5L19 7.5"/>',
+  square: '<rect x="5" y="5" width="14" height="14" rx="3"/>',
+  star: '<path d="m12 3.5 2.6 5.3 5.9.9-4.3 4.1 1 5.8L12 16.9l-5.2 2.7 1-5.8-4.3-4.1 5.9-.9z"/>',
+  pencil: '<path d="M4 20h4L19 9a2.8 2.8 0 0 0-4-4L4 16z"/><path d="m13.5 6.5 4 4"/>',
+  alert: '<path d="M10.3 4 2.6 17.5a2 2 0 0 0 1.7 3h15.4a2 2 0 0 0 1.7-3L13.7 4a2 2 0 0 0-3.4 0z"/><path d="M12 9.5v4M12 17h.01"/>',
+  x: '<path d="M6 6l12 12M18 6 6 18"/>',
+  scale: '<path d="M12 3v18M8 21h8M5 7h14M5 7l-3 7a3.2 3.2 0 0 0 6 0zM19 7l-3 7a3.2 3.2 0 0 0 6 0z"/>',
+  money: '<rect x="2.5" y="6" width="19" height="12" rx="2"/><circle cx="12" cy="12" r="2.5"/><path d="M6 12h.01M18 12h.01"/>',
+  folder: '<path d="M3 7a2 2 0 0 1 2-2h4l2 2h8a2 2 0 0 1 2 2v8a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>',
+  bell: '<path d="M6 16v-5a6 6 0 0 1 12 0v5l2 2H4z"/><path d="M10 21h4"/>',
+  headphones: '<path d="M4 15v-3a8 8 0 0 1 16 0v3"/><rect x="3" y="14" width="4.5" height="7" rx="1.5"/><rect x="16.5" y="14" width="4.5" height="7" rx="1.5"/>',
+  flag: '<path d="M5 21V4M5 4h12l-2.5 4.5L17 13H5"/>',
+  diamond: '<path d="M12 3 21 12l-9 9-9-9z"/>',
+  circle: '<circle cx="12" cy="12" r="7"/>',
+  half: '<circle cx="12" cy="12" r="7"/><path d="M12 5a7 7 0 0 1 0 14z" fill="currentColor"/>',
+  dots: '<path d="M6 12h.01M12 12h.01M18 12h.01" stroke-width="3"/>',
+  pause: '<path d="M9 6v12M15 6v12"/>',
+  ban: '<circle cx="12" cy="12" r="8"/><path d="m6.5 6.5 11 11"/>',
+  skip: '<path d="M4 16a8 8 0 0 1 14.6-6.5"/><path d="M19.5 4.5v5h-5"/>',
+  dot: '<circle cx="12" cy="12" r="2.5" fill="currentColor"/>',
+  spark: '<path d="M12 2.5c.7 5 2.5 6.8 7.5 7.5-5 .7-6.8 2.5-7.5 7.5-.7-5-2.5-6.8-7.5-7.5 5-.7 6.8-2.5 7.5-7.5z" fill="currentColor" stroke="none"/>',
+};
+const icHtml = (n) => '<svg class="ic" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true" focusable="false">' + (IC[n] || IC.dot) + "</svg>";
+function ic(n) { const tp = document.createElement("template"); tp.innerHTML = icHtml(n); return tp.content.firstChild; }
 // replaceChildren that tolerates arrays / null / false (so conditional children never render as text)
 { const rc = Element.prototype.replaceChildren; Element.prototype.replaceChildren = function (...k) { rc.apply(this, k.flat(Infinity).filter((x) => x != null && x !== false)); }; }
 const items = (x, k = "items") => Array.isArray(x) ? x : (x && Array.isArray(x[k]) ? x[k] : []);
@@ -1008,7 +1053,7 @@ th: {
   lg_h:"ข้อมูลนิติบุคคล", lg_p:"ตามหนังสือรับรองและเอกสารจดทะเบียน อัปโหลดเอกสารในแชทให้ดอรี่ ดอรี่จะกรอกให้", lg_registered_name:"ชื่อนิติบุคคล", lg_registration_no:"เลขทะเบียนนิติบุคคล", lg_tax_id:"เลขประจำตัวผู้เสียภาษี", lg_registered_capital:"ทุนจดทะเบียน", lg_registered_address:"ที่ตั้งสำนักงานใหญ่", lg_directors:"กรรมการผู้มีอำนาจ", lg_objectives:"วัตถุประสงค์",
   cp_edit:"แก้ไขโปรไฟล์", cp_name:"ชื่อบริษัท", cp_logo:"ลิงก์โลโก้ (https://…)", cp_tagline:"สโลแกน", cp_about:"เกี่ยวกับบริษัท", cp_industry:"ธุรกิจ", cp_founded:"ก่อตั้ง", cp_location:"ที่ตั้ง", cp_size:"ขนาดองค์กร", cp_website:"เว็บไซต์", cp_email:"อีเมล", cp_phone:"โทรศัพท์", cp_values:"ค่านิยม", cp_values_hint:"คั่นด้วยจุลภาค ไม่เกิน 8 ข้อ",
   cp_leadership:"ผู้บริหาร", cp_no_lead:"ยังไม่มีรายชื่อผู้บริหาร", cp_depts:"แผนก", cp_no_depts:"ยังไม่มีแผนก (สมาชิกตั้งค่าได้ในหน้า โปรไฟล์ของฉัน)", cp_sys:"ดอรี่และระบบ", cp_sys_p:"การเชื่อมต่อ แพ็กเกจ และสิ่งที่ดอรี่ทำ (เฉพาะผู้ดูแล)", cp_empty:"ยังไม่มีข้อมูลบริษัท", cp_empty_hint:"ผู้ดูแล: เล่าเรื่องบริษัทให้ดอรี่ฟังในแชท หรือกด “แก้ไขโปรไฟล์”", cp_about_empty:"เล่าสั้น ๆ ว่าบริษัททำอะไร เพื่อใคร", cp_people:"พนักงาน {n} คน",
-  up_attach:"แนบเอกสารให้ดอรี่", up_dup:"📎 {name} มีอยู่ในระบบแล้ว (ไฟล์เดียวกัน ไม่เก็บซ้ำ) —", up_ask_n:"ฉันเพิ่งอัปโหลดเอกสาร {n} ไฟล์: {names} ช่วยอ่าน จัดเก็บให้ถูกแฟ้ม และอัปเดตข้อมูลบริษัทให้ด้วย", up_drop:"วางไฟล์เพื่ออัปโหลด", up_sys:"📎 อัปโหลด {name} แล้ว — เก็บไว้ที่", up_ask:"ฉันเพิ่งอัปโหลด \"{name}\" ช่วยอ่านแล้วสรุปให้หน่อย", up_too_big:"ไฟล์ใหญ่เกินไป (สูงสุด 20 MB)", up_bad_type:"ไม่รองรับไฟล์ชนิดนี้ (PDF, Word, Excel, PowerPoint, รูปภาพ, ข้อความ)",
+  up_attach:"แนบเอกสารให้ดอรี่", up_dup:"{name} มีอยู่ในระบบแล้ว (ไฟล์เดียวกัน ไม่เก็บซ้ำ) —", up_ask_n:"ฉันเพิ่งอัปโหลดเอกสาร {n} ไฟล์: {names} ช่วยอ่าน จัดเก็บให้ถูกแฟ้ม และอัปเดตข้อมูลบริษัทให้ด้วย", up_drop:"วางไฟล์เพื่ออัปโหลด", up_sys:"อัปโหลด {name} แล้ว — เก็บไว้ที่", up_ask:"ฉันเพิ่งอัปโหลด \"{name}\" ช่วยอ่านแล้วสรุปให้หน่อย", up_too_big:"ไฟล์ใหญ่เกินไป (สูงสุด 20 MB)", up_bad_type:"ไม่รองรับไฟล์ชนิดนี้ (PDF, Word, Excel, PowerPoint, รูปภาพ, ข้อความ)",
   org_chart:"ผังองค์กร", oc_edit:"แก้ไขที่ สมาชิก → ผังองค์กร", oc_set:"ตั้งค่า “ฉันรายงานต่อ” ในหน้า โปรไฟล์ของฉัน",
   dg_all:"ทั้งหมด", dg_company:"เอกสารบริษัท", dg_legal:"สัญญาและกฎหมาย", dg_finance:"การเงิน (ใบแจ้งหนี้ ใบเสร็จ ค่าใช้จ่าย)", dg_hr:"บุคคล", dg_other:"อื่นๆ", dg_p:"เอกสารสำคัญของบริษัท (จดทะเบียน ข้อบังคับ ผู้ถือหุ้น ใบอนุญาต) แยกจากเอกสารการเงิน ดอรี่จัดหมวดให้อัตโนมัติ ผู้ดูแลย้ายหมวดได้", dg_move:"ย้ายไปหมวด", dg_moved:"ย้ายไป {g} แล้ว",
   tab_people:"รายชื่อ", tab_chart:"ผังองค์กร", tab_everyone:"ทุกคนบนแพลตฟอร์ม", tab_positions:"ตำแหน่งงาน", tab_experts:"หาผู้เชี่ยวชาญ",
@@ -1119,7 +1164,7 @@ en: {
   lg_h:"Legal entity", lg_p:"As on the registration certificate. Upload the papers to Dory in the chat and she fills this in.", lg_registered_name:"Registered name", lg_registration_no:"Registration number", lg_tax_id:"Tax ID", lg_registered_capital:"Registered capital", lg_registered_address:"Head office address", lg_directors:"Authorised directors", lg_objectives:"Business objectives",
   cp_edit:"Edit profile", cp_name:"Company name", cp_logo:"Logo URL (https://…)", cp_tagline:"Tagline", cp_about:"About", cp_industry:"Industry", cp_founded:"Founded", cp_location:"Location", cp_size:"Company size", cp_website:"Website", cp_email:"Email", cp_phone:"Phone", cp_values:"Values", cp_values_hint:"Comma-separated, up to 8",
   cp_leadership:"Leadership", cp_no_lead:"No leaders listed yet", cp_depts:"Departments", cp_no_depts:"No departments yet (members set theirs on My profile)", cp_sys:"Dory & systems", cp_sys_p:"Connections, license and what Dory does (admins only)", cp_empty:"No company profile yet", cp_empty_hint:"Admins: tell Dory about the company in chat, or press “Edit profile”", cp_about_empty:"A few lines on what the company does, and for whom", cp_people:"{n} people",
-  up_attach:"Attach documents for Dory", up_dup:"📎 {name} is already on file (same file, not stored twice) —", up_ask_n:"I just uploaded {n} documents: {names}. Please read them, file them in the right place and update the company information.", up_drop:"Drop a file to upload it", up_sys:"📎 Uploaded {name} — saved under", up_ask:"I just uploaded \"{name}\" — please read it and tell me what it is about", up_too_big:"File too large (20 MB max)", up_bad_type:"Unsupported file type (PDF, Word, Excel, PowerPoint, images, text)",
+  up_attach:"Attach documents for Dory", up_dup:"{name} is already on file (same file, not stored twice) —", up_ask_n:"I just uploaded {n} documents: {names}. Please read them, file them in the right place and update the company information.", up_drop:"Drop a file to upload it", up_sys:"Uploaded {name} — saved under", up_ask:"I just uploaded \"{name}\" — please read it and tell me what it is about", up_too_big:"File too large (20 MB max)", up_bad_type:"Unsupported file type (PDF, Word, Excel, PowerPoint, images, text)",
   org_chart:"Organization chart", oc_edit:"Edit in Members → Org chart", oc_set:"Set “I report to” on My profile",
   dg_all:"All", dg_company:"Company records", dg_legal:"Contracts & legal", dg_finance:"Finance (invoices, receipts, expenses)", dg_hr:"HR", dg_other:"Other", dg_p:"The company's key records (registration, articles and regulations, shareholders, licences) are kept apart from finance papers. Dory files each document automatically; admins can move one.", dg_move:"Move to group", dg_moved:"Moved to {g}",
   tab_people:"People", tab_chart:"Org chart", tab_everyone:"Everyone on platforms", tab_positions:"Positions", tab_experts:"Find an expert",
@@ -1209,7 +1254,7 @@ class AuthError extends Error {}
 class ApiError extends Error { constructor(d, s) { super(d); this.status = s; } }
 const errText = (e) => e instanceof ApiError ? t("err_generic", { status: e.status }) + (e.message ? " [" + e.message + "]" : "") : (e instanceof AuthError ? e.message : t("err_net"));
 async function api(path, opts = {}) {
-  if (MOCK) return mockApi(opts.method || "GET", path, opts.body && typeof opts.body === "string" ? JSON.parse(opts.body) : opts.body);
+  if (MOCK) return Promise.resolve(mockApi(opts.method || "GET", path, opts.body && typeof opts.body === "string" ? JSON.parse(opts.body) : opts.body)).then(mockLang);
   let res;
   try {
     res = await fetch(path, { ...opts, headers: { ...(opts.body && !(opts.body instanceof FormData) ? { "Content-Type": "application/json" } : {}), Authorization: "Bearer " + token } });
@@ -1394,8 +1439,8 @@ let me = null, orgId = null, cur = null;
 // Company settings and personal settings are two labelled groups. "Talk to Dory" is the floating panel on every page
 // and also a full page (#/chat: the same chat with a history rail); both read the same history.
 const NAV_SECTIONS = [
-  ["sec_company", [["overview", "n_overview", "▦"], ["monitor", "n_monitor", "◉"], ["mycal", "n_mycal", "▣"], ["docs", "n_docs", "▤"], ["ws", "n_ws", "◫"], ["apps", "n_apps", "⚙"], ["members", "n_members", "☺"], ["license", "n_license", "★"], ["settings", "n_settings", "⚒"]]],
-  ["sec_personal", [["chat", "n_chat", "✦"], ["account", "n_account", "☉"], ["mytasks", "n_mytasks", "☑"]]],
+  ["sec_company", [["overview", "n_overview", "building"], ["monitor", "n_monitor", "activity"], ["mycal", "n_mycal", "calendar"], ["docs", "n_docs", "file"], ["ws", "n_ws", "grid"], ["apps", "n_apps", "plug"], ["members", "n_members", "users"], ["license", "n_license", "ticket"], ["settings", "n_settings", "sliders"]]],
+  ["sec_personal", [["chat", "n_chat", "chat"], ["account", "n_account", "user"], ["mytasks", "n_mytasks", "tasks"]]],
 ];
 const NAV = NAV_SECTIONS.flatMap(([, pages]) => pages);
 const ADMIN_PAGES = ["apps", "license", "settings"]; // hidden from plain members of the current org
@@ -1411,12 +1456,12 @@ function renderNav() {
   const nav = $("nav"); nav.replaceChildren();
   for (const [sec, pages] of NAV_SECTIONS) {
     nav.append(el("div", { class: "sec", text: t(sec) }));
-    for (const [id, key, ic] of pages) if (pageVisible(id)) nav.append(el("a", { href: "#/" + id, "aria-current": cur === id ? "page" : false, onclick: () => closeNav() }, el("span", { "aria-hidden": "true" }, ic), t(key)));
+    for (const [id, key, icon] of pages) if (pageVisible(id)) nav.append(el("a", { href: "#/" + id, "aria-current": cur === id ? "page" : false, onclick: () => closeNav() }, el("span", { "aria-hidden": "true" }, ic(icon)), t(key)));
   }
   const sel = $("org-switch"); sel.replaceChildren();
   for (const o of me.orgs) sel.append(el("option", { value: o.id, selected: o.id === orgId }, o.name));
   if (!me.orgs.length) sel.append(el("option", { value: "" }, t("no_org_h")));
-  $("who").textContent = [realName(me) || me.name, nickOf(me), me.email].filter(Boolean).join(" · ") + (me.is_super ? " ★" : "");
+  $("who").textContent = [realName(me) || me.name, nickOf(me), me.email, me.is_super ? t("role_super") : ""].filter(Boolean).join(" · ");
   $("who").setAttribute("aria-current", cur === "account" ? "page" : "false");
   monPaintBadge();
 }
@@ -1477,8 +1522,8 @@ const PNAME = { discord: "Discord", slack: "Slack", clickup: "ClickUp", line: "L
 const pname = (p) => PNAME[p] || p;
 const platBadge = (p, sm) => el("div", { class: "plat " + (p in PLAT ? p : "soon") + (sm ? " sm" : ""), "aria-hidden": "true" }, PLAT[p] || "?");
 // a person's identity on one platform: Google = the sign-in (grey), verified = filled with a check, typed by hand = outline
-const idBadge = (i) => i.platform === "google" ? el("span", { class: "idb ok", title: t("verified") }, "✓ Google")
-  : i.verified ? el("span", { class: "idb ok", title: t("verified") }, "✓ " + pname(i.platform))
+const idBadge = (i) => i.platform === "google" ? el("span", { class: "idb ok", title: t("verified") }, ic("check"), "Google")
+  : i.verified ? el("span", { class: "idb ok", title: t("verified") }, ic("check"), pname(i.platform))
   : el("span", { class: "idb un" }, pname(i.platform) + " · " + t("unverified"));
 const linkedIds = (x) => items(x, "identities").filter((i) => i.platform !== "google");
 const CATS = ["receipts", "contracts_docs", "minutes", "reports", "wiki", "ideas", "contests", "uploads"];
@@ -1796,7 +1841,7 @@ VIEWS.overview = async (body, my) => {
     if (pl) {
       const avail = items(pl, "available"), conn = items(pl, "connected"), soon = items(pl, "coming_soon");
       const chip = (p, kind) => {
-        const kids = [platBadge(p, true), pname(p), kind === "ok" ? el("span", { class: "badge ok", text: "✓ " + t("st_connected") }) : kind === "soon" ? el("span", { class: "badge soon", text: t("soon") }) : el("span", { class: "badge", text: t("p_not_connected") })];
+        const kids = [platBadge(p, true), pname(p), kind === "ok" ? el("span", { class: "badge ok" }, ic("check"), t("st_connected")) : kind === "soon" ? el("span", { class: "badge soon", text: t("soon") }) : el("span", { class: "badge", text: t("p_not_connected") })];
         return kind === "avail" ? el("a", { class: "pchip", href: "#/apps", title: t("n_apps") }, kids) : el("span", { class: "pchip " + kind }, kids);
       };
       sys.push(el("div", { class: "card" }, el("div", { class: "pline" }, el("h2", { text: t("platforms") }), el("span", { class: "muted", text: t("connected_of", { x: conn.length, y: avail.length }) })),
@@ -1847,14 +1892,14 @@ VIEWS.docs = async (body, my) => {
   const loadCounts = async () => { try { gcounts = await api(O("/documents/groups") + q({ workspace: wsSel.value })); } catch { gcounts = {}; } drawGroups(); };
   const drawGroups = () => { gbar.hidden = kind !== "file";
     gbar.replaceChildren(...["all", ...GROUPS].map((g) => el("button", { type: "button", role: "tab", class: "gpill " + g, "aria-selected": String(g === grp), onclick: () => { grp = g; drawGroups(); load(true); } },
-      g === "company" ? "★ " : "", t("dg_" + g), g !== "all" && gcounts[g] != null ? el("span", { class: "n", text: gcounts[g] }) : null)));
+      g === "company" ? ic("star") : null, t("dg_" + g), g !== "all" && gcounts[g] != null ? el("span", { class: "n", text: gcounts[g] }) : null)));
     drawCabinet(); };
   // the filing cabinet: one drawn drawer per group (company records on top), folders = the
   // document type Dory read (invoice, receipt, contract...), files inside the open folder
   let view = "cabinet", folder = "";
   try { view = localStorage.getItem("dory_docs_view") || "cabinet"; } catch { /* ignore */ }
   const cab = el("div", { class: "cabwrap" }), folders = el("div", { class: "folders" });
-  const ICON_G = { company: "🏛️", legal: "⚖️", finance: "💰", hr: "👥", other: "🗂️" };
+  const ICON_G = { company: "building", legal: "scale", finance: "money", hr: "users", other: "folder" };
   const folderOf = (r) => (r.tags && r.tags[0] ? String(r.tags[0]).toLowerCase() : "");
   const drawFolders = () => {
     folders.hidden = view !== "cabinet" || kind !== "file" || grp === "all";
@@ -1871,7 +1916,7 @@ VIEWS.docs = async (body, my) => {
     cab.replaceChildren(el("div", { class: "cabinet", role: "tablist", "aria-label": t("cab_h") },
       el("div", { class: "cabtop" }, el("strong", { text: t("cab_h") }), el("span", { class: "muted small", text: t("cab_files", { n: total }) })),
       GROUPS.map((g) => el("button", { type: "button", role: "tab", class: "drawer-front " + g + (grp === g ? " open" : ""), "aria-selected": String(grp === g), onclick: () => { grp = grp === g ? "all" : g; folder = ""; drawGroups(); load(true); } },
-        el("span", { class: "dlabel", title: t("dg_" + g) }, el("span", { "aria-hidden": "true", text: ICON_G[g] + " " }), t("ds_" + g)), el("span", { class: "dhandle", "aria-hidden": "true" }), el("span", { class: "dcount", text: gcounts[g] == null ? "" : gcounts[g] === 1 ? t("cab_file1") : t("cab_files", { n: gcounts[g] }) })))),
+        el("span", { class: "dlabel", title: t("dg_" + g) }, ic(ICON_G[g]), " ", t("ds_" + g)), el("span", { class: "dhandle", "aria-hidden": "true" }), el("span", { class: "dcount", text: gcounts[g] == null ? "" : gcounts[g] === 1 ? t("cab_file1") : t("cab_files", { n: gcounts[g] }) })))),
       el("p", { class: "muted small", text: t("cab_p") }));
     drawFolders();
   }
@@ -2068,7 +2113,7 @@ const FISH_SVG = '<svg class="fish-svg" viewBox="2 6 216 162" aria-hidden="true"
 const STAGE_HTML = '<div class="ring r3"></div><div class="ring r2"></div><div class="ring r1"></div><div class="halo"></div>'
   + '<div class="bars l"><i></i><i></i><i></i><i></i></div><div class="orb">' + FISH_SVG + '</div><div class="bars r"><i></i><i></i><i></i><i></i></div>'
   + '<div class="dots"><span></span><span></span><span></span></div>'
-  + '<div class="ovl sparkle">✨</div><div class="ovl sparkle2">✨</div><div class="ovl tear">' + ICON.drop + '</div><div class="ovl q">?</div>';
+  + '<div class="ovl sparkle">' + icHtml("spark") + '</div><div class="ovl sparkle2">' + icHtml("spark") + '</div><div class="ovl tear">' + ICON.drop + '</div><div class="ovl q">?</div>';
 
 // One live call per chat widget. wrap = the .chat element the call view covers; addMsg(who, text) writes finished turns to the chat log.
 function liveCall(wrap, addMsg) {
@@ -2392,7 +2437,7 @@ const chatPage = { w: null };
 VIEWS.chat = async (body, my) => {
   const hist = await chatData(); if (stale(my)) return; done(body);
   closePanel(); // the page is the chat: one live call and one composer at a time
-  const h1 = $("content").querySelector("h1"); if (h1) h1.classList.add("sr");
+  const h1 = $("content").querySelector("h1") || el("h1", { text: t("n_chat") }); // the page title moves into the chat header
   if (chatPage.w) chatPage.w.stop();
   const w = chatWidget(hist, "c", { page: true }); chatPage.w = w;
   const callB = el("button", { class: "livebtn", id: "chat-live", type: "button", onclick: () => w.live.toggle() });
@@ -2411,7 +2456,7 @@ VIEWS.chat = async (body, my) => {
   });
   const rail = el("aside", { class: "rail", "aria-label": t("history") }, search, none, el("h2", { class: "rail-h", text: t("jump_day") }), days, el("a", { class: "small", href: "#/docs", text: t("files_sent") + " →" }));
   const head = el("div", { class: "chat-head" }, el("span", { class: "mark", "aria-hidden": "true" }),
-    el("div", { class: "grow" }, el("strong", { text: t("dory_name") }), el("div", { class: "muted small", text: t("panel_p") })), histB, callB);
+    el("div", { class: "grow" }, h1, el("div", { class: "muted small", text: t("panel_p") })), histB, callB);
   const page = el("div", { class: "chatpage" }, rail, el("section", { class: "convo", "aria-label": t("talk") }, head, w.wrap));
   // F6 cycles the regions: rail -> messages -> composer
   page.addEventListener("keydown", (ev) => {
@@ -2683,7 +2728,7 @@ VIEWS.members = async (body, my) => {
         el("td", {}, el("div", {}, el("strong", { text: personName(m) }), m.title || m.department ? el("span", { class: "muted small", text: " · " + [m.title, m.department].filter(Boolean).join(", ") }) : null), el("div", { class: "muted small", text: [nickOf(m), m.email].filter(Boolean).join(" · ") }),
           admin || m.email === me.email ? el("button", { class: "btn ghost sm", type: "button", style: "margin-top:6px", onclick: () => editProfile(m) }, t("mp_edit")) : null),
         el("td", {}, roleCell(m)),
-        el("td", {}, el("div", { class: "small" + (n ? "" : " muted"), text: n ? t("linked_n", { n }) : t("linked_none") }), el("div", { class: "idbs" }, el("span", { class: "idb ok", title: t("verified") }, "✓ Google"), ids.map(idBadge))),
+        el("td", {}, el("div", { class: "small" + (n ? "" : " muted"), text: n ? t("linked_n", { n }) : t("linked_none") }), el("div", { class: "idbs" }, el("span", { class: "idb ok", title: t("verified") }, ic("check"), "Google"), ids.map(idBadge))),
         el("td", {}, admin && m.role !== "owner" && (isOwner() || m.role === "member") ? el("button", { class: "btn danger sm", type: "button", onclick: () => { if (confirm(t("confirm_rm", { e: m.email }))) act(() => api(O("/members") + q({ email: m.email }), { method: "DELETE" })); } }, t("remove")) : null)); })))) : el("div", { class: "empty", text: t("mem_none") }));
   };
   draw();
@@ -2857,7 +2902,7 @@ async function peopleDirectory(box, members, admin) {
     el("div", { class: "phd" }, el("div", { class: "pav", style: "--h:" + hue(p.id), "aria-hidden": "true", text: initial(p.display_name) }),
       el("div", { class: "pwho" }, el("strong", { text: p.display_name }), p.nickname && p.name && p.nickname !== p.name ? el("span", { class: "muted small", text: " · " + p.name }) : null,
         el("div", { class: "small" }, [p.title, p.department].filter(Boolean).join(", ") || el("span", { class: "muted", text: "—" }))),
-      el("div", { class: "pbadges" }, platBadge(p.platform, true), p.email ? el("span", { class: "badge ok", title: p.email }, "✓ " + t("pp_account") + (p.member_role ? " · " + t("role_" + p.member_role) : "")) : el("span", { class: "badge", text: t("pp_noacc") }), p.hidden ? el("span", { class: "badge warn", text: t("pp_hidden") }) : null)),
+      el("div", { class: "pbadges" }, platBadge(p.platform, true), p.email ? el("span", { class: "badge ok", title: p.email }, ic("check"), t("pp_account") + (p.member_role ? " · " + t("role_" + p.member_role) : "")) : el("span", { class: "badge", text: t("pp_noacc") }), p.hidden ? el("span", { class: "badge warn", text: t("pp_hidden") }) : null)),
     p.about ? el("p", { class: "small pre", text: p.about }) : null,
     el("div", { class: "pmeta muted small" },
       p.seen.messages ? el("span", { text: t("pp_seen", { n: p.seen.messages, d: fmtDate(p.seen.last_seen) }) }) : null,
@@ -2954,7 +2999,7 @@ function orgChart(dir, members, opts) {
       el("div", { class: "rl", text: t("role_" + p.role) + (isMe ? " · " + t("me_tag") : "") }));
     if (canEdit) {
       const box = el("div", { class: "edbox", hidden: true });
-      const ed = el("button", { class: "ed", type: "button", "aria-expanded": "false", "aria-label": t("edit") + ": " + nm, title: t("edit") + ": " + t("reports_to") }, "✎");
+      const ed = el("button", { class: "ed", type: "button", "aria-expanded": "false", "aria-label": t("edit") + ": " + nm, title: t("edit") + ": " + t("reports_to") }, ic("pencil"));
       ed.addEventListener("click", () => {
         const open = box.hidden; box.hidden = !open; ed.setAttribute("aria-expanded", String(open));
         if (!open) { box.replaceChildren(); return; }
@@ -2991,7 +3036,7 @@ function orgChart(dir, members, opts) {
     tree.length ? wrapEl : el("div", { class: "empty", text: t("mem_none") }),
     placed.length && loose.length ? el("div", { class: "loose" }, el("div", { class: "muted small", text: t("chart_unplaced") }), el("div", { class: "cards" }, loose.map(pcard))) : null,
     !hasLines && tree.length ? el("div", { class: "notice", role: "note", text: t("chart_empty") }) : null,
-    opts.foot || el("div", { class: "muted small" }, "💡 ", el("a", { href: "#/account", text: t("chart_hint") })));
+    opts.foot || el("div", { class: "muted small" }, el("a", { href: "#/account", text: t("chart_hint") })));
   if (opts.only === "chart") return chart;
   const byDept = el("div", { class: "card" }, el("h2", { text: t("by_dept") }), el("div", { class: "deptgrid" }, depts.map((g) => el("div", { class: "deptbox", style: style(g.department) },
     el("h3", {}, g.department || t("no_dept"), el("span", { text: nPeople(items(g, "people").length) })),
@@ -3127,7 +3172,7 @@ VIEWS.account = async (body, my) => {
     box.replaceChildren((items(me, "identity_platforms").length ? me.identity_platforms : ["discord", "slack", "clickup", "line"]).map((p) => {
       const cur = ids.find((i) => i.platform === p);
       let open = null; const sub = el("div", { class: "sub" });
-      const status = !cur ? el("span", { class: "badge", text: t("not_linked") }) : cur.verified ? el("span", { class: "badge ok" }, "✓ " + t("verified")) : el("span", { class: "badge warn", text: t("unverified") });
+      const status = !cur ? el("span", { class: "badge", text: t("not_linked") }) : cur.verified ? el("span", { class: "badge ok" }, ic("check"), t("verified")) : el("span", { class: "badge warn", text: t("unverified") });
       const info = el("div", { class: "info" }, el("div", {}, el("strong", { text: pname(p) }), status),
         cur ? el("div", { class: "muted small", text: (cur.name ? cur.name + " · " : "") + cur.external_id }) : el("div", { class: "muted small", text: p === "discord" ? t("discord_hint") : t("not_linked_hint") }));
       const codeForm = () => {
@@ -3183,7 +3228,7 @@ VIEWS.mytasks = async (body, my) => {
   }
   // one row shape for every list; Dory's own tasks carry her avatar instead of the checkbox
   const row = (k, byDory) => { const isOpen = k.status === "open";
-    return el("div", { class: "titem" + (isOpen ? "" : " done") }, byDory ? el("span", { class: "tk mark", "aria-label": "Dory", title: "Dory" }, "S") : el("span", { class: "tk", "aria-hidden": "true", text: isOpen ? "☐" : "✓" }),
+    return el("div", { class: "titem" + (isOpen ? "" : " done") }, byDory ? el("span", { class: "tk mark", "aria-label": "Dory", title: "Dory" }, "S") : el("span", { class: "tk", "aria-hidden": "true" }, ic(isOpen ? "square" : "check")),
       el("div", { class: "tx" }, el("div", { class: "tt", text: k.title }),
         el("div", { class: "tm" }, dueBadge(k.due, isOpen), !isOpen ? el("span", { class: "badge ok", text: k.status === "done" ? t("mt_done") : k.status }) : null, k.assignee ? el("span", { text: k.assignee }) : null, k.workspace_name ? el("span", { text: k.workspace_name }) : null, discordLink(k.url)))); };
   // ---- the Post-it board: one sticky note per task, grouped by when it is due
@@ -3233,7 +3278,7 @@ VIEWS.mycal = async (body, my) => {
   const ymd = (d) => d.getFullYear() + "-" + String(d.getMonth() + 1).padStart(2, "0") + "-" + String(d.getDate()).padStart(2, "0");
   const parse = (k) => { const m = String(k).match(/^(\d{4})-(\d{2})-(\d{2})/); return m ? new Date(+m[1], +m[2] - 1, +m[3]) : new Date(); };
   const kindKey = (it) => ({ reminder: "mc_reminder", task: "mc_task", meeting: "mc_meeting", event: "mc_event", deadline: "mc_deadline", milestone: "mc_milestone", gcal: "mc_gcal" })[it.kind] || "mc_event";
-  const item = (it) => { const tm = timeOf(it.at); return el("div", { class: "cal-item " + (it.kind || "event") + (it.layer === "personal" ? " personal" : "") }, el("span", { class: "ci", "aria-hidden": "true", text: { reminder: "⏰", task: "☑", meeting: "🎧", event: "📅", deadline: "🏁", milestone: "◆", gcal: "🗓️" }[it.kind] || "📅" }),
+  const item = (it) => { const tm = timeOf(it.at); return el("div", { class: "cal-item " + (it.kind || "event") + (it.layer === "personal" ? " personal" : "") }, el("span", { class: "ci", "aria-hidden": "true" }, ic({ reminder: "bell", task: "tasks", meeting: "headphones", event: "calendar", deadline: "flag", milestone: "diamond", gcal: "calendar" }[it.kind] || "calendar")),
     el("div", { class: "cx" }, el("div", { class: "ct", text: it.title }),
       el("div", { class: "cm" }, el("span", { text: t(kindKey(it)) + (tm ? " · " + tm : "") }), it.repeat ? el("span", { class: "chip", text: t("mc_repeat", { x: it.repeat }) }) : null, it.workspace_name ? el("span", { text: it.workspace_name }) : null, discordLink(it.url)))); };
   // ---- a real calendar: month grid (Google-Calendar style), week columns, or the agenda list
@@ -3289,7 +3334,7 @@ VIEWS.mycal = async (body, my) => {
   out.push(gbox);
   body.replaceChildren(...out);
   api(O("/google/calendar")).then((g) => {
-    if (g && g.connected) gstat.replaceChildren(el("span", { class: "badge ok", text: "✓ " + t("mc_gcal_on", { e: g.email || "" }) }), el("div", { class: "muted small", text: t("mc_gcal_on_p") }));
+    if (g && g.connected) gstat.replaceChildren(el("span", { class: "badge ok" }, ic("check"), t("mc_gcal_on", { e: g.email || "" })), el("div", { class: "muted small", text: t("mc_gcal_on_p") }));
     else gstat.replaceChildren(el("div", { class: "muted small", text: t("mc_gcal_off_p") }), el("button", { class: "btn sm", type: "button", style: "margin-top:6px", onclick: async () => { try { const r = await api(O("/google/calendar/connect"), { method: "POST" }); if (r && r.auth_url && !MOCK) location.href = r.auth_url; else toast("mock: " + (r && r.auth_url)); } catch (e) { if (!handleAuth(e)) toast(errText(e), "error"); } } }, t("mc_gcal_connect")));
   }).catch(() => gstat.replaceChildren(el("span", { class: "muted small", text: t("mc_gcal_na") })));
 };
@@ -3301,7 +3346,7 @@ const MON_ACTIVE = ["queued", "running", "waiting", "paused"], MON_FINAL = ["don
 const MON_STATUSES = MON_ACTIVE.concat(MON_FINAL);
 const MON_TABS = ["attention", "active", "history"];
 const MON_PLATFORMS = ["discord", "slack", "line", "telegram", "whatsapp", "web"];
-const MON_ICON = { queued: "○", pending: "○", running: "◐", waiting: "…", paused: "Ⅱ", done: "✓", failed: "✕", cancelled: "⊘", skipped: "↷" }; // skipped: a step state only
+const MON_ICON = { queued: "circle", pending: "circle", running: "half", waiting: "dots", paused: "pause", done: "check", failed: "x", cancelled: "ban", skipped: "skip" }; // skipped: a step state only
 const MON_PAGE = 50, MON_IDS_MAX = 50; // a page of rows; the API takes at most 50 ids per refetch (422 above)
 const MON_DISMISS_KEY = "dory-monitor-dismissed", MON_NOTIFY_KEY = "dory-monitor-notify";
 const monLabel = (prefix, v) => (v && I.en[prefix + v] ? t(prefix + v) : String(v || ""));
@@ -3443,9 +3488,9 @@ function monDrawer(item, opener, ctx = {}) {
   const owner = x.requester_id || x.assignee_id;
   const ago = (iso, tpl) => el("span", { "data-mon-ago": iso, "data-mon-tpl": tpl, title: monExact(iso) });
   const facts = el("div", { class: "mon-facts" },
-    el("div", { class: "mon-st" }, el("span", { class: "mon-ic " + x.status, "aria-hidden": "true" }, MON_ICON[x.status] || "•"), el("strong", { style: "color:var(--ink)" }, monStatusLabel(x.status)),
+    el("div", { class: "mon-st" }, el("span", { class: "mon-ic " + x.status, "aria-hidden": "true" }, ic(MON_ICON[x.status])), el("strong", { style: "color:var(--ink)" }, monStatusLabel(x.status)),
       x.raw_status && x.raw_status !== x.status ? el("span", { class: "mon-raw" }, x.raw_status) : null,
-      x.attention ? el("span", { class: "mon-att" }, "⚠ " + monReason(x.attention_reason)) : null),
+      x.attention ? el("span", { class: "mon-att" }, ic("alert"), " " + monReason(x.attention_reason)) : null),
     owner ? el("div", { title: owner }, t("mon_f_owner") + ": " + monWho(owner)) : null,
     x.workspace ? el("div", {}, t("mon_f_workspace") + ": " + (ctx.wsName ? ctx.wsName(x.workspace) : x.workspace)) : null,
     x.waiting_on ? el("div", { "data-mon-wait": x.updated_at || x.started_at, "data-mon-who": monWho(x.waiting_on), title: x.waiting_on }) : null,
@@ -3456,7 +3501,7 @@ function monDrawer(item, opener, ctx = {}) {
   const steps = x.steps || [];
   const stepList = steps.length ? [el("h3", { text: t("mon_d_steps") }), el("ol", { class: "mon-steps" }, steps.map((s) => {
     const st = s.state === "pending" ? "queued" : s.state;
-    return el("li", {}, el("span", { class: "mon-ic " + st, "aria-hidden": "true" }, MON_ICON[s.state] || "•"),
+    return el("li", {}, el("span", { class: "mon-ic " + st, "aria-hidden": "true" }, ic(MON_ICON[s.state])),
       el("div", { class: "sx" }, el("span", {}, s.name + " · " + monStatusLabel(s.state)),
         el("span", { class: "sd" }, s.ms != null ? monDur(s.ms) : s.state === "running" && s.started_at ? el("span", { "data-mon-dur": s.started_at }) : null,
           s.attempts > 1 ? (s.ms != null || s.state === "running" ? " · " : "") + t("mon_d_attempts", { n: s.attempts }) : null,
@@ -3477,7 +3522,7 @@ function monDrawer(item, opener, ctx = {}) {
   const drawEv = () => {
     const list = shown();
     evList.replaceChildren(...list.map((e) => el("li", {}, el("span", { class: "badge " + { error: "err", warning: "warn", info: "soon" }[sev(e)] }, t("mon_d_sev_" + sev(e))),
-      el("span", {}, monStatusLabel(e.status) + (e.attention ? " · ⚠" : "")), el("span", { class: "when", title: monExact(e.at) }, fmtTime(e.at)), el("span", { class: "when" }, "#" + e.seq))));
+      el("span", {}, monStatusLabel(e.status) + (e.attention ? " · " + t("attention") : "")), el("span", { class: "when", title: monExact(e.at) }, fmtTime(e.at)), el("span", { class: "when" }, "#" + e.seq))));
     evMsg.hidden = evs != null && list.length > 0; evMsg.textContent = evs == null ? t("loading") : t("mon_empty");
     copyBtn.disabled = !list.length;
   };
@@ -3663,12 +3708,12 @@ VIEWS.monitor = async (body, my) => {
       owner ? monWho(owner) : "", stepsText(x), x.status === "waiting" && x.waiting_on ? monWaitText(monWho(x.waiting_on), "") : ""].filter(Boolean).join(", "); };
   const rowContent = (x, titleId, timesId) => {
     const owner = x.requester_id || x.assignee_id, active = MON_ACTIVE.includes(x.status), rest = monRest(x);
-    return [el("span", { class: "mon-ic " + x.status, "aria-hidden": "true" }, MON_ICON[x.status] || "•"),
+    return [el("span", { class: "mon-ic " + x.status, "aria-hidden": "true" }, ic(MON_ICON[x.status])),
       el("span", { class: "mon-tx" },
         el("span", { class: "mon-title", id: titleId }, rest ? [el("span", { class: "mon-kind" }, monKindLabel(x.kind) + " · "), rest] : monKindLabel(x.kind)),
         el("span", { class: "mon-meta" },
           el("span", {}, monStatusLabel(x.status)),
-          x.attention ? el("span", { class: "mon-att" }, "⚠ " + monReason(x.attention_reason)) : null,
+          x.attention ? el("span", { class: "mon-att" }, ic("alert"), " " + monReason(x.attention_reason)) : null,
           S.tab === "ops" && x.org_id ? el("span", {}, S.orgNames[x.org_id] || x.org_id) : null,
           owner ? el("span", { title: owner }, monWho(owner)) : null,
           stepsText(x) ? el("span", {}, stepsText(x)) : null,
@@ -4249,6 +4294,54 @@ function mockMonitor(sub, qp, ops) {
   if (sub === "/monitor/changes") return ok({ seq: 7, floor: 0, now, events: [], reset: false });
   return no("mock: not found", 404);
 }
+// Mock samples follow the interface language: the samples are written in Thai and every mock response is read
+// through this table unless the page is in Thai (exact strings only; anything missing stays as written).
+const MOCK_EN = {
+  "ใบเสร็จ ร้านกาแฟ บางรัก": "Receipt, Bang Rak coffee shop", "ออฟฟิศกรุงเทพ": "Bangkok office", "สมชาย": "Somchai",
+  "ร้านกาแฟบางรัก รวม 420.00 บาท ชำระด้วยบัตร": "Bang Rak coffee shop, total 420.00 baht, paid by card", "ใบแจ้งหนี้ INV-2026-088": "Invoice INV-2026-088",
+  "มาลี": "Malee", "บริษัท ไทยซัพพลาย จำกัด ยอดรวม 48,150 บาท": "Thai Supply Co., Ltd., total 48,150 baht", "สัญญาเช่าสำนักงาน.pdf": "office-lease.pdf",
+  "สัญญาเช่า 12 เดือน ค่าเช่า 35,000 บาท/เดือน": "12-month lease, rent 35,000 baht a month", "ประชุมทีมขาย 12 ต.ค.": "Sales team meeting, 12 Oct",
+  "ทีมเชียงใหม่": "Chiang Mai team", "ดอรี่": "Dory", "เป้าไตรมาส 4: 2.4 ล้านบาท": "Q4 target: 2.4 million baht",
+  "รายงานยอดขายเดือนกันยายน": "September sales report", "ยอดขายรวม 1.92 ล้านบาท เพิ่มขึ้น 8%": "Total sales 1.92 million baht, up 8%",
+  "แจ้งเตือน CCTV ขึ้น Apple Watch สำหรับ รปภ.": "CCTV alerts on Apple Watch for security guards", "ปัญหาและไอเดีย": "Problem and idea",
+  "แพ็กเกจและราคา": "Packages and pricing", "แจ้งเตือนภาพจากกล้องวงจรปิดไปที่นาฬิกาของ รปภ. และนิติบุคคลคอนโด": "Sends CCTV snapshots to the watches of the guards and the condo office",
+  "คู่มือพนักงานใหม่": "New staff handbook", "ขั้นตอนวันแรก, ระบบ VPN, สวัสดิการ": "First-day steps, VPN, benefits",
+  "ใบเสนอราคา งานตกแต่งสำนักงาน.pdf": "office-fit-out-quote.pdf", "ใบเสนอราคางานตกแต่งสำนักงานชั้น 3 รวม 420,000 บาท (ไม่รวม VAT)": "Quote for the 3rd-floor office fit-out, 420,000 baht before VAT",
+  "แบบฟอร์มลางาน 2026.docx": "leave-form-2026.docx", "แบบฟอร์มขอลาพักร้อน/ลาป่วย ฉบับปรับปรุง 2026": "Holiday and sick leave form, 2026 revision",
+  "แผนการตลาด Q4.xlsx": "q4-marketing-plan.xlsx", "(สรุปโดย AI) แผนแคมเปญ 3 ช่วง": "(AI summary) A campaign plan in three phases",
+  "บริษัท ตัวอย่าง จำกัด": "Example Co., Ltd.", "ซัพพลายวัตถุดิบและบรรจุภัณฑ์ให้ร้านอาหารทั่วไทย": "Ingredients and packaging for restaurants across Thailand",
+  "บริษัท ตัวอย่าง จำกัด จัดหาวัตถุดิบ บรรจุภัณฑ์ และอุปกรณ์ครัวให้ร้านอาหารและคาเฟ่กว่า 300 แห่ง ส่งถึงหน้าร้านภายใน 24 ชั่วโมงในกรุงเทพฯ และเชียงใหม่\n\nเราเริ่มจากร้านเล็ก ๆ ที่เยาวราช และยังคงทำงานแบบครอบครัว: รู้จักลูกค้าทุกคน และรับผิดชอบทุกออเดอร์":
+    "Example Co., Ltd. supplies ingredients, packaging and kitchen equipment to more than 300 restaurants and cafes, delivered within 24 hours in Bangkok and Chiang Mai.\n\nWe started as a small shop in Yaowarat and still work like a family: we know every customer and own every order.",
+  "ซื่อสัตย์": "Honest", "ส่งตรงเวลา": "On time", "ลูกค้าคือเพื่อน": "Customers are friends", "เรียนรู้ทุกวัน": "Learn every day",
+  "กลุ่มร้านอาหารใหม่": "New Restaurant Group", "สมศักดิ์": "Somsak", "วงศ์ตัวอย่าง": "Wongtuayang",
+  "ดูแลภาพรวมบริษัท การเงิน และลูกค้ารายใหญ่": "Runs the company, finance and key accounts", "พงษ์ขาย": "Pongkhai",
+  "ดูแลทีมขายและลูกค้ารายใหญ่": "Leads the sales team and key accounts", "ใจดี": "Jaidee", "นิด": "Nid", "ระบบหลังบ้านและแอป": "Back-office systems and apps",
+  "ต้น": "Ton", "ตั้งใจ": "Tangjai", "พลอย": "Ploy", "ประกายแก้ว": "Prakaikaew", "ฝน": "Fon",
+  "อย่าลืมส่งใบเสนอราคาลูกค้า A วันนี้นะคะ": "Don't forget to send customer A's quote today.", "ห้องประชุมใหญ่": "Main meeting room",
+  "ประชุมทีมขาย 10 โมงพรุ่งนี้นะคะ": "Sales team meeting tomorrow at 10.", "อยากได้รายปี": "We'd like a yearly plan",
+  "ส่งใบเสนอราคาลูกค้า A": "Send customer A's quote", "ตามบิลค่าเช่า": "Chase the rent bill", "เซิร์ฟเวอร์ใหม่": "New server", "แอน": "Ann",
+  "ดูแลใบเสนอราคาให้ลูกค้าเป็นประจำ และทำงานเสร็จตรงเวลา": "Handles customer quotes regularly and finishes on time",
+  "Finished task: ส่งใบเสนอราคาลูกค้า A": "Finished task: Send customer A's quote", "Dory observed role: ดูแลลูกค้าร้านอาหาร": "Dory observed role: looks after restaurant customers",
+  "คุยกับลูกค้าบ่อยในห้อง #sales": "Talks with customers often in #sales", "ส่งใบเสนอราคาลูกค้า A ฉบับแก้ไข": "Send customer A's revised quote",
+  "ตามบิลค่าเช่าสำนักงานเดือนตุลาคม": "Chase the October office rent bill", "เตรียมสไลด์ประชุมบอร์ดไตรมาส 4": "Prepare the Q4 board meeting slides",
+  "คุยกับซัพพลายเออร์เรื่องราคาวัตถุดิบ": "Talk to suppliers about ingredient prices", "อนุมัติงบการตลาด Q4": "Approve the Q4 marketing budget",
+  "ส่งสัญญาเช่าให้ฝ่ายกฎหมายตรวจ": "Send the lease to legal for review", "สรุปค่าใช้จ่ายไตรมาส 3 เป็นสไลด์": "Turn Q3 expenses into slides",
+  "เตือนทีมขายส่งรายงานทุกวันศุกร์ 17:00": "Remind the sales team to report every Friday at 17:00", "รวบรวมใบเสร็จเดือนกันยายนเป็น PDF": "Collect September's receipts into a PDF",
+  "โทรหาลูกค้า A เรื่องใบเสนอราคา": "Call customer A about the quote", "ประชุมทีมขายประจำสัปดาห์": "Weekly sales team meeting", "Town hall ไตรมาส 4": "Q4 town hall",
+  "แอปใหม่: เปิดเบต้า": "New app: beta opens", "นัดหมอฟัน": "Dentist appointment", "แอปใหม่": "New app", "จ่ายค่าไฟสำนักงาน": "Pay the office electricity bill",
+  "ส่งรายงานยอดขายให้บอร์ด": "Send the sales report to the board", "(ข้อความเต็ม ตัวอย่าง)": "(full text, sample)",
+  "สรุปประชุมทีมขายเมื่อวานให้หน่อย": "Can you sum up yesterday's sales meeting?",
+  "สรุปประชุมทีมขายค่ะ\n- ปิดดีลร้านกาแฟบางรักได้แล้ว\n- มะลิส่งใบเสนอราคาให้ลูกค้า X ภายในวันศุกร์": "Here is the sales meeting:\n- The Bang Rak coffee shop deal is closed\n- Malee sends customer X the quote by Friday",
+  "สวัสดีค่ะ ถามดอรี่ได้เลยนะคะ": "Hi! Ask me anything.",
+  "ยอดใบเสร็จเดือนนี้รวม **48,570 บาท** ค่ะ\n- ร้านกาแฟบางรัก 420 บาท\n- ไทยซัพพลาย 48,150 บาท\nดูรายละเอียดที่ [เอกสาร](https://example.com)": "Receipts this month add up to **48,570 baht**\n- Bang Rak coffee shop 420 baht\n- Thai Supply 48,150 baht\nSee the details in [Documents](https://example.com)",
+};
+function mockLang(x) {
+  if (lang === "th") return x;
+  if (typeof x === "string") return MOCK_EN[x] ?? x;
+  if (Array.isArray(x)) return x.map(mockLang);
+  if (x && Object.getPrototypeOf(x) === Object.prototype) return Object.fromEntries(Object.entries(x).map(([k, v]) => [k, mockLang(v)]));
+  return x;
+}
 function mockApi(method, path, body) {
   const d = (n) => new Date(Date.now() - n * 86400000).toISOString();
   const day = (n) => new Date(Date.now() + n * 86400000).toISOString().slice(0, 10);
@@ -4297,7 +4390,7 @@ function mockApi(method, path, body) {
   const ME = "owner@example.co.th";
   const google = (email, name) => ({ platform: "google", external_id: email, name: name || "", verified: true, linked_at: "" });
   const myIds = () => [google(ME, s.me.name), ...s.me.identities];
-  const fullName = (x) => [x.first_name, x.last_name].filter(Boolean).join(" ");
+  const fullName = (x) => [x.first_name, x.last_name].filter(Boolean).map(mockLang).join(" ");
   const meView = () => ({ email: ME, is_super: true, orgs: s.orgs, language: null, name: s.me.name, first_name: s.me.first_name || "", last_name: s.me.last_name || "", full_name: fullName(s.me), title: s.me.title, department: s.me.department, about: s.me.about, identities: myIds(), identity_platforms: ["discord", "slack", "clickup", "line"], discord_verify: true });
   const prof = (x) => (x.email === ME ? s.me : x);
   const memView = (x) => { const own = x.email === ME, pr = prof(x); const ids = own ? s.me.identities : x.identities || []; return { email: x.email, role: x.role, name: pr.name || "", first_name: pr.first_name || "", last_name: pr.last_name || "", full_name: fullName(pr), title: pr.title || "", department: pr.department || "", about: pr.about || "", reports_to: x.reports_to || null, identities: [google(x.email, pr.name), ...ids], linked_platforms: ids.length }; };
@@ -4451,7 +4544,7 @@ function mockApi(method, path, body) {
   if (sub === "/documents") { const cat = qp.get("category"), kd = qp.get("kind"), qq = (qp.get("q") || "").toLowerCase(), wsf = qp.get("workspace"), lim = Number(qp.get("limit")) || 30;
     const r = mockDocs.map((x) => ({ kind: "knowledge", ...x })).filter((x) => (!kd || x.kind === kd) && (!cat || x.category === cat) && (!wsf || x.workspace === wsf) && (!qq || (x.title + x.preview).toLowerCase().includes(qq)));
     return ok({ items: r.slice(0, lim), next_cursor: null, total: r.length }); }
-  if ((m = sub.match(/^\/documents\/(.+)$/))) { const x = mockDocs.find((y) => y.id === decodeURIComponent(m[1])) || {}; return ok({ ...x, text: (x.preview || "") + "\n\n(ข้อความเต็ม ตัวอย่าง)", extra: {} }); }
+  if ((m = sub.match(/^\/documents\/(.+)$/))) { const x = mockDocs.find((y) => y.id === decodeURIComponent(m[1])) || {}; return ok({ ...x, text: [x.preview || "", "(ข้อความเต็ม ตัวอย่าง)"].map(mockLang).join("\n\n"), extra: {} }); }
   // chat: no workspace_id from the page; the company's workspace (its first connected Discord server) answers
   if (!mockApi.chat) mockApi.chat = [{ role: "user", text: "สรุปประชุมทีมขายเมื่อวานให้หน่อย", at: d(1), workspace_id: "discord-1" }, { role: "dory", text: "สรุปประชุมทีมขายค่ะ\n- ปิดดีลร้านกาแฟบางรักได้แล้ว\n- มะลิส่งใบเสนอราคาให้ลูกค้า X ภายในวันศุกร์", at: d(1), workspace_id: "discord-1" }, { role: "dory", text: "สวัสดีค่ะ ถามดอรี่ได้เลยนะคะ", at: d(0), workspace_id: "discord-1" }];
   if (sub === "/chat/history") return ok({ turns: mockApi.chat });

@@ -36,6 +36,14 @@ def test_text_tokens_meet_aa_on_both_themes():
         ("--ocean-400", "--ocean-800"),
         ("--ocean-950", "--lantern-300"),  # the primary button on dark
         ("--glow-300", "--ocean-950"),
+        # the homepage chapters (Dory Descent)
+        ("--ocean-50", "--reef-600"),
+        ("--ocean-50", "--ocean-700"),
+        ("--ocean-950", "--sand-300"),
+        ("--ocean-950", "--sand-400"),
+        ("--ocean-950", "--sand-500"),
+        ("--ocean-950", "--sand-600"),
+        ("--ocean-950", "--sand-700"),
     ):
         assert ratio(fg, bg) >= 4.5, (fg, bg, round(ratio(fg, bg), 2))
 
