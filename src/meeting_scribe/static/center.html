@@ -3123,6 +3123,7 @@ VIEWS.members = async (body, my) => {
   function centerChart() { requestAnimationFrame(() => { const w = chartBox.querySelector(".orgwrap"); if (w) { try { w.scrollLeft = Math.max(0, (w.scrollWidth - w.clientWidth) / 2); } catch { /* ignore */ } } }); }
   drawTabs(); tabKeys(ktabs);
   body.replaceChildren(el("div", { style: "margin-bottom:16px" }, ktabs), people, everyoneBox, posBox, expBox, chartBox);
+  await Promise.all(parts.map((x) => x.ready)); // drawn once the invite links are (route(true) swaps then)
 };
 
 // The org chart by POSITION: every job (vacant ones too) under the job it reports to, with the
@@ -3336,7 +3337,7 @@ function inviteLinksCard() {
   });
   box.replaceChildren(el("h2", { text: t("inv_h") }), el("p", { class: "muted small", text: t("inv_p") }), f, out, listBox);
   box.className = "card";
-  load();
+  box.ready = load(); // the members view waits for it
   return box;
 }
 

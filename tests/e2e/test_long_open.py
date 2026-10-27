@@ -56,6 +56,10 @@ def test_a_refresh_keeps_the_page_until_the_new_one_is_drawn(page, view, trigger
     page.wait_for_timeout(300)
     y0, h0 = page.evaluate("[scrollY, document.documentElement.scrollHeight]")
     assert y0 > 0  # the page is long enough to scroll
+    page.evaluate(
+        "window.__cls = 0; new PerformanceObserver((l) => { for (const e of l.getEntries())"
+        " if (!e.hadRecentInput) window.__cls += e.value; }).observe({ type: 'layout-shift' })"
+    )
     if trigger == "tab_return":
         page.evaluate(RETURN_AFTER_11_S)
     else:
@@ -66,6 +70,7 @@ def test_a_refresh_keeps_the_page_until_the_new_one_is_drawn(page, view, trigger
     assert abs(page.evaluate("scrollY") - y0) <= 4, "the scroll position jumped"
     assert not frames[-1]["old"], "the page was not refreshed"
     assert page.locator("#content .stage").count() == 0
+    assert page.evaluate("window.__cls") < 0.005, "something moved after the new page appeared"
     assert errors == []
 
 
