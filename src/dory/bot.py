@@ -2456,7 +2456,9 @@ class SecretaryBot(
             *([] if interjection else self._approval_tools(guild, asker, is_exec, lang)),
             *([] if interjection else self._places_tools(message, guild, asker, is_exec)),
             *([] if interjection else self._maps_tools(message, guild, asker, is_exec, lang)),
-            *([] if interjection else self._travel_tools(guild, asker, lang, is_exec)),  # fx + flights + trips
+            *(
+                [] if interjection else self._travel_tools(guild, asker, lang, is_exec)
+            ),  # fx + flights + trips
             *([] if interjection else self._markets_tools(guild, asker, is_exec, lang)),
             *([] if interjection else self._reminder_tools(message, guild, asker, is_exec, lang)),
             *(

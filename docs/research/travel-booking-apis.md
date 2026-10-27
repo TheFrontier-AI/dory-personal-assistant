@@ -53,30 +53,48 @@ import time, httpx
 BASE = "https://test.api.amadeus.com"
 _tok: dict = {}
 
+
 def token(client_id: str, client_secret: str) -> str:
     if _tok and _tok["exp"] > time.time() + 60:
         return _tok["t"]
-    r = httpx.post(f"{BASE}/v1/security/oauth2/token",
-                   data={"grant_type": "client_credentials",
-                         "client_id": client_id, "client_secret": client_secret}, timeout=20)
+    r = httpx.post(
+        f"{BASE}/v1/security/oauth2/token",
+        data={
+            "grant_type": "client_credentials",
+            "client_id": client_id,
+            "client_secret": client_secret,
+        },
+        timeout=20,
+    )
     r.raise_for_status()
-    j = r.json()                       # {"access_token", "expires_in", ...}
+    j = r.json()  # {"access_token", "expires_in", ...}
     _tok.update(t=j["access_token"], exp=time.time() + j["expires_in"])
     return _tok["t"]
 
+
 def api(tok: str) -> httpx.Client:
-    return httpx.Client(base_url=BASE, timeout=40,
-                        headers={"Authorization": f"Bearer {tok}",
-                                 "Content-Type": "application/vnd.amadeus+json"})
+    return httpx.Client(
+        base_url=BASE,
+        timeout=40,
+        headers={"Authorization": f"Bearer {tok}", "Content-Type": "application/vnd.amadeus+json"},
+    )
 ```
 
 ### 1. Search flights (Flight Offers Search v2)
 
 ```python
-r = c.get("/v2/shopping/flight-offers", params={
-    "originLocationCode": "BKK", "destinationLocationCode": "SIN",
-    "departureDate": "2026-11-12", "adults": 1, "currencyCode": "THB", "max": 5})
-offers = r.json()["data"]              # [] when the cached test data has nothing
+r = c.get(
+    "/v2/shopping/flight-offers",
+    params={
+        "originLocationCode": "BKK",
+        "destinationLocationCode": "SIN",
+        "departureDate": "2026-11-12",
+        "adults": 1,
+        "currencyCode": "THB",
+        "max": 5,
+    },
+)
+offers = r.json()["data"]  # [] when the cached test data has nothing
 o = offers[0]
 # read: o["id"], o["price"]["grandTotal"], o["price"]["currency"],
 #       o["validatingAirlineCodes"][0], o["numberOfBookableSeats"],
@@ -89,27 +107,42 @@ o = offers[0]
 ### 2. Price / confirm (Flight Offers Price v1)
 
 ```python
-r = c.post("/v1/shopping/flight-offers/pricing",
-           headers={"X-HTTP-Method-Override": "GET"},     # required header per the spec
-           json={"data": {"type": "flight-offers-pricing", "flightOffers": [o]}})
-priced = r.json()["data"]["flightOffers"][0]              # same shape, final price
+r = c.post(
+    "/v1/shopping/flight-offers/pricing",
+    headers={"X-HTTP-Method-Override": "GET"},  # required header per the spec
+    json={"data": {"type": "flight-offers-pricing", "flightOffers": [o]}},
+)
+priced = r.json()["data"]["flightOffers"][0]  # same shape, final price
 # read: priced["price"]["grandTotal"]; keep the WHOLE priced object for the order
 ```
 
 ### 3. Book (Flight Create Orders v1) — sandbox PNR
 
 ```python
-traveler = {"id": "1", "dateOfBirth": "1990-03-14",
-            "name": {"firstName": "SOMCHAI", "lastName": "JAIDEE"}, "gender": "MALE",
-            "contact": {"emailAddress": "somchai@example.com",
-                        "phones": [{"deviceType": "MOBILE", "countryCallingCode": "66",
-                                    "number": "812345678"}]},
-            "documents": [{"documentType": "PASSPORT", "number": "AA1234567",
-                           "expiryDate": "2031-01-01", "issuanceCountry": "TH",
-                           "nationality": "TH", "holder": True}]}
-r = c.post("/v1/booking/flight-orders",
-           json={"data": {"type": "flight-order", "flightOffers": [priced],
-                          "travelers": [traveler]}})
+traveler = {
+    "id": "1",
+    "dateOfBirth": "1990-03-14",
+    "name": {"firstName": "SOMCHAI", "lastName": "JAIDEE"},
+    "gender": "MALE",
+    "contact": {
+        "emailAddress": "somchai@example.com",
+        "phones": [{"deviceType": "MOBILE", "countryCallingCode": "66", "number": "812345678"}],
+    },
+    "documents": [
+        {
+            "documentType": "PASSPORT",
+            "number": "AA1234567",
+            "expiryDate": "2031-01-01",
+            "issuanceCountry": "TH",
+            "nationality": "TH",
+            "holder": True,
+        }
+    ],
+}
+r = c.post(
+    "/v1/booking/flight-orders",
+    json={"data": {"type": "flight-order", "flightOffers": [priced], "travelers": [traveler]}},
+)
 order = r.json()["data"]
 # read: order["id"] (temporary in test), order["associatedRecords"][0]["reference"] -> PNR "2ZYVAL"
 ```
@@ -120,14 +153,25 @@ INVALID FORMAT), which is exactly what a no-money demo wants.
 ### 4. Search hotels (Hotel List v1 → Hotel Search v3)
 
 ```python
-r = c.get("/v1/reference-data/locations/hotels/by-city",
-          params={"cityCode": "SIN", "radius": 5, "radiusUnit": "KM"})
-hotel_ids = [h["hotelId"] for h in r.json()["data"]][:20]   # also h["name"], h["geoCode"]
-r = c.get("/v3/shopping/hotel-offers", params={
-    "hotelIds": ",".join(hotel_ids), "adults": 1, "checkInDate": "2026-11-12",
-    "checkOutDate": "2026-11-14", "roomQuantity": 1, "currency": "SGD"})
+r = c.get(
+    "/v1/reference-data/locations/hotels/by-city",
+    params={"cityCode": "SIN", "radius": 5, "radiusUnit": "KM"},
+)
+hotel_ids = [h["hotelId"] for h in r.json()["data"]][:20]  # also h["name"], h["geoCode"]
+r = c.get(
+    "/v3/shopping/hotel-offers",
+    params={
+        "hotelIds": ",".join(hotel_ids),
+        "adults": 1,
+        "checkInDate": "2026-11-12",
+        "checkOutDate": "2026-11-14",
+        "roomQuantity": 1,
+        "currency": "SGD",
+    },
+)
 stays = [h for h in r.json()["data"] if h.get("available")]
-h = stays[0]; offer = h["offers"][0]
+h = stays[0]
+offer = h["offers"][0]
 # read: h["hotel"]["name"], h["hotel"]["hotelId"], offer["id"], offer["price"]["total"],
 #       offer["price"]["currency"], offer["room"]["description"]["text"],
 #       offer["policies"]["cancellations"][0].get("deadline")
@@ -136,16 +180,39 @@ h = stays[0]; offer = h["offers"][0]
 ### 5. Book hotel (Hotel Booking v2)
 
 ```python
-r = c.post("/v2/booking/hotel-orders", json={"data": {
-    "type": "hotel-order",
-    "guests": [{"tid": 1, "title": "MR", "firstName": "SOMCHAI", "lastName": "JAIDEE",
-                "phone": "+66812345678", "email": "somchai@example.com"}],
-    "travelAgent": {"contact": {"email": "somchai@example.com"}},
-    "roomAssociations": [{"guestReferences": [{"guestReference": "1"}],
-                          "hotelOfferId": offer["id"]}],
-    "payment": {"method": "CREDIT_CARD", "paymentCard": {"paymentCardInfo": {
-        "vendorCode": "VI", "cardNumber": "4151289722471370",      # test card from the spec example
-        "expiryDate": "2030-08", "holderName": "SOMCHAI JAIDEE"}}}}})
+r = c.post(
+    "/v2/booking/hotel-orders",
+    json={
+        "data": {
+            "type": "hotel-order",
+            "guests": [
+                {
+                    "tid": 1,
+                    "title": "MR",
+                    "firstName": "SOMCHAI",
+                    "lastName": "JAIDEE",
+                    "phone": "+66812345678",
+                    "email": "somchai@example.com",
+                }
+            ],
+            "travelAgent": {"contact": {"email": "somchai@example.com"}},
+            "roomAssociations": [
+                {"guestReferences": [{"guestReference": "1"}], "hotelOfferId": offer["id"]}
+            ],
+            "payment": {
+                "method": "CREDIT_CARD",
+                "paymentCard": {
+                    "paymentCardInfo": {
+                        "vendorCode": "VI",
+                        "cardNumber": "4151289722471370",  # test card from the spec example
+                        "expiryDate": "2030-08",
+                        "holderName": "SOMCHAI JAIDEE",
+                    }
+                },
+            },
+        }
+    },
+)
 ho = r.json()["data"]
 # read: ho["id"], ho["hotelBookings"][0]["bookingStatus"] ("CONFIRMED"),
 #       ho["hotelBookings"][0]["hotelProviderInformation"][0]["confirmationNumber"],
@@ -177,15 +244,30 @@ Search can take up to 20 s (`supplier_timeout` 2–60 s), order creation up to 1
 timeout to 130 s. 60 requests per 60 s window.
 
 ```python
-d = httpx.Client(base_url="https://api.duffel.com", timeout=130, headers={
-    "Authorization": f"Bearer {DUFFEL_TEST_TOKEN}", "Duffel-Version": "v2",
-    "Accept": "application/json", "Content-Type": "application/json"})
+d = httpx.Client(
+    base_url="https://api.duffel.com",
+    timeout=130,
+    headers={
+        "Authorization": f"Bearer {DUFFEL_TEST_TOKEN}",
+        "Duffel-Version": "v2",
+        "Accept": "application/json",
+        "Content-Type": "application/json",
+    },
+)
 # 1 search
-req = d.post("/air/offer_requests", params={"return_offers": "true", "supplier_timeout": 10000},
-             json={"data": {"slices": [{"origin": "BKK", "destination": "SIN",
-                                        "departure_date": "2026-11-12"}],
-                            "passengers": [{"type": "adult"}], "cabin_class": "economy"}}).json()["data"]
-pax_id = req["passengers"][0]["id"]; off = req["offers"][0]
+req = d.post(
+    "/air/offer_requests",
+    params={"return_offers": "true", "supplier_timeout": 10000},
+    json={
+        "data": {
+            "slices": [{"origin": "BKK", "destination": "SIN", "departure_date": "2026-11-12"}],
+            "passengers": [{"type": "adult"}],
+            "cabin_class": "economy",
+        }
+    },
+).json()["data"]
+pax_id = req["passengers"][0]["id"]
+off = req["offers"][0]
 # read: off["id"], off["total_amount"], off["total_currency"], off["owner"]["iata_code"] ("ZZ"),
 #       s = off["slices"][0]["segments"][0]: s["departing_at"], s["arriving_at"],
 #       s["origin"]["iata_code"], s["destination"]["iata_code"],
@@ -193,26 +275,67 @@ pax_id = req["passengers"][0]["id"]; off = req["offers"][0]
 # 2 price = refresh the offer (offers expire)
 off = d.get(f"/air/offers/{off['id']}").json()["data"]
 # 3 book
-order = d.post("/air/orders", json={"data": {
-    "type": "instant", "selected_offers": [off["id"]],
-    "payments": [{"type": "balance", "currency": off["total_currency"], "amount": off["total_amount"]}],
-    "passengers": [{"id": pax_id, "title": "mr", "gender": "m", "given_name": "Somchai",
-                    "family_name": "Jaidee", "born_on": "1990-03-14",
-                    "email": "somchai@example.com", "phone_number": "+66812345678"}]}}).json()["data"]
+order = d.post(
+    "/air/orders",
+    json={
+        "data": {
+            "type": "instant",
+            "selected_offers": [off["id"]],
+            "payments": [
+                {
+                    "type": "balance",
+                    "currency": off["total_currency"],
+                    "amount": off["total_amount"],
+                }
+            ],
+            "passengers": [
+                {
+                    "id": pax_id,
+                    "title": "mr",
+                    "gender": "m",
+                    "given_name": "Somchai",
+                    "family_name": "Jaidee",
+                    "born_on": "1990-03-14",
+                    "email": "somchai@example.com",
+                    "phone_number": "+66812345678",
+                }
+            ],
+        }
+    },
+).json()["data"]
 # read: order["id"] ("ord_…"), order["booking_reference"] (e.g. "RZPNX8")
 # 4 hotels: test hotels ONLY at these coordinates in test mode
-res = d.post("/stays/search", json={"data": {
-    "location": {"radius": 2, "geographic_coordinates": {"latitude": -24.38, "longitude": -128.32}},
-    "check_in_date": "2026-11-12", "check_out_date": "2026-11-14",
-    "guests": [{"type": "adult"}], "rooms": 1}}).json()["data"]["results"]
-sr = res[0]   # sr["id"] "srr_…", sr["accommodation"]["name"], sr["cheapest_rate_total_amount"]
+res = d.post(
+    "/stays/search",
+    json={
+        "data": {
+            "location": {
+                "radius": 2,
+                "geographic_coordinates": {"latitude": -24.38, "longitude": -128.32},
+            },
+            "check_in_date": "2026-11-12",
+            "check_out_date": "2026-11-14",
+            "guests": [{"type": "adult"}],
+            "rooms": 1,
+        }
+    },
+).json()["data"]["results"]
+sr = res[0]  # sr["id"] "srr_…", sr["accommodation"]["name"], sr["cheapest_rate_total_amount"]
 rates = d.post(f"/stays/search_results/{sr['id']}/actions/fetch_all_rates").json()["data"]
-rate_id = rates["accommodation"]["rooms"][0]["rates"][0]["id"]            # "rat_…"
+rate_id = rates["accommodation"]["rooms"][0]["rates"][0]["id"]  # "rat_…"
 quote = d.post("/stays/quotes", json={"data": {"rate_id": rate_id}}).json()["data"]  # "quo_…"
 # 5 book (payment omitted = pay with balance)
-bk = d.post("/stays/bookings", json={"data": {
-    "quote_id": quote["id"], "email": "somchai@example.com", "phone_number": "+66812345678",
-    "guests": [{"given_name": "Somchai", "family_name": "Jaidee"}]}}).json()["data"]
+bk = d.post(
+    "/stays/bookings",
+    json={
+        "data": {
+            "quote_id": quote["id"],
+            "email": "somchai@example.com",
+            "phone_number": "+66812345678",
+            "guests": [{"given_name": "Somchai", "family_name": "Jaidee"}],
+        }
+    },
+).json()["data"]
 # read: bk["id"] ("bok_…"), bk["reference"] (e.g. "AFE33SE2"), bk["status"] ("confirmed")
 ```
 

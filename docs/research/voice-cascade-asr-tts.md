@@ -93,10 +93,12 @@ import nemo.collections.asr as nemo_asr
 asr = nemo_asr.models.ASRModel.from_pretrained(model_name="nvidia/parakeet-tdt-0.6b-v3")
 asr.eval()  # cuda is picked automatically
 
-def transcribe(pcm16: np.ndarray) -> str:          # pcm16: int16, 16 kHz, mono
+
+def transcribe(pcm16: np.ndarray) -> str:  # pcm16: int16, 16 kHz, mono
     audio = pcm16.astype(np.float32) / 32768.0
     out = asr.transcribe([audio], batch_size=1, verbose=False)
-    return out[0].text                              # punctuated, capitalised
+    return out[0].text  # punctuated, capitalised
+
 
 # Thai with the same venv and call shape:
 # asr = nemo_asr.models.ASRModel.from_pretrained("typhoon-ai/typhoon-asr-realtime")
@@ -112,7 +114,9 @@ is used as-is at the model's 16 kHz, so pass float32 16 kHz):
 
 ```python
 from faster_whisper import WhisperModel
+
 fw = WhisperModel("large-v3-turbo", device="cuda", compute_type="float16")
+
 
 def transcribe_whisper(pcm16: np.ndarray, lang: str | None = None) -> str:
     segments, _info = fw.transcribe(pcm16.astype(np.float32) / 32768.0, language=lang, beam_size=1)
@@ -134,8 +138,9 @@ call and yield each chunk as it comes.
 import numpy as np, torch
 from kokoro import KPipeline
 
-tts = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M", device="cuda")   # 'a' = US English
-TTS_RATE = 24000                                                               # native
+tts = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M", device="cuda")  # 'a' = US English
+TTS_RATE = 24000  # native
+
 
 def synth(sentence: str, voice: str = "af_heart"):
     """Yields np.int16 24 kHz chunks; Kokoro splits on split_pattern, one sentence = one chunk."""
@@ -155,9 +160,12 @@ from nemo.collections.tts.models import MagpieTTSModel
 magpie = MagpieTTSModel.from_pretrained("nvidia/magpie_tts_multilingual_357m").cuda().eval()
 SPEAKERS = {"Aria": 0, "Jason": 1, "John": 2, "Leo": 3, "Sofia": 4}
 
+
 def synth_magpie(sentence: str, speaker: str = "Sofia"):
-    audio, audio_len = magpie.do_tts(sentence, language="en", apply_TN=True, speaker_index=SPEAKERS[speaker])
-    wav = audio[0, : int(audio_len[0])].float().cpu()                 # 22.05 kHz
+    audio, audio_len = magpie.do_tts(
+        sentence, language="en", apply_TN=True, speaker_index=SPEAKERS[speaker]
+    )
+    wav = audio[0, : int(audio_len[0])].float().cpu()  # 22.05 kHz
     wav24 = torchaudio.functional.resample(wav, 22050, 24000)
     yield (wav24.clamp(-1, 1).numpy() * 32767).astype(np.int16)
 ```
@@ -180,32 +188,59 @@ from riva.client import AudioEncoding
 
 KEY = os.environ["NVIDIA_API_KEY"]
 
-def function_id(pattern: str) -> str:            # e.g. "parakeet-tdt-0.6b-v3", "magpie-tts-multilingual"
-    r = requests.get("https://api.nvcf.nvidia.com/v2/nvcf/functions?visibility=public,authorized",
-                     headers={"Authorization": f"Bearer {KEY}"}, timeout=20).json()
+
+def function_id(pattern: str) -> str:  # e.g. "parakeet-tdt-0.6b-v3", "magpie-tts-multilingual"
+    r = requests.get(
+        "https://api.nvcf.nvidia.com/v2/nvcf/functions?visibility=public,authorized",
+        headers={"Authorization": f"Bearer {KEY}"},
+        timeout=20,
+    ).json()
     return next(f["id"] for f in r["functions"] if f["status"] == "ACTIVE" and pattern in f["name"])
 
+
 def auth(fid: str) -> riva.client.Auth:
-    return riva.client.Auth(uri="grpc.nvcf.nvidia.com:443", use_ssl=True,
-                            metadata_args=[["function-id", fid], ["authorization", f"Bearer {KEY}"]])
+    return riva.client.Auth(
+        uri="grpc.nvcf.nvidia.com:443",
+        use_ssl=True,
+        metadata_args=[["function-id", fid], ["authorization", f"Bearer {KEY}"]],
+    )
+
 
 # ASR: Parakeet (English on parakeet-tdt-0.6b-v2 / -v3, 25 languages on parakeet-1.1b-rnnt-multilingual)
 asr = riva.client.ASRService(auth(function_id("parakeet")))
+
+
 def cloud_transcribe(pcm16: np.ndarray) -> str:
     buf = io.BytesIO()
-    with wave.open(buf, "wb") as w:              # 16-bit mono WAV, what the hosted ASR expects
-        w.setnchannels(1); w.setsampwidth(2); w.setframerate(16000); w.writeframes(pcm16.tobytes())
-    cfg = riva.client.RecognitionConfig(encoding=AudioEncoding.LINEAR_PCM, sample_rate_hertz=16000,
-                                        language_code="en-US", audio_channel_count=1,
-                                        max_alternatives=1, enable_automatic_punctuation=True)
+    with wave.open(buf, "wb") as w:  # 16-bit mono WAV, what the hosted ASR expects
+        w.setnchannels(1)
+        w.setsampwidth(2)
+        w.setframerate(16000)
+        w.writeframes(pcm16.tobytes())
+    cfg = riva.client.RecognitionConfig(
+        encoding=AudioEncoding.LINEAR_PCM,
+        sample_rate_hertz=16000,
+        language_code="en-US",
+        audio_channel_count=1,
+        max_alternatives=1,
+        enable_automatic_punctuation=True,
+    )
     resp = asr.offline_recognize(buf.getvalue(), cfg)
     return " ".join(r.alternatives[0].transcript for r in resp.results)
 
+
 # TTS: Magpie multilingual (card's current function id 877104f7-e885-42b9-8de8-f6e4c6303969)
 tts = riva.client.SpeechSynthesisService(auth("877104f7-e885-42b9-8de8-f6e4c6303969"))
-def cloud_synth(sentence: str) -> np.ndarray:    # int16 24 kHz
-    resp = tts.synthesize(sentence, "Magpie-Multilingual.EN-US.Sofia", "en-US",
-                          sample_rate_hz=24000, encoding=AudioEncoding.LINEAR_PCM)
+
+
+def cloud_synth(sentence: str) -> np.ndarray:  # int16 24 kHz
+    resp = tts.synthesize(
+        sentence,
+        "Magpie-Multilingual.EN-US.Sofia",
+        "en-US",
+        sample_rate_hz=24000,
+        encoding=AudioEncoding.LINEAR_PCM,
+    )
     return np.frombuffer(resp.audio, dtype=np.int16)
 ```
 
