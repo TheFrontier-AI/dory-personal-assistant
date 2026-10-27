@@ -4200,6 +4200,7 @@ class Turn(BaseModel):
     text: str
     at: str
     workspace_id: str = ""
+    via: str = ""  # "voice": said in a live call (typed turns leave it empty)
 
 
 _chat_times: dict[str, deque[float]] = defaultdict(deque)
@@ -4270,18 +4271,24 @@ def answer_question(
     *,
     spoken: bool = False,
     voice_history: str = "",
+    voice_call: str = "",
 ) -> str:
     """Blocking: Dory's text brain for one web question, scoped like the chat route (the org's
     workspace, the caller's memory rights, their profile, the web tools). Used by the chat route
     and by the live voice session (`spoken`: the voice register and round cap; `voice_history`:
-    what the call heard and said so far, after the typed thread)."""
+    what the call heard and said so far, after the typed thread; `voice_call`: that call's id, whose
+    turns saved in the thread are left out because `voice_history` already carries them)."""
     from dory.qa import MemoryTools
 
     s, store = hub.get_dory_runtime()
     is_exec = ctx.is_exec and ws.platform == "discord"
     allowed = chat_scope(lib, ctx.org, ws, ctx.is_exec)
     memory = MemoryTools(lib.memory, ws.memory_id, allowed, s) if allowed else None
-    turns = orgs.chat_history(ctx.org.id, ctx.email)
+    turns = [
+        t
+        for t in orgs.chat_history(ctx.org.id, ctx.email)
+        if not voice_call or t.get("call") != voice_call
+    ]
     history = "\n".join(
         f"{'ผู้ใช้' if t['role'] == 'user' else 'ดอรี่'}: {t['text']}"
         for t in turns[-CHAT_HISTORY_PROMPT_TURNS:]
@@ -4629,11 +4636,25 @@ async def live_voice(
             build_web_instruction, s, who_block(ctx, profile, page), lang, tone, note
         )
 
+        call_id = uuid.uuid4().hex[:12]
+
         def ask_fn(question: str, history: str = "") -> str:
-            return answer_question(
+            at = stamp()
+            answer = answer_question(
                 ctx, orgs, lib, ask, guilds, ws, question, page, language=lang,
-                spoken=True, voice_history=history,
+                spoken=True, voice_history=history, voice_call=call_id,
             )  # fmt: skip
+            # the call joins the person's one thread: typed chat afterwards knows what was said
+            voice = {"workspace_id": ws.id, "via": "voice", "call": call_id}
+            orgs.append_chat(
+                ctx.org.id,
+                email,
+                [
+                    {"role": "user", "text": question, "at": at, **voice},
+                    {"role": "dory", "text": answer, "at": stamp(), **voice},
+                ],
+            )
+            return answer
 
         async def out(kind: str, payload: Any) -> None:
             if kind == "audio":

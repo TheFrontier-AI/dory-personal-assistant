@@ -247,11 +247,13 @@ def synthesize_cloud(
 # TTS engines read these aloud by name ("~" becomes "เครื่องหมายตัวหนอน"), so they never reach them.
 # % / $ + stay: engines read them correctly ("เปอร์เซ็นต์", "ทับ" in dates, "ดอลลาร์", "บวก").
 _UNSPOKEN = re.compile(r"[~*_#`|<>\[\]{}()^=\\]+")
+_CITE = re.compile(r"\s*\[\d+(?:\s*,\s*\d+)*\]")  # web_search's [1] / [2, 3]: for the eye only
 
 
 def speakable(text: str) -> str:
-    """Text safe to hand to a TTS engine: markdown stripped, symbols that are read aloud removed."""
-    return _SPACES.sub(" ", _UNSPOKEN.sub(" ", strip_markdown(text))).strip()
+    """Text safe to hand to a TTS engine: markdown stripped, citation markers and symbols that are
+    read aloud removed."""
+    return _SPACES.sub(" ", _UNSPOKEN.sub(" ", _CITE.sub("", strip_markdown(text)))).strip()
 
 
 def say(settings: Any, client: Any, text: str, lang: str = "en") -> bytes:
