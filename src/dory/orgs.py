@@ -261,7 +261,7 @@ class CompanyProfile(BaseModel):
     email: str = ""
     phone: str = ""
     size: str = ""  # e.g. "11-50 people"
-    values: list[str] = Field(default_factory=list)  # a few words each, max 8
+    values: list[str] = Field(default_factory=list)  # as many as they write (1 MiB guard only)
     # the legal entity, as on the registration papers (filled from an uploaded registration
     # certificate / articles by Dory, or by an admin)
     registered_name: str = ""  # e.g. บริษัท เดอะ ฟรอนเทียร์ จำกัด
@@ -912,9 +912,15 @@ class OrgStore:
                 if v is None:
                     continue
                 if k == "values":
-                    org.profile.values = [
-                        " ".join(str(x).split())[:40] for x in list(v)[:8] if str(x).strip()
-                    ]
+                    keep, total = [], 0
+                    for x in v:
+                        x = tidy(k, x, SHORT_TEXT)
+                        total += len(x)
+                        if total > LONG_TEXT:  # the 1 MiB document guard, not a product cap
+                            break
+                        if x:
+                            keep.append(x)
+                    org.profile.values = keep
                 elif k in PROFILE_LIMITS:
                     setattr(org.profile, k, tidy(k, v, PROFILE_LIMITS[k]))
                 else:
