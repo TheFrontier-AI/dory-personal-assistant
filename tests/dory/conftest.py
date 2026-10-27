@@ -6,6 +6,7 @@ from zoneinfo import ZoneInfo
 import pytest
 from google.adk.models import BaseLlm, LlmResponse
 from google.genai import types
+from pydantic_settings import SettingsConfigDict
 
 from dory.config import Settings
 from dory.embed import normalize
@@ -120,6 +121,10 @@ class FakeEmbedder:
 
 
 class FixedClockSettings(Settings):
+    # never the developer's .env: a DORY_GLM_VOICE_URL there made the live-socket test connect to
+    # the real GPU box (and hang), and a Discord client secret there changed the sign-in flows
+    model_config = SettingsConfigDict(env_prefix="DORY_", env_file=None, extra="ignore")
+
     def now(self):
         return datetime(2026, 10, 14, 12, 0, tzinfo=ZoneInfo("Asia/Bangkok"))
 
