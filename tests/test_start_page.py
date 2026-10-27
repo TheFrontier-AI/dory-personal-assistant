@@ -68,3 +68,29 @@ def test_org_name_is_prefilled_from_the_query_trimmed_and_capped():
     assert '.get("org") || "").trim().slice(0, $("org-name").maxLength)' in js
     assert '$("org-name").value = org || sessionStorage.getItem(ORG_KEY) || "";' in js
     assert "localStorage" not in js  # this tab only
+
+
+def test_a_session_the_server_rejects_is_forgotten_and_the_sign_in_screen_stays_clean():
+    """A saved `dory_session` answered 401/403/503 must not leave "Sign-in failed" on every load."""
+    html, _ = page()
+    catch = html.split("async function signedIn(stored = false) {", 1)[1].split("syncLang(", 1)[0]
+    assert "const rejected = [401, 403, 503].includes(e.status);" in catch
+    assert 'if (rejected) session("clear");' in catch
+    assert "if (!(stored && rejected)) note(" in catch  # a stale saved session fails silently
+    # a session that just came back from Discord sign-in still reports its failure
+    assert 'token = session("get"); signedIn(!fromDiscord);' in html
+
+
+def test_visitors_never_see_an_env_var_and_no_empty_button_gap():
+    html, _ = page()
+    d = re.search(r'"not_configured": \{"th": "([^"]+)", "en": "([^"]+)"\}', html)
+    assert "HUB_GOOGLE_CLIENT_ID" not in d.group(1) + d.group(2)
+    assert '$("not-configured").hidden = false; $("gsi-button").hidden = true;' in html
+
+
+def test_welcome_bullet_titles_stand_apart_from_their_descriptions():
+    html, style = page()
+    assert re.search(r"ul\.gets b \{[^}]*display: block", style)
+    for k in ("g1_d", "g2_d", "g3_d"):
+        en = re.search(rf'"{k}": \{{"th": "[^"]+", "en": "([^"]+)"\}}', html).group(1)
+        assert en[0].isupper(), k  # a sentence of its own, not the tail of the title
