@@ -129,7 +129,7 @@ from all of the org's workspaces, under the same fail-closed audience rule.
   "whatsapp": "<BSUID or phone>"}`); `discord_user_id` stays and is read as `identities["discord"]`.
 - An identity counts only when **verified**; unverified accounts are guests of their room (today's
   behaviour: own receipts, that room's memory).
-  - Discord: the existing `/ตั้งค่า` link + Discord login (done).
+  - Discord: the existing `/setup` link + Discord login (done).
   - Slack: automatic when the Slack profile email (`users.info` `profile.email`, scope
     `users:read.email`) equals a member email of the org that owns the workspace, and the user is
     a member of that Slack team (`team_id` check as in `SlackPort.is_admin_user`).
@@ -146,7 +146,7 @@ from all of the org's workspaces, under the same fail-closed audience rule.
 - Every platform tenant is an `orgs.Workspace` (`platform` in discord, slack, line, telegram,
   whatsapp, clickup, web) whose `memory_id` = `workspace_memory_id(platform, external_id)` (the one
   id scheme, done in step 1). Slack attaches through the OAuth connector; LINE / Telegram /
-  WhatsApp bots attach once with an admin link code (like Discord's `/ตั้งค่า`).
+  WhatsApp bots attach once with an admin link code (like Discord's `/setup`).
 - A platform tenant that belongs to no org keeps working alone (today's behaviour).
 
 ### Verified identities: API and flow (step 3, done)

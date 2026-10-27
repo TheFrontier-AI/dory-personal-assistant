@@ -1,6 +1,6 @@
 """Link a Discord server the Dory bot is already in to an organization, without the bot running.
 
-This does by hand what the `/ตั้งค่า` link flow does once the bot is online: writes the guild record
+This does by hand what the `/setup` link flow does once the bot is online: writes the guild record
 (name, icon, text channels; the bot corrects the visibility flags when it starts), makes the owner a
 hub admin of that server and attaches the server as a Discord workspace of the organization.
 

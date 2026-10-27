@@ -412,8 +412,14 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "Big tasks are switched off right now. You can turn them on in Dory's command center.",
     },
     "unlicensed": {
-        "th": "เซิร์ฟเวอร์นี้ยังไม่ได้เปิดใช้ดอรี่ค่ะ ให้ผู้ดูแลสมัครที่ {url}",
-        "en": "Dory is not activated on this server yet. An admin can subscribe at {url}",
+        "th": "ดอรี่ยังไม่ได้เปิดใช้ในเซิร์ฟเวอร์นี้ค่ะ ผู้ดูแลเซิร์ฟเวอร์พิมพ์ /setup ที่นี่ "
+        "เปิดลิงก์ที่ดอรี่ส่งให้ แล้วเข้าสู่ระบบ เซิร์ฟเวอร์จะเชื่อมกับองค์กรของคุณ "
+        "(ยังไม่มีก็สร้างได้ในหน้านั้น ใช้ฟรีช่วงเปิดตัว) แล้วดอรี่จะเริ่มตอบภายในหนึ่งนาทีค่ะ "
+        "ศูนย์บัญชาการ: {url}",
+        "en": "Dory isn't switched on for this server yet. A server admin: type /setup here, open "
+        "the link Dory sends you and sign in. That connects the server to your organization "
+        "(create one there if you have none, free during launch), and Dory starts answering "
+        "within a minute. Command center: {url}",
     },
     "dm": {
         "th": "ดอรี่แยกข้อมูลของแต่ละเซิร์ฟเวอร์ค่ะ รบกวนแท็ก {mention} ถามในห้องแชตของเซิร์ฟเวอร์ที่ต้องการนะคะ",
@@ -760,12 +766,14 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "This command is only for the server owner or people who can manage the server.",
     },
     "setup_message": {
-        "th": "ลิงก์เชื่อม {name} กับศูนย์บัญชาการของดอรี่ 🔗\n{url}\n"
-        "เปิดลิงก์แล้วเข้าสู่ระบบด้วยบัญชี Google ของคุณ ลิงก์ใช้ได้ครั้งเดียวและหมดอายุใน 15 นาที "
-        "อย่าส่งต่อให้คนอื่นค่ะ",
-        "en": "Link to connect {name} to Dory's command center 🔗\n{url}\n"
-        "Open the link and sign in with your Google account. It works once and expires in 15 "
-        "minutes. Please do not share it.",
+        "th": "ลิงก์เปิดใช้ดอรี่ใน {name} 🔗\n{url}\n"
+        "เปิดลิงก์แล้วเข้าสู่ระบบ ดอรี่จะเชื่อมเซิร์ฟเวอร์นี้กับองค์กรของคุณ (ยังไม่มีก็สร้างได้ในหน้านั้น "
+        "ใช้ฟรีช่วงเปิดตัว) แล้วเริ่มตอบในเซิร์ฟเวอร์นี้ภายในหนึ่งนาที "
+        "ลิงก์ใช้ได้ครั้งเดียวและหมดอายุใน 15 นาที อย่าส่งต่อให้คนอื่นค่ะ",
+        "en": "Link to switch Dory on in {name} 🔗\n{url}\n"
+        "Open it and sign in. Dory connects this server to your organization (create one there "
+        "if you have none, free during launch) and starts answering here within a minute. The "
+        "link works once and expires in 15 minutes. Please do not share it.",
     },
     "cmd_link_account": _bi(
         "ยืนยันบัญชี Discord ของคุณบนเว็บดอรี่", "Verify your Discord account on the Dory web"
@@ -783,7 +791,7 @@ CATALOG: dict[str, dict[str, str]] = {
         '"My account" page: {code}\nIt works once, expires in 15 minutes, and must not be shared.',
     },
     "setup_failed": {
-        "th": "สร้างลิงก์ไม่สำเร็จ ลองพิมพ์ /ตั้งค่า อีกครั้งภายหลังค่ะ",
+        "th": "สร้างลิงก์ไม่สำเร็จ ลองพิมพ์ /setup อีกครั้งภายหลังค่ะ",
         "en": "Could not create the link. Please try /setup again later.",
     },
     "mode_denied": {
@@ -1166,7 +1174,11 @@ CATALOG: dict[str, dict[str, str]] = {
     },
     # ---------------------------------------------------------------- slash command texts
     # (Discord shows one description, so these are bilingual in both columns)
-    "cmd_setup": _bi("เชื่อมเซิร์ฟเวอร์กับศูนย์บัญชาการ (ผู้ดูแล)", "Link server to command center (admins)"),
+    # /setup is one English command; Discord shows the Thai description to Thai clients
+    "cmd_setup": {
+        "th": "เปิดใช้ดอรี่ในเซิร์ฟเวอร์นี้: เชื่อมกับองค์กรของคุณ (ผู้ดูแล)",
+        "en": "Switch Dory on here: connect this server to your organization (admins)",
+    },
     "cmd_mode": _bi("ดูหรือตั้งโหมดการคุยของดอรี่ในห้องนี้", "View or set Dory's mode here"),
     "cmd_mode_arg": _bi("โหมดใหม่ (ไม่เลือก = ดูโหมดปัจจุบัน)", "New mode (empty = view)"),
     "cmd_language": _bi(

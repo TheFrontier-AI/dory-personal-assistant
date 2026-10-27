@@ -408,7 +408,7 @@ def test_mock_samples_follow_the_interface_language():
 
 def test_discord_link_shows_at_once_and_the_coral_frames_every_page():
     s = html()
-    # linking a server with the /ตั้งค่า code also verifies my Discord account: fetch me again, then redraw
+    # linking a server with the /setup code also verifies my Discord account: fetch me again, then redraw
     assert 'toast(t("linked")); await refreshMe(); route();' in s
     assert (
         "async function refreshMe()" in s

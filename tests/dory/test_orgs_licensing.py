@@ -211,6 +211,30 @@ def test_cache_five_minutes_and_fail_open(orgs):
     assert lic.is_licensed(99) is True  # nothing known + failing lookup = allow
 
 
+def test_a_server_linked_on_the_web_works_within_seconds(orgs):
+    """The web (another process) attaches the guild to an org: the bot's cached "no" must not
+    keep Dory silent for five minutes."""
+    guilds = MemoryGuildStore()
+    clock = {"t": 0.0}
+    lic = mk_licensing(orgs, guilds, clock=lambda: clock["t"])
+    assert lic.is_licensed(5) is False
+    org = orgs.create("New Co", "boss@x.com", license=trial_license())
+    orgs.attach_workspace(org.id, ws("discord", "5"))
+    clock["t"] = 20.0
+    assert lic.is_licensed(5) is True
+    assert lic.is_licensed(6) is False
+    orgs.docs = None  # the store breaks after a "no": kept, and retried in 30 s, not every message
+    calls = []
+    real = lic._check
+    lic._check = lambda gid: calls.append(gid) or real(gid)
+    clock["t"] = 40.0
+    assert lic.is_licensed(6) is False and len(calls) == 1
+    clock["t"] = 60.0
+    assert lic.is_licensed(6) is False and len(calls) == 1
+    clock["t"] = 71.0
+    assert lic.is_licensed(6) is False and len(calls) == 2
+
+
 def test_daily_notice_claim(orgs):
     lic = mk_licensing(orgs, MemoryGuildStore())
     assert lic.claim_notice(1, "2026-10-16") is True
@@ -264,6 +288,39 @@ async def test_unlicensed_guild_gets_one_reply_per_day_when_addressed(gated, wor
     gated.s = NextDay(tz="Asia/Bangkok")
     m3 = await send(gated, world, world.gen, "ดอรี่อยู่ไหม")
     assert m3.replies == [hub_line(gated)]  # a new day
+
+
+def test_the_notice_says_exactly_what_to_do():
+    for lang in ("th", "en"):
+        text = t("unlicensed", lang, url="https://hub.example/center")
+        assert "/setup" in text and "https://hub.example/center" in text
+    assert "sign in" in t("unlicensed", "en", url="u") and "organization" in t(
+        "unlicensed", "en", url="u"
+    )
+
+
+async def test_unlicensed_notice_in_dorys_chat_channel_without_a_tag(gated, world):
+    """In Dory's own chat channel nobody tags her: she must still say why she is quiet."""
+    m = await send(gated, world, world.chat, "สวัสดีค่ะ")
+    assert m.replies == [hub_line(gated)] and gated.calls == []
+    m2 = await send(gated, world, world.gen, "คุยกันเอง")  # a normal channel, not addressed
+    assert m2.replies == []
+
+
+async def test_joining_an_unlicensed_server_says_how_to_switch_dory_on(gated, world):
+    world.chat.mention = "<#11>"
+    await gated.on_guild_join(world.g)
+    assert hub_line(gated) in world.chat.sent
+    assert not gated.licensing.claim_notice(GUILD, gated.s.today().isoformat())  # said today
+
+
+async def test_joining_a_licensed_server_does_not(gated, world, orgs):
+    org = orgs.create("A", "a@x.com", license=trial_license())
+    orgs.attach_workspace(org.id, ws("discord", str(GUILD)))
+    gated.licensing.invalidate()
+    world.chat.mention = "<#11>"
+    await gated.on_guild_join(world.g)
+    assert world.chat.sent and hub_line(gated) not in world.chat.sent
 
 
 async def test_english_reply_when_addressed_in_english(gated, world):
@@ -331,16 +388,16 @@ async def test_slash_commands_blocked_but_setup_link_flow_works(gated, world):
     other = It("สรุป")
     assert await tree.interaction_check(other) is False
     assert other.sent == [(hub_line(gated), {"ephemeral": True})]
-    for name in ("ตั้งค่า", "setup"):
+    for name in ("setup", "linkaccount", "ลิงก์บัญชี"):
         ok = It(name)
         assert await tree.interaction_check(ok) is True and ok.sent == []
-    # /ตั้งค่า really hands out the link code in an unlicensed guild
+    # /setup really hands out the link code in an unlicensed guild
     gated.s = gated.s.model_copy(update={"hub_url": "https://hub.example/"})
     manager = member(world.g, 3, manage_guild=True)
     setup = SetupInteraction(world.g, manager)
     gated.licensing.enforce = True
     await gated.handle_setup(setup)
-    assert "https://hub.example/hub?link=" in setup.sent[0][0]
+    assert "https://hub.example/center?link=" in setup.sent[0][0]
 
 
 class SetupInteraction:

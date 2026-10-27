@@ -1,4 +1,4 @@
-"""Linking a Discord server with its /ตั้งค่า code also verifies the person's Discord account (the server does
+"""Linking a Discord server with its /setup code also verifies the person's Discord account (the server does
 both). The website shows the new server AND the verified account at once, with no reload: the page fetches
 /api/center/me again after the link."""
 
