@@ -487,7 +487,7 @@ def test_new_strings_exist_in_both_languages():
     s = html()
     th, en = s.split("\nen: {", 1)
     for k in (
-        "pp_no_discord", "po_del_p", "live_no_org", "live_waking", "live_err_down", "acc_name_req",
+        "pp_no_discord", "po_del_p", "live_no_org", "live_waking", "acc_name_req",
         "not_saved", "confirm_disc_p", "gc_confirm_p", "confirm_rm_p", "copy_manual", "inv_revoke_q",
         "unlink_p", "unlink_discord_p", "si_unlink_q", "la_dc_change", "la_dc_how", "menu", "c_cat",
         "linked_n_1", "ex_n_1", "po_people_n_1", "pp_count_1", "connected_n_1", "mon_notify_blocked",

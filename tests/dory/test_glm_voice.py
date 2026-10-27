@@ -118,7 +118,7 @@ def test_glm_voice_reports_the_servers_error_and_connection_failures():
         await asyncio.wait_for(w.start(), 2)
 
     asyncio.run(main())
-    assert events == [("error", "busy"), ("error", "ConnectionRefusedError")]
+    assert events == [("error", "busy"), ("error", "voice_server_down")]  # refused = the box is off
 
 
 def test_glm_voice_wakes_a_stopped_box_before_connecting():

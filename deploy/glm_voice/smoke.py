@@ -20,6 +20,7 @@ import websockets
 
 IN_RATE, OUT_RATE = 16_000, 24_000
 GREETING = "Say hello to the person in one short sentence."
+CASCADE_SAY = "Hello. This is the cascade voice test: two in policy, take the eight o'clock?"
 
 
 async def main(url: str, wav: str | None) -> int:
@@ -61,7 +62,11 @@ async def main(url: str, wav: str | None) -> int:
                 audio_bytes += len(msg)
                 continue
             ev = json.loads(msg)
-            if ev.get("type") == "said":
+            if ev.get("type") == "heard":  # the cascade sidecar: Dory's brain would answer here
+                print(f"heard after {time.monotonic() - sent:.2f}s: {ev.get('text', '')!r}")
+                sent = time.monotonic()
+                await ws.send(json.dumps({"type": "say", "text": CASCADE_SAY, "final": True}))
+            elif ev.get("type") == "said":
                 said.append(ev.get("text", ""))
             elif ev.get("type") == "turn":
                 break

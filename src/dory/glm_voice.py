@@ -32,6 +32,21 @@ from .web_live import TOOL_TIMEOUT_S, WebLive
 
 logger = logging.getLogger(__name__)
 ACKS = sorted(k for k in CATALOG if k.startswith("ack_voice_"))
+# the box is off, still booting, or not listening on that port: one code the pages can word
+DOWN_ERRORS = (ConnectionRefusedError, ConnectionResetError, TimeoutError, OSError)
+
+
+def error_code(e: BaseException) -> str:
+    """What the person is told: `voice_server_down` for every "no server there" failure (the VM is
+    stopped, still installing, or the port is wrong), the exception's name for anything else."""
+    if isinstance(e, DOWN_ERRORS):
+        return "voice_server_down"
+    status = getattr(e, "status_code", None) or getattr(
+        getattr(e, "response", None), "status_code", None
+    )
+    if status in (502, 503, 504):
+        return "voice_server_down"
+    return type(e).__name__
 
 
 class GlmVoice(WebLive):
@@ -88,7 +103,7 @@ class GlmVoice(WebLive):
         except Exception as e:
             logger.warning("glm voice: session error: %s: %s", type(e).__name__, e)
             with contextlib.suppress(Exception):
-                await self.out("error", type(e).__name__)
+                await self.out("error", error_code(e))
 
     async def _send(self, ws: Any) -> None:
         while not self._closing:
