@@ -54,3 +54,32 @@ source of truth: `config.py`).
   her own words be heard without the name (`NATURAL_WINDOW_S`).
 - Classic mode (not Live) keeps its keyword rules: `is_dismissal`, `_ASK_RE`, `_SELF_TALK_RE`, three
   unaddressed utterances, `pending_wake` (the words after a bare name). They never run in live mode.
+
+## Cascade path (self-hosted ASR -> brain -> TTS), 27 Oct 2026
+
+Cascade mode = `voice_mode` glm with `DORY_GLM_VOICE_URL` on the sidecar's port 8766
+(`deploy/glm_voice/cascade.py`): the GPU box transcribes one utterance ("heard"), Dory's text brain
+answers it (`qa.ask`, `spoken=True`, the same tools as chat) and Kokoro speaks the answer sentence
+by sentence. The web call (`center.py` `/live`) and a Discord room (`glm_room.GlmRoom`) share
+`glm_voice.GlmVoice`. The cascade decides from TEXT, so the classic keyword helpers (`parse_wake`,
+`is_hush`, `_ACK_RE`) are allowed; the Live-only machinery (mouth gate, `end_conversation` tool,
+`live_*_reply_seconds`, background jobs) is not used.
+
+| # | Rule | Config (default) | Where | Test |
+|---|------|------------------|-------|------|
+| C1 | Voice: Kokoro `CASCADE_VOICE` (`af_heart,af_nicole`: the A-grade voice blended with the soft one) at `CASCADE_SPEED` (0.95) with `CASCADE_SENTENCE_GAP_MS` (250) of silence after each sentence of a say, so facts breathe. Magpie ignores both | `/etc/glm-voice.env` | `cascade.py` `Engines.synth`, `speak_loop` | `test_glm_cascade.py::test_cascade_speaks_sentences_with_a_gap` |
+| C2 | Spoken register: `qa.spoken_hint` tells the brain 1-3 short sentences, no emoji / markdown / lists / URLs, the person's name at most once and her own never, one question at a time and stop after it, calm with no exclamation on money / HR / health / conflict / something that failed, a correction ("no, Friday") redoes the last action, an action happened only when a tool result says so, say so when the audio was unclear. The tone preset still wins | `default_tone` etc. (existing) | `qa.spoken_hint` | `test_english_voice.py` / `test_glm_voice.py::test_spoken_hint_carries_the_register_rules` |
+| C3 | Web call: everything heard is for her (the person opened the panel; the browser sends frames only while they speak, nothing while quiet, so there is no continuous listening and no name rule). The greeting is a fixed line (`meet_greet_spoken`), not a brain turn | `live_web_silence_ms` (800) | `GlmVoice.greet`, `center.py` `ask_fn(spoken=True)` | `test_glm_voice.py::test_glm_voice_greets_with_a_fixed_line_not_the_brain` |
+| C4 | Room WAKE on the transcript: `naming.address_kind(text)` = `addressed` (her name opens or closes the utterance, after a cue word, or before a comma / question mark; every spelling `find_call` knows plus a phonetic key `d-r-` for Dori / Dorey / Doory / Dora), `mentioned` (a sentence about her: "Dory booked it", "ask Dory later") = nothing, `unclear` (a mention with a request shape) = a brief "Yes?" once, never an interruption; `wake_policy` natural also answers `unclear` without asking | `wake_policy` (strict) | `naming.address_kind`, `GlmRoom._on_heard` | `test_glm_room.py::test_glm_room_answers_only_when_addressed`, `test_meeting_behaviour.py::test_address_kind` |
+| C5 | STAY: the speaker of the addressing utterance is the caller; their utterances need no name for `engaged_timeout_seconds` (renewed by every exchange); others count only when addressed. A bare "ok" / "got it" / "mm-hm" is not a question unless she just asked one (then it is the answer) | `engaged_timeout_seconds` (300) | `GlmRoom._on_heard`, `GlmVoice.answer` (`_ACK_RE`) | `test_glm_room.py::test_glm_room_follow_up_without_the_name_within_the_engaged_window` |
+| C6 | Hush: "Dory, be quiet" (`is_hush`) stops playback and the pending answer; she stays silent until her name comes with words (`parse_wake` with a question) | none | `GlmRoom._on_heard` | `test_glm_room.py::test_glm_room_hush_stops_everything_until_the_name_with_words` |
+| C7 | Barge-in: the server interrupts on the first voiced frame it receives (and only while it is speaking or has a say queued; a quiet room never cancels an answer), so while she speaks the room forwards frames only after `TALKOVER_S` of voiced audio (a cough or side talk never stops her); the web forwards its own frames unchanged (the browser cancels echo) | `TALKOVER_S` 0.8 | `cascade.py` `interrupt`, `GlmRoom._pump_mixer` | `test_glm_cascade.py::test_cascade_turn_heard_say_turn_and_barge_in`, `test_glm_room.py::test_glm_room_holds_side_talk_while_she_speaks` |
+| C8 | Fillers that fit: none for a fast answer; after `FILLER_AFTER_S` (1.0) without the answer one `ack_voice_*` line, never the same as the last three | none | `GlmVoice._answer_turn` | `test_glm_voice.py::test_glm_voice_fills_only_when_the_brain_is_slow` |
+| C9 | Context: `GlmVoice` keeps a rolling `meeting.Transcript` (memory only, dropped with the socket; never the meeting's minutes) of what was heard and what she said and passes the last 180 s / 3,000 chars as `history` to the brain, so "change that" / "try again" / "what happened?" work | none | `GlmVoice.transcript`, `GlmRoom._ask`, `center.answer_question(voice_history=)` | `test_glm_voice.py::test_glm_voice_passes_the_rolling_transcript_as_history` |
+| C10 | Format: every say goes through `speech.speakable` (markdown, links, emoji, unspoken symbols removed) plus THB / % read as words; the room's text echo ("💬 **Dory:** ...", rule 4, `meeting_text_echo`) keeps the brain's original text | `meeting_text_echo` (true) | `GlmVoice._say`, `GlmRoom._out` | `test_glm_voice.py::test_glm_voice_speaks_plain_text` |
+
+Not done on the cascade (open): hearing the name in audio (text only; Parakeet has no Thai, so a Thai
+room needs `CASCADE_ASR=whisper`); who spoke is the user whose frames were loudest (one mixed stream);
+`end_conversation` by the model (a thanks is answered, the window just runs out); the minutes stay
+off; Thai speech out (Kokoro has no Thai voice); long jobs hit `TOOL_TIMEOUT_S` (90 s).
+

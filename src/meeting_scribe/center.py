@@ -4267,10 +4267,14 @@ def answer_question(
     question: str,
     page: str | None = None,
     language: str | None = None,
+    *,
+    spoken: bool = False,
+    voice_history: str = "",
 ) -> str:
     """Blocking: Dory's text brain for one web question, scoped like the chat route (the org's
     workspace, the caller's memory rights, their profile, the web tools). Used by the chat route
-    and by the live voice session's ask_dory tool."""
+    and by the live voice session (`spoken`: the voice register and round cap; `voice_history`:
+    what the call heard and said so far, after the typed thread)."""
     from dory.qa import MemoryTools
 
     s, store = hub.get_dory_runtime()
@@ -4282,6 +4286,8 @@ def answer_question(
         f"{'ผู้ใช้' if t['role'] == 'user' else 'ดอรี่'}: {t['text']}"
         for t in turns[-CHAT_HISTORY_PROMPT_TURNS:]
     )
+    if voice_history:
+        history = f"{history}\n{voice_history}".strip()
     lang = language or company_language(guilds, ws)
     profile = orgs.user_profile(ctx.email)
     tools = web_tools(ctx, orgs, guilds, ws)
@@ -4304,6 +4310,7 @@ def answer_question(
             is_exec=is_exec,
             user_id=kw.pop("user_id", 0),
             history=history,
+            spoken=spoken,
             **kw,
         )
         return conform_language(ans.text, lang)
@@ -4324,6 +4331,7 @@ def answer_question(
         company=company,
         extra_tools=tools,
         memory=memory,
+        spoken=spoken,
     )
     return conform_language(ans.text, lang)
 
@@ -4621,8 +4629,11 @@ async def live_voice(
             build_web_instruction, s, who_block(ctx, profile, page), lang, tone, note
         )
 
-        def ask_fn(question: str) -> str:
-            return answer_question(ctx, orgs, lib, ask, guilds, ws, question, page, language=lang)
+        def ask_fn(question: str, history: str = "") -> str:
+            return answer_question(
+                ctx, orgs, lib, ask, guilds, ws, question, page, language=lang,
+                spoken=True, voice_history=history,
+            )  # fmt: skip
 
         async def out(kind: str, payload: Any) -> None:
             if kind == "audio":
