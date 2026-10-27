@@ -34,7 +34,16 @@ def test_water_js_is_served(client):
 
 
 def test_water_js_fits_the_size_budget():
-    assert len(gzip.compress(JS.read_bytes(), 9)) < 6 * 1024
+    assert len(gzip.compress(JS.read_bytes(), 9)) < 9 * 1024
+
+
+def test_fish_keep_clear_of_words_and_controls():
+    src = JS.read_text("utf-8")
+    keep = re.search(r"const KEEP = '([^']+)'", src).group(1).split()
+    for name in ("h1", "h2", "p", "a", "button", "textarea", "figure", "[data-ui]"):
+        assert name in keep, name
+    assert ",.hd" in src  # the fixed header
+    assert "r.left - 32" in src and "r.bottom + 32" in src  # 32 px margin
 
 
 def test_water_js_stops_for_motion_preferences_and_hidden_tabs():

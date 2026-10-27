@@ -25,6 +25,7 @@
 <link rel="stylesheet" href="/static/dory/theme.css">
 <script src="/static/dory/water.js" defer></script>
 <script type="module" src="/static/dory/dory3d.js"></script>
+<script type="module" src="/static/dory/reef.js"></script>
 <style>
   /* Dory Descent: the page is a dive. Each chapter is one flat field (sunlight, twilight, midnight,
      seabed, ascent, surface, lantern) with hard edges; the fixed header takes the ink of the field under
@@ -135,7 +136,17 @@
   .motion-off [data-rise] { transition: none; }
 
   /* ---------- 0 m · sunlight: the reef, Dory, the film ---------- */
-  .hero { background: var(--reef); }
+  .hero { display: grid; background: var(--reef); }
+  /* the living reef (reef.js) fills the first screen: over the field, under the water and the words */
+  #reef, .hero-top { grid-area: 1 / 1; }
+  #reef { position: relative; z-index: 0; overflow: hidden; pointer-events: none; }
+  #reef::before, #reef canvas { content: ""; position: absolute; inset: 0; width: 100%; height: 100%; transition: opacity 600ms ease; }
+  #reef::before { background: url(/static/dory/reef-poster.webp) center bottom / 100% auto no-repeat; }
+  #reef canvas { opacity: 0; }
+  #reef.is-live canvas { opacity: 1; }
+  #reef.is-live::before { opacity: 0; }
+  .motion-off #reef::before, .motion-off #reef canvas { transition: none; }
+  @media (max-width: 959px) { #reef::before { background-image: url(/static/dory/reef-poster-800.webp); } }
   .hero-top { min-height: 100svh; align-items: center; align-content: center; row-gap: 32px; padding-top: calc(var(--hd) + 32px); padding-bottom: 24px; }
   #dory3d { position: relative; grid-column: 1 / 7; width: min(100%, calc(100svh - var(--hd) - 140px)); min-width: min(100%, 420px); aspect-ratio: 1 / 1; }
   #dory3d picture, #dory3d img { display: block; width: 100%; height: 100%; }
@@ -420,6 +431,7 @@
 <main id="top" tabindex="-1">
   <!-- 0 m · sunlight -->
   <section class="ch hero" id="sunlight" data-chapter="sunlight" data-depth="0" data-ink="light">
+    <div id="reef" aria-hidden="true"></div>
     <div class="g hero-top" data-group>
       <div id="dory3d"><picture><img src="/static/dory/dory3d-poster.webp" width="900" height="900" fetchpriority="high" alt="Dory, a white fish with a blue back, big blue eyes and a headset" data-i18n-attr="alt:hero_alt"></picture></div>
       <div class="hero-copy">
