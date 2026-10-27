@@ -64,6 +64,7 @@ def test_cascade_turn_heard_say_turn_and_barge_in(cascade):
             ws.send_text(json.dumps({"type": "end"}))
             got = _recv_until(ws, "heard")
             assert got[-1] == ("heard", "book my trip for the lumen kickoff")
+            assert ("interrupted", "") not in got  # a quiet room never cancels the answer in flight
             # Dory speaks a filler, then the answer: audio per sentence, said per say, turn at the end
             ws.send_text(json.dumps({"type": "say", "text": "One moment.", "final": False}))
             ws.send_text(
@@ -71,7 +72,10 @@ def test_cascade_turn_heard_say_turn_and_barge_in(cascade):
             )
             got = _recv_until(ws, "turn")
             kinds = [k for k, _ in got]
-            assert kinds.count("audio") == 3 and kinds.count("said") == 2 and kinds[-1] == "turn"
+            # 3 sentences of audio plus one gap of silence inside the two-sentence say
+            assert kinds.count("audio") == 4 and kinds.count("said") == 2 and kinds[-1] == "turn"
+            gaps = [n for k, n in got if k == "audio" and n == 24000 // 4 * 2]  # 250 ms at 24 kHz
+            assert len(gaps) == 1
             assert engines.spoken == ["One moment.", "Two in policy.", "Take the 08:00?"]
             # a typed turn is echoed as heard (Dory's brain answers it the same way)
             ws.send_text(json.dumps({"type": "text", "text": "and a hotel"}))
