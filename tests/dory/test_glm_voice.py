@@ -208,7 +208,7 @@ def test_glm_voice_cascade_answers_what_the_server_heard_and_fills_only_when_slo
     import dory.glm_voice as gv
 
     monkeypatch.setattr(gv, "FILLER_AFTER_S", 0.05)
-    caplog_lines, asked, events = [], [], []
+    _caplog_lines, asked, events = [], [], []
 
     def ask(q: str, history: str) -> str:
         asked.append((q, history))
@@ -268,7 +268,7 @@ def test_glm_voice_cascade_answers_what_the_server_heard_and_fills_only_when_slo
         await v.close()
         return v
 
-    v = asyncio.run(main())
+    asyncio.run(main())
     said = says(fake)
     assert said[0] == {
         "type": "say",
