@@ -112,6 +112,7 @@ ensure_secret dory-glm-voice-token DORY_GLM_VOICE_TOKEN optional
 ensure_secret dory-nebius-vm-key DORY_NEBIUS_SA_PRIVATE_KEY optional   # start a stopped GPU box
 ensure_secret dory-duffel-token DORY_DUFFEL_TOKEN optional   # trips: Duffel test mode (flights)
 ensure_secret dory-liteapi-key DORY_LITEAPI_KEY optional     # trips: LiteAPI sandbox (hotels)
+ensure_secret dory-tavily-api-key DORY_TAVILY_API_KEY optional  # web search through Tavily
 SECRETS_JOINED="$(IFS=,; echo "${SECRET_REFS[*]}")"
 
 # Expected Cloud Run URL, so the OIDC audience can be set in the same deploy.

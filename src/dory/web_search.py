@@ -9,15 +9,22 @@ logged.
 The answer carries `[1]`, `[2]` markers placed from Gemini's grounding supports, and the result lists
 the numbered sources (title, domain, link) so Dory can cite them. Today's date in Bangkok is part of
 the request so "latest" means now.
+
+With a Tavily key (`DORY_TAVILY_API_KEY`) the same call searches through Tavily instead, which needs no
+Google Vertex: same result shape, the answer = Tavily's summary plus one numbered evidence line per
+source, so `research` and `benchmark` renumber it like a grounded answer.
 """
 
 from __future__ import annotations
 
 import contextlib
+import functools
 import logging
 import re
 from datetime import date, datetime
 from zoneinfo import ZoneInfo
+
+import httpx
 
 from .web_read import domain, grounded_generate
 
@@ -28,6 +35,9 @@ MAX_SOURCES = 12
 RECENCY = {"day": 1, "week": 7, "month": 31}
 _SITE_RE = re.compile(r"^[a-z0-9][a-z0-9.\-]*\.[a-z]{2,}$")
 BANGKOK = ZoneInfo("Asia/Bangkok")
+TAVILY_URL = "https://api.tavily.com/search"
+TAVILY_TIMEOUT_S = 25.0
+SNIPPET_CHARS = 400
 
 
 def clean_site(site: str | None) -> str:
@@ -134,8 +144,11 @@ def web_search_call(
     recency: str | None = None,
     site: str | None = None,
     today: date | None = None,
+    tavily_key: str = "",
 ) -> dict:
     """Blocking. {answer, sources:[{n,title,domain,link}], date, query} or {error}."""
+    if tavily_key:
+        return tavily_search_call(tavily_key, query, recency=recency, site=site, today=today)
     recency = recency if recency in RECENCY else None
     host = clean_site(site)
     q = build_query(query, host)
@@ -172,6 +185,73 @@ def web_search_call(
     }
 
 
+def tavily_search_call(
+    key: str,
+    query: str,
+    *,
+    recency: str | None = None,
+    site: str | None = None,
+    today: date | None = None,
+    transport: httpx.BaseTransport | None = None,
+) -> dict:
+    """Blocking, same shape as `web_search_call`. Advanced depth (2 credits a search; the free plan
+    has 1,000 credits a month): Tavily ranks the pages and writes a summary. Never logs the query
+    or the key."""
+    recency = recency if recency in RECENCY else None
+    host = clean_site(site)
+    q = " ".join((query or "").split())[:QUERY_CHARS]
+    if not q:
+        return {"error": "give a search query"}
+    day = today or today_bangkok()
+    body: dict = {"query": q, "search_depth": "advanced", "include_answer": "advanced",
+                  "max_results": MAX_SOURCES, "topic": "general"}  # fmt: skip
+    if recency:
+        body["time_range"] = recency
+    if host:
+        body["include_domains"] = [host]
+    try:
+        with httpx.Client(timeout=TAVILY_TIMEOUT_S, transport=transport) as c:
+            r = c.post(TAVILY_URL, json=body, headers={"Authorization": f"Bearer {key}"})
+        r.raise_for_status()
+        found = r.json()
+    except Exception as e:  # noqa: BLE001
+        code = getattr(getattr(e, "response", None), "status_code", None)
+        why = f"{type(e).__name__} {code}" if code else type(e).__name__
+        logger.warning("web_search (tavily) failed (%s)", why)
+        return {"error": f"web search failed ({why})"}
+    rows = [x for x in found.get("results") or [] if x.get("url")][:MAX_SOURCES]
+    if not rows:
+        return {"error": "the search found nothing", "sources": []}
+    sources = [{"n": n, "title": (x.get("title") or "").strip()[:200] or domain(x["url"]),
+                "domain": domain(x["url"]), "link": x["url"]} for n, x in enumerate(rows, 1)]  # fmt: skip
+    evidence = "\n".join(
+        f"[{n}] {' '.join((x.get('content') or '').split())[:SNIPPET_CHARS]}"
+        + (f" ({x['published_date']})" if x.get("published_date") else "")
+        for n, x in enumerate(rows, 1)
+    )
+    summary = (found.get("answer") or "").strip()
+    logger.info(
+        "web_search: tavily %d source(s), domains=%s",
+        len(sources),
+        sorted({s["domain"] for s in sources if s["domain"]}),
+    )
+    return {
+        "query": q,
+        "date": day.isoformat(),
+        "answer": f"{summary}\n\nEvidence:\n{evidence}" if summary else f"Evidence:\n{evidence}",
+        "sources": sources,
+        "how_to_cite": "cite as [n] with the title and link from `sources`, using the evidence line "
+        "that supports each fact; never add sources of your own",
+    }
+
+
+def searcher(tavily_key: str = ""):
+    """`web_search_call` for the configured engine: Tavily with a key, else Google grounding."""
+    return (
+        functools.partial(web_search_call, tavily_key=tavily_key) if tavily_key else web_search_call
+    )
+
+
 def format_sources(sources: list[dict]) -> str:
     """Numbered source lines for a report: `[1] Title - domain - link`."""
     return "\n".join(
@@ -182,16 +262,16 @@ def format_sources(sources: list[dict]) -> str:
     )
 
 
-def make_web_search(client, model: str, calls: list | None = None, now=None):
+def make_web_search(client, model: str, calls: list | None = None, now=None, tavily_key: str = ""):
     """The `web_search` agent tool (a plain function, like `read_web`)."""
     log = calls if calls is not None else []
 
     def web_search(query: str, recency: str | None = None, site: str | None = None) -> dict:
-        """Search the internet with Google Search and get an answer with NUMBERED citations (title,
+        """Search the internet and get an answer with NUMBERED citations (title,
         domain, link). Use for current facts, news, prices, rules, competitors, anything outside
         the team; "latest" is relative to today in Bangkok. To read a specific link use read_web;
         for team data use search_everything. Never put chat, ledger or other team data in `query`:
-        it goes to Google. Cite the sources by number and link in your answer.
+        it goes to the search engine. Cite the sources by number and link in your answer.
 
         Args:
             query: what to find, in the user's language (max 400 characters).
@@ -206,6 +286,7 @@ def make_web_search(client, model: str, calls: list | None = None, now=None):
             recency=recency,
             site=site,
             today=today_bangkok(now() if now else None),
+            tavily_key=tavily_key,
         )
 
     return web_search
