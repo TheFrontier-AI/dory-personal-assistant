@@ -9,6 +9,7 @@ import json
 import logging
 import os
 import time
+import uuid
 from functools import lru_cache
 from typing import Any
 
@@ -26,11 +27,15 @@ SETTLE_S = 3.0
 POLL_S = 1.0
 SETTLE_TIMEOUT_S = 90.0
 
-_finalize_locks: dict[str, asyncio.Lock] = {}
+FINALIZE_LEASE_S = 900.0  # settle (<= 90 s) + summarizer + Discord post, with room to spare
 
 
 class AudioDecodeError(Exception):
     """The uploaded bytes could not be converted to FLAC."""
+
+
+class FinalizeBusy(Exception):
+    """Another finalizer (this or another web instance) holds the meeting's lease right now."""
 
 
 @lru_cache
@@ -99,10 +104,18 @@ async def _wait_for_chunks(meeting_id: str) -> Meeting:
 
 
 async def finalize(meeting_id: str) -> Meeting:
-    """Summarize a meeting and post it to Discord. Idempotent: a DONE meeting is a no-op."""
-    lock = _finalize_locks.setdefault(meeting_id, asyncio.Lock())
-    async with lock:
+    """Summarize a meeting and post it to Discord. Idempotent: a DONE meeting is a no-op. One
+    finalizer per meeting across web instances (a lease on the meeting), else FinalizeBusy."""
+    store, owner = get_store(), uuid.uuid4().hex
+    if not await run_in_threadpool(store.claim_finalize, meeting_id, owner, FINALIZE_LEASE_S):
+        raise FinalizeBusy(meeting_id)
+    try:
         return await _finalize(meeting_id)
+    finally:
+        try:
+            await run_in_threadpool(store.release_finalize, meeting_id, owner)
+        except Exception:  # it lapses by itself after FINALIZE_LEASE_S
+            logger.warning("meeting=%s finalize lease not released", meeting_id)
 
 
 async def _finalize(meeting_id: str) -> Meeting:
@@ -140,8 +153,6 @@ async def _finalize(meeting_id: str) -> Meeting:
         logger.exception("meeting=%s finalize failed", meeting_id)
         await run_in_threadpool(store.set_status, meeting_id, MeetingStatus.FAILED, str(exc))
         raise
-    finally:
-        _finalize_locks.pop(meeting_id, None)
 
     return await run_in_threadpool(store.get, meeting_id) or meeting
 
