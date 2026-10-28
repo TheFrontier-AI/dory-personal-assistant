@@ -21,6 +21,7 @@ import contextlib
 import hashlib
 import json
 import logging
+import re
 import secrets
 import time
 from collections.abc import Callable
@@ -46,6 +47,7 @@ USERINFO_URL = "https://openidconnect.googleapis.com/v1/userinfo"
 
 TOKENS_KIND = "dory_google_tokens"
 STATE_KIND = "dory_google_state"
+STATE_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")  # token_urlsafe; a "/" made Firestore raise
 STATE_TTL = timedelta(minutes=10)
 EXPIRY_SKEW_S = 60
 
@@ -179,7 +181,7 @@ class GoogleOAuth:
                 tx.delete(STATE_KIND, 0, state)  # single use, even when it turns out expired
             return rec
 
-        rec = self.docs.transact(fn) if state else None
+        rec = self.docs.transact(fn) if STATE_RE.fullmatch(state or "") else None
         if not rec:
             raise GoogleOAuthError("bad_state")
         if datetime.fromisoformat(rec["exp"]) < self._clock():
