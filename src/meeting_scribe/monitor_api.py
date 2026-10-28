@@ -22,8 +22,6 @@ from __future__ import annotations
 
 import logging
 import math
-import threading
-import time
 from collections.abc import Callable, Iterable
 from dataclasses import dataclass
 from datetime import UTC, date, datetime, timedelta
@@ -43,6 +41,7 @@ from dory.orgs import Org, OrgStore
 from meeting_scribe import hub
 from meeting_scribe.center import Ctx, get_orgs, member_ctx, super_user
 from meeting_scribe.config import get_settings
+from meeting_scribe.limits import TokenBucket
 
 logger = logging.getLogger(__name__)
 
@@ -50,7 +49,6 @@ ZONE = ZoneInfo("Asia/Bangkok")  # `from` / `to` dates and "done today" are Bang
 PAGE, IDS_MAX = 50, 50  # PAGE_MAX (100) comes from dory.monitor
 DEFAULT_DEEP_TIMEOUT_S = 600
 BRIDGE_PLATFORMS = ("slack", "line", "telegram", "whatsapp")  # served by the `platforms` process
-LIMITER_KEYS_MAX = 10_000  # people tracked by the rate limiter before idle ones are forgotten
 
 
 # ------------------------------------------------------------------ collaborators (overridable)
@@ -74,41 +72,7 @@ def monitor_enabled() -> None:
         raise HTTPException(404, "Not Found")
 
 
-class TokenBucket:
-    """Per-key rate limit: one token every `rate_s` seconds, at most `burst` saved up, so a few
-    tabs polling independently are not starved. Thread-safe."""
-
-    def __init__(
-        self, rate_s: float = 2.0, burst: int = 3, clock: Callable[[], float] = time.monotonic
-    ):
-        self.rate_s, self.burst, self.clock = rate_s, burst, clock
-        self._state: dict[str, tuple[float, float]] = {}  # key -> (tokens, at)
-        self._lock = threading.Lock()
-
-    def take(self, key: str) -> float:
-        """0.0 when a token was taken (allowed), else the seconds until the next one."""
-        t = self.clock()
-        with self._lock:
-            tokens, at = self._state.get(key, (float(self.burst), t))
-            tokens = min(float(self.burst), tokens + max(0.0, t - at) / self.rate_s)
-            if tokens >= 1.0:
-                self._state[key] = (tokens - 1.0, t)
-                self._forget_idle(t)
-                return 0.0
-            self._state[key] = (tokens, t)
-            return (1.0 - tokens) * self.rate_s
-
-    def _forget_idle(self, t: float) -> None:
-        """Drop the keys whose bucket is full again (they behave like new ones) once many are
-        tracked, so memory stays small."""
-        if len(self._state) <= LIMITER_KEYS_MAX:
-            return
-        full_after = self.burst * self.rate_s
-        for key in [k for k, (_, at) in self._state.items() if t - at >= full_after]:
-            del self._state[key]
-
-
-LIMITER = TokenBucket()
+LIMITER = TokenBucket(name="monitor_changes")  # one poll every 2 s per person, burst 3
 
 
 # ------------------------------------------------------------------ request context
@@ -369,7 +333,7 @@ async def changes(
 ) -> Response:
     """`{seq, floor, now, events, reset}`: the events after `since` this viewer may see. ETag =
     the log's `seq` (304 when unchanged); 429 with `Retry-After` past 1 call per 2 s."""
-    wait = LIMITER.take(m.viewer.email)
+    wait = await run_in_threadpool(LIMITER.take, m.docs, m.viewer.email)
     if wait > 0:
         retry = str(max(1, math.ceil(wait)))
         raise HTTPException(429, "Too many requests", headers={"Retry-After": retry})

@@ -67,8 +67,6 @@ def w(docs, tmp_path, monkeypatch):
     monkeypatch.setitem(ms_config.Settings.model_config, "env_file", None)
     get_settings.cache_clear()
     pipeline.get_store.cache_clear()
-    center._chat_times.clear()
-    center._org_limiter.cache_clear()
     s = FixedClockSettings(tz="Asia/Bangkok")
     w = World()
     w.s, w.docs = s, docs
@@ -268,10 +266,9 @@ def test_me_lists_orgs_with_roles_and_super_sees_all(w):
 
 
 def test_create_org_gives_owner_web_workspace_and_open_ended_trial(w, monkeypatch):
-    from meeting_scribe.monitor_api import TokenBucket
+    from meeting_scribe.limits import TokenBucket
 
-    roomy = TokenBucket(burst=100)
-    monkeypatch.setattr(center, "_org_limiter", lambda: roomy)  # this test is about the cap
+    monkeypatch.setattr(center, "ORG_LIMITER", TokenBucket(burst=100))  # this test: the cap
     r = w.client.post("/api/center/orgs", json={"name": "New Co"}, headers=H["stranger"])
     assert r.status_code == 200, r.text
     org = r.json()
@@ -336,15 +333,19 @@ def test_create_org_again_with_the_same_name_returns_the_first(w):
 
 
 def test_two_racing_create_requests_make_one_org(w, monkeypatch):
+    """Two web instances: two OrgStores (no shared process lock) on one store."""
+    import itertools
     import threading
 
-    real = OrgStore.create
+    real = OrgStore._tx_save
 
     def slow(self, *a, **kw):  # both requests are past any check before either has written
         time.sleep(0.2)
         return real(self, *a, **kw)
 
-    monkeypatch.setattr(OrgStore, "create", slow)
+    monkeypatch.setattr(OrgStore, "_tx_save", slow)
+    instances = itertools.cycle([OrgStore(w.docs), OrgStore(w.docs)])
+    app.dependency_overrides[center.get_orgs] = lambda: next(instances)
     out = []
 
     def post():
@@ -360,9 +361,9 @@ def test_two_racing_create_requests_make_one_org(w, monkeypatch):
     assert [o.name for o in w.orgs.orgs_of_email("boss@example.com")].count("Race Co") == 1
 
 
-def test_creating_orgs_is_rate_limited_per_person_but_a_repeat_still_answers(w):
+def test_creating_orgs_is_rate_limited_per_person_but_a_repeat_still_answers(w, monkeypatch):
     now = [100.0]
-    center._org_limiter().clock = lambda: now[0]  # the real bucket, on a test clock
+    monkeypatch.setattr(center.ORG_LIMITER, "clock", lambda: now[0])  # the real bucket
 
     def post(name, who="stranger"):
         return w.client.post("/api/center/orgs", json={"name": name}, headers=H[who])
@@ -1034,7 +1035,6 @@ def test_chat_blocked_when_license_inactive_and_rate_limited(w):
     )  # super admin
     org.license.status = "active"
     w.orgs.save(org)
-    center._chat_times.clear()
     codes = [
         w.client.post(url, json={"message": "x"}, headers=H["mem"]).status_code
         for _ in range(center.CHAT_PER_HOUR + 1)
