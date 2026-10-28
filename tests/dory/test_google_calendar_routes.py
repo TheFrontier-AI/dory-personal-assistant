@@ -151,6 +151,23 @@ def test_callback_state_single_use(w):
     assert q == {"calendar": ["error"], "reason": ["bad_state"]}
 
 
+def test_a_malformed_state_never_reaches_the_store(w, monkeypatch):
+    """A state is a token_urlsafe value; anything else (a "/" made real Firestore raise: a 500) is
+    bad_state at once, on the normal and the cancel path alike."""
+    touched = []
+    for name in ("get", "delete", "transact"):
+        orig = getattr(w.docs, name)
+        monkeypatch.setattr(
+            w.docs, name, lambda *a, _o=orig, _n=name, **k: (touched.append(_n), _o(*a, **k))[1]
+        )
+    for bad in ("a/b", "../x", "x" * 200):
+        q = parse_qs(urlparse(callback(w, bad).headers["location"]).query)
+        assert q["reason"] == ["bad_state"], bad
+        q = parse_qs(urlparse(callback(w, bad, error="access_denied").headers["location"]).query)
+        assert q["reason"] == ["denied"], bad
+    assert touched == []
+
+
 def test_callback_email_mismatch_is_an_error_and_stores_nothing(w):
     w.userinfo = {"email": "someone.else@gmail.com", "email_verified": True}
     r = callback(w, connect_flow(w))

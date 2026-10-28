@@ -935,6 +935,30 @@ def test_session_tokens_keep_people_signed_in_for_thirty_days(client, env):
         get_settings.cache_clear()
 
 
+def test_a_rejected_token_is_never_written_to_the_log(client, caplog):
+    """google-auth puts a malformed token itself in its error message ("Wrong number of
+    segments in token: b'...'"): the log keeps the reason's type only."""
+    raw = "ya29.not-an-id-token-but-a-secret"
+
+    def verify(token, client_id):
+        raise ValueError(f"Wrong number of segments in token: {token.encode()}")
+
+    app.dependency_overrides[hub.google_token_verifier] = lambda: verify
+    with caplog.at_level("INFO"):
+        r = client.get("/api/hub/me", headers={"Authorization": "Bearer " + raw})
+    assert r.status_code == 401
+    assert "Rejected hub token" in caplog.text and raw not in caplog.text
+
+
+def test_a_session_with_a_non_ascii_signature_is_a_401_not_a_crash(client, env):
+    env.setenv("DORY_SESSION_SECRET", "top-secret")
+    get_settings.cache_clear()
+    with pytest.raises(ValueError):
+        hub.verify_session("ss1.e30.\u00e9t\u00e9", "top-secret")
+    bad = {"Authorization": "Bearer ss1.e30.\u00e9t\u00e9".encode("latin-1")}
+    assert client.get("/api/hub/me", headers=bad).status_code == 401
+
+
 def test_google_sign_in_records_the_persons_real_name_once(client, env):
     from dory.coo_store import SQLiteDocStore
     from dory.orgs import OrgStore

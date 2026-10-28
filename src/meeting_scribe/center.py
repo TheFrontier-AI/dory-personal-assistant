@@ -12,9 +12,11 @@ import asyncio
 import contextlib
 import json
 import logging
+import math
 import re
 import secrets
 import time
+import unicodedata
 import uuid
 from collections import defaultdict, deque
 from collections.abc import Callable
@@ -99,6 +101,7 @@ from dory.orgs import (
     Workspace,
     WorkspaceTaken,
     stamp,
+    tidy,
     trial_license,
     workspace_id,
 )
@@ -111,10 +114,13 @@ logger = logging.getLogger(__name__)
 
 CENTER_HTML = Path(__file__).parent / "static" / "center.html"
 MAX_ORGS_PER_USER = 5
+ORG_REPEAT_WINDOW = timedelta(minutes=10)  # the same name again = the same click, not a new company
+BLANK_LETTERS = "\u115f\u1160\u3164\uffa0\u2800"  # letters that draw nothing (Hangul fillers...)
 CHAT_PER_HOUR = 30
 CHAT_HISTORY_PROMPT_TURNS = 6
 STATE_KIND = "dory_oauth_state"
 STATE_TTL = timedelta(minutes=10)
+STATE_RE = re.compile(r"[A-Za-z0-9_-]{1,64}")  # token_urlsafe; a "/" made Firestore raise
 
 router = APIRouter(prefix="/api/center")
 events_router = APIRouter()
@@ -127,6 +133,14 @@ def _org_store() -> OrgStore:
 
     s, store = hub.get_dory_runtime()
     return make_org_store(s, store)
+
+
+@lru_cache
+def _org_limiter():
+    """New organizations per person: 3 at once, then one every 10 s."""
+    from meeting_scribe.monitor_api import TokenBucket  # monitor_api imports this module
+
+    return TokenBucket(rate_s=10.0, burst=3)
 
 
 def get_orgs() -> OrgStore:
@@ -578,7 +592,21 @@ async def accept_membership(
 
 
 class CreateOrg(BaseModel):
-    name: str = Field(min_length=1, max_length=120)
+    name: str = Field(max_length=120)  # blank: the route's own 422 (one message for the page)
+
+
+def org_name(raw: str) -> str:
+    """The name as stored: spaces collapsed, nothing invisible around it. 422 when nothing
+    visible is left (spaces, zero-width or filler characters only)."""
+    name = tidy("name", raw, 120)
+    seen = [
+        i
+        for i, c in enumerate(name)
+        if unicodedata.category(c)[0] not in "CZ" and c not in BLANK_LETTERS
+    ]
+    if not seen:
+        raise HTTPException(422, "Organization name is required")
+    return name[seen[0] : seen[-1] + 1]
 
 
 @router.put("/me/language")
@@ -825,16 +853,20 @@ async def discord_login_callback(
 
     def run() -> tuple[str, str | None, str | None]:
         nonlocal invite
-        st = orgs.docs.get(STATE_KIND, 0, params.get("state", ""))
+        state = params.get("state", "")
+        st = orgs.docs.get(STATE_KIND, 0, state) if STATE_RE.fullmatch(state) else None
         if not st or st.get("platform") != LOGIN_STATE:
             return "center", "bad_state", None
-        orgs.docs.delete(STATE_KIND, 0, params["state"])  # one time
+        orgs.docs.delete(STATE_KIND, 0, state)  # one time
         nxt = st.get("next") if st.get("next") in LOGIN_NEXT else "center"
         invite = str(st.get("invite") or "")[:64]
         if datetime.fromisoformat(st["exp"]) < datetime.now(UTC):
             return nxt, "expired", None
         if "code" not in params:
             return nxt, "denied", None
+        s = get_settings()
+        if not s.dory_session_secret:  # removed since /start: no session to give
+            return nxt, "not_configured", None
         try:
             uid, uname, email, verified = exchange(params["code"])
         except Exception:
@@ -852,7 +884,6 @@ async def discord_login_callback(
         )
         if not orgs.user_profile(email).name and uname:
             orgs.set_user_name(email, uname)
-        s = get_settings()
         token, _exp = hub.issue_session(email, s.dory_session_secret, s.dory_session_days)
         return nxt, None, token
 
@@ -909,10 +940,11 @@ async def discord_identity_callback(
         return RedirectResponse(f"/center?{urlencode(q)}#/account", status_code=303)
 
     def run() -> str | None:
-        st = orgs.docs.get(STATE_KIND, 0, params.get("state", ""))
+        state = params.get("state", "")
+        st = orgs.docs.get(STATE_KIND, 0, state) if STATE_RE.fullmatch(state) else None
         if not st or st.get("platform") != IDENTITY_STATE:
             return "bad_state"
-        orgs.docs.delete(STATE_KIND, 0, params["state"])  # one time
+        orgs.docs.delete(STATE_KIND, 0, state)  # one time
         if datetime.fromisoformat(st["exp"]) < datetime.now(UTC):
             return "expired"
         if "code" not in params:
@@ -935,13 +967,31 @@ async def discord_identity_callback(
 async def create_org(
     body: CreateOrg, email: str = Depends(hub.require_user), orgs: OrgStore = Depends(get_orgs)
 ) -> OrgView:
-    """The creator becomes owner; the license is the open-ended launch trial."""
+    """The creator becomes owner; the license is the open-ended launch trial. The same name again
+    within ORG_REPEAT_WINDOW (a lost response, a double tap) returns that organization; new ones
+    are rate limited per person (429 + Retry-After)."""
+    name = org_name(body.name)
+
+    def same(o: Org) -> bool:
+        if not o.created_at or " ".join(o.name.split()).casefold() != name.casefold():
+            return False
+        return datetime.now(UTC) - datetime.fromisoformat(o.created_at) < ORG_REPEAT_WINDOW
 
     def run() -> Org:
-        mine = [o for o in orgs.orgs_of_email(email) if o.role_of(email) == "owner"]
-        if len(mine) >= MAX_ORGS_PER_USER:
-            raise HTTPException(409, "Too many organizations")
-        return orgs.create(body.name, email, license=trial_license())
+        # one creation at a time, so two racing repeats see each other (the web is ONE instance)
+        with orgs.lock:
+            mine = [o for o in orgs.orgs_of_email(email) if o.role_of(email) == "owner"]
+            if repeat := next(filter(same, mine), None):
+                return repeat
+            wait = _org_limiter().take(email)
+            if wait > 0:
+                retry = str(max(1, math.ceil(wait)))
+                raise HTTPException(
+                    429, "Too many attempts, try again shortly", headers={"Retry-After": retry}
+                )
+            if len(mine) >= MAX_ORGS_PER_USER:
+                raise HTTPException(409, "Too many organizations")
+            return orgs.create(name, email, license=trial_license())
 
     org = await run_in_threadpool(run)
     return org_view(Ctx(email, hub.is_super_admin(email), org, "owner"))
@@ -988,7 +1038,7 @@ async def update_org(
         with orgs.lock:
             org = orgs.get(ctx.org.id)
             if body.name is not None:
-                org.name = body.name.strip()
+                org.name = org_name(body.name)
             if body.logo_url is not None:
                 org.logo_url = body.logo_url
             orgs.save(org)
@@ -4955,10 +5005,11 @@ async def connector_callback(
         return fail("not_available")
 
     def run() -> str | None:
-        st = orgs.docs.get(STATE_KIND, 0, params.get("state", ""))
+        state = params.get("state", "")
+        st = orgs.docs.get(STATE_KIND, 0, state) if STATE_RE.fullmatch(state) else None
         if not st or st.get("platform") != platform:
             return "bad_state"
-        orgs.docs.delete(STATE_KIND, 0, params["state"])  # one time
+        orgs.docs.delete(STATE_KIND, 0, state)  # one time
         if datetime.fromisoformat(st["exp"]) < datetime.now(UTC):
             return "expired"
         org = orgs.get(st["org_id"])
@@ -5215,7 +5266,7 @@ async def google_calendar_callback(
     if not g.enabled():
         return fail("not_available")
     if params.get("error"):  # the user pressed Cancel at Google
-        if params.get("state"):
+        if STATE_RE.fullmatch(params.get("state", "")):
             await run_in_threadpool(lambda: g.docs.delete("dory_google_state", 0, params["state"]))
         return fail("denied")
 

@@ -101,7 +101,7 @@ def verify_session(token: str, secret: str, now: datetime | None = None) -> str:
     except ValueError as exc:
         raise ValueError("malformed session") from exc
     want = _b64(hmac.new(secret.encode(), payload.encode(), hashlib.sha256).digest())
-    if not hmac.compare_digest(want, mac):
+    if not hmac.compare_digest(want.encode(), mac.encode()):  # bytes: a non-ASCII str raised
         raise ValueError("bad session signature")
     data = json.loads(_unb64(payload))
     if int(data.get("x", 0)) <= int((now or datetime.now(UTC)).timestamp()):
@@ -210,7 +210,8 @@ def user_from_token(
     try:
         claims = verify(raw, settings.hub_google_client_id)
     except ValueError as exc:
-        logger.info("Rejected hub token: %s", exc)
+        # the type only: google-auth puts a malformed token itself in the message
+        logger.info("Rejected hub token: %s", type(exc).__name__)
         raise HTTPException(401, "Invalid or expired token") from exc
     if claims.get("email_verified") is not True or not claims.get("email"):
         raise HTTPException(403, "This account has no verified email")
