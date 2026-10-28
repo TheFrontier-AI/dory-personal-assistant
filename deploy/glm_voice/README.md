@@ -44,6 +44,23 @@ box was still being provisioned (and the spot VM had been preempted three times 
 connect was refused. Prevention: provision on an ON-DEMAND VM for demo days, check `/health` on the
 port named in `DORY_GLM_VOICE_URL` before announcing voice, and keep the Mac watchdog's install grace.
 
+## The box on spot, on a disk that survives (28 Oct 2026)
+
+The owner chose spot ("the most cost-effective option") and accepted preemption: `glm-voice` is
+`computeinstance-u00ktbbsgedmfdt3k7`, preemptible under the `glm-voice-spot-cap` policy ($2 per GPU-hour cap;
+H200 spot was $1.09 against $5.40 on demand that day), on the EXISTING boot disk `glm-voice-boot`
+(`computedisk-u00c85z65rzvsssyyc`, 120 GiB) with the static IP. Consequences:
+
+- A preemption or a `vm.sh stop` leaves it STOPPED; nothing self-heals (the start-on-demand waker is inert
+  until the tenant admin acts, and that admin command now names the new instance id). Before a judged
+  demo: `vm.sh start` 20 minutes early, then `curl http://204.12.189.216:8766/health`.
+- `vm.sh delete` keeps the disk (the weights, both venvs and the services live on it) and `vm.sh create`
+  boots from it in about 2 minutes with no provision, no cloud-init. Cost while everything is off: the disk,
+  about $8.52 a month. Zero means deleting the disk too (`nebius compute disk delete --id <id>`), and the
+  next create then provisions from scratch (40 minutes).
+- Unverified: SSH to the recreated instance (its `/health` was checked, `vm.sh ssh` / `update` /
+  `provision` were not tried on it yet).
+
 ## The cascade sidecar: voice WITH tools (booking, calendar, ledger)
 
 GLM-4-Voice cannot call tools, so `cascade.py` (27 Oct 2026) runs next to it on the same VM, port
