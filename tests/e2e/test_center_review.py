@@ -305,3 +305,33 @@ def test_live_without_an_organization_says_why(page):
     page.locator("#fab").click()
     page.locator("#panel-live").click()
     expect(page.locator("#toast")).to_contain_text("Create your organization first")
+
+
+WCAG = {
+    "runOnly": {"type": "tag", "values": ["wcag2a", "wcag2aa", "wcag21a", "wcag21aa", "wcag22aa"]},
+}
+
+
+def test_an_invited_member_is_marked_and_accepts_from_the_banner(page):
+    """Added by email, not accepted yet: an "Invited" chip on the Members page (nothing of theirs
+    to edit); the person themself gets one banner on that org and accepts from it."""
+    from axe_playwright_python.sync_playwright import Axe
+
+    page.goto("/center?mock=1#/members")
+    row = page.locator("tr", has_text="new@example.co.th")
+    expect(row.locator(".chip", has_text="Invited")).to_be_visible()
+    expect(row.get_by_role("button", name="Edit profile")).to_have_count(0)
+    expect(page.locator("#invite-banner")).to_have_count(0)  # their own org: nothing to accept
+    page.locator("#org-switch").select_option("org_b2")
+    banner = page.locator("#invite-banner")
+    expect(banner).to_contain_text(
+        "Accept to share your name and linked accounts with this organization"
+    )
+    page.locator("#content table").wait_for()
+    res = Axe().run(page, options=WCAG)
+    assert res.violations_count == 0, res.generate_report()
+    banner.get_by_role("button", name="Accept invitation").click()
+    expect(page.locator("#invite-banner")).to_have_count(0)
+    page.locator("#org-switch").select_option("org_a1")
+    page.locator("#org-switch").select_option("org_b2")
+    expect(page.locator("#invite-banner")).to_have_count(0)  # accepted for good

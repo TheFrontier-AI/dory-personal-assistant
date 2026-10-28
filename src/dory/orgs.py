@@ -159,6 +159,16 @@ class Member(BaseModel):
     # web keep working; the web may edit `title`, Dory then adopts it.
     title: str = ""
     level: int = 0
+    # Invitations (release rule, 28 Oct 2026): someone added by email by another person is
+    # `pending` until THEY accept; until then the org sees only what it entered itself.
+    invited_at: str = ""
+    accepted_at: str = ""
+
+    @property
+    def pending(self) -> bool:
+        # no `invited_at` = added before invitations existed (or joined by themselves):
+        # accepted, so existing members never go blank
+        return bool(self.invited_at) and not self.accepted_at
 
     def identity(self, platform: str) -> str | None:
         """The verified platform account id of this member, or None."""
@@ -498,7 +508,11 @@ class OrgStore:
             name=name.strip()[:120] or oid,
             created_at=stamp(now),
             owner_email=owner,
-            members=members if members is not None else [Member(email=owner, role="owner")],
+            members=(
+                members
+                if members is not None
+                else [Member(email=owner, role="owner", accepted_at=stamp(now))]
+            ),
             license=license or trial_license(now=now),
             grandfathered=grandfathered,
         )
@@ -767,7 +781,11 @@ class OrgStore:
                 if i.platform == "discord":
                     for org in self.orgs_of_email(p.email):
                         for m in org.members:
-                            if m.email.lower() == p.email and m.discord_user_id != i.external_id:
+                            if (
+                                m.email.lower() == p.email
+                                and not m.pending
+                                and m.discord_user_id != i.external_id
+                            ):
                                 changed = True
                     self._sync_discord_user_id(p.email, i.external_id)
         return changed
@@ -825,7 +843,8 @@ class OrgStore:
         for org in self.orgs_of_email(email):
             changed = False
             for m in org.members:
-                if m.email == email and m.discord_user_id != user_id:
+                # a pending invite carries nothing of the person's own (accept_member copies it)
+                if m.email == email and not m.pending and m.discord_user_id != user_id:
                     m.discord_user_id, changed = user_id, True
             if changed:
                 self.save(org)
@@ -953,8 +972,30 @@ class OrgStore:
             return self.save(org)
 
     def member_profiles(self, org: Org) -> dict[str, UserProfile]:
-        """Profiles of every member of `org`, by email (one read per member)."""
-        return {m.email: self.user_profile(m.email) for m in org.members}
+        """What `org` may see of each member's own profile, by email (one read per member). A
+        member who has not accepted the invitation yet gets an empty profile: the org sees
+        only what it entered itself, and an email with a Dory account looks like one without."""
+        return {
+            m.email: UserProfile(email=m.email) if m.pending else self.user_profile(m.email)
+            for m in org.members
+        }
+
+    def accept_member(self, org_id: str, email: str) -> bool:
+        """The person accepts their invitation to `org_id` (their own act, never on their
+        behalf): from now on the org sees their profile and verified Discord. False when they
+        were not pending (already accepted: idempotent). KeyError when not a member."""
+        e = email.lower()
+        with self._lock:
+            org = self.get(org_id)
+            m = next((x for x in org.members if x.email.lower() == e), None) if org else None
+            if m is None:
+                raise KeyError(e)
+            if not m.pending:
+                return False
+            m.accepted_at = stamp(self._clock())
+            m.discord_user_id = m.discord_user_id or self.verified_discord_id(e)
+            self.save(org)
+            return True
 
     # ---- invite links
     def create_invite(
@@ -1029,12 +1070,21 @@ class OrgStore:
             org = self.get(inv.org_id)
             if org is None:
                 raise KeyError(inv.org_id)
-            if org.role_of(e):
+            if org.role_of(e):  # already added by email: opening the link is accepting
+                if self.accept_member(org.id, e):
+                    org = self.get(org.id)
                 return org, inv, False
             if len(org.members) >= max(org.license.seats, 1):
                 raise InviteError("seats")
+            now = stamp(self._clock())
             org.members.append(
-                Member(email=e, role=inv.role, discord_user_id=self.verified_discord_id(e))
+                Member(
+                    email=e,
+                    role=inv.role,
+                    discord_user_id=self.verified_discord_id(e),
+                    invited_at=now,
+                    accepted_at=now,
+                )
             )
             org = self.save(org)
             inv.used.append(e)
