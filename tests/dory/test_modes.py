@@ -1056,7 +1056,6 @@ def test_every_slash_command_is_bilingual(bot):
     names = {c.name for c in cmds}
     pairs = [
         ("สรุป", "summary"),
-        ("ตั้งค่า", "setup"),
         ("ลิงก์บัญชี", "linkaccount"),
         ("โหมด", "mode"),
         ("ภาษา", "language"),
@@ -1079,6 +1078,7 @@ def test_every_slash_command_is_bilingual(bot):
     ]
     for th_name, en_name in pairs:
         assert {th_name, en_name} <= names
+    cmds = [c for c in cmds if c.name != "setup"]  # one English command (test below)
     for c in cmds:
         assert " · " in c.description and len(c.description) <= 100, c.name
         for p in c.parameters:
@@ -1088,6 +1088,22 @@ def test_every_slash_command_is_bilingual(bot):
     th_cmds = [c for c in cmds if not c.name.isascii()]
     en_cmds = [c for c in cmds if c.name.isascii()]
     assert len(th_cmds) == len(en_cmds) == len(pairs)
+
+
+async def test_setup_is_one_english_command_with_a_thai_description(bot):
+    from dory.bot import DoryTranslator
+
+    bot._register_commands()
+    names = {c.name for c in bot.tree.get_commands()}
+    assert "setup" in names and "ตั้งค่า" not in names
+    setup = bot.tree.get_command("setup")
+    assert setup.description == t("cmd_setup", "en") and " · " not in setup.description
+    assert setup.guild_only and setup.default_permissions.manage_guild
+    payload = await setup.get_translated_payload(bot.tree, DoryTranslator())
+    assert payload["description_localizations"]["th"] == t("cmd_setup", "th")
+    assert len(t("cmd_setup", "en")) <= 100 and len(t("cmd_setup", "th")) <= 100
+    # every command is global: one sync reaches every server Dory is in, not just the first
+    assert not bot.tree._guild_commands
 
 
 def test_language_choice_labels_name_both_languages(bot):

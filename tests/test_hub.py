@@ -105,6 +105,16 @@ def test_page_serves_and_injects_client_id(client):
     assert r.headers["referrer-policy"] == "no-referrer"  # the page URL may carry a link code
 
 
+def test_a_setup_link_to_the_hub_goes_to_the_command_center(client):
+    """Links from before /setup pointed at the center: the center links the server to the
+    person's organization (which licenses it); the hub alone only made them a server admin."""
+    r = client.get("/hub?link=Ab_c-12&x=1", follow_redirects=False)
+    assert r.status_code == 307 and r.headers["location"] == "/center?link=Ab_c-12"
+    r = client.get("/hub?link=a%26b%3Dc", follow_redirects=False)
+    assert r.headers["location"] == "/center?link=a%26b%3Dc"
+    assert client.get("/hub", follow_redirects=False).status_code == 200
+
+
 def test_page_rejects_odd_client_id(client, env):
     env.setenv("HUB_GOOGLE_CLIENT_ID", '";alert(1)//')
     get_settings.cache_clear()

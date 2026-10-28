@@ -114,10 +114,10 @@ def test_index_renders_dory_invite_link(env, client):
     env.setenv("DORY_DISCORD_CLIENT_ID", "123456789012345678")
     get_settings.cache_clear()
     r = client.get("/recorder")
-    from meeting_scribe.app import CREATE_EVENTS, DORY_PERMISSIONS, MANAGE_EVENTS
+    from dory import permissions
+    from meeting_scribe.app import DORY_PERMISSIONS
 
-    assert DORY_PERMISSIONS == 1166416 | (1 << 44) | (1 << 33) | (1 << 49)
-    assert DORY_PERMISSIONS & CREATE_EVENTS and DORY_PERMISSIONS & MANAGE_EVENTS
+    assert DORY_PERMISSIONS == permissions.DORY_PERMISSIONS  # names: tests/dory/test_permissions.py
     assert (
         "https://discord.com/oauth2/authorize?client_id=123456789012345678"
         f"&scope=bot+applications.commands&permissions={DORY_PERMISSIONS}"

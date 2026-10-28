@@ -2,6 +2,7 @@
 Pure functions only, nothing touches the network."""
 
 import re
+from pathlib import Path
 
 import pytest
 
@@ -85,3 +86,15 @@ def test_every_entry_has_both_languages_with_the_same_placeholders():
         assert set(entry) == {"th", "en"}, key
         assert set(field.findall(entry["th"])) == set(field.findall(entry["en"])), key
     assert set(LANGS) == {"th", "en", "zh", "hi", "ms", "id", "vi", "ko", "ja", "auto"}
+
+
+def test_the_setup_command_is_written_slash_setup_everywhere_people_read_it():
+    # only /setup is registered; the plain Thai word ตั้งค่า ("settings") stays
+    old = re.compile(r"/\s*ตั้งค่า|คำสั่ง\s*ตั้งค่า")
+    static = Path(__file__).parents[2] / "src/meeting_scribe/static"
+    pages = sorted(static.glob("*.html"))
+    assert len(pages) >= 8
+    for page in pages:
+        assert not old.search(page.read_text(encoding="utf-8")), page.name
+    for key, entry in CATALOG.items():
+        assert not old.search(entry["th"] + entry["en"]), key

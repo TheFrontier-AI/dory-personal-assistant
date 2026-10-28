@@ -11,10 +11,13 @@ from collections.abc import Iterable
 
 from .i18n import t
 
-# Keep equal to meeting_scribe.app.DORY_PERMISSIONS (a test checks it): View Channels, Send
-# Messages, Embed Links, Attach Files, Read Message History, Add Reactions, Manage Channels,
-# Connect, Create Events and Manage Events.
-DORY_PERMISSIONS = 1166416 | (1 << 44) | (1 << 33) | (1 << 49)  # + Send Polls
+# The bot's permissions in every invite / re-authorize link (the web's "Add Dory to Discord" too):
+# text = View Channel, Send Messages, Send Messages in Threads, Create Public Threads (wiki posts in a
+# forum), Read Message History, Embed Links, Attach Files, Add Reactions, Send Polls; voice meetings =
+# Connect, Speak, Use Voice Activity; Create + Manage Events (meeting scheduler); Manage Channels
+# (Dory's chat, private and report channels); Manage Roles (role sync, dory.positions_bot).
+# tests/dory/test_permissions.py lists them by name.
+DORY_PERMISSIONS = 580860272299088
 
 # Voice helpers ("Dory · 2"...) only listen and speak: View Channel, Connect, Speak, Use Voice
 # Activity.

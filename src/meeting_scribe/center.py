@@ -1878,6 +1878,29 @@ class LinkBody(BaseModel):
     code: str = Field(min_length=10, max_length=200)
 
 
+@router.get("/link-codes/{code}")
+async def link_code_preview(
+    code: str, email: str = Depends(hub.require_user), guilds=Depends(hub.get_guild_store)
+) -> dict:
+    """What a `/setup` code would link, without using it: the server and the Discord user who ran
+    /setup. The page shows it and asks before linking, because a link someone else sends must
+    never add their server, or verify their Discord account as yours, on its own."""
+
+    def run() -> dict:
+        try:
+            info = guilds.link_code_info(code.strip())
+        except LinkError as exc:
+            raise HTTPException(404, "Link code is invalid, expired or already used") from exc
+        g = guilds.get(int(info["guild_id"]))
+        return {
+            "guild_name": g.guild_name or str(info["guild_id"]),
+            "icon_url": g.icon_url,
+            "created_by": str(info.get("discord_user_name") or ""),
+        }
+
+    return await run_in_threadpool(run)
+
+
 @router.post("/orgs/{org_id}/workspaces/discord/link")
 async def link_discord(
     body: LinkBody,
@@ -1886,7 +1909,7 @@ async def link_discord(
     guilds=Depends(hub.get_guild_store),
     lib: Library = Depends(get_library),
 ) -> WorkspaceView:
-    """Redeem a `/ตั้งค่า` code and attach that Discord server to this org. 409 when the server
+    """Redeem a `/setup` code and attach that Discord server to this org. 409 when the server
     already belongs to another org. The Google account also becomes a hub admin of the server."""
     code = body.code.strip()
 
@@ -2785,7 +2808,7 @@ def command_center_tools(ctx: Ctx, orgs: OrgStore, guilds: Any) -> list:
 
     def link_discord_server(code: str) -> dict:
         """Link a Discord server to the organization with the code Dory gave in that server
-        (/ตั้งค่า or /setup there, then paste the code here)."""
+        (/setup there, then paste the code here)."""
         try:
             body = LinkBody(code=(code or "").strip())
         except ValueError:
@@ -4842,7 +4865,7 @@ async def connector_start(
     orgs: OrgStore = Depends(get_orgs),
     connectors: dict = Depends(get_connectors),
 ) -> dict:
-    """JSON `{url}`: navigate the browser there. Discord: the bot invite (then `/ตั้งค่า` and the
+    """JSON `{url}`: navigate the browser there. Discord: the bot invite (then `/setup` and the
     link-code endpoint); Slack / ClickUp: the platform's OAuth consent page."""
     conn = connectors.get(platform)
     if conn is None:
@@ -4858,7 +4881,7 @@ async def connector_start(
     if not conn.enabled():
         raise HTTPException(503, f"{PLATFORM_NAMES[platform]} is not configured")
     if platform == "discord":
-        return {"url": conn.oauth_start(org), "kind": "invite", "next": "/ตั้งค่า"}
+        return {"url": conn.oauth_start(org), "kind": "invite", "next": "/setup"}
     state = secrets.token_urlsafe(24)
     exp = (datetime.now(UTC) + STATE_TTL).isoformat(timespec="seconds")
     await run_in_threadpool(

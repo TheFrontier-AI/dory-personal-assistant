@@ -471,7 +471,7 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Add Dory to your server"
  },
  "ng_step2": {
-  "th": "พิมพ์ <strong>/ตั้งค่า<\/strong> ใน Discord แล้วกดลิงก์ที่ได้",
+  "th": "พิมพ์ <strong>/setup<\/strong> ใน Discord แล้วกดลิงก์ที่ได้",
   "en": "Type <strong>/setup<\/strong> in Discord and open the link you get"
  },
  "ng_hint": {
@@ -1055,7 +1055,7 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Admins of this page"
  },
  "pp4_d": {
-  "th": "บัญชี Google ที่เชื่อมผ่านคำสั่ง /ตั้งค่า เห็นภาพรวมและถามดอรี่ได้เหมือนผู้บริหาร",
+  "th": "บัญชี Google ที่เชื่อมผ่านคำสั่ง /setup เห็นภาพรวมและถามดอรี่ได้เหมือนผู้บริหาร",
   "en": "Google accounts linked with the /setup command see the overview and can ask Dory like an executive"
  },
  "f_receipts_n": {
@@ -1727,7 +1727,7 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Invalid data"
  },
  "err_forbidden_guild": {
-  "th": "บัญชีนี้ไม่มีสิทธิ์จัดการเซิร์ฟเวอร์นี้ พิมพ์ /ตั้งค่า ใน Discord เพื่อเชื่อมใหม่",
+  "th": "บัญชีนี้ไม่มีสิทธิ์จัดการเซิร์ฟเวอร์นี้ พิมพ์ /setup ใน Discord เพื่อเชื่อมใหม่",
   "en": "This account is not allowed to manage this server. Type /setup in Discord to link it again."
  },
  "err_forbidden": {
@@ -1747,7 +1747,7 @@ dialog .row { display: flex; gap: 10px; justify-content: flex-end; flex-wrap: wr
   "en": "Linked to the server “{name}”"
  },
  "link_bad": {
-  "th": "ลิงก์นี้ใช้ไม่ได้ (หมดอายุหรือถูกใช้ไปแล้ว) พิมพ์ /ตั้งค่า ใน Discord เพื่อขอลิงก์ใหม่",
+  "th": "ลิงก์นี้ใช้ไม่ได้ (หมดอายุหรือถูกใช้ไปแล้ว) พิมพ์ /setup ใน Discord เพื่อขอลิงก์ใหม่",
   "en": "This link cannot be used (expired or already used). Type /setup in Discord to get a new one."
  }
 }</script>
@@ -1918,7 +1918,7 @@ async function exchangeSession(googleCredential) {
 try { const m = /^#session=(ss1\.[A-Za-z0-9_.-]+)$/.exec(location.hash); if (m) { session("set", m[1]); history.replaceState(null, "", location.pathname + location.search); } } catch { /* ignore */ }
 let token = session("get") || mem("get", TOKEN_KEY);
 
-// A `/ตั้งค่า` link opens /hub?link=<code>. Take the code out of the address bar at once (it is a
+// A `/setup` link opens /hub?link=<code>. Take the code out of the address bar at once (it is a
 // one-time credential) and keep it until it has been redeemed after sign-in.
 let linkCode = null;
 try {
@@ -2347,7 +2347,7 @@ async function loadGuild(id) {
   }
 }
 
-// Redeem the one-time `/ตั้งค่า` code with the signed-in Google account. Returns the guild id
+// Redeem the one-time `/setup` code with the signed-in Google account. Returns the guild id
 // on success. An auth error keeps the code for after the next sign-in; any other outcome
 // consumes it, since a code is useless once it has been tried.
 async function redeemLink() {

@@ -44,7 +44,7 @@ One Firestore document per guild, `{DORY_GUILD_COLLECTION}/{guild_id}` (default 
     channels             list[{id, name}] text channels, synced by the bot (feeds the hub dropdowns)
     updated_by, updated_at
 
-and one short-lived document per `/ตั้งค่า` link, `dory_link_codes/{code}`:
+and one short-lived document per `/setup` link, `dory_link_codes/{code}`:
 `{guild_id, discord_user_id, discord_user_name, created_at, expires_at, used}`.
 The code is a 32-byte URL-safe random string; redeeming it (hub, after Google sign-in) is a
 Firestore transaction that marks it used and adds the verified email to `admin_emails`. That is

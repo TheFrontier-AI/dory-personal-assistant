@@ -175,7 +175,7 @@ server; Dory posts a short Thai welcome. (2) Post receipt photos or PDFs in any 
 channel name), or @mention Dory with an image/PDF: it works immediately. A channel that took 3 or more
 receipts in the last 30 days (or one set in the hub) is read directly, and receipts posted elsewhere are
 copied to the busiest receipt channel.
-(3) Optional: a server owner / Administrator / Manage Server member types `/ตั้งค่า` (or `/setup`) and
+(3) Optional: a server owner / Administrator / Manage Server member types `/setup` and
 opens the private one-time link (valid 15 minutes) to manage the server in the hub after signing in with
 Google. Executives are the owner, members with Administrator or Manage Server, members with a role in the
 server's executive role names (default `ผู้บริหาร`, `Executive`) and `DORY_EXEC_USER_IDS`.
@@ -207,7 +207,7 @@ server's executive role names (default `ผู้บริหาร`, `Executive
   meeting`; `ออกประชุม` / `leave`, `leave the meeting`, `end meeting`, `stop meeting`; `เงียบก่อน` / `be quiet`,
   `quiet`, `shh`, `shush`, `mute`, `hush`, `snooze`; `คุยได้แล้ว` / `you can talk`, `talk again`, `unmute`,
   `unsnooze`, `wake up`, `come back`. Slash commands have Thai names with English aliases (`/โหมด` `/mode`,
-  `/ภาษา` `/language`, `/โทน` `/tone`, `/เข้าประชุม` `/join-meeting`, `/ออกประชุม` `/leave-meeting`, `/ตั้งค่า` `/setup`). The name is recognised in
+  `/ภาษา` `/language`, `/โทน` `/tone`, `/เข้าประชุม` `/join-meeting`, `/ออกประชุม` `/leave-meeting`) and the setup command is `/setup`. The name is recognised in
   Latin letters too ("hey dory, what did we spend?").
 - **Deleting and cancelling.** Reply to one of Dory's messages with just `ลบ` / `ลบข้อความ` / `ยกเลิกข้อความ` /
   `เอาออก` / `delete` / `remove` / `unsend` and Dory deletes it (all chunks of a long answer, tracked for about
@@ -280,7 +280,7 @@ server's executive role names (default `ผู้บริหาร`, `Executive
   bot syncs (name, icon, text channels, `installed_at`, `active`). The bot caches it ~60 s per guild;
   a missing document means defaults (every feature on). With `DORY_STORE=sqlite` an in-memory copy is
   used so local dev needs no Firestore. Env channel lists and `DORY_EXEC_ROLE_NAMES` still apply as
-  defaults. `/ตั้งค่า` writes a one-time doc in `dory_link_codes/{code}`.
+  defaults. `/setup` writes a one-time doc in `dory_link_codes/{code}`.
 - **Deep tasks (executives only)**: send `งานใหญ่: <task>` or `/deep <task>`. Dory acknowledges at
   once, exports the receipts the caller may see into a throwaway workspace and runs **Gemini CLI** headless
   there (isolated HOME, minimal environment, file-only tools, timeout `DORY_DEEP_TASK_TIMEOUT`), then posts
@@ -693,7 +693,7 @@ Discord setup (once, by the operator):
    take up to an hour to show new global commands).
 4. Optional local defaults, applied to every guild: `DORY_RECEIPT_CHANNEL_IDS`, `DORY_ASK_CHANNEL_IDS`,
    `DORY_DIGEST_CHANNEL_ID`, `DORY_EXEC_USER_IDS`, `DORY_EXEC_ROLE_NAMES`. `DORY_HUB_URL` is the web
-   service the `/ตั้งค่า` link points to (defaults to the Cloud Run URL).
+   service the `/setup` link points to (defaults to the Cloud Run URL).
 
 Other keys: `DORY_DIGEST_TIME`, `DORY_STORE`, `DORY_DB_PATH`, `DORY_FIRESTORE_COLLECTION`,
 `DORY_RECEIPT_BUCKET`, `DORY_GEMINI_CLI_PATH`, `DORY_DEEP_TASK_TIMEOUT`, `DORY_DEEP_TASK_MODEL`,
@@ -755,10 +755,10 @@ verified account); a guild switcher at the top lists the servers that account ad
 the latest receipts, Dory expense Q&A as an executive, feature switches (receipts, Q&A, daily digest,
 deep tasks, links and web search), receipt/ask/digest channels picked from the channel list the bot synced, the digest time and
 the executive role names, and per-channel modes plus reply languages (with a server default for each). A user with no server sees a big "เพิ่ม Dory เข้า Discord" button and the two
-steps: 1. add Dory to the server, 2. type `/ตั้งค่า` in Discord and open the link.
+steps: 1. add Dory to the server, 2. type `/setup` in Discord and open the link.
 
 How an account becomes a guild admin, with no OAuth secret and no bot token in the web service:
-`/ตั้งค่า` (owner / Administrator / Manage Server only) creates `dory_link_codes/{random 32 bytes}`
+`/setup` (owner / Administrator / Manage Server only) creates `dory_link_codes/{random 32 bytes}`
 (`guild_id`, Discord user, `expires_at` = now + 15 min, `used=false`) and replies *ephemerally* with
 `{DORY_HUB_URL}/hub?link=<code>`. After Google sign-in the page calls `POST /api/hub/link`; a Firestore
 transaction checks the code is unused and unexpired, marks it used and adds the verified email to the

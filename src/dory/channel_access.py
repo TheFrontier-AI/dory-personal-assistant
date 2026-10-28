@@ -1,4 +1,4 @@
-"""Which channels can Dory not read? Pure helpers shared by `/ห้อง`, `/ตั้งค่า` and the hub sync.
+"""Which channels can Dory not read? Pure helpers shared by `/ห้อง`, `/setup` and the hub sync.
 
 A channel is "hidden" when Dory lacks View Channel or Read Message History there. Nothing here
 talks to Discord beyond `channel.permissions_for(me)`, so it works with plain fakes in tests.
