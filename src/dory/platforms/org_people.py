@@ -120,6 +120,8 @@ def _lookup(a: Assistant, msg: Incoming):
         return None
     names: dict[str, str] = {}
     for m in org.members:
+        if m.pending and m.email.lower() != email.lower():
+            continue  # not accepted yet: their own name stays theirs
         try:
             n = orgs.user_profile(m.email).name
         except Exception:  # a broken profile must not hide the directory
