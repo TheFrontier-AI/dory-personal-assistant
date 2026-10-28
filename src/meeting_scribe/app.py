@@ -238,6 +238,8 @@ async def finish_meeting(meeting_id: str) -> Meeting:
     else:
         try:
             await pipeline.finalize(meeting_id)
+        except pipeline.FinalizeBusy:
+            logger.info("meeting=%s is being finalized already", meeting_id)
         except Exception:  # finalize already recorded FAILED + error on the meeting
             logger.warning("meeting=%s in-process finalize failed", meeting_id)
     return await run_in_threadpool(_get_or_404, meeting_id)
@@ -260,4 +262,7 @@ async def pubsub_finalize(request: Request) -> Response:
         await pipeline.finalize(meeting_id)
     except KeyError:
         logger.warning("Pub/Sub message for unknown meeting %s; dropping", meeting_id)
+    except pipeline.FinalizeBusy:  # not acked: redelivered after that finalizer is done
+        logger.info("meeting=%s is being finalized already; redeliver later", meeting_id)
+        return Response(status_code=409)
     return Response(status_code=204)

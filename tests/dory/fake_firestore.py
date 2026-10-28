@@ -119,6 +119,9 @@ class FakeTransaction:
     def delete(self, ref):
         self.writes.append((ref, None))
 
+    def update(self, ref, fields):
+        self.writes.append((ref, ("update", dict(fields))))
+
     def _commit(self):
         with self.client.commit_lock:
             for (col, doc_id), seen in self.reads.items():
@@ -128,6 +131,8 @@ class FakeTransaction:
             for ref, data in self.writes:
                 if data is None:
                     ref.delete()
+                elif isinstance(data, tuple):
+                    ref.update(data[1])
                 else:
                     ref.set(data)
         self._clean_up()

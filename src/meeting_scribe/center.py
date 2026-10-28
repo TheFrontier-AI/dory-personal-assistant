@@ -10,6 +10,7 @@ from __future__ import annotations
 
 import asyncio
 import contextlib
+import hashlib
 import json
 import logging
 import math
@@ -18,7 +19,7 @@ import secrets
 import time
 import unicodedata
 import uuid
-from collections import defaultdict, deque
+from collections import defaultdict
 from collections.abc import Callable
 from dataclasses import dataclass
 from datetime import UTC, datetime, timedelta
@@ -109,6 +110,7 @@ from dory.people_directory import Observed, PeopleBook, Person, Seen
 from dory.sharing import SHARED_DOCS_CHANNEL, SHARED_DOCS_NAME, WEB_DOCS_CHANNEL
 from meeting_scribe import hub
 from meeting_scribe.config import get_settings
+from meeting_scribe.limits import TokenBucket
 
 logger = logging.getLogger(__name__)
 
@@ -135,12 +137,9 @@ def _org_store() -> OrgStore:
     return make_org_store(s, store)
 
 
-@lru_cache
-def _org_limiter():
-    """New organizations per person: 3 at once, then one every 10 s."""
-    from meeting_scribe.monitor_api import TokenBucket  # monitor_api imports this module
-
-    return TokenBucket(rate_s=10.0, burst=3)
+ORG_LIMITER = TokenBucket(rate_s=10.0, burst=3, name="org_create")  # 3 at once, then 1 per 10 s
+CHAT_LIMITER = TokenBucket(rate_s=3600 / CHAT_PER_HOUR, burst=CHAT_PER_HOUR, name="chat")
+SIGNUP_KIND = "dory_org_signups"  # sha256(email, name) -> the org that sign-up created
 
 
 def get_orgs() -> OrgStore:
@@ -969,29 +968,35 @@ async def create_org(
 ) -> OrgView:
     """The creator becomes owner; the license is the open-ended launch trial. The same name again
     within ORG_REPEAT_WINDOW (a lost response, a double tap) returns that organization; new ones
-    are rate limited per person (429 + Retry-After)."""
+    are rate limited per person (429 + Retry-After). ONE store transaction decides and creates,
+    so two web instances racing on the same click still make one organization."""
     name = org_name(body.name)
-
-    def same(o: Org) -> bool:
-        if not o.created_at or " ".join(o.name.split()).casefold() != name.casefold():
-            return False
-        return datetime.now(UTC) - datetime.fromisoformat(o.created_at) < ORG_REPEAT_WINDOW
+    key = hashlib.sha256(f"{email.lower()}\0{name.casefold()}".encode()).hexdigest()
 
     def run() -> Org:
-        # one creation at a time, so two racing repeats see each other (the web is ONE instance)
-        with orgs.lock:
-            mine = [o for o in orgs.orgs_of_email(email) if o.role_of(email) == "owner"]
-            if repeat := next(filter(same, mine), None):
-                return repeat
-            wait = _org_limiter().take(email)
-            if wait > 0:
+        owned = sum(o.role_of(email) == "owner" for o in orgs.orgs_of_email(email))
+
+        def decide(tx) -> Org:
+            rec = tx.get(SIGNUP_KIND, 0, key)
+            org = orgs._tx_org(tx, rec["org_id"]) if rec else None
+            if (
+                org is not None
+                and org.role_of(email) == "owner"
+                and datetime.now(UTC) - datetime.fromisoformat(org.created_at) < ORG_REPEAT_WINDOW
+            ):
+                return org  # a repeat is answered, never limited
+            if owned >= MAX_ORGS_PER_USER:
+                raise HTTPException(409, "Too many organizations")
+            if wait := ORG_LIMITER.take_tx(tx, email.lower()):
                 retry = str(max(1, math.ceil(wait)))
                 raise HTTPException(
                     429, "Too many attempts, try again shortly", headers={"Retry-After": retry}
                 )
-            if len(mine) >= MAX_ORGS_PER_USER:
-                raise HTTPException(409, "Too many organizations")
-            return orgs.create(name, email, license=trial_license())
+            org = orgs._tx_create(tx, name, email, license=trial_license())
+            tx.put(SIGNUP_KIND, 0, key, {"org_id": org.id})
+            return org
+
+        return orgs.docs.transact(decide)
 
     org = await run_in_threadpool(run)
     return org_view(Ctx(email, hub.is_super_admin(email), org, "owner"))
@@ -4109,11 +4114,12 @@ async def voice_transcribe(
     audio: UploadFile = File(...),
     lang: str = Query(default="en", pattern="^(th|en)$"),
     ctx: Ctx = Depends(member_ctx),
+    orgs: OrgStore = Depends(get_orgs),
     transcriber: Callable[[bytes, str, str], Any] = Depends(get_transcriber),
 ) -> dict:
     """Speak in any language; get the words back verbatim plus, when needed, in the page's
     language (`translated`). The browser puts `translated or text` into the chat box."""
-    if not _chat_allowed(f"{ctx.org.id}:{ctx.email}:voice"):
+    if await run_in_threadpool(CHAT_LIMITER.take, orgs.docs, f"{ctx.org.id}:{ctx.email}:voice"):
         raise HTTPException(429, "Too many recordings; try again later")
     data = await audio.read()
     if not data:
@@ -4313,20 +4319,6 @@ class Turn(BaseModel):
     at: str
     workspace_id: str = ""
     via: str = ""  # "voice": said in a live call (typed turns leave it empty)
-
-
-_chat_times: dict[str, deque[float]] = defaultdict(deque)
-
-
-def _chat_allowed(key: str) -> bool:
-    now = time.monotonic()
-    q = _chat_times[key]
-    while q and now - q[0] > 3600:
-        q.popleft()
-    if len(q) >= CHAT_PER_HOUR:
-        return False
-    q.append(now)
-    return True
 
 
 def company_workspace(org: Org) -> Workspace | None:
@@ -4628,7 +4620,7 @@ async def chat(
         raise HTTPException(404, "Unknown workspace")
     if not license_ok(ctx.org.license, datetime.now(UTC)) and not ctx.is_super:
         raise HTTPException(402, "The license of this organization is not active")
-    if not _chat_allowed(f"{ctx.org.id}:{ctx.email}"):
+    if await run_in_threadpool(CHAT_LIMITER.take, orgs.docs, f"{ctx.org.id}:{ctx.email}"):
         raise HTTPException(429, "Too many messages; try again later")
     question = body.message.strip()
     asked = question

@@ -117,7 +117,6 @@ def w(docs, monkeypatch):
     get_settings.cache_clear()
     monkeypatch.setattr(monitor_api, "now", lambda: NOW)
     monkeypatch.setattr(monitor_sources, "wall_clock", lambda: NOW)
-    monkeypatch.setattr(monitor_api, "LIMITER", monitor_api.TokenBucket())
     runtime = (SimpleNamespace(deep_task_timeout=600), None)
     monkeypatch.setattr(hub, "get_dory_runtime", lambda: runtime)
     w = World()
@@ -418,17 +417,6 @@ def test_changes_etag_304_and_rate_limit(w, monkeypatch):
     assert get(w, "mem", "/changes?since=0").status_code == 200  # another person is unaffected
     clock.t += 2.0
     assert get(w, "adm", "/changes?since=0").status_code == 200  # a token came back
-
-
-def test_token_bucket_refills_one_token_per_rate():
-    clock = SimpleNamespace(t=0.0)
-    bucket = monitor_api.TokenBucket(rate_s=2.0, burst=3, clock=lambda: clock.t)
-    assert [bucket.take("a") for _ in range(3)] == [0.0, 0.0, 0.0]
-    assert bucket.take("a") == pytest.approx(2.0)
-    clock.t = 1.0
-    assert bucket.take("a") == pytest.approx(1.0)
-    clock.t = 2.0
-    assert bucket.take("a") == 0.0 and bucket.take("b") == 0.0
 
 
 def test_demoted_admin_loses_admin_items_and_events_next_poll(w):

@@ -253,6 +253,24 @@ def test_pubsub_finalize_decodes_and_is_idempotent(client, fakes):
     assert len(fakes["posted"]) == 1
 
 
+def test_finalize_running_on_another_instance_is_redelivered_not_repeated(client, fakes):
+    m = create(client)
+    upload(client, m["id"], 0)
+    store = pipeline.get_store()
+    assert store.claim_finalize(m["id"], "other-instance", 900)  # it is summarizing right now
+
+    r = client.post("/pubsub/finalize", json=pubsub_body({"meeting_id": m["id"]}))
+    assert r.status_code == 409  # not acked: Pub/Sub brings it back later
+    assert client.post(f"/api/meetings/{m['id']}/finish").json()["status"] != "failed"
+    assert fakes["summarized"] == 0
+
+    store.release_finalize(m["id"], "other-instance")
+    r = client.post("/pubsub/finalize", json=pubsub_body({"meeting_id": m["id"]}))
+    assert r.status_code == 204
+    assert client.get(f"/api/meetings/{m['id']}").json()["status"] == "done"
+    assert fakes["summarized"] == 1
+
+
 @pytest.mark.parametrize(
     "payload",
     [
