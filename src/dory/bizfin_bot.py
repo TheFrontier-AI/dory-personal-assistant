@@ -21,6 +21,7 @@ import discord
 from .bizfin_tools import BizfinCtx, bizfin_tools
 from .pdf_report import find_fonts
 from .security_check import GuardLimiter, guard_message, link_guard_hits
+from .web_search import searcher
 
 logger = logging.getLogger(__name__)
 SLIP_LOOKBACK_START, SLIP_LOOKBACK_END = "2000-01-01", "2100-01-01"
@@ -44,6 +45,7 @@ class BizfinMixin:
                 now=self.s.now,
                 client=self.llm if web else None,
                 model=self.s.gemini_model,
+                search=searcher(self.s.tavily_api_key) if self.s.tavily_api_key else None,
                 org=getattr(guild, "name", "") or "",
                 fonts=lambda: find_fonts(self.s.pdf_font),
                 safe_browsing_key=getattr(self.s, "safe_browsing_key", "") or "",

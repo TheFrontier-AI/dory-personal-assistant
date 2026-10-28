@@ -313,6 +313,10 @@ class Settings(BaseSettings):
     # (`duffel_test_...`) for flights and a LiteAPI sandbox key for hotels; a missing key = sample
     # data for that half; "sample" forces the sample for both (dry runs)
     travel_provider: str = ""
+    # web_search / deep_research / benchmark through Tavily (`web_search.tavily_search_call`): needs
+    # no Google Vertex; advanced depth = 2 credits a search, the free plan has 1,000 a month.
+    # Empty = Google Search grounding on the Gemini client.
+    tavily_api_key: str = Field(default="", repr=False)
     duffel_token: str = Field(default="", repr=False)
     liteapi_key: str = Field(default="", repr=False)
     email_daily_limit: int = 20  # emails per guild per day

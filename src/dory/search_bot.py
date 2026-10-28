@@ -35,7 +35,7 @@ from .research import (
     short_version,
 )
 from .search import Expander, build_sources, search_tools
-from .web_search import make_web_search, today_bangkok
+from .web_search import make_web_search, searcher, today_bangkok
 
 logger = logging.getLogger(__name__)
 REPORT_NAME = "research.pdf"
@@ -93,7 +93,8 @@ class SearchMixin:
             internal = search_tools(src, self._expander, self.s.now, self.s.zone)
             out = list(internal)
             if self.llm is not None and self.team.enabled(gid, "web"):
-                out.append(make_web_search(self.llm, self.s.gemini_model, now=self.s.now))
+                out.append(make_web_search(self.llm, self.s.gemini_model, now=self.s.now,
+                                           tavily_key=self.s.tavily_api_key))  # fmt: skip
                 out.append(self._research_tool(message, guild, asker, lang, internal[0]))
             for f in out:
                 f.dory_group = "search"
@@ -243,6 +244,7 @@ class SearchMixin:
                     synth_model=self.s.gemini_model,
                     internal=ctx,
                     handle=handle,
+                    search=searcher(self.s.tavily_api_key),
                 )
             except (asyncio.CancelledError, ResearchCancelled) as e:
                 state, reason = self._job_cancel_state(handle, e), ""  # before handle.cancel()
