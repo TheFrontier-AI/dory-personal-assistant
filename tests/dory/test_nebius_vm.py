@@ -1,6 +1,7 @@
 """Scale-to-zero start side: the waker starts a stopped VM once and waits for the voice server."""
 
 import asyncio
+import time
 from types import SimpleNamespace
 
 from dory import nebius_vm
@@ -86,3 +87,24 @@ def test_waker_start_failure_is_reported_not_raised(monkeypatch):
 
     w = VmWaker("vm-1", health="http://x/health", sdk=Broken("STOPPED"), http_get=http_get)
     assert asyncio.run(w.ensure_running(timeout_s=1)) is False
+
+
+def test_waker_gives_up_when_the_api_hangs(monkeypatch):
+    """A wrong key id makes the SDK retry its token refresh for ever; the waker must not wait."""
+    monkeypatch.setattr(nebius_vm, "POLL_S", 0.01)
+    monkeypatch.setattr(nebius_vm, "API_TIMEOUT_S", 0.02)
+
+    class Hanging(FakeApi):
+        async def get(self, vm_id):
+            await asyncio.Event().wait()
+
+        async def start(self, vm_id):
+            await asyncio.Event().wait()
+
+    async def http_get(url):
+        return 503
+
+    w = VmWaker("vm-1", health="http://x/health", sdk=Hanging(), http_get=http_get)
+    t0 = time.monotonic()
+    assert asyncio.run(w.ensure_running(timeout_s=5)) is False
+    assert time.monotonic() - t0 < 1

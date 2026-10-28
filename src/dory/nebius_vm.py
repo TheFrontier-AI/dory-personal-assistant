@@ -32,6 +32,8 @@ HEALTH_TIMEOUT_S = 3.0
 POLL_S = 5.0
 START_COOLDOWN_S = 60.0  # one start request per minute at most, whatever callers do
 DEFAULT_TIMEOUT_S = 300.0  # boot (~45 s) + model load (~90 s) + margin, measured 26 Oct 2026
+API_TIMEOUT_S = 60.0  # the SDK retries a failed token refresh for ever (a wrong key id kept the
+# room "waking" with the lock held, 28 Oct 2026); a timeout counts as a failed call
 
 
 def health_url(voice_url: str) -> str:
@@ -108,7 +110,7 @@ class VmWaker:
         return self._sdk
 
     async def state(self) -> str:
-        return await self._api().get(self.vm_id)
+        return await asyncio.wait_for(self._api().get(self.vm_id), API_TIMEOUT_S)
 
     # ---- the voice server
     @staticmethod
@@ -162,7 +164,7 @@ class VmWaker:
             return False
 
     async def start(self) -> None:
-        await self._api().start(self.vm_id)
+        await asyncio.wait_for(self._api().start(self.vm_id), API_TIMEOUT_S)
 
 
 def make_waker(settings: Any, voice_url: str) -> VmWaker | None:
