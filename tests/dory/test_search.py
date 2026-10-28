@@ -10,6 +10,7 @@ from datetime import UTC, datetime, timedelta
 from types import SimpleNamespace
 from zoneinfo import ZoneInfo
 
+import httpx
 import pytest
 from conftest import GUILD, FakeClient, json_resp, mk, text_resp
 from test_coordinator import (
@@ -663,3 +664,69 @@ async def test_prompt_guidance_is_added_only_with_the_tools():
     assert SEARCH_PROMPT not in qa.system_prompt(s, scoped=False)
     for name in ("search_everything", "web_search", "deep_research"):
         assert name in SEARCH_PROMPT
+
+
+# ------------------------------------------------------------------ Tavily engine (no Vertex needed)
+def test_tavily_search_sends_query_site_and_recency_and_numbers_the_evidence(caplog):
+    seen = {}
+
+    def handler(req: httpx.Request) -> httpx.Response:
+        seen["auth"], seen["body"] = req.headers["authorization"], json.loads(req.content)
+        return httpx.Response(200, json={"answer": "The policy rate is 1.25%.", "results": [
+            {"title": "BOT press release", "url": "https://www.bot.or.th/en/news/1",
+             "content": "The MPC kept   the rate at 1.25%.", "published_date": "Wed, 22 Oct 2026"},
+            {"title": "", "url": "https://bot.or.th/en/news/2", "content": "Minutes of the meeting"},
+            {"title": "a result without a link"},
+        ]})  # fmt: skip
+
+    res = ws.tavily_search_call(
+        "tvly-test", "Thai policy rate", recency="week", site="https://www.bot.or.th/x",
+        today=datetime(2026, 10, 29).date(), transport=httpx.MockTransport(handler),
+    )  # fmt: skip
+    assert seen["auth"] == "Bearer tvly-test" and seen["body"]["query"] == "Thai policy rate"
+    assert seen["body"]["time_range"] == "week" and seen["body"]["include_domains"] == ["bot.or.th"]
+    assert seen["body"]["search_depth"] == "advanced"
+    assert [(s["n"], s["domain"]) for s in res["sources"]] == [(1, "bot.or.th"), (2, "bot.or.th")]
+    assert res["sources"][1]["title"] == "bot.or.th"  # no title: the domain
+    assert res["answer"].startswith("The policy rate is 1.25%.")
+    assert "[1] The MPC kept the rate at 1.25%. (Wed, 22 Oct 2026)" in res["answer"]
+    assert "[2] Minutes of the meeting" in res["answer"] and res["date"] == "2026-10-29"
+    assert "Thai policy rate" not in caplog.text and "tvly-test" not in caplog.text
+
+
+def test_tavily_errors_and_empty_results_are_reported_never_invented(caplog):
+    def refuse(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(432, json={"detail": "plan limit"})
+
+    def nothing(req: httpx.Request) -> httpx.Response:
+        return httpx.Response(200, json={"answer": "made up", "results": []})
+
+    bad = ws.tavily_search_call("tvly-x", "our secret plan", transport=httpx.MockTransport(refuse))
+    assert bad == {"error": "web search failed (HTTPStatusError 432)"}
+    empty = ws.tavily_search_call("tvly-x", "q", transport=httpx.MockTransport(nothing))
+    assert empty == {"error": "the search found nothing", "sources": []}
+    assert ws.tavily_search_call("tvly-x", "   ") == {"error": "give a search query"}
+    assert "our secret plan" not in caplog.text
+
+
+def test_a_tavily_key_switches_the_engine_for_every_caller(monkeypatch):
+    calls = []
+    monkeypatch.setattr(
+        ws, "tavily_search_call", lambda key, q, **kw: calls.append((key, q, kw)) or {"answer": "a"}
+    )
+    assert ws.web_search_call(None, "m", "hello", recency="day", tavily_key="tvly-k") == {
+        "answer": "a"
+    }
+    assert calls[0][:2] == ("tvly-k", "hello") and calls[0][2]["recency"] == "day"
+    assert ws.searcher("") is ws.web_search_call  # no key: Google grounding as before
+    assert ws.searcher("tvly-k").keywords == {"tavily_key": "tvly-k"}
+
+
+def test_research_renumbers_tavily_evidence_like_grounded_citations():
+    a = {"n": 1, "title": "A", "domain": "a.com", "link": "https://a.com"}
+    b = {"n": 2, "title": "B", "domain": "b.com", "link": "https://b.com"}
+    tav = {"answer": "Summary.\n\nEvidence:\n[1] alpha\n[2] beta", "sources": [a, b]}
+    other = {"answer": "beta again [1]", "sources": [{**b, "n": 1}]}
+    findings, sources = rs.merge_findings([("q1", tav), ("q2", other)])
+    assert [s["link"] for s in sources] == ["https://a.com", "https://b.com"]
+    assert "[1] alpha" in findings[0]["answer"] and findings[1]["answer"] == "beta again [2]"

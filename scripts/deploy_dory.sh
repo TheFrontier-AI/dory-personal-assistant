@@ -203,13 +203,14 @@ else echo "    secret $VM_KEY_SECRET absent: Dory cannot start a stopped GPU box
 # Trips (`trips.py`), free sandboxes: a Duffel test-mode token (flights) and a LiteAPI sandbox key
 # (hotels), each optional; without one, that half answers from the sample provider.
 for pair in "${DUFFEL_SECRET:-dory-duffel-token}=DORY_DUFFEL_TOKEN" \
-            "${LITEAPI_SECRET:-dory-liteapi-key}=DORY_LITEAPI_KEY"; do
+            "${LITEAPI_SECRET:-dory-liteapi-key}=DORY_LITEAPI_KEY" \
+            "${TAVILY_SECRET:-dory-tavily-api-key}=DORY_TAVILY_API_KEY"; do
   s="${pair%%=*}"; var="${pair#*=}"
   if has_version "$s"; then
     run gcloud secrets add-iam-policy-binding "$s" --project "$PROJECT" \
       --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
     SECRETS+=",$var=$s:latest"
-  else echo "    secret $s has no version: that half of trips uses the sample provider"; fi
+  else echo "    secret $s has no version: $var is not mounted"; fi
 done
 ENV_JOINED="$(IFS='|'; echo "${ENV_PAIRS[*]}")"   # '|' delimiter: values contain commas
 # --instances=1 = manual scaling with a fixed count: the Discord gateway needs exactly one
