@@ -941,6 +941,10 @@ def company_language(pm: Pm, guilds=None) -> str:
     return ""
 
 
+# a member who has not accepted the invitation: no accounts of theirs (center.member_view)
+PENDING_HIDDEN = {"discord_user_id", "identities", "identity_tenants"}
+
+
 def settings_view(pm: Pm, guilds=None) -> dict:
     org = pm.ctx.org
     defaults = P.PmSettings(pm.orgs.docs).get(org.id)
@@ -956,7 +960,13 @@ def settings_view(pm: Pm, guilds=None) -> dict:
                 "personal_settings": g.personal_settings,
             }
     return {
-        "members": [{**m.model_dump(), "name": m.email.split("@")[0]} for m in org.members],
+        "members": [
+            {
+                **m.model_dump(exclude=PENDING_HIDDEN if m.pending else None),
+                "name": m.email.split("@")[0],
+            }
+            for m in org.members
+        ],
         "departments": [
             {"key": k, "label_th": th, "label_en": en} for k, (th, en) in DEPARTMENT_LABELS.items()
         ],

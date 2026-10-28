@@ -1182,6 +1182,7 @@ th: {
   n_account:"โปรไฟล์ของฉัน", n_mytasks:"งานของฉัน", n_mycal:"ปฏิทินบริษัท", cal_overlay:"ซ้อนปฏิทินของฉัน", cal_g_off:"ยังไม่ได้เชื่อม Google Calendar: เชื่อมด้านล่างเพื่อให้นัดใน Google ของคุณแสดงที่นี่ด้วย", cal_g_fail:"ดึง Google Calendar ไม่สำเร็จในตอนนี้ ส่วนอื่นของปฏิทินยังใช้ได้", cal_company:"บริษัท", cal_mine:"ของฉัน", mc_deadline:"กำหนดส่งโปรเจกต์", mc_milestone:"เป้าหมายย่อย", talk:"คุยกับดอรี่", panel_p:"ถามเรื่องบริษัทได้เลย ทั้งใบเสร็จ เอกสาร การประชุม และงานค่ะ", typing_dots:"ดอรี่กำลังพิมพ์…",
   platforms:"แพลตฟอร์ม", connected_of:"เชื่อมต่อแล้ว {x} จาก {y}", p_not_connected:"ยังไม่เชื่อมต่อ", members_linked:"เชื่อมบัญชีของตัวเองแล้ว {n} คน", members_n:"สมาชิก {n} คน",
   mem_name:"สมาชิก", mem_linked:"บัญชีที่เชื่อม", linked_n:"เชื่อมแพลตฟอร์มแชตแล้ว {n} แห่ง", linked_none:"ยังไม่ได้เชื่อมแพลตฟอร์มแชต",
+  inv_banner:"คุณถูกเพิ่มเข้า {org} กดยอมรับเพื่อแชร์ชื่อและบัญชีที่เชื่อมไว้กับองค์กรนี้", inv_accept:"ยอมรับคำเชิญ", inv_chip:"ได้รับเชิญ",
   verified:"ยืนยันแล้ว", unverified:"ยังไม่ยืนยัน", not_linked:"ยังไม่เชื่อม",
   acc_profile:"โปรไฟล์", acc_name:"ชื่อเล่น", acc_name_ph:"ชื่อที่เพื่อนร่วมงานและดอรี่เรียกคุณ เช่น เจมส์", acc_email:"อีเมล", acc_google:"เข้าสู่ระบบด้วย Google", acc_lang:"ภาษา", lang_th:"ไทย", lang_en:"English",
   acc_plat_h:"บัญชีของฉันบนแพลตฟอร์ม", acc_plat_p:"ยืนยันแล้ว = แพลตฟอร์มยืนยันตัวตนให้ · ยังไม่ยืนยัน = พิมพ์เอง ดอรี่ใช้ข้อมูลนี้เพื่อรู้ว่ากำลังคุยกับใครค่ะ",
@@ -1314,6 +1315,7 @@ en: {
   n_account:"My profile", n_mytasks:"My tasks", n_mycal:"Calendar", cal_overlay:"Overlay my calendar", cal_g_off:"Google Calendar is not connected: connect it below to see your Google events here too.", cal_g_fail:"Could not read Google Calendar right now; the rest of the calendar is up to date.", cal_company:"Company", cal_mine:"Mine", mc_deadline:"Project deadline", mc_milestone:"Milestone", talk:"Talk to Dory", panel_p:"Ask about the company: receipts, documents, meetings, tasks.", typing_dots:"Dory is typing…",
   platforms:"Platforms", connected_of:"Connected {x} of {y}", p_not_connected:"Not connected", members_linked:"{n} linked their accounts", members_n:"Members: {n}",
   mem_name:"Member", mem_linked:"Linked accounts", linked_n:"{n} chat platforms linked", linked_none:"No chat platform linked yet",
+  inv_banner:"You were added to {org}. Accept to share your name and linked accounts with this organization", inv_accept:"Accept invitation", inv_chip:"Invited",
   verified:"Verified", unverified:"Unverified", not_linked:"Not linked",
   acc_profile:"Profile", acc_name:"Nickname", acc_name_ph:"What colleagues and Dory call you, e.g. Jems", acc_email:"Email", acc_google:"Signed in with Google", acc_lang:"Language", lang_th:"ไทย", lang_en:"English",
   acc_plat_h:"My accounts on platforms", acc_plat_p:"Verified = proven by the platform · Unverified = typed by hand. Dory uses these to know who is talking.",
@@ -1690,7 +1692,7 @@ function route(quiet) {
   $("topbar-title").textContent = t(nm[1]);
   const c = $("content");
   const inside = c.contains(document.activeElement); // read before the old page is removed
-  const head = [el("h1", { text: t(nm[1]) }), id === "overview" ? el("p", { class: "sub", text: t(orgId ? "sub_overview" : "sub_noorg") }) : null];
+  const head = [el("h1", { text: t(nm[1]) }), id === "overview" ? el("p", { class: "sub", text: t(orgId ? "sub_overview" : "sub_noorg") }) : null, inviteBanner()].filter(Boolean);
   const body = el("div", { "aria-busy": "true" }, loading());
   const noorg = !orgId && id !== "settings" && id !== "account";
   // A refresh of the page on screen builds the new page out of sight (a zero-height, hidden, inert stage) and swaps it
@@ -1715,6 +1717,15 @@ function route(quiet) {
     show();
     body.replaceChildren(errBox(e, route));
   });
+}
+// added by email by someone else: the server shows the org nothing of theirs until they accept here
+function inviteBanner() {
+  const o = curOrg(); if (!o || !o.pending) return null;
+  const b = el("button", { class: "btn sm", type: "button", onclick: async () => {
+    b.disabled = true;
+    try { await api(O("/accept"), { method: "POST" }); await refreshMe(); toast(t("saved")); route(true); }
+    catch (e) { b.disabled = false; if (!handleAuth(e)) toast(errText(e), "error"); } } }, t("inv_accept"));
+  return el("div", { class: "notice", id: "invite-banner" }, el("p", { text: t("inv_banner", { org: o.name }) }), b);
 }
 const stale = (my) => my !== navSeq;
 const loading = () => el("div", { class: "card", role: "status", "aria-label": t("loading") }, el("div", { class: "skeleton", style: "width:60%" }), el("div", { class: "skeleton" }), el("div", { class: "skeleton", style: "width:80%" }));
@@ -3073,11 +3084,11 @@ VIEWS.members = async (body, my) => {
   };
   const draw = () => {
     holder.replaceChildren(list.length ? el("div", { class: "tblwrap" }, el("table", { class: "tbl stack" }, el("thead", {}, el("tr", {}, el("th", { scope: "col", text: t("mem_name") }), el("th", { scope: "col", text: t("mem_role") }), el("th", { scope: "col", text: t("mem_linked") }), el("th", { scope: "col" }, el("span", { class: "sr", text: t("remove") })))),
-      el("tbody", {}, list.map((m) => { const ids = linkedIds(m), n = m.linked_platforms ?? ids.length; return el("tr", {},
-        el("td", {}, el("div", {}, el("strong", { text: personName(m) }), m.title || m.department ? el("span", { class: "muted small", text: " · " + [m.title, m.department].filter(Boolean).join(", ") }) : null), el("div", { class: "muted small", text: [nickOf(m), m.email].filter(Boolean).join(" · ") }),
-          admin || m.email === me.email ? el("button", { class: "btn ghost sm", type: "button", style: "margin-top:6px", onclick: () => editProfile(m) }, t("mp_edit")) : null),
+      el("tbody", {}, list.map((m) => { const ids = linkedIds(m), n = m.linked_platforms ?? ids.length, invited = m.status === "invited"; return el("tr", {},
+        el("td", {}, el("div", {}, el("strong", { text: personName(m) }), invited ? el("span", { class: "chip muted", style: "margin-left:6px", text: t("inv_chip") }) : null, m.title || m.department ? el("span", { class: "muted small", text: " · " + [m.title, m.department].filter(Boolean).join(", ") }) : null), el("div", { class: "muted small", text: [nickOf(m), m.email].filter(Boolean).join(" · ") }),
+          (admin && !invited) || m.email === me.email ? el("button", { class: "btn ghost sm", type: "button", style: "margin-top:6px", onclick: () => editProfile(m) }, t("mp_edit")) : null),
         el("td", {}, roleCell(m)),
-        el("td", {}, el("div", { class: "small" + (n ? "" : " muted"), text: n ? tn("linked_n", n) : t("linked_none") }), el("div", { class: "idbs" }, el("span", { class: "idb ok", title: t("verified") }, ic("check"), "Google"), ids.map(idBadge))),
+        el("td", {}, el("div", { class: "small" + (n ? "" : " muted"), text: n ? tn("linked_n", n) : t("linked_none") }), el("div", { class: "idbs" }, invited ? null : el("span", { class: "idb ok", title: t("verified") }, ic("check"), "Google"), ids.map(idBadge))),
         el("td", {}, admin && m.role !== "owner" && (isOwner() || m.role === "member") ? el("button", { class: "btn danger sm", type: "button", onclick: async () => { if (await confirmDlg({ title: t("confirm_rm", { e: m.email }), body: t("confirm_rm_p"), ok: t("remove"), danger: true })) act(() => api(O("/members") + q({ email: m.email }), { method: "DELETE" })); } }, t("remove")) : null)); })))) : el("div", { class: "empty", text: t("mem_none") }));
   };
   draw();
@@ -4761,7 +4772,7 @@ function mockApi(method, path, body) {
     ];
     mockApi.s = { orgs: [{ id: "org_a1", name: "บริษัท ตัวอย่าง จำกัด", role: "owner", license: mkLic("trial", "active", 9), logo_url: "", created_at: d(120),
         profile: { tagline: "ซัพพลายวัตถุดิบและบรรจุภัณฑ์ให้ร้านอาหารทั่วไทย", about: "บริษัท ตัวอย่าง จำกัด จัดหาวัตถุดิบ บรรจุภัณฑ์ และอุปกรณ์ครัวให้ร้านอาหารและคาเฟ่กว่า 300 แห่ง ส่งถึงหน้าร้านภายใน 24 ชั่วโมงในกรุงเทพฯ และเชียงใหม่\n\nเราเริ่มจากร้านเล็ก ๆ ที่เยาวราช และยังคงทำงานแบบครอบครัว: รู้จักลูกค้าทุกคน และรับผิดชอบทุกออเดอร์", industry: "Food supply & distribution", founded: "2019", location: "Bangkok · Chiang Mai", website: "https://example.co.th", email: "hello@example.co.th", phone: "02-123-4567", size: "11-50", values: ["ซื่อสัตย์", "ส่งตรงเวลา", "ลูกค้าคือเพื่อน", "เรียนรู้ทุกวัน"] } },
-      { id: "org_b2", name: "กลุ่มร้านอาหารใหม่", role: "member", license: mkLic("monthly", "past_due", -2), logo_url: "", created_at: d(30), profile: {} }],
+      { id: "org_b2", name: "กลุ่มร้านอาหารใหม่", role: "member", pending: true, license: mkLic("monthly", "past_due", -2), logo_url: "", created_at: d(30), profile: {} }],
       ws: [{ id: "web", platform: "web", external_id: "web", name: "Dory Web", status: "connected", settings_url: null }, { id: "discord-1", platform: "discord", external_id: "1", name: "ออฟฟิศกรุงเทพ", status: "connected", settings_url: "/hub" }, { id: "discord-2", platform: "discord", external_id: "2", name: "ทีมเชียงใหม่", status: "connected", settings_url: "/hub" }],
       share: [{ from_workspace: "discord-1", to_workspace: "discord-2", categories: ["wiki", "minutes"] }],
       // the person signed in (owner): one verified Discord identity, one Slack id typed by hand
@@ -4776,7 +4787,7 @@ function mockApi(method, path, body) {
         { email: "ton@example.co.th", role: "member", name: "ต้น", first_name: "ต้น", last_name: "ตั้งใจ", title: "Backend Engineer", department: "Engineering", reports_to: "nid@example.co.th" },
         { email: "ploy@example.co.th", role: "member", name: "พลอย", first_name: "พลอย", last_name: "ประกายแก้ว", title: "Frontend Engineer", department: "Engineering", reports_to: "nid@example.co.th" },
         { email: "fon@example.co.th", role: "member", name: "ฝน", title: "Accountant", department: "Accounting", reports_to: "owner@example.co.th" },
-        { email: "new@example.co.th", role: "member", reports_to: null }],
+        { email: "new@example.co.th", role: "member", reports_to: null, status: "invited" }],
       actions: [
         { id: "A-0003", kind: "send_dm", args: { user_id: "223456789012345678", text: "อย่าลืมส่งใบเสนอราคาลูกค้า A วันนี้นะคะ" }, by: "owner@example.co.th", status: "pending", result: {}, error: "", created_at: d(0.002), done_at: "" },
         { id: "A-0002", kind: "create_event", args: { name: "Town hall Q4", start: "2026-10-24T10:00:00+07:00", end: "2026-10-24T11:00:00+07:00", where: "ห้องประชุมใหญ่" }, by: "mali@example.co.th", status: "failed", result: {}, error: "Missing permission: Manage Events", created_at: d(0.4), done_at: d(0.4) },
@@ -4794,7 +4805,8 @@ function mockApi(method, path, body) {
   const fullName = (x) => [x.first_name, x.last_name].filter(Boolean).map(mockLang).join(" ");
   const meView = () => ({ email: ME, is_super: true, orgs: s.orgs, language: null, name: s.me.name, first_name: s.me.first_name || "", last_name: s.me.last_name || "", full_name: fullName(s.me), title: s.me.title, department: s.me.department, about: s.me.about, identities: myIds(), identity_platforms: ["discord", "slack", "clickup", "line"], discord_verify: true });
   const prof = (x) => (x.email === ME ? s.me : x);
-  const memView = (x) => { const own = x.email === ME, pr = prof(x); const ids = own ? s.me.identities : x.identities || []; return { email: x.email, role: x.role, name: pr.name || "", first_name: pr.first_name || "", last_name: pr.last_name || "", full_name: fullName(pr), title: pr.title || "", department: pr.department || "", about: pr.about || "", reports_to: x.reports_to || null, identities: [google(x.email, pr.name), ...ids], linked_platforms: ids.length }; };
+  const memView = (x) => { if (x.status === "invited") return { email: x.email, role: x.role, name: "", first_name: "", last_name: "", full_name: "", title: "", department: "", about: "", reports_to: x.reports_to || null, identities: [], linked_platforms: 0, status: "invited" };
+    const own = x.email === ME, pr = prof(x); const ids = own ? s.me.identities : x.identities || []; return { email: x.email, role: x.role, name: pr.name || "", first_name: pr.first_name || "", last_name: pr.last_name || "", full_name: fullName(pr), title: pr.title || "", department: pr.department || "", about: pr.about || "", reports_to: x.reports_to || null, identities: [google(x.email, pr.name), ...ids], linked_platforms: ids.length }; };
   if (p === "/api/center/me") return ok(meView());
   if (p.startsWith("/api/center/link-codes/")) return ok({ guild_name: "New server", icon_url: "", created_by: "owner#0001" });
   if (p === "/api/center/me/profile") { for (const k of ["first_name", "last_name", "name", "title", "department", "about"]) if (typeof body[k] === "string") s.me[k] = body[k].trim(); return ok(meView()); }
@@ -4831,6 +4843,7 @@ function mockApi(method, path, body) {
   const orgView = () => ({ id: org.id, name: org.name, role: org.role, handover: org.handover || null, license: org.license, logo_url: org.logo_url || "", created_at: org.created_at, profile: org.profile || {} });
   if (sub === "" && method === "PUT") { if (body && body.name) org.name = String(body.name); if (body && typeof body.logo_url === "string") org.logo_url = body.logo_url; if (body && body.profile) org.profile = { ...(org.profile || {}), ...body.profile }; return ok(orgView()); }
   if (sub === "") return ok(orgView());
+  if (sub === "/accept" && method === "POST") { org.pending = false; return ok({ org_id: org.id, pending: false }); }
   if (sub === "/overview") { const c = {}; mockDocs.forEach((x) => { c[x.category] = (c[x.category] || 0) + 1; }); const bp = {}; s.ws.forEach((w) => { bp[w.platform] = (bp[w.platform] || 0) + 1; });
     const rows = s.members.map(memView), rk = { owner: 0, admin: 1, member: 2 };
     const leadership = rows.filter((x) => x.role === "owner" || x.role === "admin").sort((a, b) => rk[a.role] - rk[b.role] || a.email.localeCompare(b.email)).map((x) => ({ email: x.email, name: x.name, first_name: x.first_name, last_name: x.last_name, full_name: x.full_name, title: x.title, department: x.department, role: x.role }));
@@ -4893,7 +4906,7 @@ function mockApi(method, path, body) {
     return ok(s.invites.filter((i) => qp.get("all") === "1" || i.status === "active"));
   }
   if (sub === "/members") {
-    if (method === "POST") { const x = s.members.find((y) => y.email === body.email); if (x) x.role = body.role; else s.members.push({ email: body.email, role: body.role, reports_to: null }); }
+    if (method === "POST") { const x = s.members.find((y) => y.email === body.email); if (x) x.role = body.role; else s.members.push({ email: body.email, role: body.role, reports_to: null, status: "invited" }); }
     if (method === "DELETE") s.members = s.members.filter((y) => y.email !== qp.get("email"));
     return ok(s.members.map(memView));
   }
