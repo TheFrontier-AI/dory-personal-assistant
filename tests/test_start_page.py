@@ -2,6 +2,7 @@
 homepage and the chat (Dory's fish mark, her picture), no eyebrow / hairlines / resting shadows, and the
 homepage's hand-over of the company name (`/start?org=...`)."""
 
+import json
 import re
 from pathlib import Path
 
@@ -61,9 +62,26 @@ def test_motion_respects_reduced_motion():
     )
 
 
+def test_every_string_is_in_thai_and_english():
+    html, _ = page()
+    data = json.loads(
+        re.search(
+            r'<script type="application/json" id="i18n-data">(.*?)</script>', html, re.S
+        ).group(1)
+    )
+    missing = [k for k, v in data.items() if not (v.get("th") and v.get("en"))]
+    assert missing == []
+    for key in re.findall(r'(?<![\w.])t\("(\w+)"[,)]', html):
+        assert key in data, key  # every key the script asks for exists
+
+
 def test_org_name_is_prefilled_from_the_query_trimmed_and_capped():
     html, _ = page()
-    assert 'id="org-name" maxlength="120"' in html
+    assert (
+        'id="org-name" maxlength="120" required autocomplete="organization" aria-describedby="org-error"'
+        in html
+    )
+    assert '<div class="notice error" id="org-error" role="alert" hidden></div>' in html
     js = html.split('const ORG_KEY = "dory_signup_org";', 1)[1].split("} catch", 1)[0]
     assert '.get("org") || "").trim().slice(0, $("org-name").maxLength)' in js
     assert '$("org-name").value = org || sessionStorage.getItem(ORG_KEY) || "";' in js

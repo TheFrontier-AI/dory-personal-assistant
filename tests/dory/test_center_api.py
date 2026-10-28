@@ -68,6 +68,7 @@ def w(docs, tmp_path, monkeypatch):
     get_settings.cache_clear()
     pipeline.get_store.cache_clear()
     center._chat_times.clear()
+    center._org_limiter.cache_clear()
     s = FixedClockSettings(tz="Asia/Bangkok")
     w = World()
     w.s, w.docs = s, docs
@@ -266,7 +267,11 @@ def test_me_lists_orgs_with_roles_and_super_sees_all(w):
     assert {o["role"] for o in sup["orgs"]} == {"super"}
 
 
-def test_create_org_gives_owner_web_workspace_and_open_ended_trial(w):
+def test_create_org_gives_owner_web_workspace_and_open_ended_trial(w, monkeypatch):
+    from meeting_scribe.monitor_api import TokenBucket
+
+    roomy = TokenBucket(burst=100)
+    monkeypatch.setattr(center, "_org_limiter", lambda: roomy)  # this test is about the cap
     r = w.client.post("/api/center/orgs", json={"name": "New Co"}, headers=H["stranger"])
     assert r.status_code == 200, r.text
     org = r.json()
@@ -279,6 +284,98 @@ def test_create_org_gives_owner_web_workspace_and_open_ended_trial(w):
     for i in range(center.MAX_ORGS_PER_USER):
         r = w.client.post("/api/center/orgs", json={"name": f"n{i}"}, headers=H["stranger"])
     assert r.status_code == 409
+    # a repeat of the fifth one (its response was lost) still gets that organization back
+    again = w.client.post("/api/center/orgs", json={"name": "N3"}, headers=H["stranger"])
+    assert again.status_code == 200 and again.json()["name"] == "n3"
+
+
+def test_create_org_needs_a_visible_name_and_stores_it_trimmed(w):
+    for blank in ("", "   ", "\t\u00a0\u3000", "\u200b\u200d\ufeff", "\u3164 \u2800"):
+        r = w.client.post("/api/center/orgs", json={"name": blank}, headers=H["stranger"])
+        assert r.status_code == 422, repr(blank)
+        assert r.json() == {"detail": "Organization name is required"}
+    assert w.orgs.orgs_of_email("stranger@example.com") == []
+    long = w.client.post("/api/center/orgs", json={"name": "x" * 121}, headers=H["stranger"])
+    assert long.status_code == 422
+    r = w.client.post(
+        "/api/center/orgs", json={"name": " \u200b Acme   Co\u00a0 "}, headers=H["stranger"]
+    )
+    assert r.status_code == 200 and r.json()["name"] == "Acme Co"
+    assert w.orgs.get(r.json()["id"]).name == "Acme Co"
+    # a rename follows the same rule: never a blank name
+    url = f"/api/center/orgs/{r.json()['id']}"
+    for blank in ("   ", "​　"):
+        bad = w.client.put(url, json={"name": blank}, headers=H["stranger"])
+        assert bad.status_code == 422 and bad.json() == {"detail": "Organization name is required"}
+    assert w.orgs.get(r.json()["id"]).name == "Acme Co"
+    ok = w.client.put(url, json={"name": "  Acme   Group "}, headers=H["stranger"])
+    assert ok.status_code == 200 and w.orgs.get(r.json()["id"]).name == "Acme Group"
+
+
+def test_create_org_again_with_the_same_name_returns_the_first(w):
+    """A lost response and a second click (or a double tap) must not make a second company."""
+
+    def create(name, who="stranger"):
+        r = w.client.post("/api/center/orgs", json={"name": name}, headers=H[who])
+        assert r.status_code == 200, r.text
+        return r.json()
+
+    first = create("Acme Co")
+    again = create("  acme   CO ")
+    assert again["id"] == first["id"] and again["role"] == "owner"
+    assert create("Beta")["id"] != first["id"]  # a different name is a second company
+    # only a company the caller OWNS comes back: boss is an owner, mem only a member of org_t
+    assert create("Cafe Group", "mem")["id"] != "org_t"
+    # after ten minutes the same name is a deliberate new company
+    org = w.orgs.get(first["id"])
+    org.created_at = stamp(datetime.now(UTC) - timedelta(minutes=11))
+    w.orgs.save(org)
+    assert create("Acme Co")["id"] != first["id"]
+    names = sorted(o.name for o in w.orgs.orgs_of_email("stranger@example.com"))
+    assert names == ["Acme Co", "Acme Co", "Beta"]
+
+
+def test_two_racing_create_requests_make_one_org(w, monkeypatch):
+    import threading
+
+    real = OrgStore.create
+
+    def slow(self, *a, **kw):  # both requests are past any check before either has written
+        time.sleep(0.2)
+        return real(self, *a, **kw)
+
+    monkeypatch.setattr(OrgStore, "create", slow)
+    out = []
+
+    def post():
+        out.append(w.client.post("/api/center/orgs", json={"name": "Race Co"}, headers=H["boss"]))
+
+    threads = [threading.Thread(target=post) for _ in range(2)]
+    for t in threads:
+        t.start()
+    for t in threads:
+        t.join()
+    assert [r.status_code for r in out] == [200, 200]
+    assert out[0].json()["id"] == out[1].json()["id"]
+    assert [o.name for o in w.orgs.orgs_of_email("boss@example.com")].count("Race Co") == 1
+
+
+def test_creating_orgs_is_rate_limited_per_person_but_a_repeat_still_answers(w):
+    now = [100.0]
+    center._org_limiter().clock = lambda: now[0]  # the real bucket, on a test clock
+
+    def post(name, who="stranger"):
+        return w.client.post("/api/center/orgs", json={"name": name}, headers=H[who])
+
+    assert [post(n).status_code for n in ("A1", "A2", "A3")] == [200, 200, 200]
+    r = post("A4")
+    assert r.status_code == 429 and r.json() == {"detail": "Too many attempts, try again shortly"}
+    assert r.headers["Retry-After"] == "10"
+    assert post("a1").status_code == 200  # a repeat is answered, not limited
+    assert post("Other Two", "other").status_code == 200  # per person
+    assert len(w.orgs.orgs_of_email("stranger@example.com")) == 3
+    now[0] += 10
+    assert post("A4").status_code == 200
 
 
 def test_org_access_by_role(w):
@@ -1473,6 +1570,62 @@ def test_sign_in_with_discord_issues_a_dory_session_for_a_verified_email(w, monk
             f"/api/center/auth/discord/callback?code=noemail&state={st2}", follow_redirects=False
         )
         assert cb2.headers["location"] == "/center?error=discord_no_email&platform=discord"
+    finally:
+        app.dependency_overrides.pop(center.get_discord_login_exchange, None)
+        get_settings.cache_clear()
+
+
+def discord_login_state(w, monkeypatch, who=("5555", "Boss D", "Boss@Example.com", True)):
+    """Discord sign-in configured, the exchange faked to `who`: the state of a fresh start."""
+    monkeypatch.setenv("DORY_DISCORD_CLIENT_ID", "123456789012345678")
+    monkeypatch.setenv("DORY_DISCORD_CLIENT_SECRET", "shh")
+    monkeypatch.setenv("DORY_SESSION_SECRET", "sess")
+    get_settings.cache_clear()
+    app.dependency_overrides[center.get_discord_login_exchange] = lambda: lambda code: who
+    r = w.client.get("/api/center/auth/discord/start", follow_redirects=False)
+    return r.headers["location"].split("state=")[1].split("&")[0]
+
+
+def test_google_then_discord_with_the_same_verified_email_is_one_account(w, monkeypatch):
+    """boss signed up with Google (owner of org_t); "Sign in with Discord" later reports the same
+    verified email: the same Dory account, its companies and the Discord identity on it."""
+    try:
+        st = discord_login_state(w, monkeypatch)
+        url = f"/api/center/auth/discord/callback?code=x&state={st}"
+        token = w.client.get(url, follow_redirects=False).headers["location"].split("#session=")[1]
+        me = w.client.get("/api/center/me", headers={"Authorization": "Bearer " + token}).json()
+        google_me = w.client.get("/api/center/me", headers=H["boss"]).json()
+        assert me["email"] == google_me["email"] == "boss@example.com"
+        assert [o["id"] for o in me["orgs"]] == [o["id"] for o in google_me["orgs"]] == ["org_t"]
+        assert [
+            i["external_id"] for i in google_me["identities"] if i["platform"] == "discord"
+        ] == ["5555"]
+    finally:
+        app.dependency_overrides.pop(center.get_discord_login_exchange, None)
+        get_settings.cache_clear()
+
+
+def test_discord_sign_in_failures_are_clear_codes(w, monkeypatch):
+    try:
+        discord_login_state(w, monkeypatch)
+        # a state Dory never issued, of any shape, is bad_state on every OAuth callback (a slash
+        # in it made Firestore raise: 500)
+        for url in (
+            "/api/center/auth/discord/callback",
+            "/api/center/identity/discord/callback",
+            "/api/center/connectors/slack/callback",
+        ):
+            for bad in ("a/b", "x" * 2000, "", "nope"):
+                r = w.client.get(url, params={"code": "c", "state": bad}, follow_redirects=False)
+                assert r.status_code == 303 and "error=bad_state" in r.headers["location"], bad
+        # the session secret removed between start and callback: no dead session, a clear code
+        st = discord_login_state(w, monkeypatch)
+        monkeypatch.delenv("DORY_SESSION_SECRET")
+        get_settings.cache_clear()
+        r = w.client.get(
+            f"/api/center/auth/discord/callback?code=x&state={st}", follow_redirects=False
+        )
+        assert r.headers["location"] == "/center?error=not_configured&platform=discord"
     finally:
         app.dependency_overrides.pop(center.get_discord_login_exchange, None)
         get_settings.cache_clear()

@@ -120,14 +120,14 @@
 
     <!-- already a member -->
     <section class="card" id="existing" hidden>
-      <h2 data-i18n="ex_h"></h2>
+      <h2 tabindex="-1" data-i18n="ex_h"></h2>
       <p data-i18n="ex_p"></p>
       <div class="row"><a class="btn primary" href="/center" data-i18n="go_center"></a><button type="button" class="btn ghost" id="another" data-i18n="ex_new"></button></div>
     </section>
 
     <!-- step 2: plan -->
     <section class="card" id="step2" hidden>
-      <h2 data-i18n="p_h"></h2>
+      <h2 tabindex="-1" data-i18n="p_h"></h2>
       <p data-i18n="p_p"></p>
       <div class="plans" role="group" data-i18n-attr="aria-label:p_h">
         <button type="button" class="plan" data-plan="trial" aria-pressed="true"><span class="pill" data-i18n="p_rec"></span><b data-i18n="pl_trial"></b><span class="price" data-i18n="pl_trial_price"></span><span data-i18n="pl_trial_d"></span></button>
@@ -138,17 +138,17 @@
 
     <!-- step 3: organization -->
     <section class="card" id="step3" hidden>
-      <h2 data-i18n="o_h"></h2>
+      <h2 tabindex="-1" data-i18n="o_h"></h2>
       <p data-i18n="o_p"></p>
-      <label><span data-i18n="o_label"></span><input type="text" id="org-name" maxlength="120" autocomplete="organization" data-i18n-attr="placeholder:o_ph"></label>
-      <div class="notice error" id="org-error" hidden></div>
+      <label><span data-i18n="o_label"></span><input type="text" id="org-name" maxlength="120" required autocomplete="organization" aria-describedby="org-error" data-i18n-attr="placeholder:o_ph"></label>
+      <div class="notice error" id="org-error" role="alert" hidden></div>
       <div class="row"><button type="button" class="btn primary" id="create" data-i18n="o_btn"></button><button type="button" class="btn ghost" id="back2" data-i18n="back"></button></div>
     </section>
 
     <!-- step 4: connect Discord -->
     <section class="card" id="step4" hidden>
       <div class="notice ok" id="created-note"></div>
-      <h2 data-i18n="c_h"></h2>
+      <h2 tabindex="-1" aria-describedby="created-note" data-i18n="c_h"></h2>
       <p data-i18n="c_p"></p>
       <ol class="how">
         <li data-i18n-html="c1"></li>
@@ -198,6 +198,7 @@
   "not_configured": {"th": "ตอนนี้ยังเข้าสู่ระบบด้วย Google ไม่ได้ กรุณาลองใหม่ภายหลัง หรือติดต่อทีมดอรี่", "en": "Google sign-in isn't available yet. Please try again later or contact the Dory team."},
   "login_failed": {"th": "เข้าสู่ระบบไม่สำเร็จ ({status}) ลองอีกครั้ง", "en": "Sign-in failed ({status}). Please try again."},
   "signup_discord": {"th": "หรือสมัครด้วย Discord", "en": "Or sign up with Discord"},
+  "discord_opening": {"th": "กำลังเปิด Discord…", "en": "Opening Discord…"},
   "discord_no_email": {"th": "บัญชี Discord นี้ยังไม่มีอีเมลที่ยืนยันแล้ว กรุณาใช้ Google หรือยืนยันอีเมลใน Discord ก่อน", "en": "This Discord account has no verified email. Please use Google, or verify your email in Discord first."},
   "w_privacy": {"th": "เราใช้เฉพาะอีเมลจากบัญชี Google ของคุณเพื่อระบุตัวตน ไม่เข้าถึงข้อมูลอื่น", "en": "We use only the email address of your Google account to identify you. Nothing else is accessed."},
   "ex_h": {"th": "คุณมีองค์กรอยู่แล้ว", "en": "You already have an organization"},
@@ -218,8 +219,14 @@
   "o_label": {"th": "ชื่อองค์กร", "en": "Organization name"},
   "o_ph": {"th": "เช่น ร้านกาแฟบ้านสวน", "en": "e.g. Baan Suan Coffee"},
   "o_btn": {"th": "สร้างองค์กร", "en": "Create organization"},
-  "o_empty": {"th": "กรุณาใส่ชื่อองค์กร", "en": "Please enter a name."},
-  "o_failed": {"th": "สร้างไม่สำเร็จ ({status}) ลองอีกครั้ง", "en": "Could not create it ({status}). Please try again."},
+  "o_creating": {"th": "กำลังสร้าง…", "en": "Creating…"},
+  "o_check": {"th": "ตรวจสอบชื่อองค์กร ต้องไม่เว้นว่างและยาวไม่เกิน 120 ตัวอักษร", "en": "Check the organization name. It can't be blank and can be up to 120 characters."},
+  "o_offline": {"th": "ติดต่อดอรี่ไม่ได้ ตรวจสอบการเชื่อมต่ออินเทอร์เน็ตแล้วลองอีกครั้ง", "en": "Couldn't reach Dory. Check your connection and try again."},
+  "o_rate": {"th": "ลองหลายครั้งเกินไป ลองอีกครั้งในอีก {n} วินาที", "en": "Too many attempts. Try again in {n} seconds."},
+  "o_rate_soon": {"th": "ลองหลายครั้งเกินไป รอสักครู่แล้วลองอีกครั้ง", "en": "Too many attempts. Wait a minute, then try again."},
+  "o_rate_1": {"th": "ลองหลายครั้งเกินไป ลองอีกครั้งในอีก 1 วินาที", "en": "Too many attempts. Try again in 1 second."},
+  "login_again": {"th": "การเข้าสู่ระบบหมดอายุแล้ว เข้าสู่ระบบอีกครั้งเพื่อสร้างองค์กรต่อ ชื่อที่พิมพ์ไว้ยังอยู่", "en": "Your sign-in expired. Sign in again to finish creating your organization; the name you typed is kept."},
+  "o_failed": {"th": "สร้างองค์กรไม่สำเร็จ (ข้อผิดพลาด {status}) ลองอีกครั้งในอีกสักครู่", "en": "Couldn't create the organization (error {status}). Try again in a moment."},
   "o_too_many": {"th": "บัญชีนี้สร้างองค์กรครบจำนวนแล้ว", "en": "This account has reached its organization limit."},
   "created": {"th": "สร้าง \"{name}\" แล้ว แพ็กเกจ: {plan} ใช้ฟรีไม่จำกัด", "en": "\"{name}\" is ready. Plan: {plan}, free and unlimited"},
   "c_h": {"th": "เชื่อมต่อดอรี่กับ Discord ของทีม", "en": "Connect Dory to your team's Discord"},
@@ -315,11 +322,23 @@ function show(step) {
     const k = Number(s.dataset.step); s.classList.toggle("on", k === n); s.classList.toggle("done", k < n);
   }
   window.scrollTo({ top: 0 });
+  $(step).querySelector("h1, h2").focus({ preventScroll: true }); // keyboard and screen-reader users land on the new step
 }
 async function api(path, opts = {}) {
   const res = await fetch(API + path, { ...opts, headers: { ...(opts.body ? { "Content-Type": "application/json" } : {}), Authorization: "Bearer " + token } });
-  if (!res.ok) { const err = new Error("api"); err.status = res.status; throw err; }
+  if (!res.ok) {
+    const err = new Error("api"); err.status = res.status;
+    err.retryAfter = Number(res.headers.get("Retry-After")) || 0; // seconds; 0 = not given (or an HTTP date)
+    err.detail = await res.json().then((j) => j.detail, () => undefined);
+    throw err;
+  }
   return res.json();
+}
+// A pressed button names what it is doing (the label survives a language switch) and takes no second press.
+function pending(btn, key) {
+  btn.dataset.idle ||= btn.dataset.i18n;
+  btn.dataset.i18n = key || btn.dataset.idle; btn.textContent = t(btn.dataset.i18n);
+  for (const a of ["aria-busy", "aria-disabled"]) if (key) btn.setAttribute(a, "true"); else btn.removeAttribute(a);
 }
 function renderGoogleButton() {
   if (!CLIENT_ID) { $("not-configured").hidden = false; $("gsi-button").hidden = true; return; }
@@ -343,20 +362,34 @@ async function signedIn(stored = false) {
   show(me.orgs.length ? "existing" : "step2");
 }
 $("another").addEventListener("click", () => show("step2"));
-$("to3").addEventListener("click", () => { show("step3"); $("org-name").focus(); });
+$("to3").addEventListener("click", () => show("step3"));
 $("back2").addEventListener("click", () => show("step2"));
 $("create").addEventListener("click", async () => {
-  const name = $("org-name").value.trim();
-  if (!name) { note($("org-error"), () => t("o_empty")); return; }
-  $("create").disabled = true; note($("org-error"), null);
+  const btn = $("create"), field = $("org-name"), name = field.value.trim();
+  if (btn.hasAttribute("aria-busy")) return; // a second click or Enter while the first request runs
+  const badName = () => { field.setAttribute("aria-invalid", "true"); note($("org-error"), () => t("o_check")); field.focus(); };
+  if (!name) return badName();
+  field.removeAttribute("aria-invalid"); note($("org-error"), null); pending(btn, "o_creating");
   try {
     // Launch: the only plan is the open-ended trial (POST /orgs grants it); nothing is charged.
+    // A retry after a lost answer is safe: the server returns the same organization for a repeat within 10 minutes.
     const org = await api("/orgs", { method: "POST", body: JSON.stringify({ name }) });
-    note($("created-note"), () => t("created", { name, plan: t("pl_" + (org.license && org.license.plan || "trial")) }));
+    note($("created-note"), () => t("created", { name: org.name || name, plan: t("pl_" + (org.license && org.license.plan || "trial")) }));
     show("step4");
   } catch (e) {
-    note($("org-error"), () => t(e.status === 409 ? "o_too_many" : "o_failed", { status: e.status || "network" }));
-  } finally { $("create").disabled = false; }
+    if (e.status === 422) return badName();
+    if (e.status === 401) { // the sign-in died after step 1: sign in again; the name waits in this tab (Discord too)
+      session("clear"); token = "";
+      try { sessionStorage.setItem(ORG_KEY, name); } catch { /* storage blocked: the field still has it */ }
+      show("step1"); renderGoogleButton(); note($("login-error"), () => t("login_again"));
+      return;
+    }
+    const n = Math.ceil(e.retryAfter);
+    note($("org-error"), () => !e.status ? t("o_offline")
+      : e.status === 409 ? t("o_too_many")
+      : e.status === 429 ? (n === 1 ? t("o_rate_1") : n > 0 ? t("o_rate", { n }) : t("o_rate_soon"))
+      : t("o_failed", { status: e.status }));
+  } finally { pending(btn, null); }
 });
 $("org-name").addEventListener("keydown", (e) => { if (e.key === "Enter") $("create").click(); });
 // The homepage hands over the company name as ?org=: prefill step 3 (trimmed, within the field's limit). The tab keeps
@@ -389,7 +422,12 @@ try {
   }
 } catch { /* ignore */ }
 $("discord-signup").hidden = !DISCORD_LOGIN;
-$("discord-signup").addEventListener("click", () => { location.href = "/api/center/auth/discord/start?next=start"; });
+$("discord-signup").addEventListener("click", () => {
+  if ($("discord-signup").hasAttribute("aria-busy")) return;
+  pending($("discord-signup"), "discord_opening"); location.href = "/api/center/auth/discord/start?next=start";
+});
+// Back from Discord through the back-forward cache: the button is ready again.
+addEventListener("pageshow", (e) => { if (e.persisted) pending($("discord-signup"), null); });
 if (session("get")) { token = session("get"); signedIn(!fromDiscord); } // already signed in on another page: skip the Google step
 </script>
 </body>

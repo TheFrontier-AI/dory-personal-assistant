@@ -91,6 +91,8 @@ class FakeCollection(FakeQuery):
         self.col, self.filters, self.n = self, (), None
 
     def document(self, doc_id):
+        if doc_id.count("/") % 2:  # the real client: an odd path is no document reference
+            raise ValueError("A document must have an even number of path elements")
         return FakeRef(self, doc_id)
 
 
