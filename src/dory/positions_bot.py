@@ -494,7 +494,8 @@ class PositionsMixin:
             m = by_email.get(e)
             did = str(m.identity("discord") or "") if m else ""
             gm = guild.get_member(int(did)) if did.isdigit() else None
-            name = getattr(gm, "display_name", "") or store.user_profile(e).name or e.split("@")[0]
+            own = store.user_profile(e).name if m and not m.pending else ""  # not before accepting
+            name = getattr(gm, "display_name", "") or own or e.split("@")[0]
             chain.append({"name": name, "title": center_position(org, m)[0] if m else ""})
         return {"position": position_card(org, mem.email), "chain": chain}
 

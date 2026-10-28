@@ -248,13 +248,25 @@ class MemberView(BaseModel):
     identities: list[IdentityView] = Field(default_factory=list)
     linked_platforms: int = 0  # platforms linked besides Google
     level: int = 0  # position level mirrored by the bot (dory.positions), 0 = unknown
+    status: str = "active"  # "invited" = added by email, has not accepted yet
 
 
 def member_view(m: Member, p: UserProfile | None = None) -> MemberView:
     """A member as the pages see them: the org record (role, manager, Discord id, the level the
     bot mirrors) plus the person's profile (names, title, department, linked accounts). The
     profile's title wins; the bot-mirrored `Member.title` fills in when the profile has none.
-    Platform accounts verified by the bot (`Member.identities`) show as verified identities too."""
+    Platform accounts verified by the bot (`Member.identities`) show as verified identities too.
+    Not accepted yet: only what the org entered (no profile, no accounts, no Discord id)."""
+    if m.pending:
+        return MemberView(
+            email=m.email,
+            role=m.role,
+            reports_to=m.reports_to,
+            title=m.title,
+            department=m.department,
+            level=m.level,
+            status="invited",
+        )
     p = p or UserProfile(email=m.email)
     ids = identity_views(p)
     have = {(i.platform, i.external_id) for i in ids}
@@ -325,6 +337,7 @@ class OrgBrief(BaseModel):
     name: str
     role: str
     license: LicenseView
+    pending: bool = False  # added by email, has not accepted the invitation yet
 
 
 class MeView(BaseModel):
@@ -544,10 +557,24 @@ async def me(email: str = Depends(hub.require_user), orgs: OrgStore = Depends(ge
                 name=o.name,
                 role=o.role_of(email) or "super",
                 license=license_view(o.license),
+                pending=any(m.pending for m in o.members if m.email.lower() == email),
             )
             for o in found
         ],
     )
+
+
+@router.post("/orgs/{org_id}/accept")
+async def accept_membership(
+    ctx: Ctx = Depends(member_ctx), orgs: OrgStore = Depends(get_orgs)
+) -> dict:
+    """The caller accepts their own invitation to this org (idempotent). Only the person
+    themself: there is no email to name, and a super admin who is not a member gets 403."""
+    try:
+        await run_in_threadpool(orgs.accept_member, ctx.org.id, ctx.email)
+    except KeyError:
+        raise HTTPException(403, "You are not a member of this organization") from None
+    return {"org_id": ctx.org.id, "pending": False}
 
 
 class CreateOrg(BaseModel):
@@ -1076,12 +1103,13 @@ async def add_member(
                 if body.discord_user_id:
                     kept.discord_user_id = body.discord_user_id
                 org.members.append(kept)
-            else:
+            else:  # invited: nothing of the person's own (profile, Discord) until they accept
                 org.members.append(
                     Member(
                         email=email,
                         role=body.role,
-                        discord_user_id=body.discord_user_id or orgs.verified_discord_id(email),
+                        discord_user_id=body.discord_user_id,
+                        invited_at=stamp(orgs._clock()),
                     )
                 )
             if body.role == "owner" and not org.owner_email:
@@ -2980,26 +3008,30 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
                 "another script or as a nickname) and call again with their email; ask the "
                 "user only if it is truly unclear",
             }
-        p = orgs.set_user_profile(
-            target,
-            name=nickname or None,
-            first_name=first_name or None,
-            last_name=last_name or None,
-            title=title or None,
-            department=department or None,
-            about=about or None,
-            job_description=job_description or None,
-        )
-        out: dict = {
-            "status": "ok",
-            "member": target,
-            "profile": {
+        fields = {
+            "name": nickname,
+            "first_name": first_name,
+            "last_name": last_name,
+            "title": title,
+            "department": department,
+            "about": about,
+            "job_description": job_description,
+        }
+        out: dict = {"status": "ok", "member": target}
+        if any(m.pending for m in ctx.org.members if m.email.lower() == target.lower()):
+            if any(fields.values()):  # their profile is theirs: not before they accept
+                return {
+                    "error": f"{target} has not accepted the invitation yet; they fill in "
+                    "their own profile once they accept (their place in the chart can be set)"
+                }
+        else:
+            p = orgs.set_user_profile(target, **{k: v or None for k, v in fields.items()})
+            out["profile"] = {
                 "full_name": p.full_name,
                 "title": p.title,
                 "department": p.department,
                 "about": p.about,
-            },
-        }
+            }
         if manager:
             want = manager.strip().casefold()
             me_words = ("me", "myself", "ผม", "ฉัน", "ดิฉัน", "เรา", "หนู")
@@ -3495,18 +3527,25 @@ async def set_member_profile(
         raise HTTPException(403, "Only an owner or admin can edit other people's profiles")
     if ctx.org.role_of(target) is None:
         raise HTTPException(404, "Unknown member")
+    fields = {
+        "name": body.name,
+        "first_name": body.first_name,
+        "last_name": body.last_name,
+        "title": body.title,
+        "department": body.department,
+        "about": body.about,
+        "job_description": body.job_description,
+    }
+    # their profile is theirs (shared with every org they are in): not written before they accept
+    invited = target != ctx.email and any(
+        m.pending for m in ctx.org.members if m.email.lower() == target
+    )
+    if invited and any(fields.values()):
+        raise HTTPException(409, "They have not accepted the invitation yet")
 
     def run() -> MemberView:
-        orgs.set_user_profile(
-            target,
-            name=body.name,
-            first_name=body.first_name,
-            last_name=body.last_name,
-            title=body.title,
-            department=body.department,
-            about=body.about,
-            job_description=body.job_description,
-        )
+        if not invited:
+            orgs.set_user_profile(target, **fields)
         if body.reports_to is not None:
             try:
                 orgs.set_reports_to(ctx.org.id, target, body.reports_to or None)
