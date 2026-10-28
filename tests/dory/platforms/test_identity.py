@@ -12,6 +12,8 @@ from test_slack import BOT, TEAM, FakeSlack
 
 from dory.coo_store import SQLiteDocStore
 from dory.identity_links import (
+    LINK_ATTEMPTS,
+    LINK_WINDOW_S,
     REPLY_ATTACHED,
     REPLY_INVALID,
     REPLY_LINKED,
@@ -21,7 +23,7 @@ from dory.identity_links import (
     IdentityLinks,
 )
 from dory.orgs import Member, OrgStore, Workspace, workspace_id
-from dory.platforms.core import LINK_ATTEMPTS, LINK_WINDOW_S, VERIFY_TTL_S, AccountState
+from dory.platforms.core import VERIFY_TTL_S, AccountState
 from dory.platforms.slack import SlackAdapter, SlackPort
 
 _n = itertools.count(1)
@@ -52,8 +54,10 @@ def wd(s, tmp_path):
         ],
     )
     w.orgs.create("Other", "o@example.com", org_id="org_b")
-    w.links = IdentityLinks(w.orgs, clock=lambda: NOW)
     w.clock = Clock()
+    start = w.clock()
+    # the guessing limit is kept in the store against this wall clock
+    w.links = IdentityLinks(w.orgs, clock=lambda: NOW + timedelta(seconds=w.clock() - start))
     w.a = make_assistant(s, tmp_path, clock=w.clock)
     w.a.identity = w.links
     w.port = FakePort(platform="line")
@@ -269,6 +273,39 @@ async def test_many_guessers_hit_the_tenant_limit(wd):
         await say(wd, "link 0000-0001", user=f"U{i}")
     await say(wd, "link 0000-0002", user="U-late")
     assert wd.port.texts[-1] == REPLY_SLOW_DOWN
+
+
+async def test_the_limit_is_shared_by_two_bridges_and_survives_a_restart(wd, s, tmp_path):
+    attach(wd.orgs, "org_a", "line", "Ubot")
+    code = code_for(wd)
+
+    def bridge():  # a new process: nothing in memory, the same store
+        a = make_assistant(s, tmp_path, clock=wd.clock)
+        a.identity = IdentityLinks(wd.orgs, clock=wd.links._clock)
+        return a
+
+    pair = (wd.a, bridge())
+    for i in range(LINK_ATTEMPTS):
+        wd.a = pair[i % 2]
+        await say(wd, f"link 0000-000{i}")
+    assert wd.port.texts == [REPLY_INVALID] * LINK_ATTEMPTS
+    wd.a = bridge()
+    await say(wd, f"link {code}")
+    assert wd.port.texts[-1] == REPLY_SLOW_DOWN
+    assert wd.orgs.member_by_identity("org_a", "line", "U-mew") is None
+
+
+async def test_a_store_that_cannot_count_refuses_the_code(wd, monkeypatch):
+    attach(wd.orgs, "org_a", "line", "Ubot")
+    code = code_for(wd)
+
+    def down(*a):
+        raise RuntimeError("store unavailable")
+
+    monkeypatch.setattr(wd.links, "take_try", down)
+    await say(wd, f"link {code}")
+    assert wd.port.texts == [REPLY_SLOW_DOWN]
+    assert wd.orgs.member_by_identity("org_a", "line", "U-mew") is None
 
 
 # ------------------------------------------------------------------ attaching a bot tenant

@@ -72,9 +72,6 @@ HISTORY_MESSAGES = 30
 HISTORY_SECONDS = 3 * 3600
 HISTORY_CHARS = 8000
 HISTORY_LINE_CHARS = 500
-LINK_ATTEMPTS = 5  # link-code attempts per platform user ...
-LINK_ATTEMPTS_TENANT = 30  # ... and per tenant, in LINK_WINDOW_S (guessing protection)
-LINK_WINDOW_S = 600.0
 # re-verify a Slack user (still a full member, same email) this often; also the oldest verdict
 # an org-wide widening may rest on
 VERIFY_TTL_S = 300.0
@@ -385,7 +382,6 @@ class Assistant:
         # platforms.org_sources.OrgSources: what a verified member may read across the org's
         # workspaces; None = every message keeps its own tenant's scope
         self.org_sources = org_sources
-        self._link_tries: dict[tuple, deque[float]] = {}
         # change_outbox_platform.PlatformChanges: central changes to confirm ("OK" in a 1:1)
         self.changes = None
         # (tenant, user) -> (checked at, still a verified member?) and the messages whose sender
@@ -676,18 +672,6 @@ class Assistant:
             logger.warning("could not resolve the org scope (%s)", safe_exc(e))
             return None
 
-    def _tries_ok(self, key: tuple, limit: int) -> bool:
-        q = self._link_tries.setdefault(key, deque())
-        now = self._clock()
-        while q and now - q[0] > LINK_WINDOW_S:
-            q.popleft()
-        if len(q) >= limit:
-            return False
-        q.append(now)
-        if len(self._link_tries) > 5000:  # stale keys of people who never came back
-            self._link_tries = {k: v for k, v in self._link_tries.items() if v}
-        return True
-
     async def _link_command(self, msg: Incoming, port: Port, codes: list[str]) -> None:
         """A message with a link / attach code: in a private chat with exactly one code, redeem
         it without the model and answer with a fixed line; with several codes, a fixed
@@ -698,10 +682,14 @@ class Assistant:
                 await self._say(msg, port, REPLY_PRIVATE if not msg.is_direct else REPLY_ONE_CODE)
             return
         code = codes[0]
-        if not (
-            self._tries_ok(("u", msg.platform, msg.tenant, msg.user), LINK_ATTEMPTS)
-            and self._tries_ok(("t", msg.platform, msg.tenant), LINK_ATTEMPTS_TENANT)
-        ):
+        try:  # the store's guessing limit is the only guard: no count, no attempt
+            allowed = await asyncio.to_thread(
+                self.identity.take_try, msg.platform, msg.user, msg.tenant
+            )
+        except Exception as e:
+            logger.error("link tries not counted platform=%s (%s)", msg.platform, safe_exc(e))
+            allowed = False
+        if not allowed:
             await self._say(msg, port, REPLY_SLOW_DOWN)
             return
         try:
