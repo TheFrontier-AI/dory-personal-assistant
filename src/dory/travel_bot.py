@@ -35,7 +35,8 @@ class TravelMixin:
             self.llm, self.s.gemini_model, provider, today=lambda: self.s.now().date()
         )
         self.flight_tracker = FlightTracker(self.docs, provider)
-        self.trips_provider = trips.make_provider(self.s)  # sample unless DORY_AMADEUS_CLIENT_ID
+        # free sandboxes: sample unless DORY_DUFFEL_TOKEN / DORY_LITEAPI_KEY
+        self.trips_provider = trips.make_provider(self.s)
         self._travel_last = 0.0
 
     def _travel_on(self, guild_id: int) -> bool:

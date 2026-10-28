@@ -1,5 +1,15 @@
 # Flight + hotel booking sandboxes for the voice demo (researched 27 Oct 2026)
 
+> **Update 28 Oct 2026: Amadeus is gone.** developers.amadeus.com now says "Amadeus for Developers
+> self-service portal has been decommissioned on July 17th, this website is for Amadeus Enterprise API
+> Portal only", and `test.api.amadeus.com` has no DNS record. Enterprise access is by request, not free.
+> `trips.py` now uses only free sandboxes, each checked on its live site that day: **Duffel test mode**
+> for flights ("use the Duffel API risk-free, with no danger of spending any money", tokens
+> `duffel_test_...`; Duffel Stays needs an access request, so it is not used for hotels) and the
+> **LiteAPI (Nuitee Connect) sandbox** for hotels ("Every account has free access to a sandbox key",
+> "No credit card is required", bookings paid with the simulated `ACC_CREDIT_CARD`). The comparison
+> below is the 27 Oct research and is out of date where it recommends Amadeus.
+
 Goal: a Python 3.12 / `httpx` voice assistant that can **search flights, price one, book it (sandbox
 order with a confirmation code), search a hotel and book it**, with results that look real on stage
 (BKK → SIN / HKG / TYO, hotel in Singapore). No money, no real tickets. Demo 30 Oct 2026.
