@@ -3,8 +3,9 @@
 For the presenter. Two surfaces, one brain: the website call at https://dory.frontier-tech.app/center
 and the Discord voice room of the test server "The Frontier Company Limited". English first.
 Stack on the day: brain GLM-5.3 on Nebius Token Factory (tool calling), receipt images Nemotron 3.5
-Super VL, voice = ASR -> brain -> TTS cascade on a Nebius GPU VM, bookings in the Amadeus TEST
-environment (no real tickets, plausible prices). Flight and hotel numbers below are from a rehearsal;
+Super VL, voice = ASR -> brain -> TTS cascade on a Nebius GPU VM, bookings in free sandboxes
+(Duffel test mode for flights, LiteAPI sandbox for hotels: no real tickets, no money; Amadeus
+Self-Service was decommissioned on 17 July 2026). Flight and hotel numbers below are from a rehearsal;
 whatever the sandbox returns on the day is fine, Dory reads it out.
 
 ## 1. Pitch and the three wow moments
@@ -84,7 +85,8 @@ read-back query. Tick every box the evening before.
 
 ### Build gates (must be green in the rehearsal server before the first full run)
 
-- `search_flights` / `search_hotels` (`src/dory/trips.py`): the Amadeus TEST sandbox, 25 s timeout; on an error, a
+- `search_flights` / `search_hotels` (`src/dory/trips.py`): Duffel test mode (flights, test airline `ZZ`) and
+  the LiteAPI sandbox (hotels), 25 s timeout; on an error, a
   timeout or an empty answer the deterministic sample provider answers with the numbers in this script (the
   result says `source: sample`, never spoken). `DORY_TRAVEL_PROVIDER=sample` forces it for the dry run.
 - `book_trip` two-step: the first call answers `needs_confirmation` with the quote, the same call in a LATER
@@ -152,7 +154,7 @@ Keep ONE unedited filler of 4-5 s (segment 2) so judges see the real latency onc
 
 | Failure | What you see | Fallback | What the presenter says |
 | --- | --- | --- | --- |
-| Amadeus sandbox down / slow / token rejected | search turn > 25 s, or `source: sample` in the log | automatic: sample provider with the numbers in this script, same shapes; force with `DORY_TRAVEL_PROVIDER=sample` before the show if the morning check fails | nothing, prices are plausible |
+| Duffel or LiteAPI sandbox down / slow / key rejected | search turn > 25 s, or `source: sample` in the log | automatic: sample provider with the numbers in this script, same shapes; force with `DORY_TRAVEL_PROVIDER=sample` before the show if the morning check fails | nothing, prices are plausible |
 | Voice VM down | panel "Waking the voice server, about two minutes" (`live_waking`) | `VmWaker` starts it; if not up in 2 min: typed chat in the same Talk to Dory panel, same tools, presenter types Mint's lines; Discord part typed in `#team-room` | "The voice box is cold; same brain, I'll type." |
 | Voice up but no audio out in Discord | Dory present, silent | finish the Discord moments on the website call (`/center`), and keep the Discord-only bits (task card, approval card, receipt photo) in Discord text on the phone | "Let's take her back to the web call." |
 | ASR mishears "Lumen" | Dory asks which meeting | glossary aliases (Loomin, Lumin); otherwise say "the Singapore kickoff on Thursday" | repeat with the date |
@@ -174,8 +176,8 @@ Keep ONE unedited filler of 4-5 s (segment 2) so judges see the real latency onc
       never the preemptible one), `/health` on the voice server, `DORY_GLM_VOICE_URL` reachable from the
       Cloud Run service, idle shutdown disabled for the day (`GLM_IDLE_SHUTDOWN_CMD` empty or
       `--idle-shutdown-min 180`), the 16:30 UTC stop timer not inside the slot.
-- [ ] T-45 min: Amadeus test token: one `search_flights` BKK-SIN from the shell; the client refreshes the
-      token itself (they live ~30 min), confirm it does. Token Factory key: one chat turn. Cloud Run
+- [ ] T-45 min: sandbox keys: one `search_flights` BKK-SIN and one `search_hotels` SIN from the shell;
+      check `source` is `duffel` / `liteapi`, not `sample` (both keys are static, no token refresh). Token Factory key: one chat turn. Cloud Run
       `meeting-scribe` warm (`/health`, open `/center`), worker pool `dory-bot` at 1 instance, Dory online in
       the server, in `#team-room`.
 - [ ] T-30 min: Discord audio: Dory's output audible through the room speakers (Discord output device =
