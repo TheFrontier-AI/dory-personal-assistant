@@ -322,6 +322,20 @@ pytest (`uv run env DYLD_FALLBACK_LIBRARY_PATH=... pytest`): `libopus` (`brew in
 - About 0.1 s of audio is lost at each 45 s segment boundary.
 - No retention policy on audio or Firestore (deleting data needs approval).
 - Desktop Chrome/Edge only (tab-audio capture).
+- **Single-instance protections (do not scale out before replacing them).** These live in process
+  memory, so they hold only while the web service runs ONE instance (`max-instances=1`) and reset on
+  every restart:
+  - sign-up `POST /orgs`: the 10-minute same-name dedupe and the per-person rate limit
+    (`center._org_limiter`, `ORG_REPEAT_WINDOW`);
+  - the web chat rate limit (`center._chat_times`) and the monitor's `TokenBucket`;
+  - the finalize lock (`pipeline.finalize`);
+  - **sensitive:** the guessing limit on 8-digit identity link codes in the platform bridge
+    (`platforms/core.Assistant._link_tries`: 5 per person, 30 per workspace per 10 min). It is the
+    only brute-force control on account linking.
+
+  Durable cap that stays: 5 organizations per person (counted from the store). Before running more
+  than one web or bridge instance, move dedupe and rate limits into the shared store (Firestore
+  transaction or a counter document).
 
 ## How to work here
 

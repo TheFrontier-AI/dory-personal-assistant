@@ -242,6 +242,22 @@ def test_a_sign_in_that_expired_before_create_goes_back_to_sign_in_and_keeps_the
     assert page.evaluate("sessionStorage.getItem('dory_signup_org')") == NAME
 
 
+def test_the_header_keeps_the_brand_and_the_email_on_one_line_on_a_small_phone(page):
+    """At 360 px Thai, the brand ดอรี่ broke as "ด / อรี่" and the email mid-word: one line each,
+    the email shortened with an ellipsis (its full text in the title)."""
+    page.add_init_script("try { localStorage.setItem('dory-language', 'th'); } catch (e) {}")
+    page.set_viewport_size({"width": 360, "height": 800})
+    signup(page, CREATED)
+    lines = page.evaluate(
+        """() => [".logo [data-i18n=brand]", "#who"].map((s) => {
+          const el = document.querySelector(s), lh = parseFloat(getComputedStyle(el).lineHeight) || 20;
+          return Math.round(el.getBoundingClientRect().height / lh);
+        })"""
+    )
+    assert lines == [1, 1], lines
+    assert page.locator("#who").get_attribute("title") == ME["email"]
+
+
 def test_a_one_second_wait_reads_one_second(page):
     signup(page, (429, {"detail": "Too many attempts, try again shortly"}, {"Retry-After": "1"}))
     to_step3(page)
