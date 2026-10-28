@@ -1,9 +1,10 @@
 """Trips: flight and hotel search plus sandbox booking (pure, no discord import).
 
-The provider is the Amadeus Self-Service TEST environment (cached inventory, no tickets, no money,
-but a real-looking PNR) behind the `Provider` protocol. `SampleProvider` is deterministic sample data
-(tests, no key, sandbox outage); `Fallback` tries the sandbox first and serves the sample on an error,
-a timeout or an empty answer, and every result says which (`source`). Tools bound per request:
+The providers are free sandboxes behind the `Provider` protocol (no tickets, no money): Duffel test
+mode for flights and the LiteAPI (Nuitee Connect) sandbox for hotels. Amadeus Self-Service, the first
+sandbox, was decommissioned on 17 July 2026. `SampleProvider` is deterministic sample data (tests, no
+key, sandbox outage); `Fallback` searches the sandbox first and serves the sample on an error, a
+timeout or an empty answer, and every result says which (`source`). Tools bound per request:
 `search_flights`, `search_hotels`, `book_trip` (two-step confirm through `SecretaryState`; an
 approval id, when given, must be APPROVED and the asker's own: checked here, never by the model),
 `travel_profile` and `list_trips`. A booking writes a trip record (`dory_trips`), one ledger receipt
@@ -27,7 +28,7 @@ from pydantic import BaseModel
 
 from .i18n import CATALOG, t
 from .models import Receipt
-from .secretary import fingerprint
+from .secretary import CONFIRM_TTL_S, fingerprint
 from .secretary_store import new_id
 
 logger = logging.getLogger(__name__)
@@ -38,12 +39,15 @@ MAX_RESULTS = 5
 PROFILE_MAX = 600
 OFFER_TTL_S = 3600.0
 SANDBOX_TIMEOUT_S = 25.0
-AMADEUS_TEST = "https://test.api.amadeus.com"
+DUFFEL_API = "https://api.duffel.com"
+LITEAPI_SEARCH = "https://api.liteapi.travel/v3.0"
+LITEAPI_BOOK = "https://book.liteapi.travel/v3.0"
+DUFFEL_TEST_PREFIX = "duffel_test_"
 CABINS = ("economy", "premium_economy", "business", "first")
 PNR_ALPHABET = "ABCDEFGHJKLMNPQRSTUVWXYZ23456789"
 TRAVEL_CATEGORY = "ค่าเดินทาง"
 _IATA = re.compile(r"^[A-Z]{3}$")
-_DUR = re.compile(r"PT(?:(\d+)H)?(?:(\d+)M)?")
+_DUR = re.compile(r"^P(?:(\d+)D)?(?:T(?:(\d+)H)?(?:(\d+)M)?(?:[\d.]+S)?)?$")
 
 
 class FlightOffer(BaseModel):
@@ -208,169 +212,189 @@ class SampleProvider:
         return Booking(reference=pnr(seed, 8), provider=self.name)
 
 
-# ----------------------------------------------------------------------------- Amadeus (test env)
+# ----------------------------------------------------------------------------- free sandboxes
+# Both are free and cannot spend money: Duffel takes only a test-mode token (`duffel_test_`), and a
+# LiteAPI answer that is not marked `sandbox` is refused (a production key would charge the card).
 def _minutes(iso_duration: str) -> int:
     m = _DUR.match(iso_duration or "")
-    return (int(m[1] or 0) * 60 + int(m[2] or 0)) if m else 0
+    return (int(m[1] or 0) * 1440 + int(m[2] or 0) * 60 + int(m[3] or 0)) if m else 0
 
 
-class Amadeus:
-    """Amadeus Self-Service, test environment by default. Bodies use the vendor media type the
-    spec declares; Flight Offers Price needs the X-HTTP-Method-Override header."""
+class Duffel:
+    """Flights in Duffel test mode: free, and its test airline Duffel Airways (ZZ) books on any
+    route. Search = one offer request with the offers inline; book = an instant order paid from the
+    test balance."""
 
-    name = "amadeus"
+    name = "duffel"
 
-    def __init__(self, client_id: str, client_secret: str, base: str = AMADEUS_TEST, *,
-                 transport: httpx.BaseTransport | None = None,
-                 clock: Callable[[], float] = time.time) -> None:  # fmt: skip
-        self.client_id, self.client_secret, self.base = client_id, client_secret, base
-        self.transport, self.clock = transport, clock
-        self._tok: dict = {}
-
-    def _token(self) -> str:
-        if self._tok and self._tok["exp"] > self.clock() + 60:
-            return self._tok["t"]
-        with httpx.Client(base_url=self.base, timeout=20, transport=self.transport) as c:
-            r = c.post("/v1/security/oauth2/token", data={
-                "grant_type": "client_credentials", "client_id": self.client_id,
-                "client_secret": self.client_secret,
-            })  # fmt: skip
-        r.raise_for_status()
-        j = r.json()
-        self._tok = {"t": j["access_token"], "exp": self.clock() + float(j.get("expires_in", 1799))}
-        return self._tok["t"]
+    def __init__(self, token: str, base: str = DUFFEL_API, *,
+                 transport: httpx.BaseTransport | None = None) -> None:  # fmt: skip
+        if not token.startswith(DUFFEL_TEST_PREFIX):
+            raise ValueError("only a Duffel test-mode token (duffel_test_...) is allowed")
+        self.token, self.base, self.transport = token, base, transport
 
     def _client(self) -> httpx.Client:
         return httpx.Client(
             base_url=self.base, timeout=SANDBOX_TIMEOUT_S, transport=self.transport,
-            headers={"Authorization": f"Bearer {self._token()}",
-                     "Content-Type": "application/vnd.amadeus+json"},
+            headers={"Authorization": f"Bearer {self.token}", "Duffel-Version": "v2",
+                     "Accept": "application/json"},
         )  # fmt: skip
 
     def flights(self, origin, destination, depart, ret, adults, cabin) -> list[FlightOffer]:
-        params = {"originLocationCode": origin, "destinationLocationCode": destination,
-                  "departureDate": depart, "adults": adults, "currencyCode": "THB",
-                  "travelClass": cabin.upper(), "max": MAX_RESULTS}  # fmt: skip
+        slices = [{"origin": origin, "destination": destination, "departure_date": depart}]
         if ret:
-            params["returnDate"] = ret
-        with self._client() as c:
-            r = c.get("/v2/shopping/flight-offers", params=params)
+            slices.append({"origin": destination, "destination": origin, "departure_date": ret})
+        body = {"data": {"slices": slices, "passengers": [{"type": "adult"}] * adults,
+                         "cabin_class": cabin}}  # fmt: skip
+        with self._client() as c:  # supplier_timeout (ms) stays under our own HTTP timeout
+            r = c.post("/air/offer_requests", json=body,
+                       params={"return_offers": "true", "supplier_timeout": 20000})  # fmt: skip
         r.raise_for_status()
-        body = r.json()
-        names = body.get("dictionaries", {}).get("carriers", {})
-        out = []
-        for o in body.get("data", []):
-            its = o["itineraries"]
-            segs = its[0]["segments"]
-            carrier = (o.get("validatingAirlineCodes") or [segs[0]["carrierCode"]])[0]
-            legs = [f"{s['carrierCode']}{s['number']}" for it in its for s in it["segments"]]
-            offer = FlightOffer(
-                provider=self.name, carrier=carrier, carrier_name=names.get(carrier, "").title(),
-                flights=legs, origin=segs[0]["departure"]["iataCode"],
-                destination=segs[-1]["arrival"]["iataCode"], depart=segs[0]["departure"]["at"],
-                arrive=segs[-1]["arrival"]["at"], duration_min=_minutes(its[0].get("duration", "")),
-                stops=len(segs) - 1, cabin=cabin, price=float(o["price"]["grandTotal"]),
-                currency=o["price"]["currency"], seats=o.get("numberOfBookableSeats"), raw=o,
-            )  # fmt: skip
-            if len(its) > 1:
-                back = its[1]["segments"]
-                offer.return_depart, offer.return_arrive = (
-                    back[0]["departure"]["at"],
-                    back[-1]["arrival"]["at"],
-                )
-            out.append(offer)
-        return out
+        data = r.json()["data"]
+        if data.get("live_mode"):
+            raise RuntimeError("Duffel answered in live mode; only test mode is allowed")
+        offers = sorted(data.get("offers") or [], key=lambda o: float(o["total_amount"]))
+        return [self._offer(o, cabin) for o in offers[:MAX_RESULTS]]
+
+    def _offer(self, o: dict, cabin: str) -> FlightOffer:
+        out = o["slices"][0]["segments"]
+        legs = [f"{s['marketing_carrier']['iata_code']}{s['marketing_carrier_flight_number']}"
+                for sl in o["slices"] for s in sl["segments"]]  # fmt: skip
+        offer = FlightOffer(
+            provider=self.name, carrier=o["owner"]["iata_code"], carrier_name=o["owner"].get("name", ""),
+            flights=legs, origin=out[0]["origin"]["iata_code"],
+            destination=out[-1]["destination"]["iata_code"], depart=out[0]["departing_at"],
+            arrive=out[-1]["arriving_at"], duration_min=_minutes(o["slices"][0].get("duration", "")),
+            stops=len(out) - 1, cabin=cabin, price=float(o["total_amount"]),
+            currency=o["total_currency"],
+            raw={"id": o["id"], "amount": o["total_amount"], "currency": o["total_currency"],
+                 "passengers": [p["id"] for p in o.get("passengers") or []]},
+        )  # fmt: skip
+        if len(o["slices"]) > 1:
+            back = o["slices"][1]["segments"]
+            offer.return_depart, offer.return_arrive = (
+                back[0]["departing_at"],
+                back[-1]["arriving_at"],
+            )
+        return offer
+
+    def book_flight(self, offer, traveller) -> Booking:
+        raw = offer.raw
+        # title, gender and birth date are test-mode placeholders: no ticket is issued
+        people = [{"id": pid, "given_name": traveller["first"] if i == 0 else f"GUEST{i + 1}",
+                   "family_name": traveller["last"], "title": "mr", "gender": "m",
+                   "born_on": "1990-03-14", "email": traveller["email"],
+                   "phone_number": traveller["phone"]} for i, pid in enumerate(raw["passengers"])]  # fmt: skip
+        body = {"data": {"type": "instant", "selected_offers": [raw["id"]], "passengers": people,
+                         "payments": [{"type": "balance", "amount": raw["amount"],
+                                       "currency": raw["currency"]}]}}  # fmt: skip
+        with self._client() as c:
+            r = c.post("/air/orders", json=body)
+        r.raise_for_status()
+        order = r.json()["data"]
+        return Booking(reference=order.get("booking_reference") or order["id"], provider=self.name)
+
+
+class LiteApi:
+    """Hotels in the LiteAPI (Nuitee Connect) sandbox: a free key with no card, real hotel names,
+    and a booking paid with ACC_CREDIT_CARD, which the sandbox only simulates. Search = rates by IATA
+    city code with the hotel data inline; book = prebook, then book."""
+
+    name = "liteapi"
+
+    def __init__(self, key: str, *, search_base: str = LITEAPI_SEARCH,
+                 book_base: str = LITEAPI_BOOK,
+                 transport: httpx.BaseTransport | None = None) -> None:  # fmt: skip
+        self.key, self.search_base, self.book_base = key, search_base, book_base
+        self.transport = transport
+
+    def _client(self, base: str) -> httpx.Client:
+        return httpx.Client(
+            base_url=base, timeout=SANDBOX_TIMEOUT_S, transport=self.transport,
+            headers={"X-API-Key": self.key, "Accept": "application/json"},
+        )  # fmt: skip
 
     def hotels(self, city, check_in, check_out, adults) -> list[HotelOffer]:
         nights = (date.fromisoformat(check_out) - date.fromisoformat(check_in)).days
-        with self._client() as c:
-            r = c.get("/v1/reference-data/locations/hotels/by-city",
-                      params={"cityCode": city, "radius": 5, "radiusUnit": "KM"})  # fmt: skip
-            r.raise_for_status()
-            ids = [h["hotelId"] for h in r.json().get("data", [])][:20]
-            if not ids:
-                return []
-            r = c.get("/v3/shopping/hotel-offers", params={
-                "hotelIds": ",".join(ids), "adults": adults, "checkInDate": check_in,
-                "checkOutDate": check_out, "roomQuantity": 1,
-            })  # fmt: skip
+        body = {"iataCode": city, "checkin": check_in, "checkout": check_out,
+                "occupancies": [{"adults": adults}], "currency": "THB", "guestNationality": "TH",
+                "limit": 20, "maxRatesPerHotel": 1, "includeHotelData": True, "timeout": 20}  # fmt: skip
+        with self._client(self.search_base) as c:
+            r = c.post("/hotels/rates", json=body)
         r.raise_for_status()
+        j = r.json()
+        if j.get("sandbox") is not True:
+            raise RuntimeError("LiteAPI answered outside its sandbox; only the sandbox is allowed")
+        info = {h.get("id"): h for h in j.get("hotels") or []}
         out = []
-        for h in r.json().get("data", []):
-            if not h.get("available") or not h.get("offers"):
+        for h in j.get("data") or []:
+            rt = next((x for x in h.get("roomTypes") or [] if x.get("offerId")), None)
+            price = (rt or {}).get("offerRetailRate")
+            price = (price[0] if price else {}) if isinstance(price, list) else (price or {})
+            if rt is None or "amount" not in price:
                 continue
-            offer = h["offers"][0]
-            total = float(offer["price"]["total"])
-            deadline = ((offer.get("policies") or {}).get("cancellations") or [{}])[0].get(
-                "deadline", ""
-            )
+            rate = (rt.get("rates") or [{}])[0]
+            pol = rate.get("cancellationPolicies") or {}
+            until = ((pol.get("cancelPolicyInfos") or [{}])[0]).get("cancelTime", "")
+            tag = pol.get("refundableTag", "")
+            total = float(price["amount"])
+            hotel = info.get(h["hotelId"], {})
             out.append(HotelOffer(
-                provider=self.name, hotel_id=h["hotel"]["hotelId"], name=h["hotel"]["name"].title(),
-                check_in=check_in, check_out=check_out, nights=nights,
-                room=((offer.get("room") or {}).get("description") or {}).get("text", "")[:80],
+                provider=self.name, hotel_id=h["hotelId"], name=hotel.get("name") or h["hotelId"],
+                area=hotel.get("address", ""), check_in=check_in, check_out=check_out, nights=nights,
+                room=(rate.get("name") or rt.get("name") or "")[:80],
                 price_per_night=round(total / max(nights, 1), 2), total=total,
-                currency=offer["price"]["currency"],
-                cancellation=f"free cancellation until {deadline}" if deadline else "", raw=offer,
+                currency=price.get("currency", "THB"),
+                cancellation=(f"free cancellation until {until}" if tag == "RFN" and until
+                              else "non-refundable" if tag == "NRFN" else ""),
+                raw={"offerId": rt["offerId"]},
             ))  # fmt: skip
         out.sort(key=lambda o: o.total)
         return out[:MAX_RESULTS]
 
-    def book_flight(self, offer, traveller) -> Booking:
-        with self._client() as c:
-            r = c.post("/v1/shopping/flight-offers/pricing",
-                       headers={"X-HTTP-Method-Override": "GET"},
-                       json={"data": {"type": "flight-offers-pricing", "flightOffers": [offer.raw]}})  # fmt: skip
+    def book_hotel(self, offer, traveller) -> Booking:
+        who = {"firstName": traveller["first"], "lastName": traveller["last"],
+               "email": traveller["email"]}  # fmt: skip
+        with self._client(self.book_base) as c:
+            r = c.post(
+                "/rates/prebook", json={"offerId": offer.raw["offerId"], "usePaymentSdk": False}
+            )
             r.raise_for_status()
-            priced = r.json()["data"]["flightOffers"][0]
-            r = c.post("/v1/booking/flight-orders", json={"data": {
-                "type": "flight-order", "flightOffers": [priced],
-                "travelers": [amadeus_traveler(traveller)],
-            }})  # fmt: skip
+            r = c.post("/rates/book", json={
+                "prebookId": r.json()["data"]["prebookId"], "holder": who,
+                "guests": [{"occupancyNumber": 1, **who}], "payment": {"method": "ACC_CREDIT_CARD"},
+            })  # fmt: skip
         r.raise_for_status()
-        order = r.json()["data"]
-        ref = (order.get("associatedRecords") or [{}])[0].get("reference") or order.get("id", "")
-        return Booking(reference=ref, provider=self.name)
+        b = r.json()["data"]  # bookingId: the sandbox's hotel confirmation code is the word "test"
+        return Booking(reference=b["bookingId"],
+                       status=b.get("status") or "CONFIRMED", provider=self.name)  # fmt: skip
+
+
+class Split:
+    """Flights from one sandbox, hotels from another. A half without a key answers nothing, so
+    `Fallback` serves the sample for it."""
+
+    def __init__(self, flights: Any = None, hotels: Any = None) -> None:
+        self.fl, self.ho = flights, hotels
+        self.name = "+".join(p.name for p in (flights, hotels) if p is not None)
+
+    def flights(self, *a) -> list[FlightOffer]:
+        return self.fl.flights(*a) if self.fl is not None else []
+
+    def hotels(self, *a) -> list[HotelOffer]:
+        return self.ho.hotels(*a) if self.ho is not None else []
+
+    def book_flight(self, offer, traveller) -> Booking:
+        return self.fl.book_flight(offer, traveller)
 
     def book_hotel(self, offer, traveller) -> Booking:
-        first, last = traveller["first"], traveller["last"]
-        with self._client() as c:
-            r = c.post("/v2/booking/hotel-orders", json={"data": {
-                "type": "hotel-order",
-                "guests": [{"tid": 1, "title": "MR", "firstName": first, "lastName": last,
-                            "phone": traveller["phone"], "email": traveller["email"]}],
-                "travelAgent": {"contact": {"email": traveller["email"]}},
-                "roomAssociations": [{"guestReferences": [{"guestReference": "1"}],
-                                      "hotelOfferId": offer.raw["id"]}],
-                # the spec's own example card: the test environment takes no real payment
-                "payment": {"method": "CREDIT_CARD", "paymentCard": {"paymentCardInfo": {
-                    "vendorCode": "VI", "cardNumber": "4151289722471370", "expiryDate": "2030-08",
-                    "holderName": f"{first} {last}"}}},
-            }})  # fmt: skip
-        r.raise_for_status()
-        ho = r.json()["data"]
-        bookings = ho.get("hotelBookings") or [{}]
-        ref = ((bookings[0].get("hotelProviderInformation") or [{}])[0].get("confirmationNumber")
-               or (ho.get("associatedRecords") or [{}])[0].get("reference") or ho.get("id", ""))  # fmt: skip
-        return Booking(reference=ref, status=bookings[0].get("bookingStatus", "CONFIRMED"),
-                       provider=self.name)  # fmt: skip
-
-
-def amadeus_traveler(tr: dict) -> dict:
-    """Flight Create Orders traveller block. Document fields are sandbox placeholders: Self-Service
-    test issues no ticket, so nothing here is real."""
-    return {
-        "id": "1", "dateOfBirth": "1990-03-14", "gender": "MALE",
-        "name": {"firstName": tr["first"], "lastName": tr["last"]},
-        "contact": {"emailAddress": tr["email"],
-                    "phones": [{"deviceType": "MOBILE", "countryCallingCode": "66",
-                                "number": tr["phone"].removeprefix("+66")}]},
-        "documents": [{"documentType": "PASSPORT", "number": "AA1234567", "expiryDate": "2031-01-01",
-                       "issuanceCountry": "TH", "nationality": "TH", "holder": True}],
-    }  # fmt: skip
+        return self.ho.book_hotel(offer, traveller)
 
 
 class Fallback:
-    """The sandbox first; the sample on an exception, a timeout or an empty answer."""
+    """Searches: the sandbox first, the sample on an exception, a timeout or an empty answer.
+    Bookings go to whichever provider made the offer, and an error is reported as an error: a sample
+    reference for a sandbox offer would be a fake confirmation."""
 
     def __init__(self, primary: Provider, sample: Provider | None = None) -> None:
         self.primary, self.sample = primary, sample or SampleProvider()
@@ -396,24 +420,27 @@ class Fallback:
         return self._try("hotels", lambda: self.primary.hotels(*a), lambda: self.sample.hotels(*a))
 
     def book_flight(self, offer, traveller) -> Booking:
-        if offer.provider == self.sample.name:
-            return self.sample.book_flight(offer, traveller)
-        return self._try("book_flight", lambda: self.primary.book_flight(offer, traveller),
-                         lambda: self.sample.book_flight(offer, traveller))  # fmt: skip
+        p = self.sample if offer.provider == self.sample.name else self.primary
+        return p.book_flight(offer, traveller)
 
     def book_hotel(self, offer, traveller) -> Booking:
-        if offer.provider == self.sample.name:
-            return self.sample.book_hotel(offer, traveller)
-        return self._try("book_hotel", lambda: self.primary.book_hotel(offer, traveller),
-                         lambda: self.sample.book_hotel(offer, traveller))  # fmt: skip
+        p = self.sample if offer.provider == self.sample.name else self.primary
+        return p.book_hotel(offer, traveller)
 
 
 def make_provider(settings) -> Provider:
-    """`DORY_TRAVEL_PROVIDER=sample` or no Amadeus client id = sample only; else sandbox + sample."""
-    if settings.travel_provider == "sample" or not settings.amadeus_client_id:
+    """Free sandboxes only: Duffel test mode for flights (`DORY_DUFFEL_TOKEN`, a `duffel_test_`
+    token) and the LiteAPI sandbox for hotels (`DORY_LITEAPI_KEY`). A missing key or a live Duffel
+    token = the sample for that half; `DORY_TRAVEL_PROVIDER=sample` = the sample for both."""
+    if settings.travel_provider == "sample":
         return SampleProvider()
-    return Fallback(Amadeus(settings.amadeus_client_id, settings.amadeus_client_secret,
-                            settings.amadeus_base or AMADEUS_TEST))  # fmt: skip
+    token, key = (settings.duffel_token or "").strip(), (settings.liteapi_key or "").strip()
+    if token and not token.startswith(DUFFEL_TEST_PREFIX):
+        logger.warning("trips: DORY_DUFFEL_TOKEN is not a test-mode token; flights use the sample")
+        token = ""
+    if not (token or key):
+        return SampleProvider()
+    return Fallback(Split(Duffel(token) if token else None, LiteApi(key) if key else None))
 
 
 # ----------------------------------------------------------------------------- offers across turns
@@ -447,6 +474,62 @@ class OfferCache:
 
 OFFERS = OfferCache()
 
+# A plain "yes" to a quote: affirmative words plus polite fillers, nothing else.
+_YES = re.compile(
+    r"\s*(?:(yes|yeah|yep|ok(?:ay)?|sure|confirm(?:ed)?|go ahead|do it|book it|ใช่|ตกลง|ยืนยัน|"
+    r"ได้เลย|เอาเลย|จอง|โอเค)|(please|dory|ดอรี่|i|ค่ะ|คะ|ครับ|นะ|เลย|จ้า))[\s,.!]*",
+    re.I,
+)
+
+
+def is_confirmation(text: str | None) -> bool:
+    """ "Yes, confirm.", "ok book it please", "ยืนยันค่ะ", "ใช่ จองเลย". Anything more ("yes but the
+    cheaper hotel") is not: it goes to the model."""
+    s, pos, core = (text or "").strip().lower(), 0, False
+    if len(s) > 60:
+        return False
+    while pos < len(s):
+        m = _YES.match(s, pos)
+        if not m or m.end() == pos:
+            return False
+        core, pos = core or bool(m.group(1)), m.end()
+    return core
+
+
+class PendingQuotes:
+    """The trip quote each person was shown last, so a plain yes in their very next message books it
+    in code (`book_trip.on_confirm`): from text history alone the model once answered "Yes, confirm."
+    with "Booked!" and booked nothing. One process; a quote waits as long as the confirm gate."""
+
+    def __init__(self, ttl_s: float = CONFIRM_TTL_S, clock: Callable[[], float] = time.monotonic):
+        self.ttl, self.clock = ttl_s, clock
+        self._quotes: dict[tuple[int, int], tuple[dict, str, float]] = {}
+        self._turns: dict[tuple[int, int], str] = {}
+        self._lock = threading.Lock()
+
+    def turn(self, guild_id: int, person_id: int, request_id: str) -> str:
+        """Record this person's new request; returns their previous request id ("" = none)."""
+        with self._lock:
+            prev = self._turns.get((guild_id, person_id), "")
+            self._turns[(guild_id, person_id)] = request_id
+            return prev
+
+    def put(self, guild_id: int, person_id: int, request_id: str, args: dict) -> None:
+        with self._lock:
+            self._quotes[(guild_id, person_id)] = (args, request_id, self.clock() + self.ttl)
+
+    def take(self, guild_id: int, person_id: int, request_id: str) -> dict | None:
+        """The quote shown in `request_id` (the person's previous request), consumed; else None."""
+        with self._lock:
+            hit = self._quotes.get((guild_id, person_id))
+            if hit is None or hit[1] != request_id or hit[2] <= self.clock():
+                return None
+            del self._quotes[(guild_id, person_id)]
+            return hit[0]
+
+
+PENDING = PendingQuotes()
+
 
 # ----------------------------------------------------------------------------- tools
 @dataclass
@@ -465,6 +548,7 @@ class TripsCtx:
     reminders: Any = None  # ReminderBook
     approvals: Any = None  # ApprovalRepo
     offers: OfferCache = OFFERS
+    pending: PendingQuotes = PENDING
 
 
 def _view(offer: FlightOffer | HotelOffer) -> dict:
@@ -508,6 +592,7 @@ def traveller_for(ctx: TripsCtx) -> dict:
 
 def trips_tools(ctx: TripsCtx) -> list:
     today = ctx.now().date()
+    prev_request = ctx.pending.turn(ctx.guild_id, ctx.asker_id, ctx.request_id)
 
     def search_flights(origin: str, destination: str, depart_date: str, return_date: str = "",
                        adults: int = 1, cabin: str = "economy") -> dict:  # fmt: skip
@@ -645,6 +730,8 @@ def trips_tools(ctx: TripsCtx) -> list:
                  "totals": [{"amount": v, "currency": k} for k, v in totals.items()], "purpose": why}  # fmt: skip
         key = ("trip", ctx.guild_id, ctx.asker_id, fingerprint(fid, hid, why, aid))
         if not ctx.state.confirm(key, ctx.request_id):
+            ctx.pending.put(ctx.guild_id, ctx.asker_id, ctx.request_id, {
+                "flight_offer_id": fid, "hotel_offer_id": hid, "purpose": why, "approval_id": aid})  # fmt: skip
             return {"status": "needs_confirmation", "quote": quote, "instruction": (
                 "Read the quote back (flight, hotel, totals, what it is for) and ask the person to "
                 "confirm (English: “Shall I book it?”; Thai: “จองเลยไหมคะ”; in a voice room say it "
@@ -735,6 +822,15 @@ def trips_tools(ctx: TripsCtx) -> list:
             out.append(item)
         return {"status": "ok", "trips": out, "count": len(rows)}
 
+    def on_confirm(question: str) -> str | None:
+        """Called by `qa.ask_async` before the model: a plain yes right after a quote books it here
+        and is answered from the stored trip. None = the model answers as usual."""
+        if not is_confirmation(question):
+            return None
+        args = ctx.pending.take(ctx.guild_id, ctx.asker_id, prev_request)
+        return _confirm_reply(ctx, book_trip(**args)) if args else None
+
+    book_trip.on_confirm = on_confirm  # type: ignore[attr-defined]
     tools = [search_flights, search_hotels, book_trip, travel_profile, list_trips]
     for fn in tools:
         fn.dory_group = "travel"  # type: ignore[attr-defined]
@@ -769,6 +865,34 @@ def _file_receipts(ctx: TripsCtx, trip: dict, flight: FlightOffer | None, hotel:
         except Exception as e:  # noqa: BLE001
             logger.warning("trips: receipt not filed (%s)", type(e).__name__)
     return ids
+
+
+def _confirm_reply(ctx: TripsCtx, res: dict) -> str | None:
+    """The answer to a plain yes, built from book_trip's result and the stored trip, never by the
+    model. None (the model answers) when the quote could not be confirmed: expired, refused."""
+    if res.get("status") == "failed":
+        done = ", ".join(f"{k} {v}" for k, v in (res.get("booked") or {}).items())
+        extra = t("trip_confirm_partial", ctx.lang, items=done) if done else ""
+        return t("trip_confirm_failed", ctx.lang, partial=extra)
+    if res.get("status") != "booked":
+        return None
+    trip = ctx.docs.get(TRIP_KIND, ctx.guild_id, res["trip_id"]) or {}
+    refs, items = trip.get("references") or {}, []
+    if fl := trip.get("flight"):
+        items.append(t("trip_item_flight", ctx.lang, legs=" / ".join(fl.get("flights") or []),
+                       carrier=fl.get("carrier_name") or fl.get("carrier", ""), ref=refs.get("flight", "")))  # fmt: skip
+    if ho := trip.get("hotel"):
+        items.append(
+            t("trip_item_hotel", ctx.lang, name=ho.get("name", ""), ref=refs.get("hotel", ""))
+        )
+    totals = " + ".join(f"{x['amount']:,.2f} {x['currency']}" for x in trip.get("totals") or [])
+    when = ""
+    rem = ctx.reminders.get(ctx.guild_id, trip["reminder_id"]) if trip.get("reminder_id") else None
+    if rem and rem.get("next_at"):
+        at = datetime.fromisoformat(rem["next_at"]).astimezone(ctx.now().tzinfo)
+        when = t("trip_confirm_reminder", ctx.lang, when=at.strftime("%Y-%m-%d %H:%M"))
+    return t("trip_confirm_booked", ctx.lang, trip=res["trip_id"], items="; ".join(items),
+             totals=totals, reminder=when)  # fmt: skip
 
 
 def _checkin_reminder(
@@ -817,6 +941,34 @@ STRINGS = {
     "trip_checkin_reminder": {
         "th": "เช็กอินออนไลน์ได้แล้วค่ะ เที่ยวบิน {flight} ไป {dest} ออกพรุ่งนี้ {time}",
         "en": "Online check-in is open: flight {flight} to {dest} departs tomorrow at {time}",
+    },
+    "trip_confirm_booked": {
+        "th": "จองเรียบร้อยแล้วค่ะ ทริป {trip}: {items} รวม {totals} บันทึกใบเสร็จในบัญชีค่าใช้จ่ายหมวด"
+        "ค่าเดินทางแล้วค่ะ{reminder} การจองนี้อยู่ในระบบทดสอบ ไม่มีการออกตั๋วและไม่มีการตัดเงินจริงค่ะ",
+        "en": "Booked! Trip {trip}: {items}. Total {totals}. The receipts are filed in the expense "
+        "ledger under Travel.{reminder} This is a sandbox booking: no ticket is issued and no money "
+        "is charged.",
+    },
+    "trip_confirm_reminder": {
+        "th": " ดอรี่จะเตือนให้เช็กอินออนไลน์เวลา {when} ค่ะ",
+        "en": " I'll remind you to check in online at {when}.",
+    },
+    "trip_item_flight": {
+        "th": "เที่ยวบิน {legs} ({carrier}) รหัสจอง {ref}",
+        "en": "flight {legs} ({carrier}), reference {ref}",
+    },
+    "trip_item_hotel": {
+        "th": "โรงแรม {name} รหัสจอง {ref}",
+        "en": "{name}, reference {ref}",
+    },
+    "trip_confirm_failed": {
+        "th": "จองไม่สำเร็จค่ะ ระบบจองปฏิเสธ จึงยังไม่ได้บันทึกทริปหรือใบเสร็จใดๆ{partial}",
+        "en": "I couldn't book it: the booking service refused, so no trip or receipt was filed."
+        "{partial}",
+    },
+    "trip_confirm_partial": {
+        "th": " ส่วนที่จองไปแล้วก่อนเกิดข้อผิดพลาด: {items}",
+        "en": " Booked before the error: {items}.",
     },
 }
 CATALOG.update(STRINGS)

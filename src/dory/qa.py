@@ -2487,6 +2487,12 @@ async def ask_async(
     if tool_overrides:  # same-named tools bound to someone else (voice: the speaker's actions)
         swap = {getattr(f, "__name__", ""): f for f in tool_overrides}
         tools = [swap.get(getattr(f, "__name__", ""), f) for f in tools]
+    for f in tools:  # a plain yes to something code is waiting for (a trip quote): code answers
+        hook = getattr(f, "on_confirm", None)
+        text = await asyncio.to_thread(hook, question) if hook else None
+        if text:
+            secs = round(time.monotonic() - started, 2)
+            return Answer(text=text, rounds=0, seconds=secs, tool_calls=[(f.__name__, {})])
     tool_names = {getattr(f, "__name__", "") for f in tools}  # prompt sections follow the tools
     agent = build_agent(
         settings,

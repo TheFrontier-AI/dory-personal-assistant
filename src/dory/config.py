@@ -309,12 +309,12 @@ class Settings(BaseSettings):
     # Flights (dory.flights): live status/tracking only with one of these provider keys (secrets)
     aerodatabox_key: str = Field(default="", repr=False)  # RapidAPI key
     aviationstack_key: str = Field(default="", repr=False)
-    # Trips (flight + hotel booking, `trips.py`): "" = Amadeus test env when the client id is set,
-    # else deterministic sample data; "sample" forces the sample (dry runs)
+    # Trips (flight + hotel booking, `trips.py`), free sandboxes only: a Duffel test-mode token
+    # (`duffel_test_...`) for flights and a LiteAPI sandbox key for hotels; a missing key = sample
+    # data for that half; "sample" forces the sample for both (dry runs)
     travel_provider: str = ""
-    amadeus_client_id: str = Field(default="", repr=False)
-    amadeus_client_secret: str = Field(default="", repr=False)
-    amadeus_base: str = "https://test.api.amadeus.com"
+    duffel_token: str = Field(default="", repr=False)
+    liteapi_key: str = Field(default="", repr=False)
     email_daily_limit: int = 20  # emails per guild per day
     # Briefings (dory.briefings): documents above this total (invoice / quotation) are "important",
     # an unanswered request to a member is reminded after this many hours.
