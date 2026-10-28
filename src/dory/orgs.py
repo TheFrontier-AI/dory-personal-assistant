@@ -500,6 +500,21 @@ class OrgStore:
         members: list[Member] | None = None,
         grandfathered: bool = False,
     ) -> Org:
+        org = self._new_org(name, owner_email, org_id, license, members, grandfathered)
+        with self._lock:
+            self.save(org)
+            self.docs.put(ORG_WS, org.workspaces[0].memory_id, "org", self._ws_index(org, "web"))
+        return org
+
+    def _new_org(
+        self,
+        name: str,
+        owner_email: str,
+        org_id: str | None = None,
+        license: License | None = None,
+        members: list[Member] | None = None,
+        grandfathered: bool = False,
+    ) -> Org:
         now = self._clock()
         oid = org_id or f"org_{uuid.uuid4().hex[:10]}"
         owner = owner_email.lower()
@@ -527,9 +542,6 @@ class OrgStore:
                 connected_by=owner,
             )
         )
-        with self._lock:
-            self.save(org)
-            self.docs.put(ORG_WS, org.workspaces[0].memory_id, "org", self._ws_index(org, "web"))
         return org
 
     @staticmethod
@@ -584,6 +596,13 @@ class OrgStore:
     def _tx_org(self, tx, org_id: str) -> Org | None:
         d = tx.get(ORGS, 0, org_id)
         return Org.model_validate(d) if d else None
+
+    def _tx_create(self, tx, name: str, owner_email: str, *, license: License | None = None) -> Org:
+        """`create` inside a transaction (writes only, so it may follow the reads)."""
+        org = self._new_org(name, owner_email, license=license)
+        self._tx_save(tx, org, None)
+        tx.put(ORG_WS, org.workspaces[0].memory_id, "org", self._ws_index(org, "web"))
+        return org
 
     def _tx_save(self, tx, org: Org, old: Org | None) -> None:
         """Replace the org document and refresh the member index, inside a transaction."""

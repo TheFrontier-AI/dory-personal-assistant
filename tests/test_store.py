@@ -1,6 +1,8 @@
 """Store tests: InMemoryMeetingStore and MeetingStore against a tiny fake Firestore."""
 
+import sys
 from datetime import timedelta
+from pathlib import Path
 
 import pytest
 
@@ -227,3 +229,37 @@ def test_firestore_layout_uses_chunks_subcollection():
 def test_client_is_lazy():
     store = MeetingStore(collection="meetings")
     assert store._client is None
+
+
+# --- the finalize lease: one finalizer per meeting across web instances ---------------
+
+
+@pytest.fixture(params=["memory", "firestore"])
+def leases(request):
+    if request.param == "memory":
+        return InMemoryMeetingStore()
+    sys.path.insert(0, str(Path(__file__).parent / "dory"))
+    from fake_firestore import FakeFirestore as TxFirestore  # transactions, unlike the fake above
+
+    return MeetingStore(client=TxFirestore(), collection="meetings")
+
+
+def test_one_finalizer_at_a_time_and_only_the_holder_releases(leases):
+    m = leases.create("m", [])
+    assert leases.claim_finalize(m.id, "a", 900)
+    assert not leases.claim_finalize(m.id, "b", 900)  # another instance is refused
+    leases.release_finalize(m.id, "b")  # not the holder: nothing changes
+    assert not leases.claim_finalize(m.id, "b", 900)
+    leases.release_finalize(m.id, "a")
+    assert leases.claim_finalize(m.id, "b", 900)
+
+
+def test_a_lapsed_lease_is_taken_over(leases):
+    m = leases.create("m", [])
+    assert leases.claim_finalize(m.id, "crashed", -1)  # its holder died: already past its end
+    assert leases.claim_finalize(m.id, "b", 900)
+
+
+def test_claiming_an_unknown_meeting_is_a_key_error(leases):
+    with pytest.raises(KeyError):
+        leases.claim_finalize("ghost", "a", 900)
