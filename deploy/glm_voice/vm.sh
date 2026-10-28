@@ -7,7 +7,7 @@
 #
 #   vm.sh sa                    once: the VM's service account (tokens from the metadata service, no key file);
 #                               the role grant itself needs a tenant admin (printed)
-#   vm.sh create [--on-demand]  VM + static IP (preemptible unless --on-demand); prints id and ip
+#   vm.sh create [--on-demand]  VM + static IP (preemptible unless --on-demand); reuses the glm-voice-boot disk when it exists
 #   vm.sh update               copy server.py + cascade.py to a running box and restart (after a code change)
 #   vm.sh provision             install GLM-4-Voice + the services over SSH (idempotent, 20-40 min)
 #   vm.sh idle-check | watch | watch-install | watch-uninstall
@@ -91,6 +91,19 @@ cmd_create() {
   local subnet alloc sa
   subnet=$(subnet_id); [ -n "$subnet" ] || die "no subnet in $PROJECT"
   alloc=$(alloc_id)
+  # The boot disk: an existing `${NAME}-boot` (a delete keeps it: the weights, the venvs and the
+  # services are on it, so the new VM boots ready in ~2 min, no provision) or a new managed one from
+  # the image. The two sets of flags are mutually exclusive. A reused disk gets no cloud-init: the
+  # user and keys are on it already (the recreate of 28 Oct 2026 was done exactly so).
+  local disk; disk=$(disk_id)
+  if [ -n "$disk" ]; then
+    disk_flags=(--boot-disk-existing-disk-id "$disk" --boot-disk-attach-mode READ_WRITE)
+  else
+    disk_flags=(--boot-disk-managed-disk-name "${NAME}-boot" --boot-disk-managed-disk-type network_ssd
+                --boot-disk-managed-disk-size-gibibytes "$DISK_GIB"
+                --boot-disk-managed-disk-source-image-family-image-family "$IMAGE"
+                --boot-disk-attach-mode READ_WRITE --cloud-init-user-data "$(user_data)")
+  fi
   # the VM's identity: tokens come from the metadata service, no key ever touches a disk
   sa=${GLM_SA_ID:-$(sa_id)}
   if [ -n "$sa" ] && ! instance_create --service-account-id "$sa" 2>"$STATE/create.err"; then
@@ -99,20 +112,17 @@ cmd_create() {
     sa=""
   fi
   [ -n "$sa" ] || instance_create
-  echo "id=$(vm_id) state=$(vm_state) ip=$(vm_ip) pricing=${pricing[*]} identity=${sa:-none}"
+  echo "id=$(vm_id) state=$(vm_state) ip=$(vm_ip) pricing=${pricing[*]} identity=${sa:-none} disk=${disk:+existing $disk}${disk:-new}"
 }
-instance_create() {  # pricing / subnet / alloc are cmd_create's locals (bash dynamic scope); $@ = identity
+instance_create() {  # pricing / subnet / alloc / disk_flags are cmd_create's locals (bash dynamic scope); $@ = identity
   nb compute instance create \
     --parent-id "$PROJECT" --name "$NAME" \
     --resources-platform "$PLATFORM" --resources-preset "$PRESET" \
-    --boot-disk-managed-disk-name "${NAME}-boot" --boot-disk-managed-disk-type network_ssd \
-    --boot-disk-managed-disk-size-gibibytes "$DISK_GIB" \
-    --boot-disk-managed-disk-source-image-family-image-family "$IMAGE" \
-    --boot-disk-attach-mode READ_WRITE \
+    "${disk_flags[@]}" \
     --network-interfaces "[{\"name\":\"eth0\",\"ip_address\":{},\"public_ip_address\":{\"static\":true,\"allocation_id\":\"$alloc\"},\"subnet_id\":\"$subnet\"}]" \
-    --cloud-init-user-data "$(user_data)" \
     "$@" "${pricing[@]}" >/dev/null
 }
+disk_id() { nb compute disk list --parent-id "$PROJECT" | jq -r --arg n "${NAME}-boot" '.items[]? | select(.metadata.name==$n) | .metadata.id' | head -1; }
 
 sa_id() { nb iam service-account get-by-name --parent-id "$PROJECT" --name "${NAME}-power" 2>/dev/null | jq -r '.metadata.id // empty' || true; }
 
@@ -269,6 +279,7 @@ case "${1:-}" in
   ssh) shift; cmd_ssh "$@" ;;
   delete) ip=$(vm_ip); nb compute instance delete --id "$(vm_id)" >/dev/null
           ssh-keygen -R "$ip" >/dev/null 2>&1 || true   # the next VM reuses the IP with a new host key
-          echo "deleted (the static IP ${NAME}-ip is kept)" ;;
+          echo "deleted. Kept: the static IP ${NAME}-ip and the boot disk $(disk_id) (~\$8.52/month for 120 GiB;"
+          echo "  the next 'vm.sh create' boots from it in ~2 min with no provision; zero cost = nebius compute disk delete --id $(disk_id))" ;;
   *) sed -n '2,13p' "$0"; exit 2 ;;
 esac
