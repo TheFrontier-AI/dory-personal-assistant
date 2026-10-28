@@ -10,7 +10,11 @@ from dory.coo_store import FirestoreDocStore, SQLiteDocStore
 from dory.identity_links import (
     CODE_TTL,
     KIND,
+    LINK_ATTEMPTS,
+    LINK_ATTEMPTS_TENANT,
+    LINK_WINDOW_S,
     MAX_LIVE_CODES,
+    TRIES_KIND,
     CodeError,
     IdentityLinks,
     NotAMember,
@@ -380,6 +384,34 @@ def test_attach_code_for_discord_or_unknown_org_is_refused(links):
         links.create_attach_code("org_a", "boss@example.com", "discord")
     with pytest.raises(CodeError):
         links.create_attach_code("org_zzz", "boss@example.com", "line")
+
+
+# ------------------------------------------------------------------ guessing limit
+def test_tries_are_counted_in_the_store_per_account(links, orgs, clock):
+    for _ in range(LINK_ATTEMPTS):
+        assert links.take_try("line", "U-mew", "Ubot")
+    assert not links.take_try("line", "U-mew", "Ubot")
+    # a restarted or second bridge process reads the same count from the store
+    assert not IdentityLinks(orgs, clock=clock).take_try("line", "U-mew", "Ubot")
+    assert links.take_try("line", "U-ann", "Ubot")  # somebody else is not locked out
+    assert links.take_try("telegram", "U-mew", "Ubot")  # nor the same id on another platform
+    assert links.take_try("slack", "U/1", "T/1")  # any id makes a valid document key
+    clock.advance(seconds=LINK_WINDOW_S + 1)  # the refused tries were never counted
+    assert links.take_try("line", "U-mew", "Ubot")
+
+
+def test_tries_are_counted_per_tenant_across_accounts(links):
+    for i in range(LINK_ATTEMPTS_TENANT):
+        assert links.take_try("line", f"U{i}", "Ubot")
+    assert not links.take_try("line", "U-late", "Ubot")
+    assert links.take_try("line", "U-late", "Uother")  # another bot is another tenant
+
+
+def test_old_try_counters_are_pruned(links, docs, clock):
+    links.take_try("line", "U-mew", "Ubot")
+    clock.advance(days=2)
+    links.create_code("org_a", "mew@example.com", "line")  # issuing a code prunes
+    assert docs.find_items(TRIES_KIND, 0) == []
 
 
 # ------------------------------------------------------------------ who is this account

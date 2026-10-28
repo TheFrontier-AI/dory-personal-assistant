@@ -19,10 +19,16 @@ attach one tenant to two orgs. A refusal at any point leaves the code untouched.
 
 Whatever goes wrong, the person typing the code is told only "invalid or expired"; `CodeError.
 reason` is for logs. Codes are never accepted in group chats (the platform layer enforces that).
+
+Guessing limit: every typed code first takes a try (`take_try`), at most `LINK_ATTEMPTS` per
+platform account and `LINK_ATTEMPTS_TENANT` per bot tenant in `LINK_WINDOW_S`, counted in the
+`DocStore` (``dory_identity_tries``, one transaction for both), so a restart or a second bridge
+process never resets or multiplies it.
 """
 
 from __future__ import annotations
 
+import hashlib
 import re
 import secrets
 import unicodedata
@@ -47,6 +53,10 @@ CODE_DIGITS = 8
 # Discord links through /setup, so it never takes a code
 CODE_PLATFORMS = tuple(p for p in IDENTITY_PLATFORMS if p != "discord")
 PRUNE_AFTER = timedelta(days=1)
+TRIES_KIND = "dory_identity_tries"
+LINK_ATTEMPTS = 5  # code attempts per platform account ...
+LINK_ATTEMPTS_TENANT = 30  # ... and per bot tenant, in LINK_WINDOW_S (guessing protection)
+LINK_WINDOW_S = 600.0
 
 # "link 1234-5678", "/link 12345678", "เชื่อมบัญชี 1234 5678", "Link: 1234–5678"; the whole message
 _COMMAND = re.compile(
@@ -99,6 +109,11 @@ def code_candidates(text: str) -> list[str]:
     if found and (parse_command(t) is not None or _LINK_WORDS.search(t)):
         return found
     return []
+
+
+def _tries_key(*parts: str) -> str:
+    # platform ids may hold any character (a "/" is not a valid Firestore document id)
+    return hashlib.sha256("\0".join(parts).encode()).hexdigest()
 
 
 def format_code(digits: str) -> str:
@@ -212,6 +227,33 @@ class IdentityLinks:
             lambda d: datetime.fromisoformat(d["expires_at"]) + PRUNE_AFTER <= now,
         ):
             self.docs.delete(KIND, 0, key)
+        stale = (now - PRUNE_AFTER).timestamp()
+        for key, _d in self.docs.find_items(TRIES_KIND, 0, lambda d: max(d["at"]) <= stale):
+            self.docs.delete(TRIES_KIND, 0, key)
+
+    # ---- guessing limit
+    def take_try(self, platform: str, platform_user_id: str, tenant_key: str) -> bool:
+        """Count one code attempt for the account and for the bot tenant, in one transaction.
+        False, and nothing counted, when either already used its limit in the window."""
+        now = self._clock().timestamp()
+        since = now - LINK_WINDOW_S
+        limits = (
+            (_tries_key("u", platform, tenant_key, platform_user_id), LINK_ATTEMPTS),
+            (_tries_key("t", platform, tenant_key), LINK_ATTEMPTS_TENANT),
+        )
+
+        def run(tx) -> bool:
+            recent = {
+                key: [t for t in (tx.get(TRIES_KIND, 0, key) or {}).get("at", []) if t > since]
+                for key, _ in limits
+            }
+            if any(len(recent[key]) >= limit for key, limit in limits):
+                return False
+            for key, at in recent.items():
+                tx.put(TRIES_KIND, 0, key, {"at": [*at, now]})
+            return True
+
+        return self.docs.transact(run)
 
     # ---- redeem
     def redeem(self, code: str, platform: str, platform_user_id: str, tenant_key: str) -> Redeemed:
