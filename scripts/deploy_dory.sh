@@ -180,7 +180,7 @@ for k in DORY_RECEIPT_CHANNEL_IDS DORY_ASK_CHANNEL_IDS DORY_EXEC_ROLE_NAMES DORY
          DORY_GUILD_COLLECTION DORY_HUB_URL DORY_GEMINI_MODEL DORY_DEEP_TASK_TIMEOUT \
          DORY_DEEP_TASK_MODEL DORY_VOICE_MODE DORY_GLM_VOICE_URL DORY_BRAIN_MODEL DORY_FAST_MODEL \
          DORY_NEBIUS_VM_ID DORY_NEBIUS_SA_ID DORY_NEBIUS_SA_KEY_ID DORY_NEBIUS_PROJECT \
-         DORY_AMADEUS_CLIENT_ID DORY_TRAVEL_PROVIDER; do
+         DORY_TRAVEL_PROVIDER; do
   v="${!k:-$(sed -n "s/^$k=//p" .env 2>/dev/null | head -n1 | tr -d '\r"' | tr -d "'")}"
   [ -z "$v" ] || ENV_PAIRS+=("$k=$v")
 done
@@ -200,13 +200,17 @@ if has_version "$VM_KEY_SECRET"; then
     --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
   SECRETS+=",DORY_NEBIUS_SA_PRIVATE_KEY=$VM_KEY_SECRET:latest"
 else echo "    secret $VM_KEY_SECRET absent: Dory cannot start a stopped GPU box (deploy/glm_voice/README.md)"; fi
-# Trips (flights + hotels, `trips.py`): the Amadeus test-env client secret; without it the sample provider answers.
-AMADEUS_SECRET="${AMADEUS_SECRET:-dory-amadeus-client-secret}"
-if has_version "$AMADEUS_SECRET"; then
-  run gcloud secrets add-iam-policy-binding "$AMADEUS_SECRET" --project "$PROJECT" \
-    --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
-  SECRETS+=",DORY_AMADEUS_CLIENT_SECRET=$AMADEUS_SECRET:latest"
-else echo "    secret $AMADEUS_SECRET has no version: trips use the sample provider"; fi
+# Trips (`trips.py`), free sandboxes: a Duffel test-mode token (flights) and a LiteAPI sandbox key
+# (hotels), each optional; without one, that half answers from the sample provider.
+for pair in "${DUFFEL_SECRET:-dory-duffel-token}=DORY_DUFFEL_TOKEN" \
+            "${LITEAPI_SECRET:-dory-liteapi-key}=DORY_LITEAPI_KEY"; do
+  s="${pair%%=*}"; var="${pair#*=}"
+  if has_version "$s"; then
+    run gcloud secrets add-iam-policy-binding "$s" --project "$PROJECT" \
+      --member "serviceAccount:$SA" --role roles/secretmanager.secretAccessor
+    SECRETS+=",$var=$s:latest"
+  else echo "    secret $s has no version: that half of trips uses the sample provider"; fi
+done
 ENV_JOINED="$(IFS='|'; echo "${ENV_PAIRS[*]}")"   # '|' delimiter: values contain commas
 # --instances=1 = manual scaling with a fixed count: the Discord gateway needs exactly one
 # always-on connection (two would answer every message twice). 1 vCPU / 2 GiB: the Gemini CLI

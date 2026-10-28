@@ -1,7 +1,7 @@
 # ruff: noqa: F811, F401
-"""Trips: sample provider, the Amadeus adapter (mocked transport) with its fallback, and the tools
-through the bot's real wiring (confirm gate, approval gate, ledger receipts, check-in reminder,
-trip record, profile). Offline."""
+"""Trips: sample provider, the Duffel and LiteAPI sandbox adapters (mocked transport) with the
+fallback, and the tools through the bot's real wiring (confirm gate, approval gate, ledger receipts,
+check-in reminder, trip record, profile). Offline."""
 
 import json
 
@@ -40,95 +40,161 @@ def test_sample_provider_is_deterministic_and_mirrors_the_return_leg():
     assert len(p.book_hotel(hotels[0], tr).reference) == 8
 
 
-def _amadeus(handler):
-    return trips.Amadeus(
-        "id", "secret", transport=httpx.MockTransport(handler), clock=lambda: 1000.0
-    )
+def _duffel_offer(oid, amount, slices):
+    """A Duffel offer; `slices` = per slice, a list of (carrier, number, from, to, departs, arrives)."""
+    seg = lambda c, n, o, d, t1, t2: {  # noqa: E731
+        "marketing_carrier": {"iata_code": c, "name": "Duffel Airways"},
+        "marketing_carrier_flight_number": n, "origin": {"iata_code": o},
+        "destination": {"iata_code": d}, "departing_at": t1, "arriving_at": t2,
+    }  # fmt: skip
+    return {"id": oid, "total_amount": amount, "total_currency": "USD",
+            "owner": {"iata_code": "ZZ", "name": "Duffel Airways"},
+            "passengers": [{"id": "pas_1", "type": "adult"}],
+            "slices": [{"duration": "PT2H25M", "segments": [seg(*s) for s in sl]} for sl in slices]}  # fmt: skip
 
 
-def test_amadeus_adapter_parses_offers_and_books_with_the_pnr():
-    calls = []
-
+def test_duffel_adapter_parses_offers_and_books_with_the_booking_reference():
     def handler(req: httpx.Request) -> httpx.Response:
-        calls.append((req.method, req.url.path, dict(req.headers)))
-        if req.url.path.endswith("/oauth2/token"):
-            return httpx.Response(200, json={"access_token": "tok", "expires_in": 1799})
-        if req.url.path == "/v2/shopping/flight-offers":
-            assert req.url.params["currencyCode"] == "THB" and req.url.params["returnDate"] == RET
-            seg = lambda c, n, o, d, t1, t2: {  # noqa: E731
-                "carrierCode": c, "number": n, "departure": {"iataCode": o, "at": t1},
-                "arrival": {"iataCode": d, "at": t2},
-            }  # fmt: skip
-            return httpx.Response(200, json={"data": [{
-                "id": "1", "validatingAirlineCodes": ["TG"], "numberOfBookableSeats": 4,
-                "price": {"grandTotal": "9400.00", "currency": "THB"},
-                "itineraries": [
-                    {"duration": "PT2H25M", "segments": [seg("TG", "403", "BKK", "SIN", f"{DEP}T08:00:00", f"{DEP}T11:25:00")]},
-                    {"duration": "PT2H30M", "segments": [seg("TG", "404", "SIN", "BKK", f"{RET}T12:25:00", f"{RET}T13:55:00")]},
-                ],
-            }], "dictionaries": {"carriers": {"TG": "THAI AIRWAYS INTERNATIONAL"}}})  # fmt: skip
-        if req.url.path == "/v1/shopping/flight-offers/pricing":
-            assert req.headers["x-http-method-override"] == "GET"
-            body = json.loads(req.content)
+        assert req.url.host == "api.duffel.com" and req.headers["duffel-version"] == "v2"
+        assert req.headers["authorization"] == "Bearer duffel_test_abc"
+        body = json.loads(req.content)
+        if req.url.path == "/air/offer_requests":
+            assert req.url.params["return_offers"] == "true"
+            assert [s["departure_date"] for s in body["data"]["slices"]] == [DEP, RET]
+            assert body["data"]["cabin_class"] == "economy" and len(body["data"]["passengers"]) == 1
+            out = [("ZZ", "1", "BKK", "SIN", f"{DEP}T08:00:00", f"{DEP}T11:25:00")]
+            back = [("ZZ", "2", "SIN", "BKK", f"{RET}T12:25:00", f"{RET}T13:55:00")]
+            return httpx.Response(201, json={"data": {"live_mode": False, "offers": [
+                _duffel_offer("off_b", "310.00", [out, back]),
+                _duffel_offer("off_a", "250.50", [out, back]),
+            ]}})  # fmt: skip
+        if req.url.path == "/air/orders":
+            d = body["data"]
+            assert d["type"] == "instant" and d["selected_offers"] == ["off_a"]
+            assert d["payments"] == [{"type": "balance", "amount": "250.50", "currency": "USD"}]
+            p = d["passengers"][0]
+            assert (p["id"], p["given_name"], p["family_name"]) == ("pas_1", "MINT", "SRISUWAN")
             return httpx.Response(
-                200, json={"data": {"flightOffers": body["data"]["flightOffers"]}}
-            )
-        if req.url.path == "/v1/booking/flight-orders":
-            body = json.loads(req.content)
-            assert body["data"]["travelers"][0]["name"] == {
-                "firstName": "MINT",
-                "lastName": "SRISUWAN",
-            }
-            return httpx.Response(
-                201, json={"data": {"id": "eJzTd9", "associatedRecords": [{"reference": "2ZYVAL"}]}}
+                201, json={"data": {"id": "ord_1", "booking_reference": "RZPNX8"}}
             )
         raise AssertionError(req.url.path)
 
-    a = _amadeus(handler)
-    offers = a.flights("BKK", "SIN", DEP, RET, 1, "economy")
-    assert len(offers) == 1
+    d = trips.Duffel("duffel_test_abc", transport=httpx.MockTransport(handler))
+    offers = d.flights("BKK", "SIN", DEP, RET, 1, "economy")
+    assert [o.price for o in offers] == [250.5, 310.0]  # cheapest first
     o = offers[0]
-    assert o.flights == ["TG403", "TG404"] and o.carrier_name == "Thai Airways International"
-    assert o.duration_min == 145 and o.price == 9400 and o.return_depart == f"{RET}T12:25:00"
+    assert o.flights == ["ZZ1", "ZZ2"] and o.carrier_name == "Duffel Airways"
+    assert o.duration_min == 145 and o.return_depart == f"{RET}T12:25:00" and o.currency == "USD"
     tr = {"first": "MINT", "last": "SRISUWAN", "email": "x@example.com", "phone": "+66812345678"}
-    assert a.book_flight(o, tr).reference == "2ZYVAL"
-    assert [c[1] for c in calls].count("/v1/security/oauth2/token") == 1  # the token is reused
+    assert d.book_flight(o, tr).reference == "RZPNX8"
 
 
-def test_fallback_serves_the_sample_on_errors_and_empty_answers(caplog):
+def test_iso_durations_with_days_and_seconds():
+    assert trips._minutes("P1DT2H5M30S") == 1440 + 125 and trips._minutes("PT02H26M") == 146
+    assert trips._minutes("") == 0
+
+
+def test_duffel_refuses_live_tokens_and_live_answers():
+    with pytest.raises(ValueError):
+        trips.Duffel("duffel_live_abc")
+    d = trips.Duffel("duffel_test_x", transport=httpx.MockTransport(
+        lambda req: httpx.Response(201, json={"data": {"live_mode": True, "offers": []}})
+    ))  # fmt: skip
+    with pytest.raises(RuntimeError):
+        d.flights("BKK", "SIN", DEP, "", 1, "economy")
+
+
+def _liteapi(handler):
+    return trips.LiteApi("sand_key", transport=httpx.MockTransport(handler))
+
+
+def test_liteapi_adapter_parses_rates_and_books_through_prebook():
+    def rate(tag, until):
+        return {"name": "Deluxe King", "cancellationPolicies": {
+            "refundableTag": tag, "cancelPolicyInfos": [{"cancelTime": until}]}}  # fmt: skip
+
     def handler(req: httpx.Request) -> httpx.Response:
-        if req.url.path.endswith("/oauth2/token"):
-            return httpx.Response(200, json={"access_token": "tok", "expires_in": 1799})
-        if req.url.path == "/v2/shopping/flight-offers":
+        assert req.headers["x-api-key"] == "sand_key"
+        body = json.loads(req.content)
+        where = (req.url.host, req.url.path)
+        if where == ("api.liteapi.travel", "/v3.0/hotels/rates"):
+            assert body["iataCode"] == "SIN" and body["occupancies"] == [{"adults": 1}]
+            assert (body["checkin"], body["checkout"]) == (DEP, RET)
+            return httpx.Response(200, json={"sandbox": True, "data": [
+                {"hotelId": "lp1", "roomTypes": [{"offerId": "OFF1", "rates": [rate("RFN", "2026-11-10 12:00:00")],
+                                                  "offerRetailRate": [{"amount": 9000, "currency": "THB"}]}]},
+                {"hotelId": "lp2", "roomTypes": [{"offerId": "OFF2", "rates": [rate("NRFN", "")],
+                                                  "offerRetailRate": {"amount": 6000, "currency": "THB"}}]},
+                {"hotelId": "lp3", "roomTypes": []},
+            ], "hotels": [{"id": "lp1", "name": "The Fullerton Hotel", "address": "1 Fullerton Sq"}]})  # fmt: skip
+        if where == ("book.liteapi.travel", "/v3.0/rates/prebook"):
+            assert body == {"offerId": "OFF1", "usePaymentSdk": False}
+            return httpx.Response(200, json={"data": {"prebookId": "PB1"}})
+        if where == ("book.liteapi.travel", "/v3.0/rates/book"):
+            assert body["prebookId"] == "PB1" and body["payment"] == {"method": "ACC_CREDIT_CARD"}
+            assert body["holder"]["lastName"] == "SRISUWAN"
+            assert body["guests"][0]["occupancyNumber"] == 1
+            return httpx.Response(200, json={"sandbox": True, "data": {
+                "bookingId": "BK1", "hotelConfirmationCode": "HC77", "status": "CONFIRMED"}})  # fmt: skip
+        raise AssertionError(where)
+
+    h = _liteapi(handler)
+    offers = h.hotels("SIN", DEP, RET, 1)
+    assert [(o.hotel_id, o.total) for o in offers] == [("lp2", 6000), ("lp1", 9000)]
+    assert offers[0].name == "lp2" and offers[0].cancellation == "non-refundable"
+    fullerton = offers[1]
+    assert fullerton.name == "The Fullerton Hotel" and fullerton.price_per_night == 4500
+    assert fullerton.cancellation == "free cancellation until 2026-11-10 12:00:00"
+    b = h.book_hotel(fullerton, {"first": "MINT", "last": "SRISUWAN", "email": "x@example.com"})
+    assert (b.reference, b.status, b.provider) == ("BK1", "CONFIRMED", "liteapi")
+
+
+def test_liteapi_refuses_answers_outside_its_sandbox():
+    h = _liteapi(lambda req: httpx.Response(200, json={"data": [], "sandbox": False}))
+    with pytest.raises(RuntimeError):
+        h.hotels("SIN", DEP, RET, 1)
+
+
+def test_fallback_serves_the_sample_for_searches_but_never_fakes_a_booking(caplog):
+    def handler(req: httpx.Request) -> httpx.Response:
+        if req.url.path == "/air/offer_requests":
             return httpx.Response(500)
-        if req.url.path.endswith("/hotels/by-city"):
-            return httpx.Response(200, json={"data": []})
+        if req.url.path == "/air/orders":
+            return httpx.Response(422, json={"errors": [{"message": "offer expired"}]})
         raise AssertionError(req.url.path)
 
-    f = trips.Fallback(_amadeus(handler))
+    duffel = trips.Duffel("duffel_test_x", transport=httpx.MockTransport(handler))
+    f = trips.Fallback(trips.Split(duffel, None))  # no hotel key: that half answers nothing
     flights = f.flights("BKK", "SIN", DEP, "", 1, "economy")
     assert flights and flights[0].provider == "sample"
     hotels = f.hotels("SIN", DEP, RET, 1)
     assert hotels and hotels[0].provider == "sample"
-    assert (
-        f.book_flight(flights[0], {"last": "X"}).provider == "sample"
-    )  # never the sandbox for a sample offer
+    assert f.book_flight(flights[0], {"last": "X"}).provider == "sample"  # sample offer, sample PNR
     assert "flights failed (HTTPStatusError)" in caplog.text and "hotels empty" in caplog.text
+    raw = {"id": "off_1", "amount": "1.00", "currency": "USD", "passengers": ["pas_1"]}
+    sandbox_offer = flights[0].model_copy(update={"provider": "duffel", "raw": raw})
+    tr = {"first": "A", "last": "B", "email": "x@example.com", "phone": "+66812345678"}
+    with pytest.raises(httpx.HTTPStatusError):  # the error surfaces; no sample PNR stands in for it
+        f.book_flight(sandbox_offer, tr)
 
 
 class _Settings:
     travel_provider = ""
-    amadeus_client_id = ""
-    amadeus_client_secret = ""
-    amadeus_base = ""
+    duffel_token = ""
+    liteapi_key = ""
 
 
-def test_make_provider_picks_sample_without_a_key_and_the_sandbox_with_one():
+def test_make_provider_uses_free_sandboxes_only():
     assert isinstance(trips.make_provider(_Settings()), trips.SampleProvider)
     s = _Settings()
-    s.amadeus_client_id, s.amadeus_client_secret = "id", "secret"
-    assert isinstance(trips.make_provider(s), trips.Fallback)
-    s.travel_provider = "sample"
+    s.duffel_token, s.liteapi_key = "duffel_test_x", "sand_key"
+    p = trips.make_provider(s)
+    assert isinstance(p, trips.Fallback) and p.name == "duffel+liteapi"
+    s.duffel_token = "duffel_live_x"  # a live token could spend money: flights use the sample
+    assert trips.make_provider(s).name == "liteapi"
+    s.liteapi_key = ""
+    assert isinstance(trips.make_provider(s), trips.SampleProvider)
+    s.duffel_token, s.travel_provider = "duffel_test_x", "sample"
     assert isinstance(trips.make_provider(s), trips.SampleProvider)
 
 
@@ -291,3 +357,65 @@ def test_prompt_section_rides_on_the_travel_tools(bot):
     assert "book_trip" not in qa.system_prompt(bot.s, scoped=False)
     on = qa.system_prompt(bot.s, scoped=False, travel=True)
     assert "book_trip" in on and "Shall I book it?" in on
+
+
+# ----------------------------------------------------------------------------- a plain yes, booked by code
+@pytest.mark.parametrize(
+    "text",
+    ["Yes, confirm.", "yes book it", "Confirm", "ok", "Go ahead!", "yes please", "Dory, yes",
+     "ยืนยันค่ะ", "จองเลย", "ใช่ค่ะ จองเลย", "ได้เลยค่ะ"],
+)  # fmt: skip
+def test_a_plain_yes_is_a_confirmation(text):
+    assert trips.is_confirmation(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["", "no", "please", "yes but the cheaper hotel", "confirm the hotel only", "yesterday",
+     "what is the total?", "จองโรงแรมอื่น", "yes " * 20],
+)  # fmt: skip
+def test_anything_more_than_a_plain_yes_is_not(text):
+    assert not trips.is_confirmation(text)
+
+
+async def test_a_plain_yes_after_a_quote_is_booked_by_code_not_the_model(bot, world):
+    tl = tools(bot, world)
+    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
+    hid = tl["search_hotels"]("SIN", DEP, RET)["hotels"][3]["offer_id"]
+    assert tl["book_trip"](fid, hid, "Lumen kickoff")["status"] == "needs_confirmation"
+    kw = kw_for(bot, world)  # the person's next message, through the real agent wiring
+    uid = kw.pop("user_id", STAFF)
+    ans = await qa.ask_async(
+        bot.s, bot.store, "Yes, confirm.", guild_id=GUILD, is_exec=False, user_id=uid,
+        model=object(), **kw,
+    )  # fmt: skip
+    assert ans.rounds == 0 and ans.tool_calls == [("book_trip", {})]  # the model was never asked
+    trip = tools(bot, world)["list_trips"]()["trips"][0]
+    assert ans.text.startswith("Booked!") and trip["id"] in ans.text
+    assert trip["references"]["flight"] in ans.text and trip["references"]["hotel"] in ans.text
+    assert "13,700.00 THB + 420.00 SGD" in ans.text
+    assert "2026-11-11 08:00" in ans.text  # the stored check-in reminder, in Bangkok time
+
+
+async def test_only_a_plain_yes_in_the_very_next_message_books(bot, world):
+    tl = tools(bot, world)
+    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
+    assert tl["book_trip"](fid, "", "Lumen kickoff")["status"] == "needs_confirmation"
+    assert tools(bot, world, who=BOSS)["book_trip"].on_confirm("yes") is None  # not BOSS's quote
+    assert tools(bot, world)["book_trip"].on_confirm("yes, but the later flight") is None
+    assert tools(bot, world)["book_trip"].on_confirm("Yes, confirm.") is None  # a message too late
+    assert tools(bot, world)["list_trips"]()["count"] == 0
+
+
+async def test_a_refused_booking_after_a_plain_yes_says_so(bot, world, monkeypatch):
+    def refuse(offer, traveller):
+        raise RuntimeError("hotel sold out")
+
+    tl = tools(bot, world)
+    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
+    hid = tl["search_hotels"]("SIN", DEP, RET)["hotels"][3]["offer_id"]
+    assert tl["book_trip"](fid, hid, "Lumen kickoff")["status"] == "needs_confirmation"
+    monkeypatch.setattr(bot.trips_provider, "book_hotel", refuse)
+    text = tools(bot, world)["book_trip"].on_confirm("yes")
+    assert text.startswith("I couldn't book it") and "Booked before the error: flight " in text
+    assert tools(bot, world)["list_trips"]()["count"] == 0
