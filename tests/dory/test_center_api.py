@@ -2615,13 +2615,16 @@ def test_admins_edit_other_members_profiles(w):
 
 
 # ------------------------------------------------------------------ identities heal themselves
-def test_discord_verified_before_joining_is_carried_onto_the_member_record(w):
+def test_discord_verified_before_joining_is_carried_onto_the_member_record(w, monkeypatch):
     """Jems' case (18 Oct 2026): verified Discord (sign-in) BEFORE being added to the org ->
-    Member.discord_user_id stayed empty and "my tasks" could not match him. Adding a member,
-    accepting an invite and every /me (sign-in) now carry the verified id over, and the
-    sign-in index is rebuilt for identities stored before it existed."""
+    Member.discord_user_id stayed empty and "my tasks" could not match him. Accepting the
+    invitation (added by email), joining through an invite link and every /me (sign-in) now
+    carry the verified id over, and the sign-in index is rebuilt for identities stored before
+    it existed. Added by email but not accepted yet: nothing is carried over (privacy)."""
     from dory.orgs import IDENTITY_INDEX, Identity
 
+    newbie = {"Authorization": "Bearer newbie"}
+    monkeypatch.setitem(TOKENS, "newbie", {"email": "new@example.com", "email_verified": True})
     w.orgs.set_user_identity(
         "new@example.com",
         Identity(platform="discord", external_id="555", name="newbie", verified=True),
@@ -2629,7 +2632,11 @@ def test_discord_verified_before_joining_is_carried_onto_the_member_record(w):
     r = w.client.post(
         "/api/center/orgs/org_t/members", json={"email": "new@example.com"}, headers=H["boss"]
     )
-    assert next(m for m in r.json() if m["email"] == "new@example.com")["discord_user_id"] == "555"
+    added = next(m for m in r.json() if m["email"] == "new@example.com")
+    assert added["discord_user_id"] is None and added["status"] == "invited"
+    assert w.client.post("/api/center/orgs/org_t/accept", headers=newbie).status_code == 200
+    org = w.orgs.get("org_t")
+    assert next(m for m in org.members if m.email == "new@example.com").discord_user_id == "555"
     # through an invite link too
     w.orgs.set_user_identity(
         "stranger@example.com",
@@ -2656,14 +2663,7 @@ def test_discord_verified_before_joining_is_carried_onto_the_member_record(w):
         and w.orgs.email_for_identity("discord", "555") is None
     )
 
-    TOKENS["newbie"] = {"email": "new@example.com", "email_verified": True}
-    try:
-        assert (
-            w.client.get("/api/center/me", headers={"Authorization": "Bearer newbie"}).status_code
-            == 200
-        )
-    finally:
-        TOKENS.pop("newbie", None)
+    assert w.client.get("/api/center/me", headers=newbie).status_code == 200
     assert w.orgs.email_for_identity("discord", "555") == "new@example.com"
     org = w.orgs.get("org_t")
     assert next(m for m in org.members if m.email == "new@example.com").discord_user_id == "555"
@@ -3622,3 +3622,187 @@ def test_command_center_tools_also_work_inside_the_agents_event_loop(w, monkeypa
     link, added = asyncio.run(inside_a_loop())
     assert link["url"].startswith("https://hub.example/center?invite=")
     assert "n2@example.com (member)" in added["members"]
+
+
+# ------------------------------------------------------------------ invitations: private until accepted
+VH = {"Authorization": "Bearer victim"}
+SECRETS = ("Zed", "Quill", "4242", "zqdiscord", "secret about", "secret jd")
+
+
+def _victim(w, monkeypatch):
+    """victim@ has a Dory account: a profile and a verified Discord identity."""
+    from dory.orgs import Identity
+
+    monkeypatch.setitem(TOKENS, "victim", {"email": "victim@example.com", "email_verified": True})
+    w.orgs.set_user_profile(
+        "victim@example.com",
+        name="Zed",
+        first_name="Zed",
+        last_name="Quill",
+        about="secret about",
+        job_description="secret jd",
+    )
+    w.orgs.set_user_identity(
+        "victim@example.com",
+        Identity(platform="discord", external_id="4242", name="zqdiscord", verified=True),
+    )
+
+
+def _no_email(d: dict) -> dict:
+    return {k: v for k, v in d.items() if k != "email"}
+
+
+def _leaks(blob) -> list[str]:
+    text = json.dumps(blob)
+    return [s for s in SECRETS if s in text]
+
+
+def _rec(w, org_id: str, email: str):
+    return next(m for m in w.orgs.get(org_id).members if m.email == email)
+
+
+def test_member_added_by_email_shows_nothing_of_theirs_until_they_accept(w, monkeypatch):
+    """Owner's release rule: anyone can create an org and add any email. Until that person
+    accepts, the org sees only what it entered itself: a person with a Dory account (profile,
+    verified Discord) looks exactly like an email nobody uses."""
+    _victim(w, monkeypatch)
+    base = "/api/center/orgs/org_o"
+    for e in ("victim@example.com", "nobody@example.com"):
+        r = w.client.post(base + "/members", json={"email": e, "role": "admin"}, headers=H["other"])
+        assert r.status_code == 200, r.text
+        assert not _leaks(r.json())
+        added = next(m for m in r.json() if m["email"] == e)
+        assert added["status"] == "invited" and added["discord_user_id"] is None
+    # the member record itself carries nothing of theirs (no Discord id copied over)
+    rec = _rec(w, "org_o", "victim@example.com")
+    assert rec.discord_user_id is None and rec.pending
+
+    members = {m["email"]: m for m in w.client.get(base + "/members", headers=H["other"]).json()}
+    v, n = members["victim@example.com"], members["nobody@example.com"]
+    assert _no_email(v) == _no_email(n)
+    assert v["name"] == "" and v["identities"] == [] and v["linked_platforms"] == 0
+    assert members["other@example.com"]["status"] == "active"
+    for path in ("", "/members", "/directory", "/overview", "/pm/settings"):
+        r = w.client.get(base + path, headers=H["other"])
+        assert r.status_code == 200, (path, r.text)
+        assert not _leaks(r.json()), (path, _leaks(r.json()))
+    people = {
+        p["email"]: p
+        for g in w.client.get(base + "/directory", headers=H["other"]).json()["departments"]
+        for p in g["people"]
+    }
+    assert _no_email(people["victim@example.com"]) == _no_email(people["nobody@example.com"])
+    ov = w.client.get(base + "/overview", headers=H["other"]).json()
+    assert ov["members_linked"] == 0
+    lead = {x["email"]: x for x in ov["leadership"]}
+    assert _no_email(lead["victim@example.com"]) == _no_email(lead["nobody@example.com"])
+    # name searches never match their own names or platform accounts
+    org = w.orgs.get("org_o")
+    for who in ("zqdiscord", "Zed", "Zed Quill"):
+        assert center.find_member(org, w.orgs, who) is None, who
+    assert center.find_member(org, w.orgs, "victim@example.com") == "victim@example.com"
+    assert not _leaks(center.member_choices(org, w.orgs))
+    assert center.discord_emails(w.orgs, org) == {}
+
+    # their own /me says the org waits for them; signing in does not copy Discord over
+    me = w.client.get("/api/center/me", headers=VH).json()
+    assert {o["id"]: o["pending"] for o in me["orgs"]} == {"org_o": True}
+    assert me["name"] == "Zed" and len(me["identities"]) == 2  # their own data, as before
+    assert _rec(w, "org_o", "victim@example.com").discord_user_id is None
+    assert w.orgs.heal_identities("victim@example.com") is False
+
+    # nobody else accepts for them: the owner's call accepts nothing, outsiders get 403
+    assert w.client.post(base + "/accept", headers=H["other"]).json()["pending"] is False
+    assert w.client.post(base + "/accept", headers=H["mem"]).status_code == 403
+    assert w.client.post(base + "/accept", headers=H["root"]).status_code == 403  # super only
+    assert _rec(w, "org_o", "victim@example.com").pending
+
+    # they accept: now the org sees them
+    r = w.client.post(base + "/accept", headers=VH)
+    assert r.status_code == 200 and r.json()["pending"] is False
+    first = _rec(w, "org_o", "victim@example.com")
+    assert first.accepted_at and first.discord_user_id == "4242"
+    assert w.client.post(base + "/accept", headers=VH).status_code == 200  # idempotent
+    assert _rec(w, "org_o", "victim@example.com").accepted_at == first.accepted_at
+    me = w.client.get("/api/center/me", headers=VH).json()
+    assert {o["id"]: o["pending"] for o in me["orgs"]} == {"org_o": False}
+    members = {m["email"]: m for m in w.client.get(base + "/members", headers=H["other"]).json()}
+    v = members["victim@example.com"]
+    assert v["status"] == "active" and v["name"] == "Zed" and v["full_name"] == "Zed Quill"
+    assert v["discord_user_id"] == "4242" and v["linked_platforms"] == 1
+    assert w.client.get(base + "/overview", headers=H["other"]).json()["members_linked"] == 1
+    assert center.find_member(w.orgs.get("org_o"), w.orgs, "zqdiscord") == "victim@example.com"
+
+
+def test_pending_member_profile_is_not_written_by_the_org(w, monkeypatch):
+    """Before they accept, the org cannot write their own profile (it is theirs, shared with
+    every org they belong to), by the page or by Dory's tool; their place in the chart is the
+    org's and can be set."""
+    _victim(w, monkeypatch)
+    base = "/api/center/orgs/org_o"
+    w.client.post(base + "/members", json={"email": "victim@example.com"}, headers=H["other"])
+    url = base + "/members/victim%40example.com/profile"
+    assert w.client.put(url, json={"name": "Hacked"}, headers=H["other"]).status_code == 409
+    blank = {"name": "", "title": "", "about": "", "reports_to": "other@example.com"}
+    r = w.client.put(url, json=blank, headers=H["other"])
+    assert r.status_code == 200 and not _leaks(r.json()) and r.json()["status"] == "invited"
+    assert r.json()["reports_to"] == "other@example.com"
+    p = w.orgs.user_profile("victim@example.com")
+    assert (p.name, p.about) == ("Zed", "secret about")  # untouched, not cleared
+    w.client.post(base + "/chat", json={"message": "hi"}, headers=H["other"])
+    tools = {getattr(t, "__name__", ""): t for t in w.asks[-1][1]["extra_tools"]}
+    out = tools["update_member_profile"]("victim@example.com", title="Spy")
+    assert "error" in out and not _leaks(out)
+    assert not _leaks(tools["update_member_profile"]("victim@example.com"))
+    assert w.orgs.user_profile("victim@example.com").title == ""
+    # once they accept, admins edit it as before
+    w.client.post(base + "/accept", headers=VH)
+    assert w.client.put(url, json={"title": "CTO"}, headers=H["other"]).json()["title"] == "CTO"
+
+
+def test_invite_link_join_is_acceptance(w, monkeypatch):
+    """Joining through an invite link is the person's own act: shown at once. Someone already
+    added by email who opens a link accepts too."""
+    _victim(w, monkeypatch)
+    base = "/api/center/orgs/org_o"
+    inv = w.client.post(base + "/invites", json={}, headers=H["other"]).json()
+    assert w.client.post(f"/api/center/invites/{inv['code']}/accept", headers=VH).json()["joined"]
+    members = {m["email"]: m for m in w.client.get(base + "/members", headers=H["other"]).json()}
+    v = members["victim@example.com"]
+    assert v["status"] == "active" and v["name"] == "Zed" and v["discord_user_id"] == "4242"
+    me = w.client.get("/api/center/me", headers=VH).json()
+    assert {o["id"]: o["pending"] for o in me["orgs"]} == {"org_o": False}
+    # added by email first (pending), then the link: accepted, the link is not used up
+    w.client.post(base + "/members", json={"email": "stranger@example.com"}, headers=H["other"])
+    assert _rec(w, "org_o", "stranger@example.com").pending
+    r = w.client.post(f"/api/center/invites/{inv['code']}/accept", headers=H["stranger"])
+    assert r.status_code == 200 and r.json()["joined"] is False
+    assert not _rec(w, "org_o", "stranger@example.com").pending
+
+
+def test_members_from_before_invitations_and_edits_keep_acceptance(w, monkeypatch):
+    """Members without `invited_at` (added before invitations existed) show as before; editing
+    a member's role never resets acceptance; the org's creator is accepted from the start."""
+    from dory.orgs import Identity
+
+    w.orgs.set_user_profile("mem@example.com", name="Memmy")
+    w.orgs.set_user_identity(
+        "mem@example.com", Identity(platform="discord", external_id="99", name="m", verified=True)
+    )
+    url = "/api/center/orgs/org_t/members"
+    ms = {m["email"]: m for m in w.client.get(url, headers=H["boss"]).json()}
+    assert ms["mem@example.com"]["name"] == "Memmy" and ms["mem@example.com"]["status"] == "active"
+    assert ms["mem@example.com"]["discord_user_id"] == "99"
+    creator = _rec(w, "org_o", "other@example.com")
+    assert creator.accepted_at and not creator.pending
+    _victim(w, monkeypatch)
+    base = "/api/center/orgs/org_o/members"
+    w.client.post(base, json={"email": "victim@example.com"}, headers=H["other"])
+    w.client.post(base, json={"email": "victim@example.com", "role": "admin"}, headers=H["other"])
+    rec = _rec(w, "org_o", "victim@example.com")
+    assert rec.pending and rec.role == "admin"  # an edit does not accept for them
+    w.client.post("/api/center/orgs/org_o/accept", headers=VH)
+    at_ = _rec(w, "org_o", "victim@example.com").accepted_at
+    w.client.post(base, json={"email": "victim@example.com", "role": "member"}, headers=H["other"])
+    rec = _rec(w, "org_o", "victim@example.com")
+    assert not rec.pending and rec.accepted_at == at_ and rec.role == "member"
