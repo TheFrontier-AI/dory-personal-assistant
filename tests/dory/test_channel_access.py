@@ -1,5 +1,5 @@
 # ruff: noqa: F811, F401
-"""Channels Dory cannot read: helper, /ตั้งค่า + /ห้อง messages, the 2000-char split, hub sync."""
+"""Channels Dory cannot read: helper, /setup + /ห้อง messages, the 2000-char split, hub sync."""
 
 from types import SimpleNamespace
 

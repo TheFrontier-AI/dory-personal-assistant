@@ -1,7 +1,8 @@
-"""Discord: wraps today's flow (invite link + one-time `/ตั้งค่า` link code), no OAuth.
+"""Discord: wraps today's flow (invite link + one-time `/setup` link code), no OAuth.
 
 Always available once `DORY_DISCORD_CLIENT_ID` is set. Connecting a server = invite the bot, run
-`/ตั้งค่า` in it, paste the code in the command center (`POST .../workspaces/discord/link`).
+`/setup` in it and open its link (or paste the code on the Workspaces page); both end in
+`POST .../workspaces/discord/link`.
 """
 
 from __future__ import annotations
@@ -27,7 +28,7 @@ class DiscordConnector:
         return self.invite_url()
 
     def oauth_callback(self, params):  # the link code flow replaces it
-        raise ConnectorError("Discord is connected with a /ตั้งค่า link code")
+        raise ConnectorError("Discord is connected with a /setup link code")
 
     def list_channels(self, token: str, external_id: str) -> list[dict]:
         return []  # channels are synced by the bot itself (GuildSettings.channels)

@@ -321,7 +321,7 @@ class Settings(BaseSettings):
     doc_alert_min_amount: float = 50000.0
     ask_reminder_hours: float = 2.0
     doc_alerts_per_day: int = 10  # real-time document alerts per person per day
-    # Where `/ตั้งค่า` links point: the web service that serves /hub.
+    # Where `/setup` links point: the web service that serves /center and /hub.
     # Licensing (dory.licensing): unlicensed guilds get no ingestion and no answers. Existing
     # guilds (installed before the first licensing lookup) get a free trial until `grandfather_until`.
     license_enforce: bool = True

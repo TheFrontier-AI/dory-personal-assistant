@@ -1,8 +1,9 @@
 """License gate: is this Discord guild allowed to use Dory?
 
 `is_licensed(guild_id)` looks at the license of the guild's organization (`dory.orgs`): status
-`active` (or `past_due`) and not past `valid_until` plus a grace period. Answers are cached for
-5 minutes. Without an org the guild is unlicensed, except for **grandfathering**: a guild that
+`active` (or `past_due`) and not past `valid_until` plus a grace period. A "yes" is cached for
+5 minutes, a "no" for 15 seconds (the server is linked to an org on the web, in another process,
+and Dory must start answering at once). Without an org the guild is unlicensed, except for **grandfathering**: a guild that
 already has a settings document from before licensing started (its `installed_at` is not later
 than the moment of the first lookup, recorded once as the licensing epoch) gets an automatic org
 with a trial license until `DORY_GRANDFATHER_UNTIL` (2026-12-31). The migration is idempotent
@@ -24,6 +25,7 @@ from .orgs import License, Member, Org, OrgStore, Workspace, stamp
 logger = logging.getLogger(__name__)
 
 CACHE_TTL_S = 300.0
+UNLICENSED_TTL_S = 15.0  # a "no" is re-read soon: linking on the web licenses within seconds
 GRACE_DAYS = 3
 STATE = "dory_license_state"  # guild 0: key "epoch"; guild = id: key "notice" (daily reply)
 VALID_STATUSES = ("active", "past_due")
@@ -90,17 +92,20 @@ class Licensing:
             return True
         t = self._clock()
         hit = self._cache.get(guild_id)
-        if hit is not None and t - hit[0] < self._ttl:
+        if hit is not None and t - hit[0] < self._ttl_of(hit[1]):
             return hit[1]
         try:
             ok = self._check(guild_id)
         except Exception:
             logger.warning("license lookup failed for guild %s", guild_id, exc_info=True)
             ok = hit[1] if hit else True
-            self._cache[guild_id] = (t - self._ttl + 30.0, ok)  # retry soon
+            self._cache[guild_id] = (t + 30.0 - self._ttl_of(ok), ok)  # retry in 30 s
             return ok
         self._cache[guild_id] = (t, ok)
         return ok
+
+    def _ttl_of(self, ok: bool) -> float:
+        return self._ttl if ok else min(self._ttl, UNLICENSED_TTL_S)
 
     def invalidate(self, guild_id: int | None = None) -> None:
         if guild_id is None:

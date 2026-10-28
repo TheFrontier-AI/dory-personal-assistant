@@ -44,7 +44,7 @@ KIND = "dory_identity_codes"
 CODE_TTL = timedelta(minutes=15)
 MAX_LIVE_CODES = 5
 CODE_DIGITS = 8
-# Discord links through /ตั้งค่า, so it never takes a code
+# Discord links through /setup, so it never takes a code
 CODE_PLATFORMS = tuple(p for p in IDENTITY_PLATFORMS if p != "discord")
 PRUNE_AFTER = timedelta(days=1)
 

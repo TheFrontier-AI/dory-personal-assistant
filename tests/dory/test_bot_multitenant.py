@@ -1,5 +1,5 @@
 """Bot behaviour with no setup: intake rules, executives, per-guild toggles/digest, join/leave,
-the /ตั้งค่า link. Discord objects are small fakes; nothing connects to Discord."""
+the /setup link. Discord objects are small fakes; nothing connects to Discord."""
 
 import asyncio
 from datetime import datetime
@@ -318,7 +318,7 @@ async def test_join_registers_guild_and_welcomes(bot, world):
     assert [c.name for c in g.channels] == ["ทั่วไป", "ใบเสร็จ-ร้าน"]
     welcome = sys_ch.sent[0]
     assert "ดอรี่" in welcome and "<@999>" in welcome and "ส่งไฟล์" in welcome
-    assert "/ตั้งค่า" not in welcome  # no command list
+    assert "/setup" not in welcome  # no command list
 
 
 async def test_welcome_falls_back_to_first_sendable_channel(bot, world):
@@ -357,7 +357,7 @@ async def test_channel_events_are_throttled_and_end_with_latest_state(bot, world
     assert len(writes) == 1 and len(writes[0]) == 7  # one trailing write with everything
 
 
-# ------------------------------------------------------------------ /ตั้งค่า
+# ------------------------------------------------------------------ /setup
 class Interaction:
     def __init__(self, guild, user):
         self.guild, self.user, self.sent = guild, user, []
@@ -374,7 +374,9 @@ async def test_setup_command_gives_an_ephemeral_one_time_link(bot, world):
     await bot.handle_setup(it)
     (text, ephemeral), (hidden, hidden_ephemeral) = it.sent  # the link, then the channel check
     assert (
-        ephemeral is True and hidden_ephemeral is True and "https://hub.example/hub?link=" in text
+        ephemeral is True
+        and hidden_ephemeral is True
+        and "https://hub.example/center?link=" in text
     )
     assert hidden == t("hidden_none", "th")
     code = text.split("link=")[1].split()[0]
@@ -405,7 +407,6 @@ def test_slash_commands_are_registered_with_thai_name_and_english_alias(bot):
     assert set(cmds) == {
         "ยกเลิก",
         "cancel",
-        "ตั้งค่า",
         "setup",
         "ลิงก์บัญชี",
         "linkaccount",

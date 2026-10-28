@@ -245,7 +245,7 @@ HISTORY_SECONDS = 3 * 3600
 HISTORY_CHARS = 8000  # oldest lines are dropped first
 HISTORY_LINE_CHARS = 500
 CHANNELS_COMMANDS = ("ห้อง", "channels")
-SETUP_COMMANDS = ("ตั้งค่า", "setup")  # Thai name plus an English alias
+SETUP_COMMANDS = ("setup",)  # one English command; Thai description via DoryTranslator
 LINK_ACCOUNT_COMMANDS = ("ลิงก์บัญชี", "linkaccount")  # any member: prove "I am this Discord user"
 JOIN_COMMANDS = ("เข้าประชุม", "join-meeting")
 LEAVE_COMMANDS = ("ออกประชุม", "leave-meeting")
@@ -298,9 +298,12 @@ def mentions_other(message: discord.Message, me: discord.ClientUser | None) -> b
 
 
 class DoryTranslator(app_commands.Translator):
-    """Localizes the message context menu name (everything else is bilingual in its text)."""
+    """Localizes the message context menu names and the /setup description (everything else is
+    bilingual in its text)."""
 
     async def translate(self, string, locale, context):
+        if str(string) == t("cmd_setup", "en") and str(locale.value).startswith("th"):
+            return t("cmd_setup", "th")
         if str(string) == MENU_SUMMARIZE and str(locale.value).startswith("th"):
             return t("menu_summarize", "th")
         if str(string) == MENU_TRANSLATE and str(locale.value).startswith("th"):
@@ -337,7 +340,7 @@ class _DeepJob:
 
 
 class _LicensedTree(app_commands.CommandTree):
-    """Slash commands stay quiet in unlicensed guilds, except the `/ตั้งค่า` link flow."""
+    """Slash commands stay quiet in unlicensed guilds, except the `/setup` link flow."""
 
     async def interaction_check(self, interaction: discord.Interaction) -> bool:
         bot, guild = interaction.client, interaction.guild
@@ -745,6 +748,11 @@ class SecretaryBot(
                     )
                 # a server that has not chosen yet is asked for its main language, once
                 await self._post_language_question(guild, target)
+                # a new server is not licensed until /setup links it to an organization: say so
+                if not await self._licensed(guild.id) and await asyncio.to_thread(
+                    self.licensing.claim_notice, guild.id, self.s.today().isoformat()
+                ):
+                    await target.send(t("unlicensed", lang, url=self.licensing.url))
 
     async def _ensure_chat_channel(self, guild: discord.Guild, lang: str = "en"):
         """The guild's Dory chat channel: an existing one with its name, else a new one."""
@@ -841,11 +849,16 @@ class SecretaryBot(
         return await asyncio.to_thread(self.licensing.is_licensed, guild_id)
 
     async def _unlicensed_notice(self, message: discord.Message) -> None:
-        """Unlicensed guild: nothing is read or stored; when addressed, one short line per day."""
+        """Unlicensed guild: nothing is read or stored; when addressed (or spoken to in a chat-mode
+        channel, where nobody tags her), one line per day saying how to switch her on."""
         try:
-            if not (mentions_bot(message, self.user) or self._starts_with_name(message)):
-                return
             gid = message.guild.id
+            if not (
+                mentions_bot(message, self.user)
+                or self._starts_with_name(message)
+                or self._mode(message.channel, gid) == "chat"
+            ):
+                return
             day = self.s.today().isoformat()
             if await asyncio.to_thread(self.licensing.claim_notice, gid, day):
                 await message.reply(
@@ -2980,7 +2993,7 @@ class SecretaryBot(
             self.tree.add_command(
                 app_commands.Command(
                     name=name,
-                    description=t("cmd_setup"),
+                    description=t("cmd_setup", "en"),
                     callback=setup,
                 )
             )
@@ -3482,7 +3495,8 @@ class SecretaryBot(
         await send(t("server_lang_set", language, label=t(f"lang_label_{language}", language)))
 
     async def handle_setup(self, interaction: discord.Interaction) -> None:
-        """/ตั้งค่า: DM-style ephemeral reply with a one-time link to the hub for this guild."""
+        """/setup: ephemeral one-time link to the command center, which connects this guild to
+        the person's organization (that licenses it: Dory starts answering here)."""
         guild, user = interaction.guild, interaction.user
         if guild is not None:
             await asyncio.to_thread(self.team.current, guild.id)
@@ -3498,7 +3512,7 @@ class SecretaryBot(
             logger.exception("could not create a link code")
             await interaction.response.send_message(t("setup_failed", lang), ephemeral=True)
             return
-        url = f"{self.s.hub_url.rstrip('/')}/hub?link={code}"
+        url = f"{self.s.hub_url.rstrip('/')}/center?link={code}"
         await interaction.response.send_message(
             t("setup_message", lang, name=guild.name, url=url), ephemeral=True
         )
