@@ -275,7 +275,7 @@ def test_axe_finds_no_wcag_aa_violations_on_the_homepage(page, lang, motion):
 @pytest.fixture
 def invite_configured(monkeypatch):
     """Production's state: a Discord invite link is configured, so the invite buttons show. (Without one the page
-    used to be the only state with a visible "Create account"; production had none.)"""
+    used to be the only state with a visible "Sign up"; production had none.)"""
     from meeting_scribe import app as web
 
     monkeypatch.setattr(
@@ -293,8 +293,8 @@ def test_a_sign_up_button_is_in_the_header_and_the_hero_and_leads_to_registratio
     expect(
         page.locator(".hero .acts [data-invite]")
     ).to_be_visible()  # Discord stays the primary action
-    hero = page.locator(".hero .acts").get_by_role("link", name="Create account")
-    head = page.locator("header").get_by_role("link", name="Create account")
+    hero = page.locator(".hero .acts").get_by_role("link", name="Sign up")
+    head = page.locator("header").get_by_role("link", name="Sign up")
     for button in (head, hero):
         expect(button).to_be_visible()
         box = button.bounding_box()
@@ -311,7 +311,7 @@ def test_a_sign_up_button_is_in_the_header_and_the_hero_and_leads_to_registratio
 
 def test_the_plan_card_offers_it_too(page, invite_configured):
     page.goto("/")
-    plan = page.locator(".plan-side").get_by_role("link", name="Create account")
+    plan = page.locator(".plan-side").get_by_role("link", name="Sign up")
     plan.scroll_into_view_if_needed()
     expect(plan).to_be_visible()
     plan.click()
@@ -319,17 +319,19 @@ def test_the_plan_card_offers_it_too(page, invite_configured):
 
 
 @pytest.mark.parametrize("lang", ["en", "th"])
-@pytest.mark.parametrize("width", [1280, 1366, 1440, 1920])
+@pytest.mark.parametrize("width", [1280, 1366, 1440, 1500, 1920])
 def test_the_header_with_three_actions_fits(page, invite_configured, width, lang):
-    """Log in, Create account and Add to Discord overflowed in Thai at 1280: there the Discord button keeps only its
-    logo (its name stays "Add to Discord" for screen readers)."""
+    """Log in, Sign up and Add to Discord are wider than the header in Thai at every desktop width: there the Discord
+    button keeps only its logo (its name stays "Add to Discord" for screen readers). The check is the header's own
+    margin (the space left of the logo), not just the window edge: the first version of this test only looked at the
+    window and missed the buttons running 33 to 54 px past the right margin."""
     page.add_init_script(
         f"try {{ localStorage.setItem('dory-language', '{lang}'); }} catch (e) {{}}"
     )
     page.set_viewport_size({"width": width, "height": 800})
     page.goto("/")
     expect(
-        page.locator("header").get_by_role("link", name=re.compile("Create account|สร้างบัญชี"))
+        page.locator("header").get_by_role("link", name=re.compile("Sign up|สมัครใช้งาน"))
     ).to_be_visible()
     discord = page.locator("header [data-invite]")
     expect(discord).to_be_visible()
@@ -337,9 +339,12 @@ def test_the_header_with_three_actions_fits(page, invite_configured, width, lang
     box = page.evaluate(
         """() => { const r = (s) => document.querySelector(s).getBoundingClientRect();
           return { navRight: r('.hd-nav').right, actLeft: r('.hd-act').left, actRight: r('.hd-act').right,
-                   scroll: document.documentElement.scrollWidth }; }"""
+                   logoLeft: r('.logo').left, scroll: document.documentElement.scrollWidth }; }"""
     )
-    assert box["actRight"] <= width and box["scroll"] <= width, box
+    assert box["scroll"] <= width, box
+    assert box["actRight"] <= width - box["logoLeft"] + 2, (
+        box
+    )  # as far from the right edge as the logo is from the left
     assert box["navRight"] <= box["actLeft"], box  # the links never run under the buttons
 
 
@@ -349,13 +354,13 @@ def test_on_a_phone_the_hero_has_a_sign_up_button_and_the_menu_has_one_too(
 ):
     page.set_viewport_size({"width": width, "height": 740})
     page.goto("/")
-    hero = page.locator(".hero .acts").get_by_role("link", name="Create account")
+    hero = page.locator(".hero .acts").get_by_role("link", name="Sign up")
     expect(hero).to_be_visible()
     box = hero.bounding_box()
     assert box["y"] + box["height"] <= 740 and box["height"] >= 44
     assert page.evaluate("document.documentElement.scrollWidth") <= width
     page.locator(".menu-btn").click()
-    expect(page.locator("#hd-menu").get_by_role("link", name="Create account")).to_be_visible()
+    expect(page.locator("#hd-menu").get_by_role("link", name="Sign up")).to_be_visible()
 
 
 @pytest.mark.parametrize("width", [390, 1440])
