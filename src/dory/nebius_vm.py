@@ -2,8 +2,9 @@
 
 When a voice call arrives and the voice server does not answer, `VmWaker.ensure_running` starts the
 VM through the Nebius API (if it is stopped), then polls the server's `/health` until it answers or
-`timeout_s` passes; the caller connects afterwards. The STOP half lives on the VM itself
-(`deploy/glm_voice/server.py --idle-shutdown-min`, nightly timer) and in the owner's watchdog.
+`timeout_s` passes; the caller connects afterwards. The STOP half is `IdleWatch` below, run by the
+always-on bot (`gpu_lifecycle_bot`): it polls the voice server's `/health` and stops the VM after
+`IDLE_STOP_S` without activity. The VM's own timer and the owner's Mac watchdog are optional extras.
 
 Credentials: a Nebius service account holding `compute.instance-power-operator` on the VM and an
 authorized key (`DORY_NEBIUS_VM_ID`, `DORY_NEBIUS_SA_ID`, `DORY_NEBIUS_SA_KEY_ID`,
@@ -33,6 +34,9 @@ POLL_S = 5.0
 START_COOLDOWN_S = 60.0  # one start request per minute at most, whatever callers do
 DEFAULT_TIMEOUT_S = 600.0  # start request -> cascade healthy took 8 min 6 s on 29 Oct 2026 (the box
 # reads ~20 GB of weights from its network disk at ~50 MB/s on EVERY boot); 300 s gave up at 5 min
+IDLE_STOP_S = 1800.0  # no audio, say or TTS on the voice server for this long -> stop the VM
+BOOT_GRACE_S = 5400.0  # the VM runs but no voice server answers for this long (a crashed install)
+STATE_EVERY_S = 300.0  # how often a silent VM's state is read (one API call)
 API_TIMEOUT_S = 60.0  # the SDK retries a failed token refresh for ever (a wrong key id kept the
 # room "waking" with the lock held, 28 Oct 2026); a timeout counts as a failed call
 
@@ -89,6 +93,7 @@ class VmWaker:
                 GetInstanceRequest,
                 InstanceServiceClient,
                 StartInstanceRequest,
+                StopInstanceRequest,
             )
             from nebius.sdk import SDK  # noqa: PLC0415
 
@@ -116,6 +121,9 @@ class VmWaker:
                     # second process's start aborts ours; the health poll is the real answer
                     await client.start(StartInstanceRequest(id=vm_id))
 
+                async def stop(self, vm_id: str) -> None:
+                    await client.stop(StopInstanceRequest(id=vm_id))  # the API: never a `shutdown`
+
             self._sdk = _Api()
         return self._sdk
 
@@ -128,6 +136,15 @@ class VmWaker:
         async with httpx.AsyncClient(timeout=HEALTH_TIMEOUT_S) as c:
             return (await c.get(url)).status_code
 
+    async def health_info(self) -> dict | None:
+        """The voice server's /health JSON (`calls`, `idle_s`...), None when nothing answers."""
+        try:
+            async with httpx.AsyncClient(timeout=HEALTH_TIMEOUT_S) as c:
+                r = await c.get(self.health)
+            return r.json() if r.status_code == 200 else None
+        except Exception:
+            return None
+
     async def healthy(self) -> bool:
         try:
             return await self._http_get(self.health) == 200
@@ -138,9 +155,11 @@ class VmWaker:
         self,
         timeout_s: float = DEFAULT_TIMEOUT_S,
         progress: Callable[[str], Awaitable[None]] | None = None,
+        reason: str = "unspecified",
     ) -> bool:
         """True once the voice server answers; starts the VM when it is stopped. Callers that arrive
-        during a wake wait for the same one. `progress(kind)` gets "starting" / "booting"."""
+        during a wake wait for the same one. `progress(kind)` gets "starting" / "booting". `reason`
+        (who asked) is logged with the start."""
         async with self._lock:
             if await self.healthy():
                 return True
@@ -153,7 +172,12 @@ class VmWaker:
             booting = any(s in state for s in ("RUNNING", "STARTING"))
             if not booting and time.monotonic() - self._last_start >= START_COOLDOWN_S:
                 self._last_start = time.monotonic()
-                logger.info("nebius vm: %s is %s, starting", self.vm_id, state or "unknown")
+                logger.info(
+                    "nebius vm: %s is %s, starting (reason=%s)",
+                    self.vm_id,
+                    state or "unknown",
+                    reason,
+                )
                 if progress is not None:
                     await progress("starting")
                 try:
@@ -183,6 +207,62 @@ class VmWaker:
 
     async def start(self) -> None:
         await asyncio.wait_for(self._api().start(self.vm_id), API_TIMEOUT_S)
+
+    async def stop(self, reason: str = "unspecified") -> None:
+        logger.info("nebius vm: %s stopping (reason=%s)", self.vm_id, reason)
+        await asyncio.wait_for(self._api().stop(self.vm_id), API_TIMEOUT_S)
+
+
+class IdleWatch:
+    """Stops the VM when the voice server has been idle for `idle_s`, from the always-on bot (no
+    laptop). One `tick()` a minute. Active = a call is open AND the server saw audio, a typed turn,
+    a say or TTS within `idle_s` (`idle_s` in its /health), so an answer or playback in progress is
+    never cut; an open but silent call counts as idle. An old server without `idle_s` keeps an open
+    call busy. shortcut: the idle clock lives in this process, so a bot restart delays a stop by up
+    to `idle_s`; persist it if restarts become frequent."""
+
+    def __init__(self, waker: Any, *, idle_s: float = IDLE_STOP_S, grace_s: float = BOOT_GRACE_S,
+                 clock: Callable[[], float] = time.monotonic):  # fmt: skip
+        self.waker, self.idle_s, self.grace_s, self.clock = waker, idle_s, grace_s, clock
+        self._busy_at = clock()  # last time something was active (or the process started)
+        self._checked, self._no_server_since = -STATE_EVERY_S, None
+
+    async def tick(self) -> str:
+        """One poll. Returns "busy" / "idle" / "stopped" / "down" (for the log and the tests)."""
+        now, info = self.clock(), await self.waker.health_info()
+        if (
+            info is None
+        ):  # stopped, booting or a crashed server: only a VM that RUNS for long counts
+            if now - self._checked >= STATE_EVERY_S:
+                self._checked = now
+                try:
+                    running = "RUNNING" in await self.waker.state()
+                except Exception:
+                    running = False
+                self._no_server_since = (self._no_server_since or now) if running else None
+            since = self._no_server_since
+            if since is not None and now - since >= self.grace_s:
+                return await self._stop(f"no voice server for {(now - since) / 60:.0f} min")
+            return "down"
+        self._no_server_since = None
+        calls = info.get("calls", int(bool(info.get("busy"))))
+        idle = info.get("idle_s")
+        if calls and (idle is None or idle < self.idle_s):
+            self._busy_at = now
+            return "busy"
+        quiet = idle if calls else now - self._busy_at
+        if quiet < self.idle_s:
+            return "idle"
+        return await self._stop(f"idle {quiet / 60:.0f} min")
+
+    async def _stop(self, reason: str) -> str:
+        try:
+            await self.waker.stop(reason=reason)
+        except Exception as e:
+            logger.warning("nebius vm: stop failed (reason=%s): %s", reason, error_reason(e))
+            return "idle"  # tried again on the next tick
+        self._busy_at, self._no_server_since = self.clock(), None
+        return "stopped"
 
 
 _WAKERS: dict[tuple[str, str, str, str], VmWaker] = {}

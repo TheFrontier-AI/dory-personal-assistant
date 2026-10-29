@@ -14,7 +14,11 @@ from test_meeting import env as env  # noqa: F401
 from dory import meeting as mt
 from dory.guild_settings import GuildSettings, GuildSettingsUpdate
 from dory.i18n import t
-from dory.meeting import parse_voice_talk_command, parse_voice_talk_default_command
+from dory.meeting import (
+    parse_voice_talk_command,
+    parse_voice_talk_default_command,
+    parse_voice_wake_command,
+)
 
 
 @pytest.mark.parametrize(
@@ -160,3 +164,65 @@ def test_hub_html_has_the_select_and_both_languages():
     for k in ('id="voice-talk"', "voice_talk_l", "voice_talk:", "listen_only"):
         assert k in html
     assert "เสียงของดอรี่ในห้องประชุม" in html and "Dory's voice in meetings" in html
+
+
+@pytest.mark.parametrize(
+    "text,want",
+    [
+        ("wake up", True), ("Dory, wake up", True), ("wake up please", True),
+        ("wake the voice server", True), ("start the GPU", True), ("ดอรี่ ตื่น", True),
+        ("ตื่นได้แล้วค่ะ", True), ("ปลุกเครื่องขึ้นมา", True),
+        ("I wake up at six", False), ("what time should I wake up", False),
+        ("don't wake up the server", False), ("ตื่นเช้า", False), ("", False),
+    ],
+)  # fmt: skip
+def test_parse_voice_wake_command(text, want):
+    assert parse_voice_wake_command(text) is want
+
+
+class SleepingWaker:
+    def __init__(self, up=False):
+        self.up, self.reasons = up, []
+
+    async def healthy(self):
+        return self.up
+
+    async def ensure_running(self, *a, reason="", **k):
+        self.reasons.append(reason)
+        return True
+
+
+async def test_typed_wake_starts_a_sleeping_box_once_with_its_reason(env, monkeypatch):
+    waker = SleepingWaker()
+    monkeypatch.setattr("dory.gpu_lifecycle_bot.make_waker", lambda s, url: waker)
+    user = make_member(env.guild, 12, "ซี", env.chan)
+    msg, sent = fake_message(env, "ดอรี่ ตื่น", user)
+    assert await env.bot._wake_voice_command(msg) is True
+    for _ in range(50):
+        if waker.reasons:
+            break
+        await asyncio.sleep(0.01)
+    assert sent == [t("glm_wake_ack", "th")] and waker.reasons == ["typed command by user 12"]
+    waker.up = True  # already awake: say so, start nothing
+    msg, sent = fake_message(env, "wake up", user)
+    assert await env.bot._wake_voice_command(msg) is True
+    assert sent == [t("glm_wake_awake", "th")] and len(waker.reasons) == 1
+    msg, sent = fake_message(env, "what is the budget", user)  # any other text goes on
+    assert await env.bot._wake_voice_command(msg) is False and sent == []
+    monkeypatch.setattr("dory.gpu_lifecycle_bot.make_waker", lambda s, url: None)
+    msg, sent = fake_message(env, "wake up", user)  # no GPU box configured: not our command
+    assert await env.bot._wake_voice_command(msg) is False and sent == []
+
+
+async def test_the_bot_polls_the_idle_stop_once_a_minute_and_never_raises(env, monkeypatch):
+    calls = []
+
+    class Watch:
+        async def tick(self):
+            calls.append(1)
+            raise RuntimeError("boom")
+
+    env.bot._gpu_watch, env.bot._gpu_next = Watch(), 0.0
+    await env.bot._gpu_due()
+    await env.bot._gpu_due()  # inside the minute: no second poll
+    assert calls == [1]

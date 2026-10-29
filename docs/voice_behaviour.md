@@ -44,9 +44,24 @@ text answer, TTS (fallback when Live cannot connect; its keyword rules stay and 
 | One state line flips (edits the previous line) within | `STATE_FLIP_S` 15 |
 | Empty room | `meeting_empty_minutes` (10) (`Settings.leave_empty_seconds`) |
 | Meeting hard cap when empty | `MEETING_MAX_S` 6 h |
+| GPU box: idle stop (cloud controller in the bot, polls `/health` of the voice server) | `nebius_vm.IDLE_STOP_S` 1800: no audio, no say, no TTS for that long (an open but silent call counts as idle) |
+| GPU box: running but no voice server answering for | `nebius_vm.BOOT_GRACE_S` 5400 (then it is stopped, reason logged) |
 
 Defaults in `getattr(settings, name, default)` inside the code equal the `Settings` defaults (one
 source of truth: `config.py`).
+
+## GPU box lifecycle (29 Oct 2026)
+
+The GPU VM stops when idle and starts only on an EXPLICIT request. Nothing else wakes it.
+
+| # | Rule | Where |
+| --- | --- | --- |
+| G1 | WAKE only by an explicit request: a web call, a person asking Dory to join a room, a typed "@Dory wake up" / "ดอรี่ ตื่น" (`parse_voice_wake_command`, with or without a meeting), or typed text on the web call. Room occupancy, reconnects, retries, a session resumed after a bot restart and loud sounds NEVER wake it | `GlmVoice.run` / `request_wake`, `bot._wake_voice_command` |
+| G2 | A wake is used up by one attempt: after it (success or failure) the next wake needs a new explicit request. No retry loop starts the box | `GlmVoice.run` |
+| G3 | Asleep and someone speaks: one hint per sleep ("type @Dory wake up"), no wake | `glm_asleep`, `GlmVoice.feed` |
+| G4 | STOP by the always-on bot, not by a laptop: `IdleWatch` polls `/health` (`calls`, `idle_s`) every minute and stops the VM after `IDLE_STOP_S` without activity. `idle_s` is refreshed by audio, typed turns, say events and every TTS chunk, so an answer or playback in progress is never cut. An old server without `idle_s` counts an open call as busy | `nebius_vm.IdleWatch`, `gpu_lifecycle_bot` |
+| G5 | Every wake and every stop logs its reason (`nebius vm: ... (reason=...)`) | `VmWaker.ensure_running` / `stop` |
+| G6 | The Mac watchdog (`vm.sh idle-check`) stays as an optional second stopper; nothing needs it | `deploy/glm_voice/vm.sh` |
 
 ## Notes
 

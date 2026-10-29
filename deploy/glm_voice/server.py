@@ -317,7 +317,9 @@ def make_app(models: Models, idle_shutdown_min: int = 0):
 
     @app.get("/health")
     async def health():
-        return {"ok": True, "busy": busy.locked()}
+        calls = int(busy.locked())  # one call at a time; same keys as the cascade's /health
+        idle_s = round(time.monotonic() - last_active["at"], 1) if calls else None
+        return {"ok": True, "busy": busy.locked(), "calls": calls, "idle_s": idle_s}
 
     @app.websocket("/voice")
     async def voice(ws: WebSocket):
@@ -388,6 +390,7 @@ def make_app(models: Models, idle_shutdown_min: int = 0):
                     msg = await ws.receive()
                     if msg["type"] == "websocket.disconnect":
                         break
+                    last_active["at"] = time.monotonic()  # audio or a typed turn = activity
                     data, text = msg.get("bytes"), msg.get("text")
                     act = None
                     if data:

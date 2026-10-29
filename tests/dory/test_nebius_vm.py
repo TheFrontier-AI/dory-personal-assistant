@@ -5,7 +5,7 @@ import time
 from types import SimpleNamespace
 
 from dory import nebius_vm
-from dory.nebius_vm import VmWaker, error_reason, health_url, make_waker
+from dory.nebius_vm import IdleWatch, VmWaker, error_reason, health_url, make_waker
 
 
 class FakeApi:
@@ -18,6 +18,10 @@ class FakeApi:
     async def start(self, vm_id):
         self.starts += 1
         self.state = "RUNNING"
+
+    async def stop(self, vm_id):
+        self.stops = getattr(self, "stops", 0) + 1
+        self.state = "STOPPED"
 
 
 def test_health_url_from_the_voice_url():
@@ -152,3 +156,110 @@ def test_error_reason_names_the_grpc_code_and_message_but_survives_plain_errors(
         " policy is closed more"
     )
     assert error_reason(TimeoutError()) == "TimeoutError"
+
+
+# ----------------------------------------------------------------------------- the cloud idle stop (G4)
+class Clock:
+    def __init__(self):
+        self.now = 1000.0
+
+    def __call__(self):
+        return self.now
+
+
+class FakeWaker:
+    def __init__(self, health=None, state="RUNNING"):
+        self.health, self.vm_state, self.stops, self.fail = health, state, [], False
+
+    async def health_info(self):
+        return self.health
+
+    async def state(self):
+        return self.vm_state
+
+    async def stop(self, reason=""):
+        if self.fail:
+            raise RuntimeError("denied")
+        self.stops.append(reason)
+
+
+def _watch(**health):
+    clock, w = Clock(), FakeWaker(health or None)
+    return IdleWatch(w, clock=clock), w, clock
+
+
+def test_an_active_call_is_never_stopped_and_a_silent_one_is_after_the_idle_time():
+    watch, w, clock = _watch(calls=1, idle_s=5.0)
+    for _ in range(100):  # hours of activity: audio keeps idle_s small
+        clock.now += 60
+        assert asyncio.run(watch.tick()) == "busy"
+    assert w.stops == []
+    w.health = {"calls": 1, "idle_s": 1799.0}  # an open call, silent for just under 30 min
+    assert asyncio.run(watch.tick()) == "busy" and w.stops == []
+    w.health = {"calls": 1, "idle_s": 1801.0}  # an occupied but inactive room
+    assert asyncio.run(watch.tick()) == "stopped" and w.stops == ["idle 30 min"]
+
+
+def test_no_call_open_stops_after_the_idle_time_counted_from_the_last_activity():
+    watch, w, clock = _watch(calls=0, idle_s=None)
+    clock.now += 1799
+    assert asyncio.run(watch.tick()) == "idle" and w.stops == []
+    w.health = {"calls": 1, "idle_s": 1.0}
+    assert asyncio.run(watch.tick()) == "busy"  # a call came in: the clock restarts
+    w.health = {"calls": 0, "idle_s": None}
+    clock.now += 1799
+    assert asyncio.run(watch.tick()) == "idle" and w.stops == []
+    clock.now += 2
+    assert asyncio.run(watch.tick()) == "stopped" and len(w.stops) == 1
+    clock.now += 60
+    assert asyncio.run(watch.tick()) == "idle" and len(w.stops) == 1  # one stop, not a stream
+
+
+def test_an_old_server_without_idle_s_keeps_an_open_call_busy():
+    watch, w, clock = _watch(calls=1, busy=True)
+    clock.now += 10_000
+    assert asyncio.run(watch.tick()) == "busy" and w.stops == []
+
+
+def test_a_failed_stop_is_retried_and_reasons_are_logged(caplog):
+    watch, w, clock = _watch(calls=0, idle_s=None)
+    clock.now += 2000
+    w.fail = True
+    with caplog.at_level("WARNING", logger="dory.nebius_vm"):
+        assert asyncio.run(watch.tick()) == "idle"
+    assert "stop failed (reason=idle 33 min)" in caplog.text and w.stops == []
+    w.fail = False
+    clock.now += 60
+    assert asyncio.run(watch.tick()) == "stopped"
+
+
+def test_a_vm_that_runs_without_a_voice_server_is_stopped_only_after_the_grace_time():
+    watch, w, clock = _watch()  # nothing answers /health
+    for _ in range(80):  # 80 minutes booting or crashed: grace is 90
+        clock.now += 60
+        assert asyncio.run(watch.tick()) == "down"
+    assert w.stops == []
+    clock.now += 12 * 60  # past 90 minutes of a RUNNING vm with no server
+    assert asyncio.run(watch.tick()) == "stopped" and "no voice server" in w.stops[0]
+    stopped, ws, clk = _watch()  # a STOPPED VM is never stopped again, however long it sleeps
+    ws.vm_state = "STOPPED"
+    for _ in range(300):
+        clk.now += 60
+        assert asyncio.run(stopped.tick()) == "down"
+    assert ws.stops == []
+
+
+def test_stop_calls_the_api_and_logs_why_and_a_wake_logs_who_asked(monkeypatch, caplog):
+    monkeypatch.setattr(nebius_vm, "POLL_S", 0.01)
+    api = FakeApi("STOPPED")
+
+    async def http_get(url):
+        return 200 if api.state == "RUNNING" else 503
+
+    w = VmWaker("vm-1", health="http://x/health", sdk=api, http_get=http_get)
+    with caplog.at_level("INFO", logger="dory.nebius_vm"):
+        assert asyncio.run(w.ensure_running(timeout_s=5, reason="typed command by user 7"))
+        asyncio.run(w.stop(reason="idle 31 min"))
+    assert api.stops == 1 and api.state == "STOPPED"
+    assert "starting (reason=typed command by user 7)" in caplog.text
+    assert "stopping (reason=idle 31 min)" in caplog.text
