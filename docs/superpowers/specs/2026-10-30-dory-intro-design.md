@@ -56,60 +56,64 @@ Copy: only lines already approved for the film (`motion/dory-launch-film/02-scre
 "Sound on/off", "Example · fictional names"). Every new string goes into start.html's dictionary in
 English and Thai.
 
-## Full version (owner, 30 Oct: "present all of the content completely")
+## Full version (owner, 30 Oct: "present all of the content completely"; "use English use cases only")
 
 The table above is the short cut. The owner asked for every capability, so the intro runs the Muse-like
-rhythm (example → line) through all of them, about 40–45 s, at the person's own pace (chapter dots,
-Next, Pause, Skip). Chapters 0–1 and 9 are the brand frame, the promise and the surface above; between them:
+rhythm (example → line) through all of them, about 40 s, at the person's own pace (chapter dots, Next,
+Pause, Skip). Chapters 0–1 are the brand frame and the promise above; chapter 8 is the surface.
 
 | # | Chapter | Example (product fragment, `data-ui`) | Line |
 | --- | --- | --- | --- |
 | 2 | Answers | the ask beat above, with the source chip | She answers with the source. |
 | 3 | Tasks | the decision beat above (the live thing) | Say it once, and it becomes a task with an owner. |
 | 4 | Receipts | a drawn receipt photo → "Filed" → the month's travel total | Snap a receipt. She files it. |
-| 5 | Voice | the call stage: "I'm listening…" → her spoken answer as captions (English) | Or ask out loud. |
+| 5 | Voice | the call stage: "I'm listening…" → her spoken answer as captions | Or ask out loud. |
 | 6 | Travel | one sentence → a flight card and a hotel card with the product's sample labels → "Booked in the sandbox" | Plan a trip in one sentence. |
 | 7 | Roles | the same spending question from Nok (owner) and Ploy (member): Nok gets the company total, Ploy gets her own receipts and a plain "company totals are for managers" | She only shares what your role allows. **(owner to tick)** |
-| 8 | Languages | a Thai question and Dory's Thai-then-English reply | Reads and writes Thai and English. |
+| 8 | Surface | everything resolves and drains up into the light theme; the last bubble becomes step 4's first example | — |
+
+**English use cases only (owner, 30 Oct):** every example, headline and chapter line is English in both
+page languages, like the film; there is no Thai-language chapter. Only the controls and the region label
+follow the page language (the page's dictionary rule: every interface string in Thai and English). The
+example content lives in one English data block in the script, not in the dictionary.
 
 Truth notes: every example sits under "Example with fictional names"; the source chip shows what
-`chat_search` attaches when it finds the message (it is an example, not a live claim); voice is English
-only, said in chapter 5's Thai line; travel shows the product's own "Sample" / "Fictional property" /
-"Booked in the sandbox" strings; meeting minutes are left out (not live). Builder-check calls (30 Oct):
-a client-only preview `/start?intro=1` replays the intro without touching any account (review and tests);
-every run starts silent (no remembered sound setting).
+`chat_search` attaches when it finds the message (an example, not a live claim); voice is English only;
+travel shows the product's own "Sample" / "Fictional property" / "Booked in the sandbox" strings
+(English); meeting minutes are left out (not live). Builder-check calls (30 Oct): a client-only preview
+`/start?intro=1` replays the intro without touching any account (review and tests); every run starts
+silent (no remembered sound setting).
 
-## Copy deck (English / Thai; Thai drafted by Claude for the owner to check)
+## Copy deck (English only, except the controls)
 
-| Key | English | Thai |
-| --- | --- | --- |
-| region label | Meet Dory | รู้จักดอรี่ |
-| example notice | Example with fictional names | ตัวอย่าง ชื่อทั้งหมดสมมติขึ้น |
-| headline | Ask once. / Dory remembers. | ถามครั้งเดียว / ดอรี่จำไว้ให้ (homepage `h1a` / `h1b`) |
-| rising bubbles | I'll send the deck Friday. · ABC confirmed 42,000 THB for Q4. · Who's going to Singapore next week? | เดี๋ยวส่งเด็คให้วันศุกร์นะ · ABC ยืนยันแพ็กเกจ Q4 ที่ 42,000 บาทแล้ว · สัปดาห์หน้าใครไปสิงคโปร์บ้าง |
-| ch2 question (Nok) | What price did we agree with ABC? | เราตกลงราคากับ ABC ไว้เท่าไหร่ |
-| ch2 status | Dory is working · searching your chat → found it | ดอรี่กำลังทำงาน · กำลังค้นแชทของทีม → เจอแล้ว |
-| ch2 answer | 42,000 THB for the Q4 package. Ploy confirmed it in #sales. | 42,000 บาทสำหรับแพ็กเกจ Q4 ค่ะ พลอยยืนยันไว้ในห้อง #sales |
-| ch2 source chip | Ploy · #sales | พลอย · #sales |
-| ch2 line | She answers with the source. | ดอรี่ตอบพร้อมบอกที่มา |
-| ch3 card | Send the ABC deck · Ploy · due Fri | ส่งเด็คให้ ABC · พลอย · ครบกำหนดวันศุกร์ |
-| ch3 buttons / result | Accept · Edit · Decline / Accepted / You decide, every time. | ยอมรับ · แก้ไข · ปฏิเสธ / ยอมรับแล้ว / คุณเป็นคนตัดสินใจเสมอ |
-| ch3 line | Say it once, and it becomes a task with an owner. | พูดครั้งเดียว กลายเป็นงานที่มีเจ้าของ |
-| ch4 result / total | Filed: Taxi · 240 THB · Travel / Travel this month: 3,180 THB | บันทึกแล้ว: แท็กซี่ · 240 บาท · ค่าเดินทาง / ค่าเดินทางเดือนนี้: 3,180 บาท |
-| ch4 line | Snap a receipt. She files it. | ถ่ายรูปใบเสร็จ ดอรี่บันทึกให้ |
-| ch5 captions (English in both) | "Remind me to send the ABC deck on Friday at 4 pm." / "Done. I'll remind you on Friday at 4 pm." | (captions stay English: voice is English only) |
-| ch5 line | Or ask out loud. | หรือพูดถามด้วยเสียงก็ได้ (ภาษาอังกฤษ) |
-| ch6 request | Find a flight for two from Bangkok to Singapore next Tuesday, and a hotel for two nights. | หาเที่ยวบินสองคน กรุงเทพฯ ไปสิงคโปร์วันอังคารหน้า กับโรงแรมสองคืน |
-| ch6 labels | the product's own `tv_*` strings (Sample itinerary · Sample price; Fictional property; Booked in the sandbox) | the product's own Thai `tv_*` strings |
-| ch6 line | Plan a trip in one sentence. | วางแผนทริปได้ในประโยคเดียว |
-| ch7 exchange | Nok: How much did we spend this month? → 48,200 THB across 31 receipts. / Ploy: same question → Your receipts this month: 3,180 THB. Company totals are for managers. | นก: เดือนนี้เราใช้เงินไปเท่าไหร่ → 48,200 บาท จากใบเสร็จ 31 ใบค่ะ / พลอย: คำถามเดียวกัน → ใบเสร็จของคุณเดือนนี้ 3,180 บาทค่ะ ยอดรวมของบริษัทดูได้เฉพาะผู้จัดการ |
-| ch7 line | She only shares what your role allows. | ดอรี่บอกเฉพาะสิ่งที่บทบาทของคุณเห็นได้ |
-| ch8 exchange | สรุปงานวันนี้ให้หน่อย → Thai summary, then "Today: 2 tasks due, 1 meeting at 3 pm." | สรุปงานวันนี้ให้หน่อย → วันนี้มีงานครบกำหนด 2 งาน และประชุม 1 นัดตอนบ่ายสามค่ะ |
-| ch8 line | Reads and writes Thai and English. | อ่านและเขียนได้ทั้งไทยและอังกฤษ |
-| controls | Skip · Next · Pause / Play · Sound on / Sound off | ข้าม · ถัดไป · หยุดชั่วคราว / เล่นต่อ · เปิดเสียง / ปิดเสียง |
+| Key | Text |
+| --- | --- |
+| example notice | Example with fictional names |
+| headline | Ask once. / Dory remembers. |
+| rising bubbles | I'll send the deck Friday. · ABC confirmed 42,000 THB for Q4. · Who's going to Singapore next week? |
+| ch2 question (Nok) | What price did we agree with ABC? |
+| ch2 status | Dory is working · searching your chat → found it |
+| ch2 answer | 42,000 THB for the Q4 package. Ploy confirmed it in #sales. |
+| ch2 source chip | Ploy · #sales |
+| ch2 line | She answers with the source. |
+| ch3 card | Send the ABC deck · Ploy · due Fri |
+| ch3 buttons / result | Accept · Edit · Decline / Accepted / You decide, every time. |
+| ch3 line | Say it once, and it becomes a task with an owner. |
+| ch4 result / total | Filed: Taxi · 240 THB · Travel / Travel this month: 3,180 THB |
+| ch4 line | Snap a receipt. She files it. |
+| ch5 captions | "Remind me to send the ABC deck on Friday at 4 pm." / "Done. I'll remind you on Friday at 4 pm." |
+| ch5 line | Or ask out loud. |
+| ch6 request | Find a flight for two from Bangkok to Singapore next Tuesday, and a hotel for two nights. |
+| ch6 labels | the product's own English `tv_*` strings (Sample itinerary · Sample price; Fictional property; Booked in the sandbox) |
+| ch6 line | Plan a trip in one sentence. |
+| ch7 exchange | Nok: How much did we spend this month? → 48,200 THB across 31 receipts. / Ploy: same question → Your receipts this month: 3,180 THB. Company totals are for managers. |
+| ch7 line | She only shares what your role allows. |
 
-All numbers and names are fictional sample data inside the labelled example; Dory speaks with ค่ะ
-(her persona); no claim beyond the film's sign-off list except chapter 7, which waits for the owner.
+Controls (dictionary, both languages): region label Meet Dory / รู้จักดอรี่ · Skip / ข้าม · Next / ถัดไป ·
+Pause / หยุดชั่วคราว · Play / เล่นต่อ · Sound on / เปิดเสียง · Sound off / ปิดเสียง.
+
+All numbers and names are fictional sample data inside the labelled example; no claim beyond the film's
+sign-off list except chapter 7, which waits for the owner.
 
 ## Controls and states
 
