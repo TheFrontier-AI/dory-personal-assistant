@@ -198,6 +198,7 @@ from .tone import label as tone_label
 from .tone_bot import TONE_COMMANDS, ToneMixin
 from .translate_bot import TranslateMixin
 from .travel_bot import TravelMixin
+from .travel_search_bot import TravelButton, TravelSearchMixin, TravelSelect
 from .videoad_bot import VideoAdMixin
 from .voice_pool import VoicePool
 from .votes_bot import VoteButton, VoteOfferButton, VotesMixin
@@ -408,6 +409,7 @@ class SecretaryBot(
     MapsMixin,
     SearchMixin,
     TravelMixin,
+    TravelSearchMixin,  # /dory flights + /dory hotels cards (dory.travel_search_bot)
     GpuLifecycleMixin,  # typed "wake up" + the idle stop of the GPU voice box
     MarketsMixin,
     ReminderMixin,
@@ -632,6 +634,7 @@ class SecretaryBot(
         self.add_dynamic_items(SwitchButton)
         self.add_dynamic_items(CompanyButton)  # the "which company?" DM buttons
         self.add_dynamic_items(LanguageSelect)  # the main-language menu (dory.language_ask)
+        self.add_dynamic_items(TravelButton, TravelSelect)  # /dory flights + hotels cards
         await self.tree.set_translator(DoryTranslator())
         try:
             await self.tree.sync()  # global commands; Discord may take a while to show them
@@ -1936,14 +1939,14 @@ class SecretaryBot(
                     **({"files": files, "actions": actions} if files else {}),
                 )
         except BaseException:
-            await self._ack_failed(ack, lang)
+            await self._ack_failed(ack, lang, self._travel_fail_hint(gid, q, lang))
             raise
         if ans is None:  # past the deadline: an apology, not "one moment..." forever
             logger.warning(
                 "answer deadline passed guild=%s channel=%s message=%s after %.0fs",
                 gid, message.channel.id, message.id, time.monotonic() - t_ctx,
             )  # fmt: skip
-            await self._ack_failed(ack, lang)
+            await self._ack_failed(ack, lang, self._travel_fail_hint(gid, q, lang))
             return not interjection
         self._log_answer(gid, message.channel.id, is_exec, ans, t0, t_ctx, time.monotonic())
         if interjection and is_no_reply(ans.text):
@@ -1962,6 +1965,7 @@ class SecretaryBot(
         sent, first, sent_ids = await self._deliver(message, guild, ack, text, uploads, everyone)
         if sent_ids:
             self._answers.add(message.channel.id, message.author.id, sent_ids)
+        await self._post_travel_cards(message, member, agent, lang)  # what the brain searched
         lines = [
             receipt_note(r)
             for rid, _rx in getattr(ans, "receipts", ())
@@ -2054,18 +2058,20 @@ class SecretaryBot(
         )
         return line or t("deep_ack", lang)
 
-    async def _ack_failed(self, ack: Ack | None, lang: str) -> None:
-        """The answer blew up: do not leave "one moment..." hanging. The ack becomes the apology;
-        a failure before the ack went out (a quick 400 / 403) still gets it, as a reply. No ack
-        (an interjection, nobody asked): stay quiet."""
+    async def _ack_failed(self, ack: Ack | None, lang: str, extra: str = "") -> None:
+        """The answer blew up: do not leave "one moment..." hanging. The ack becomes the apology
+        (+ `extra`, e.g. the structured travel search); a failure before the ack went out (a
+        quick 400 / 403) still gets it, as a reply. No ack (an interjection, nobody asked):
+        stay quiet."""
         if ack is None:
             return
         await ack.finish()
+        text = t("qa_failed", lang) + (f"\n{extra}" if extra else "")
         with contextlib.suppress(discord.HTTPException):
             if ack.sent is not None:
-                await ack.sent.edit(content=t("qa_failed", lang))
+                await ack.sent.edit(content=text)
             else:
-                await ack.message.reply(t("qa_failed", lang), mention_author=False)
+                await ack.message.reply(text, mention_author=False)
 
     async def _deliver(self, message, guild, ack, text: str, uploads=(), everyone: bool = False):
         """Post an answer: mentions resolved (`@[name]` -> real tags, see dory.mentions), the
@@ -2473,9 +2479,14 @@ class SecretaryBot(
             *([] if interjection else self._approval_tools(guild, asker, is_exec, lang)),
             *([] if interjection else self._places_tools(message, guild, asker, is_exec)),
             *([] if interjection else self._maps_tools(message, guild, asker, is_exec, lang)),
+            # fx + flights + trips + THE flight / hotel search (cards in chat, spoken in voice)
             *(
-                [] if interjection else self._travel_tools(guild, asker, lang, is_exec)
-            ),  # fx + flights + trips
+                []
+                if interjection
+                else self._travel_card_tools(
+                    guild, asker, self._travel_tools(guild, asker, lang, is_exec), spoken=spoken
+                )
+            ),
             *([] if interjection else self._markets_tools(guild, asker, is_exec, lang)),
             *([] if interjection else self._reminder_tools(message, guild, asker, is_exec, lang)),
             *(
@@ -3238,6 +3249,7 @@ class SecretaryBot(
                 )
         self._register_coo_commands()  # /รายงาน /report
         self._register_catchup_commands()  # /ตามทัน /catchup
+        self._register_travel_search_commands()  # /dory flights, /dory hotels
 
     async def handle_summary(
         self,

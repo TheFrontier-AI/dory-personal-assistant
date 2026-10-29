@@ -85,10 +85,11 @@ read-back query. Tick every box the evening before.
 
 ### Build gates (must be green in the rehearsal server before the first full run)
 
-- `search_flights` / `search_hotels` (`src/dory/trips.py`): Duffel test mode (flights, test airline `ZZ`) and
-  the LiteAPI sandbox (hotels), 25 s timeout; on an error, a
-  timeout or an empty answer the deterministic sample provider answers with the numbers in this script (the
-  result says `source: sample`, never spoken). `DORY_TRAVEL_PROVIDER=sample` forces it for the dry run.
+- `search_flights` / `search_hotels`: since 29 Oct 2026 the ONLY searches are `src/dory/travel_search.py`'s card
+  tools (spoken in voice, drawn as cards in chat; `docs/demo/travel-search-cards.md`) over ONE sample catalogue
+  (BKK <-> SIN flights, fictional Singapore hotels, THB). Every result carries a `booking_ref` that `book_trip`
+  books; no agent search reaches Duffel / LiteAPI any more, so the SGD prices and hotel names in the script
+  below predate that change and must be re-checked against the catalogue before a rehearsal.
 - `book_trip` two-step: the first call answers `needs_confirmation` with the quote, the same call in a LATER
   message books (the secretary confirm gate); an `approval_id` books only when that approval is Mint's own and
   `approved` (checked in code, never by the model). On success: one ledger `Receipt` per item (category
@@ -176,8 +177,8 @@ Keep ONE unedited filler of 4-5 s (segment 2) so judges see the real latency onc
       never the preemptible one), `/health` on the voice server, `DORY_GLM_VOICE_URL` reachable from the
       Cloud Run service, idle shutdown disabled for the day (`GLM_IDLE_SHUTDOWN_CMD` empty or
       `--idle-shutdown-min 180`), the 16:30 UTC stop timer not inside the slot.
-- [ ] T-45 min: sandbox keys: one `search_flights` BKK-SIN and one `search_hotels` SIN from the shell;
-      check `source` is `duffel` / `liteapi`, not `sample` (both keys are static, no token refresh). Token Factory key: one chat turn. Cloud Run
+- [ ] T-45 min: Token Factory key: one chat turn (the flight / hotel searches are the sample catalogue, no
+      provider key to check). Cloud Run
       `meeting-scribe` warm (`/health`, open `/center`), worker pool `dory-bot` at 1 instance, Dory online in
       the server, in `#team-room`.
 - [ ] T-30 min: Discord audio: Dory's output audible through the room speakers (Discord output device =
