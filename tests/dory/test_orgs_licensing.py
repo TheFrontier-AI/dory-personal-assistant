@@ -138,6 +138,20 @@ def test_enforce_off_allows_everything(orgs):
     assert mk_licensing(orgs, MemoryGuildStore(), enforce=False).is_licensed(1)
 
 
+def test_a_web_only_company_is_licensed_by_its_web_workspace_id(orgs):
+    """A company that signed up on the website has no Discord server: its tools run under its web
+    workspace's memory id, which must find the org (else every feature reads as off)."""
+    org = orgs.create("Web Co", "w@x.co", org_id="org_web",
+                      license=License(plan="monthly", status="active", seats=3, valid_until="2099-01-01"))  # fmt: skip
+    web_id = org.web_workspace().memory_id
+    assert web_id >= NAMESPACE_BASE
+    assert mk_licensing(orgs, MemoryGuildStore()).is_licensed(web_id) is True
+    orgs.create("Lapsed Co", "l@x.co", org_id="org_old",
+                license=License(plan="monthly", status="active", seats=3, valid_until="2026-01-01"))  # fmt: skip
+    lapsed = orgs.get("org_old").web_workspace().memory_id
+    assert mk_licensing(orgs, MemoryGuildStore()).is_licensed(lapsed) is False
+
+
 def test_unknown_guild_without_a_settings_doc_is_unlicensed(orgs):
     lic = mk_licensing(orgs, MemoryGuildStore())
     assert lic.is_licensed(5) is False
