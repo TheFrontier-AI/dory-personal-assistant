@@ -101,10 +101,9 @@ class VmWaker:
                     return str(getattr(state, "name", state) or "").upper()
 
                 async def start(self, vm_id: str) -> None:
-                    op = await client.start(StartInstanceRequest(id=vm_id))
-                    wait = getattr(op, "wait", None)
-                    if wait is not None:
-                        await wait()
+                    # not op.wait(): a start takes about 66 s (longer than API_TIMEOUT_S) and a
+                    # second process's start aborts ours; the health poll is the real answer
+                    await client.start(StartInstanceRequest(id=vm_id))
 
             self._sdk = _Api()
         return self._sdk
@@ -140,7 +139,8 @@ class VmWaker:
             except Exception as e:
                 logger.warning("nebius vm: state failed: %s", type(e).__name__)
                 state = ""
-            if "RUNNING" not in state and time.monotonic() - self._last_start >= START_COOLDOWN_S:
+            booting = any(s in state for s in ("RUNNING", "STARTING"))
+            if not booting and time.monotonic() - self._last_start >= START_COOLDOWN_S:
                 self._last_start = time.monotonic()
                 logger.info("nebius vm: %s is %s, starting", self.vm_id, state or "unknown")
                 if progress is not None:
@@ -149,7 +149,14 @@ class VmWaker:
                     await self.start()
                 except Exception as e:
                     logger.warning("nebius vm: start failed: %s", type(e).__name__)
-                    return False
+                    # another process's start aborts ours (OperationAborted, 28 Oct 2026: the web
+                    # and the bot woke the box together) while the VM boots all the same
+                    try:
+                        state = await self.state()
+                    except Exception:
+                        state = ""
+                    if not any(s in state for s in ("RUNNING", "STARTING")):
+                        return False
             if progress is not None:
                 await progress("booting")
             started = deadline - timeout_s
@@ -167,19 +174,26 @@ class VmWaker:
         await asyncio.wait_for(self._api().start(self.vm_id), API_TIMEOUT_S)
 
 
+_WAKERS: dict[tuple[str, str, str, str], VmWaker] = {}
+
+
 def make_waker(settings: Any, voice_url: str) -> VmWaker | None:
-    """A waker when the Nebius identity settings are all present, else None."""
+    """A waker when the Nebius identity settings are all present, else None. One per process and
+    box, so the lock and the start cooldown hold across every call and room."""
     vm = getattr(settings, "nebius_vm_id", "")
     sa = getattr(settings, "nebius_sa_id", "")
     key = getattr(settings, "nebius_sa_key_id", "")
     pem = getattr(settings, "nebius_sa_private_key", "")
     if not (vm and sa and key and pem and voice_url):
         return None
-    return VmWaker(
-        vm,
-        health=health_url(voice_url),
-        sa_id=sa,
-        key_id=key,
-        private_key_pem=pem,
-        parent_id=getattr(settings, "nebius_project", ""),
-    )
+    k = (vm, sa, key, health_url(voice_url))
+    if k not in _WAKERS:
+        _WAKERS[k] = VmWaker(
+            vm,
+            health=k[3],
+            sa_id=sa,
+            key_id=key,
+            private_key_pem=pem,
+            parent_id=getattr(settings, "nebius_project", ""),
+        )
+    return _WAKERS[k]
