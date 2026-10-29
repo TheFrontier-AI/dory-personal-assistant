@@ -82,3 +82,13 @@ def test_axe_finds_no_wcag_aa_violations_in_the_travel_card(page, width):
     assert page.evaluate("document.documentElement.scrollWidth") <= width
     res = Axe().run(page, context=".card:has(#a-airport)", options=WCAG)
     assert res.violations_count == 0, res.generate_report()
+
+
+def test_an_example_that_never_reached_the_chat_is_gone_with_its_page(page):
+    prefill(page)
+    page.goto("/center?mock=1#/overview")  # the person landed somewhere else
+    page.locator("#content h1").wait_for()
+    assert page.evaluate("sessionStorage.getItem('dory_chat_prefill')") is None  # read at load
+    page.goto("/center?mock=1#/chat")  # a later visit to the chat starts with an empty box
+    page.locator(".chatpage .msgs article").first.wait_for()
+    expect(page.get_by_role("textbox", name="Ask Dory anything…")).to_have_value("")

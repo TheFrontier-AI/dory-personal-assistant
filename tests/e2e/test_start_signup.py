@@ -130,8 +130,9 @@ def currency(page):
 def test_the_first_screen_explains_the_value_and_links_terms_privacy_and_sign_in(page):
     page.goto("/start")
     expect(page.get_by_role("heading", level=1)).to_have_text("Bring Dory to your team")
-    terms = page.locator("#step1").get_by_role("link", name="Terms")
-    privacy = page.locator("#step1").get_by_role("link", name="Privacy Policy")
+    # both open a new tab, and a screen reader is told so
+    terms = page.locator("#step1").get_by_role("link", name="Terms (opens in a new tab)")
+    privacy = page.locator("#step1").get_by_role("link", name="Privacy Policy (opens in a new tab)")
     expect(terms).to_have_attribute("href", "/terms")
     expect(privacy).to_have_attribute("href", "/privacy")
     expect(page.locator("#step1").get_by_role("link", name="Sign in")).to_have_attribute(
@@ -167,6 +168,17 @@ def test_the_happy_path_lands_on_each_step_heading_and_names_the_new_organizatio
     expect(page.locator("#step3 h2")).to_be_focused()
     expect(page.locator("#created-note")).to_contain_text(f'"{NAME}" is ready')
     assert flow.posts == [{"name": NAME}]
+
+
+def test_progress_is_a_named_list_and_the_current_step_is_announced(page):
+    """The step bar was aria-hidden: a screen-reader user had no idea there were four steps."""
+    signup(page, CREATED)
+    steps = page.get_by_role("list", name="Sign-up progress")
+    expect(steps.get_by_role("listitem")).to_have_count(4)
+    expect(steps.locator('[aria-current="step"]')).to_have_count(1)
+    expect(steps.locator('[aria-current="step"]')).to_contain_text("Organization")
+    create_org(page)
+    expect(steps.locator('[aria-current="step"]')).to_contain_text("Preferences")
 
 
 def test_a_double_click_or_enter_while_creating_sends_one_request(page):

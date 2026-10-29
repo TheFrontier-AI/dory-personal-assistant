@@ -166,14 +166,28 @@ def test_an_example_is_a_link_that_fills_the_chat_box_and_nothing_sends_it():
     assert 'sessionStorage.setItem("dory_chat_prefill"' in html
     take = center.split("function takePrefill() {", 1)[1].split("\n}\n", 1)[0]
     assert 'sessionStorage.getItem("dory_chat_prefill")' in take and "Date.now()" in take
-    use = center.split("const pre = takePrefill();", 1)[1].split("\n", 1)[0]
+    use = center.split("const pre = prefillOnce;", 1)[1].split("\n", 1)[0]
     assert "w.prefill(pre)" in use and ".ask(" not in use and "send(" not in use
+    assert "let prefillOnce = takePrefill();" in center  # read (and removed) when the page loads
 
 
 def test_skipping_never_waits_and_a_save_is_not_assumed():
     html, _ = page()
     skip = html.split('$("pref-skip").addEventListener', 1)[1].split("\n});", 1)[0]
     assert "await" not in skip and 'show("step4")' in skip
+    assert (
+        "keepalive: true" in skip
+    )  # the request outlives a click on "Start chatting" right after it
     save = html.split('$("pref-form").addEventListener', 1)[1].split("\n});", 1)[0]
     assert save.index("await api(") < save.index('show("step4")')  # moves on only after the answer
     assert 'pending(btn, "pref_saving")' in save and "aria-busy" in save  # one request per press
+
+
+def test_the_currency_lists_of_both_pages_are_the_servers_list():
+    from dory import travel_search
+
+    start, _ = page()
+    center = (START.parent / "center.html").read_text("utf-8")
+    for source, name in ((start, "CCY"), (center, "TRAVEL_CCY")):
+        listed = re.search(rf"const {name} = \[([^\]]+)\]", source).group(1)
+        assert tuple(re.findall(r'"([A-Z]{3})"', listed)) == travel_search.CURRENCIES, name
