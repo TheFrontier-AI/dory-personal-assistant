@@ -573,26 +573,23 @@ def test_mock_google_link_keeps_every_identity_and_overview_edit_opens_the_peopl
     assert 'localStorage.setItem("dory_chart_view", "people")' in s
 
 
-def test_live_waiting_sounds_toggle_off_by_default_and_operation_status():
+def test_live_waiting_sounds_on_by_default_without_a_toggle_and_operation_status():
     src = html()
     th, en = src.split("\nen: {", 1)
     for key in (
-        "live_wait",
-        "live_wait_on",
-        "live_wait_off",
         "live_op_flights",
         "live_op_hotels",
         "live_op_search",
     ):
         assert f"{key}:" in th and f"{key}:" in en, key
     assert (
-        'localStorage.getItem("dory_wait_sound") === "1"' in src
-    )  # remembered, off unless saved on
+        "dory_wait_sound" not in src and "setWait" not in src and "live_wait" not in src
+    )  # no toggle
     assert "const WAIT_DELAY_MS = 2500" in src  # only a long turn gets the sound
     call = between("function liveCall(wrap, addMsg, page) {", "\n// The chat, in the panel")
-    assert '"aria-pressed": String(!!waitPref)' in call and 'class: "rb wait"' in call
+    assert "waitOn: true" in call and 'class: "rb wait"' not in call  # on by default
     # every way a wait ends stops the pad: Dory's first audio, the person's voice, heard / turn / interrupted, the call's end
-    assert call.count("waitStop()") >= 7 and "waitArm()" in call
+    assert call.count("waitStop()") >= 6 and "waitArm()" in call
     assert "opLabel(S.thinkQ) ||" in call
     # a filler line mid-turn stops the pad but not the turn: thinking ends on turn / interrupted / error, the pad re-arms
     enqueue = between("const enqueue = (buf) => {", "const stopPlayback")
