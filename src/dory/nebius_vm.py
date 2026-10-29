@@ -31,7 +31,8 @@ logger = logging.getLogger(__name__)
 HEALTH_TIMEOUT_S = 3.0
 POLL_S = 5.0
 START_COOLDOWN_S = 60.0  # one start request per minute at most, whatever callers do
-DEFAULT_TIMEOUT_S = 300.0  # boot (~45 s) + model load (~90 s) + margin, measured 26 Oct 2026
+DEFAULT_TIMEOUT_S = 600.0  # start request -> cascade healthy took 8 min 6 s on 29 Oct 2026 (the box
+# reads ~20 GB of weights from its network disk at ~50 MB/s on EVERY boot); 300 s gave up at 5 min
 API_TIMEOUT_S = 60.0  # the SDK retries a failed token refresh for ever (a wrong key id kept the
 # room "waking" with the lock held, 28 Oct 2026); a timeout counts as a failed call
 

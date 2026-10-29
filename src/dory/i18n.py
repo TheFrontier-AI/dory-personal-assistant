@@ -1564,8 +1564,8 @@ CATALOG: dict[str, dict[str, str]] = {
         "en": "Sorry, I could not get that right now. Please try again.",
     },
     "glm_waking": {
-        "th": "ระบบเสียงของดอรี่พักอยู่ค่ะ กำลังปลุกเครื่องขึ้นมา ประมาณสองนาทีนะคะ",
-        "en": "Dory's voice server was asleep; waking it up now, about two minutes.",
+        "th": "ระบบเสียงของดอรี่พักอยู่ค่ะ กำลังปลุกเครื่องขึ้นมา อาจใช้เวลาถึงสิบนาทีนะคะ",
+        "en": "Dory's voice server was asleep; waking it up now, this can take up to ten minutes.",
     },
     "meet_reconnect_failed": {
         "th": "ดอรี่ต่อเข้าห้องเสียงกลับไม่ได้ค่ะ ขอปิดการประชุมและสรุปให้ตอนนี้",
