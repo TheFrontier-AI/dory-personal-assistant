@@ -821,6 +821,7 @@ class CardCtx:
     today: date
     trips: Trips
     render: bool = True  # False = a voice turn: nothing is drawn, the result is spoken
+    home: str = ""  # the person's home airport (profile): the departure when a request names none
     cards: list[dict] = field(default_factory=list)  # what the platform renders after the reply
 
 
@@ -922,7 +923,7 @@ def card_tools(ctx: CardCtx) -> list:
         """
         trip = ctx.trips.get(ctx.owner)
         prev, hotel = trip.flight, trip.hotel
-        o = place_code(origin) if origin.strip() else (prev.origin if prev else None)
+        o = place_code(origin) if origin.strip() else (prev.origin if prev else ctx.home or None)
         if origin.strip() and o is None:
             return _unknown(origin)
         d = place_code(destination) if destination.strip() else None
