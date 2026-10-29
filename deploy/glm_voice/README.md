@@ -77,7 +77,7 @@ both deploy scripts carry the URL from `.env` and mount the token secret `dory-g
 (`scripts/deploy.sh` for the website, `scripts/deploy_dory.sh` for the bot).
 Switches: `CASCADE_ASR=parakeet|whisper` (faster-whisper large-v3-turbo for Thai),
 `CASCADE_TTS=kokoro|magpie` (`nvidia/magpie_tts_multilingual_357m`), `CASCADE_VOICE` (Kokoro: one
-voice or a comma blend, default `af_heart,af_nicole` = the A-grade voice softened; Magpie `Sofia`),
+voice or a comma blend, default `af_bella,af_heart` = the bright A- voice with the A one, youthful and upbeat; `CASCADE_SPEED` 1.08; Magpie `Sofia`),
 `CASCADE_SPEED` (0.95; 0.9-0.95 is calm, under 0.85 drags), `CASCADE_SENTENCE_GAP_MS` (250 of silence
 after each sentence), `CASCADE_MAX_CALLS` (4), in `/etc/glm-voice.env`; restart `glm-cascade` after a change.
 The behaviour rules (who she answers in a room, follow-ups without the name, hush, barge-in, fillers,

@@ -49,7 +49,7 @@ python - <<'PYEOF'
 import nemo.collections.asr as nemo_asr
 nemo_asr.models.ASRModel.from_pretrained(model_name="nvidia/parakeet-tdt-0.6b-v3")
 from huggingface_hub import hf_hub_download
-for v in ("af_heart", "af_nicole"):  # the default CASCADE_VOICE blend
+for v in ("af_bella", "af_heart"):  # the default CASCADE_VOICE blend
     hf_hub_download("hexgrad/Kokoro-82M", f"voices/{v}.pt")
 from kokoro import KPipeline
 KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
