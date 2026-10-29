@@ -5,7 +5,7 @@ import time
 from types import SimpleNamespace
 
 from dory import nebius_vm
-from dory.nebius_vm import VmWaker, health_url, make_waker
+from dory.nebius_vm import VmWaker, error_reason, health_url, make_waker
 
 
 class FakeApi:
@@ -139,3 +139,16 @@ def test_waker_keeps_waiting_when_another_process_started_the_vm(monkeypatch):
     api = Aborted("STARTING")
     w = VmWaker("vm-1", health="http://x/health", sdk=api, http_get=comes_up())
     assert asyncio.run(w.ensure_running(timeout_s=1)) is True and api.starts == 0
+
+
+def test_error_reason_names_the_grpc_code_and_message_but_survives_plain_errors():
+    e = RuntimeError("x")
+    e.status = SimpleNamespace(
+        code=SimpleNamespace(name="FAILED_PRECONDITION"),
+        message="instance cannot be started because its preemption policy is closed\nmore",
+    )
+    assert error_reason(e) == (
+        "RuntimeError FAILED_PRECONDITION instance cannot be started because its preemption"
+        " policy is closed more"
+    )
+    assert error_reason(TimeoutError()) == "TimeoutError"
