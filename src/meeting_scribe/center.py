@@ -4909,12 +4909,15 @@ def card_quote(b: CardBooking, today) -> dict | None:
 
 def card_book_trip(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> Callable | None:
     """This person's book_trip from the headless bot, built like the chat agent's tools (a NEW
-    request every call). None: no headless bot / not a Discord workspace / travel turned off."""
+    request every call), in the company's Discord server or, for a company on the website only,
+    its web workspace (its own ledger; no check-in reminder, nothing could deliver it).
+    None: no headless bot / travel turned off."""
     bot = get_bot()
-    if bot is None or ws.platform != "discord":
+    if bot is None:
         return None
     guild, member, _, _ = web_person(ctx, orgs.user_profile(ctx.email), ws)
-    tools = bot._travel_tools(guild, member, company_language(guilds, ws), ctx.is_exec)
+    lang = company_language(guilds, ws)
+    tools = bot._travel_tools(guild, member, lang, ctx.is_exec, reminders=ws.platform == "discord")
     return next((f for f in tools if getattr(f, "__name__", "") == "book_trip"), None)
 
 
@@ -4955,8 +4958,7 @@ async def travel_book(
         raise HTTPException(429, "rate_limited")
     book = await run_in_threadpool(card_book_trip, ctx, orgs, guilds, ws)
     if book is None:
-        bot_ok = get_bot() is not None and ws.platform == "discord"
-        raise HTTPException(409, "travel_off" if bot_ok else "needs_discord")
+        raise HTTPException(409, "travel_off" if get_bot() is not None else "booking_unavailable")
     data = dict(travel_search.DATA_STATUS)
     quote = card_quote(body, travel_api.get_today())
     if quote is None:

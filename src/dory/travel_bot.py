@@ -42,9 +42,12 @@ class TravelMixin:
     def _travel_on(self, guild_id: int) -> bool:
         return self.team.enabled(guild_id, "travel")
 
-    def _travel_tools(self, guild, asker, lang: str, is_exec: bool = False) -> list:
+    def _travel_tools(
+        self, guild, asker, lang: str, is_exec: bool = False, *, reminders: bool = True
+    ) -> list:
         """convert_currency, flight_status, flight_prices, track_flight and the trips tools
         (book_trip, travel_profile, list_trips; the searches are travel_search's card tools).
+        `reminders` False: no check-in reminder (nothing delivers one to a web-only person).
         Never raises: without them Dory just cannot do these."""
         try:
             if not self._travel_on(guild.id):
@@ -72,7 +75,7 @@ class TravelMixin:
                         state=self.secretary_state,
                         request_id=new_id(),
                         now=self.s.now,
-                        reminders=getattr(self, "reminder_book", None),
+                        reminders=getattr(self, "reminder_book", None) if reminders else None,
                         approvals=getattr(self, "approvals", None),
                     )
                 ),  # fmt: skip
