@@ -190,7 +190,8 @@ cmd_idle_check() {
     echo "$(date '+%F %T') running, voice server not up yet: idle clock waits (grace ${GLM_INSTALL_GRACE_MIN:-90} min)"
     return 0
   fi
-  grep -q '"busy": *true' <<<"$health" && echo "$now" >"$STATE/last_busy"
+  # a connected room (calls >= 1) counts as busy too: `busy` alone is true only with every slot taken
+  grep -q '"busy": *true\|"calls": *[1-9]' <<<"$health" && echo "$now" >"$STATE/last_busy"
   last=$(cat "$STATE/last_busy"); idle=$(( (now - last) / 60 ))
   if [ "$idle" -ge "$idle_min" ] || [[ "$(date +%H:%M)" > "$stop_at" ]]; then
     echo "$(date '+%F %T') idle ${idle} min or past $stop_at: stopping $(vm_id)"
