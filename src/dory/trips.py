@@ -775,6 +775,7 @@ def trips_tools(ctx: TripsCtx) -> list:
                 "book_trip again with exactly the same arguments.")}  # fmt: skip
         traveller = traveller_for(ctx)
         refs: dict[str, str] = {}
+        not_booked: list[str] = []
         try:
             if flight is not None:
                 refs["flight"] = ctx.provider.book_flight(flight, traveller).reference
@@ -782,7 +783,14 @@ def trips_tools(ctx: TripsCtx) -> list:
                 refs["hotel"] = ctx.provider.book_hotel(hotel, traveller).reference
         except Exception as e:  # noqa: BLE001
             logger.warning("trips: booking failed (%s)", type(e).__name__)
-            return {"status": "failed", "error": "the booking service refused", "booked": refs}
+            if not refs:
+                return {"status": "failed", "error": "the booking service refused"}
+            # The flight is booked and the hotel is not. Record the flight (trip, receipt, check-in
+            # reminder): it used to be dropped here and booked a second time on the retry (DEF-01).
+            not_booked, hotel = ["hotel"], None
+            items.pop("hotel", None)
+            quote = {**quote, "hotel": None,
+                     "totals": [{"amount": flight.price, "currency": flight.currency}]}  # fmt: skip
         now = ctx.now()
         trip = {
             "id": f"T-{new_id()[:8]}", "guild_id": ctx.guild_id, "user_id": ctx.asker_id, "items": items,
@@ -804,6 +812,11 @@ def trips_tools(ctx: TripsCtx) -> list:
                "provider": trip["provider"]}  # fmt: skip
         if trip["reminder_id"]:
             out["checkin_reminder"] = trip["reminder_id"]
+        if not_booked:
+            out.update(status="partial", not_booked=not_booked, error="the booking service refused "
+                       "the hotel", instruction="Say exactly what IS booked (with its reference) and "
+                       "that the hotel is NOT booked; offer to search hotels again. Never say the "
+                       "whole trip is booked.")  # fmt: skip
         return out
 
     def travel_profile(update: str = "", clear: bool = False) -> dict:
@@ -908,10 +921,8 @@ def _confirm_reply(ctx: TripsCtx, res: dict) -> str | None:
     """The answer to a plain yes, built from book_trip's result and the stored trip, never by the
     model. None (the model answers) when the quote could not be confirmed: expired, refused."""
     if res.get("status") == "failed":
-        done = ", ".join(f"{k} {v}" for k, v in (res.get("booked") or {}).items())
-        extra = t("trip_confirm_partial", ctx.lang, items=done) if done else ""
-        return t("trip_confirm_failed", ctx.lang, partial=extra)
-    if res.get("status") != "booked":
+        return t("trip_confirm_failed", ctx.lang)
+    if res.get("status") not in ("booked", "partial"):
         return None
     trip = ctx.docs.get(TRIP_KIND, ctx.guild_id, res["trip_id"]) or {}
     refs, items = trip.get("references") or {}, []
@@ -928,8 +939,9 @@ def _confirm_reply(ctx: TripsCtx, res: dict) -> str | None:
     if rem and rem.get("next_at"):
         at = datetime.fromisoformat(rem["next_at"]).astimezone(ctx.now().tzinfo)
         when = t("trip_confirm_reminder", ctx.lang, when=at.strftime("%Y-%m-%d %H:%M"))
-    return t("trip_confirm_booked", ctx.lang, trip=res["trip_id"], items="; ".join(items),
-             totals=totals, reminder=when)  # fmt: skip
+    key = "trip_confirm_partial" if res["status"] == "partial" else "trip_confirm_booked"
+    return t(key, ctx.lang, trip=res["trip_id"], items="; ".join(items), totals=totals,
+             reminder=when)  # fmt: skip
 
 
 def _checkin_reminder(
@@ -999,13 +1011,18 @@ STRINGS = {
         "en": "{name}, reference {ref}",
     },
     "trip_confirm_failed": {
-        "th": "จองไม่สำเร็จค่ะ ระบบจองปฏิเสธ จึงยังไม่ได้บันทึกทริปหรือใบเสร็จใดๆ{partial}",
-        "en": "I couldn't book it: the booking service refused, so no trip or receipt was filed."
-        "{partial}",
+        "th": "จองไม่สำเร็จค่ะ ระบบจองปฏิเสธ จึงยังไม่ได้จองอะไรและไม่ได้บันทึกทริปหรือใบเสร็จใดๆ",
+        "en": "I couldn't book it: the booking service refused, so nothing is booked and no trip or "
+        "receipt was filed.",
     },
     "trip_confirm_partial": {
-        "th": " ส่วนที่จองไปแล้วก่อนเกิดข้อผิดพลาด: {items}",
-        "en": " Booked before the error: {items}.",
+        "th": "จองได้บางส่วนค่ะ จองแล้ว: ทริป {trip}: {items} รวม {totals} บันทึกใบเสร็จในบัญชีค่าใช้จ่าย"
+        "หมวดค่าเดินทางแล้วค่ะ{reminder} ยังไม่ได้จอง: โรงแรม (ระบบจองปฏิเสธ) ให้ดอรี่หาโรงแรมอื่นไหมคะ "
+        "การจองนี้อยู่ในระบบทดสอบ ไม่มีการออกตั๋วและไม่มีการตัดเงินจริงค่ะ",
+        "en": "Only part of the trip is booked. Booked: trip {trip}: {items}. Total {totals}. The "
+        "receipt is filed in the expense ledger under Travel.{reminder} NOT booked: the hotel (the "
+        "booking service refused). Shall I look for another hotel? This is a sandbox booking: no "
+        "ticket is issued and no money is charged.",
     },
 }
 CATALOG.update(STRINGS)
