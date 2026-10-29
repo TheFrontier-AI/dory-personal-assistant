@@ -44,13 +44,18 @@
   ul.gets svg { width: 20px; height: 20px; flex: none; color: var(--color-action); margin-top: 4px; }
   ul.gets b { font-weight: 600; display: block; } /* the title on its own line, the description under it */
   #gsi-button { min-height: 44px; display: flex; }
-  .plans { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 12px; width: 100%; max-width: 480px; }
-  .plan { border: 2px solid var(--color-border-control); border-radius: var(--radius-lg); padding: 16px; display: flex; flex-direction: column; gap: 6px; background: var(--color-bg-raised); color: var(--color-text); text-align: left; }
-  .plan[aria-pressed="true"] { border-color: var(--color-action); }
-  .plan b { font-size: 17px; }
-  .plan span { font-size: 14px; color: var(--color-text-muted); }
-  .plan .price { font-size: 15px; font-weight: 600; color: var(--color-action); }
-  .plan .pill { align-self: flex-start; font-size: 12px; color: var(--color-action); }
+  .card form { display: flex; flex-direction: column; align-items: flex-start; gap: 20px; width: 100%; }
+  .card select { min-height: 44px; } /* 44 px targets like the buttons (a bare select measured 42) */
+  /* the example requests on the last step: whole-row links, 48 px tall, the same border as a form control */
+  ul.tries { margin: 0; padding: 0; list-style: none; display: grid; gap: 10px; width: 100%; max-width: 480px; }
+  a.try { display: flex; align-items: center; min-height: 48px; padding: 12px 16px; border: 2px solid var(--color-border-control); border-radius: var(--radius-lg); background: var(--color-bg-raised); color: var(--color-text); font-size: 16px; text-decoration: none; }
+  a.try:hover { border-color: var(--color-action); }
+  details.more { max-width: 60ch; }
+  details.more summary { cursor: pointer; font-weight: 600; padding: 10px 0; } /* keeps the disclosure marker; 44 px tall */
+  .prefs { display: grid; grid-template-columns: repeat(auto-fit, minmax(230px, 1fr)); gap: 16px 24px; width: 100%; max-width: 600px; }
+  .prefs > div { display: flex; flex-direction: column; gap: 8px; min-width: 0; }
+  .prefs p { margin: 0; }
+  details.more > :not(summary) { margin-top: 14px; }
   label { display: flex; flex-direction: column; gap: 6px; font-weight: 600; font-size: 15px; width: 100%; max-width: 480px; }
   .row { display: flex; flex-wrap: wrap; gap: 12px; align-items: center; }
   .btn.primary, .btn.primary:hover, .btn.primary:active { box-shadow: none; }
@@ -96,11 +101,11 @@
 <main>
   <div class="wrap layout">
     <div class="flow">
-    <div class="steps" id="steps" aria-hidden="true" hidden>
-      <span data-step="1" class="on"><i>1</i><em data-i18n="s1"></em></span>
-      <span data-step="2"><i>2</i><em data-i18n="s2"></em></span>
-      <span data-step="3"><i>3</i><em data-i18n="s3"></em></span>
-      <span data-step="4"><i>4</i><em data-i18n="s4"></em></span>
+    <div class="steps" id="steps" role="list" data-i18n-attr="aria-label:steps_aria" hidden>
+      <span role="listitem" data-step="1" class="on"><i>1</i><em data-i18n="s1"></em></span>
+      <span role="listitem" data-step="2"><i>2</i><em data-i18n="s2"></em></span>
+      <span role="listitem" data-step="3"><i>3</i><em data-i18n="s3"></em></span>
+      <span role="listitem" data-step="4"><i>4</i><em data-i18n="s4"></em></span>
     </div>
 
     <!-- step 1: welcome + Google sign-in -->
@@ -115,54 +120,71 @@
       <p data-i18n="w_next"></p>
       <div id="gsi-button"></div>
       <button type="button" class="btn ghost" id="discord-signup" data-i18n="signup_discord" hidden></button>
+      <p class="fine" id="signing" role="status" data-i18n="signing_in" hidden></p>
       <div class="notice" id="not-configured" data-i18n="not_configured" hidden></div>
-      <div class="notice error" id="login-error" hidden></div>
+      <div class="notice error" id="login-error" role="alert" hidden></div>
+      <p class="fine" data-i18n-html="terms_agree"></p>
       <p class="fine" data-i18n="w_privacy"></p>
+      <p data-i18n-html="have_account"></p>
     </section>
 
     <!-- already a member -->
     <section class="card" id="existing" hidden>
       <h2 tabindex="-1" data-i18n="ex_h"></h2>
       <p data-i18n="ex_p"></p>
-      <div class="row"><a class="btn primary" href="/center" data-i18n="go_center"></a><button type="button" class="btn ghost" id="another" data-i18n="ex_new"></button></div>
+      <div class="row"><a class="btn primary" href="/center" data-i18n="go_center"></a><button type="button" class="btn ghost" id="another" data-i18n="ex_new"></button><button type="button" class="btn ghost" id="to-prefs" data-i18n="ex_prefs"></button></div>
     </section>
 
-    <!-- step 2: plan -->
+    <!-- step 2: organization (the launch has one plan, the free trial: nothing to choose, so no plan screen) -->
     <section class="card" id="step2" hidden>
-      <h2 tabindex="-1" data-i18n="p_h"></h2>
-      <p data-i18n="p_p"></p>
-      <div class="plans" role="group" data-i18n-attr="aria-label:p_h">
-        <button type="button" class="plan" data-plan="trial" aria-pressed="true"><span class="pill" data-i18n="p_rec"></span><b data-i18n="pl_trial"></b><span class="price" data-i18n="pl_trial_price"></span><span data-i18n="pl_trial_d"></span></button>
-      </div>
-      <div class="notice" data-i18n="p_note"></div>
-      <div class="row"><button type="button" class="btn primary" id="to3" data-i18n="next"></button></div>
-    </section>
-
-    <!-- step 3: organization -->
-    <section class="card" id="step3" hidden>
       <h2 tabindex="-1" data-i18n="o_h"></h2>
       <p data-i18n="o_p"></p>
       <label><span data-i18n="o_label"></span><input type="text" id="org-name" maxlength="120" required autocomplete="organization" aria-describedby="org-error" data-i18n-attr="placeholder:o_ph"></label>
       <div class="notice error" id="org-error" role="alert" hidden></div>
-      <div class="row"><button type="button" class="btn primary" id="create" data-i18n="o_btn"></button><button type="button" class="btn ghost" id="back2" data-i18n="back"></button></div>
+      <div class="notice" data-i18n="p_note"></div>
+      <div class="row"><button type="button" class="btn primary" id="create" data-i18n="o_btn"></button></div>
     </section>
 
-    <!-- step 4: connect Discord -->
+    <!-- step 3: welcome + two optional travel preferences (saved or skipped: both end the step) -->
+    <section class="card" id="step3" hidden>
+      <div class="notice ok" id="created-note" role="status" hidden></div>
+      <h2 tabindex="-1" data-i18n="pref_h"></h2>
+      <p data-i18n="pref_p"></p>
+      <ul class="gets">
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="pk1_t"></b> <span data-i18n="pk1_d"></span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="pk2_t"></b> <span data-i18n="pk2_d"></span></div></li>
+        <li><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.75" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="m5 12 4 4L19 6"/></svg><div><b data-i18n="pk3_t"></b> <span data-i18n="pk3_d"></span></div></li>
+      </ul>
+      <form id="pref-form" novalidate>
+        <div class="prefs">
+          <div><label><span data-i18n="pref_airport"></span><select id="pref-airport" aria-describedby="pref-airport-hint"><option value="" data-i18n="pref_none"></option></select></label>
+          <p class="fine" id="pref-airport-hint" data-i18n="pref_airport_hint"></p></div>
+          <div><label><span data-i18n="pref_ccy"></span><select id="pref-ccy" aria-describedby="pref-ccy-hint"><option value="" data-i18n="pref_none"></option></select></label>
+          <p class="fine" id="pref-ccy-hint" data-i18n="pref_ccy_hint"></p></div>
+        </div>
+        <div class="notice error" id="pref-error" role="alert" hidden></div>
+        <div class="row"><button type="submit" class="btn primary" id="pref-save" data-i18n="pref_save"></button><button type="button" class="btn ghost" id="pref-skip" data-i18n="pref_skip"></button></div>
+      </form>
+    </section>
+
+    <!-- step 4: start chatting; an example fills the chat box and is never sent for the person -->
     <section class="card" id="step4" hidden>
-      <div class="notice ok" id="created-note"></div>
-      <h2 tabindex="-1" aria-describedby="created-note" data-i18n="c_h"></h2>
-      <p data-i18n="c_p"></p>
-      <ol class="how">
-        <li data-i18n-html="c1"></li>
-        <li data-i18n-html="c2"></li>
-        <li data-i18n-html="c3"></li>
-      </ol>
-      <div class="notice" id="invite-soon" data-i18n="invite_soon" hidden></div>
-      <div class="row">
-        <a class="btn primary" href="__DORY_INVITE_URL__" data-invite></a>
-        <a class="btn ghost" href="/center" data-i18n="go_center"></a>
-      </div>
-      <p class="fine" data-i18n="c_later"></p>
+      <h2 tabindex="-1" data-i18n="go_h"></h2>
+      <p data-i18n="go_p"></p>
+      <ul class="tries" id="tries"></ul>
+      <div class="row"><a class="btn primary" id="start-chat" href="/center#/chat" data-i18n="start_chat"></a><button type="button" class="btn ghost" id="back3" data-i18n="back"></button></div>
+      <details class="more">
+        <summary data-i18n="dc_sum"></summary>
+        <p data-i18n="c_p"></p>
+        <ol class="how">
+          <li data-i18n-html="c1"></li>
+          <li data-i18n-html="c2"></li>
+          <li data-i18n-html="c3"></li>
+        </ol>
+        <div class="notice" id="invite-soon" data-i18n="invite_soon" hidden></div>
+        <div class="row"><a class="btn ghost" href="__DORY_INVITE_URL__" data-invite></a></div>
+        <p class="fine" data-i18n="c_later"></p>
+      </details>
     </section>
     </div>
     <picture class="hero-pic">
@@ -184,11 +206,11 @@
   "lang_th": {"th": "ไทย", "en": "ไทย"},
   "lang_en": {"th": "EN", "en": "EN"},
   "s1": {"th": "บัญชี", "en": "Account"},
-  "s2": {"th": "แพ็กเกจ", "en": "Plan"},
-  "s3": {"th": "องค์กร", "en": "Organization"},
-  "s4": {"th": "เชื่อมต่อ", "en": "Connect"},
+  "s2": {"th": "องค์กร", "en": "Organization"},
+  "s3": {"th": "การตั้งค่า", "en": "Preferences"},
+  "s4": {"th": "เริ่มใช้งาน", "en": "Start"},
   "w_h": {"th": "พาดอรี่ไปช่วยทีมของคุณ", "en": "Bring Dory to your team"},
-  "w_p": {"th": "สร้างบัญชีด้วย Google แล้วเริ่มใช้ใน 4 ขั้น บัญชีหนึ่งดูแลได้หลายทีม และนี่คือสิ่งที่คุณได้ทันทีหลังสมัคร:", "en": "Create your account with Google and start in four steps. One account can run several teams, and this is what you get right after signing up:"},
+  "w_p": {"th": "สมัครภายในสองนาที แล้วคุยกับดอรี่ได้ทันที นี่คือสิ่งที่คุณจะได้:", "en": "Sign up in about two minutes and start chatting with Dory right away. Here is what you get:"},
   "hero_alt": {"th": "ดอรี่ ปลาตัวเล็กสีขาวฟ้าสวมหูฟัง กำลังยิ้มอยู่ใต้น้ำ", "en": "Dory, a small white-and-blue fish wearing a headset, smiling underwater"},
   "g1_t": {"th": "ใช้ฟรีช่วงเปิดตัว", "en": "Free during launch"},
   "g1_d": {"th": "ทุกความสามารถ ไม่จำกัดเวลาและจำนวนคน ไม่ต้องใช้บัตรเครดิต", "en": "Every feature, no time or seat limit, no credit card."},
@@ -196,7 +218,7 @@
   "g2_d": {"th": "สมาชิก คลังเอกสาร งาน และแชตกับดอรี่จากเว็บ", "en": "Members, document library, tasks, and web chat with Dory."},
   "g3_t": {"th": "ดอรี่ในแพลตฟอร์มที่ทีมใช้อยู่", "en": "Dory where your team already works"},
   "g3_d": {"th": "Discord ใช้ได้ทันที ส่วน Slack และ ClickUp สำหรับองค์กร", "en": "Discord right away; Slack and ClickUp for organizations."},
-  "w_next": {"th": "ถัดไปคุณจะเลือกแพ็กเกจ ตั้งชื่อองค์กร และเชื่อมต่อ Discord ใช้เวลาประมาณ 2 นาที", "en": "Next you will pick a plan, name your organization and connect Discord. It takes about two minutes."},
+  "w_next": {"th": "ถัดไปคุณจะตั้งชื่อองค์กรและเลือกค่ากำหนดการเดินทาง (ไม่บังคับ)", "en": "Next you will name your organization and, if you like, set two travel preferences."},
   "not_configured": {"th": "ตอนนี้ยังเข้าสู่ระบบด้วย Google ไม่ได้ กรุณาลองใหม่ภายหลัง หรือติดต่อทีมดอรี่", "en": "Google sign-in isn't available yet. Please try again later or contact the Dory team."},
   "login_failed": {"th": "เข้าสู่ระบบไม่สำเร็จ ({status}) ลองอีกครั้ง", "en": "Sign-in failed ({status}). Please try again."},
   "signup_discord": {"th": "หรือสมัครด้วย Discord", "en": "Or sign up with Discord"},
@@ -207,12 +229,7 @@
   "ex_p": {"th": "บัญชีนี้เป็นสมาชิกขององค์กรที่มีอยู่ ไปที่ศูนย์ควบคุมได้เลย หรือสร้างองค์กรใหม่เพิ่ม", "en": "This account already belongs to an organization. Go to the center, or create another organization."},
   "ex_new": {"th": "สร้างองค์กรใหม่", "en": "Create another organization"},
   "go_center": {"th": "ไปที่ศูนย์ควบคุมองค์กร", "en": "Go to the organization center"},
-  "p_h": {"th": "แพ็กเกจของคุณ", "en": "Your plan"},
-  "p_p": {"th": "ช่วงเปิดตัวมีแพ็กเกจเดียวคือทดลองใช้งาน ไม่มีค่าใช้จ่ายและไม่มีลิมิต เมื่อมีแพ็กเกจอื่นจะเลือกเปลี่ยนได้จากศูนย์ควบคุม", "en": "During launch there is one plan, the trial: free and unlimited. When other plans arrive you can switch from the center."},
-  "p_rec": {"th": "แนะนำ", "en": "Recommended"},
   "pl_trial": {"th": "ทดลองใช้งาน", "en": "Trial"},
-  "pl_trial_price": {"th": "ฟรี ไม่จำกัดเวลา", "en": "Free, no time limit"},
-  "pl_trial_d": {"th": "ทุกความสามารถ ไม่จำกัดจำนวนคน", "en": "Every feature, unlimited seats"},
   "p_note": {"th": "ยังไม่มีการเก็บค่าบริการและไม่มีการชำระเงินในระบบ การสมัครครั้งนี้ไม่มีค่าใช้จ่ายใด ๆ", "en": "Nothing is charged and there is no payment in the system. This sign-up is completely free."},
   "next": {"th": "ถัดไป", "en": "Next"},
   "back": {"th": "ย้อนกลับ", "en": "Back"},
@@ -231,7 +248,6 @@
   "o_failed": {"th": "สร้างองค์กรไม่สำเร็จ (ข้อผิดพลาด {status}) ลองอีกครั้งในอีกสักครู่", "en": "Couldn't create the organization (error {status}). Try again in a moment."},
   "o_too_many": {"th": "บัญชีนี้สร้างองค์กรครบจำนวนแล้ว", "en": "This account has reached its organization limit."},
   "created": {"th": "สร้าง \"{name}\" แล้ว แพ็กเกจ: {plan} ใช้ฟรีไม่จำกัด", "en": "\"{name}\" is ready. Plan: {plan}, free and unlimited"},
-  "c_h": {"th": "เชื่อมต่อดอรี่กับ Discord ของทีม", "en": "Connect Dory to your team's Discord"},
   "c_p": {"th": "ดอรี่ทำงานอยู่ในเซิร์ฟเวอร์ Discord ของคุณ เพิ่มครั้งเดียว ทุกคนในทีมใช้ได้", "en": "Dory lives in your Discord server. Add it once and the whole team can use it."},
   "c1": {"th": "กด <b>เพิ่มดอรี่เข้า Discord</b> แล้วเลือกเซิร์ฟเวอร์ (ต้องเป็นเจ้าของหรือมีสิทธิ์ Manage Server)", "en": "Click <b>Add Dory to Discord</b> and pick a server (you need Owner or Manage Server)."},
   "c2": {"th": "ใน Discord พิมพ์ <code>/setup</code> ดอรี่จะส่งลิงก์ลับมาให้", "en": "In Discord type <code>/setup</code>; Dory replies with a private link."},
@@ -240,6 +256,38 @@
   "cta_unconfigured": {"th": "ยังไม่ได้ตั้งค่าลิงก์เชิญ (DORY_DISCORD_CLIENT_ID)", "en": "Invite link not configured (DORY_DISCORD_CLIENT_ID)"},
   "invite_soon": {"th": "ลิงก์เชิญดอรี่เข้า Discord จะเปิดให้ใช้เร็ว ๆ นี้ ระหว่างนี้เข้าศูนย์บัญชาการได้เลย แล้วกลับมาเชื่อม Discord ทีหลัง", "en": "The Discord invite link opens soon. You can go to the command center now and connect Discord later."},
   "c_later": {"th": "ข้ามขั้นนี้ได้ ทำทีหลังจากหน้า \"พื้นที่ทำงาน\" ในศูนย์ควบคุม", "en": "You can skip this and do it later from \"Workspaces\" in the center."},
+  "terms_agree": {"th": "การดำเนินการต่อถือว่าคุณยอมรับ<a href=\"/terms\" target=\"_blank\" rel=\"noopener\">ข้อกำหนดการใช้งาน<span class=\"sr\"> (เปิดในแท็บใหม่)</span></a>และ<a href=\"/privacy\" target=\"_blank\" rel=\"noopener\">นโยบายความเป็นส่วนตัว<span class=\"sr\"> (เปิดในแท็บใหม่)</span></a>", "en": "By continuing, you agree to the <a href=\"/terms\" target=\"_blank\" rel=\"noopener\">Terms<span class=\"sr\"> (opens in a new tab)</span></a> and the <a href=\"/privacy\" target=\"_blank\" rel=\"noopener\">Privacy Policy<span class=\"sr\"> (opens in a new tab)</span></a>."},
+  "have_account": {"th": "มีบัญชีอยู่แล้ว? <a href=\"/center\">เข้าสู่ระบบ</a>", "en": "Already have an account? <a href=\"/center\">Sign in</a>"},
+  "signing_in": {"th": "กำลังเข้าสู่ระบบ…", "en": "Signing you in…"},
+  "ex_prefs": {"th": "ตั้งค่าการเดินทาง", "en": "Set travel preferences"},
+  "pref_h": {"th": "ยินดีต้อนรับสู่ดอรี่", "en": "Welcome to Dory"},
+  "pref_p": {"th": "ดอรี่เป็นผู้ช่วยของทีมคุณ ตัวเลือกสองข้อนี้ไม่บังคับ ช่วยให้ค้นหาการเดินทางตรงใจขึ้น และแก้ได้ทุกเมื่อที่ \"โปรไฟล์ของฉัน\"", "en": "Dory is your team's assistant. Two optional choices make travel searches fit you; change them any time in My profile."},
+  "pk1_t": {"th": "วางแผนการเดินทาง", "en": "Plan trips"},
+  "pk1_d": {"th": "ค้นหาเที่ยวบินและโรงแรมในแชต (ช่วงเปิดตัวเป็นข้อมูลตัวอย่าง)", "en": "Search flights and hotels in the chat (sample data during launch)."},
+  "pk2_t": {"th": "ให้งานเดินหน้า", "en": "Keep work moving"},
+  "pk2_d": {"th": "งาน การเตือน บันทึกประชุมและมติ ในที่ที่ทีมคุยกันอยู่แล้ว", "en": "Tasks, reminders, meeting notes and decisions, where your team already talks."},
+  "pk3_t": {"th": "ตอบจากเอกสารของคุณ", "en": "Answer from your documents"},
+  "pk3_d": {"th": "ถามเรื่องไฟล์ที่อัปโหลด ดอรี่จะหาคำตอบให้", "en": "Ask about the files you upload and Dory finds the answer."},
+  "pref_airport": {"th": "สนามบินต้นทาง (ไม่บังคับ)", "en": "Home airport (optional)"},
+  "pref_airport_hint": {"th": "ดอรี่จะใช้เป็นต้นทางเมื่อคุณค้นหาเที่ยวบินโดยไม่บอกว่าไปจากไหน", "en": "Dory starts a flight search here when you don't say where from."},
+  "pref_airports_down": {"th": "โหลดรายชื่อสนามบินไม่ได้ ตั้งทีหลังได้ที่ \"โปรไฟล์ของฉัน\"", "en": "Couldn't load the airports. You can set this later in My profile."},
+  "pref_none": {"th": "ไม่ระบุ", "en": "No preference"},
+  "pref_ccy": {"th": "สกุลเงินที่ต้องการ (ไม่บังคับ)", "en": "Preferred currency (optional)"},
+  "pref_ccy_hint": {"th": "ตอนนี้ราคาตัวอย่างเป็นเงินบาท ดอรี่จะไม่เดาอัตราแลกเปลี่ยน", "en": "Sample prices are in THB for now. Dory never guesses an exchange rate."},
+  "pref_save": {"th": "บันทึกและไปต่อ", "en": "Save and continue"},
+  "pref_saving": {"th": "กำลังบันทึก…", "en": "Saving…"},
+  "pref_skip": {"th": "ข้ามไปก่อน", "en": "Skip for now"},
+  "pref_failed": {"th": "บันทึกไม่สำเร็จ (ข้อผิดพลาด {status}) ลองอีกครั้ง หรือข้ามไปก่อน", "en": "Couldn't save your preferences (error {status}). Try again, or skip for now."},
+  "pref_check": {"th": "ตรวจสอบตัวเลือกแล้วลองอีกครั้ง", "en": "Check your choices and try again."},
+  "go_h": {"th": "พร้อมแล้ว", "en": "You're all set"},
+  "go_p": {"th": "พิมพ์เป็นภาษาของคุณได้เลย เลือกตัวอย่างแล้วข้อความจะไปอยู่ในช่องแชตให้คุณแก้ไขและกดส่ง", "en": "Ask in your own words. Pick an example and it appears in the chat box for you to edit and send."},
+  "try_flight": {"th": "หาเที่ยวบินไป{to}วันศุกร์หน้า", "en": "Find me a flight to {to} next Friday"},
+  "try_flight_from": {"th": "หาเที่ยวบินจาก{from}ไป{to}วันศุกร์หน้า", "en": "Find me a flight from {from} to {to} next Friday"},
+  "try_hotel": {"th": "ขอดูโรงแรมในสิงคโปร์ 2 คืน", "en": "Show me hotels in Singapore for two nights"},
+  "try_day": {"th": "วันนี้ฉันต้องทำอะไรบ้าง", "en": "What do I need to get done today?"},
+  "start_chat": {"th": "เริ่มคุยกับดอรี่", "en": "Start chatting with Dory"},
+  "dc_sum": {"th": "เพิ่มดอรี่ใน Discord ของทีมด้วย (ไม่บังคับ)", "en": "Also add Dory to your team's Discord (optional)"},
+  "steps_aria": {"th": "ความคืบหน้าการสมัคร", "en": "Sign-up progress"},
   "foot_copy": {"th": "© 2026 The Frontier Company Limited", "en": "© 2026 The Frontier Company Limited"},
   "foot_home": {"th": "หน้าแรก", "en": "Home"}
 }
@@ -271,6 +319,8 @@ function applyStatic() {
   for (const el of document.querySelectorAll(".notice")) if (el._f) el.textContent = el._f();
   markInvite();
   if (!$("step1").hidden) renderGoogleButton();
+  if (!$("step3").hidden) drawPrefs();
+  if (!$("step4").hidden) drawTries();
 }
 function setLang(l, { remember = true } = {}) {
   if (!SUPPORTED.includes(l)) return; lang = l; readLang("set", l); applyStatic();
@@ -298,6 +348,55 @@ const CLIENT_ID = "__HUB_GOOGLE_CLIENT_ID__";
 const DISCORD_LOGIN = "__DISCORD_LOGIN__" === "1";
 const API = "/api/center";
 let token = "", gsiReady = false, me = null;
+// Set when the organization is created, cleared when the travel step ends: a reload or a Discord round trip in the
+// SAME tab then returns to that step instead of the "you already have an organization" screen.
+const RESUME_KEY = "dory_signup_prefs";
+function resumeFlag(op) {
+  try {
+    if (op === "set") sessionStorage.setItem(RESUME_KEY, "1");
+    else if (op === "clear") sessionStorage.removeItem(RESUME_KEY);
+    else return sessionStorage.getItem(RESUME_KEY) === "1";
+  } catch { /* storage blocked: a reload lands on the "existing" screen */ }
+  return false;
+}
+// ---------- travel preferences (optional) ----------
+const CCY = ["THB", "USD", "EUR", "GBP", "JPY", "SGD", "HKD", "MYR", "VND", "CNY", "KRW", "AUD", "CAD", "CHF", "INR", "IDR", "PHP", "NZD", "TWD"]; // the server's travel_search.CURRENCIES (a test keeps them equal)
+const CITY_TH = { BKK: "กรุงเทพฯ", SIN: "สิงคโปร์", KUL: "กัวลาลัมเปอร์", SGN: "โฮจิมินห์ซิตี้", HKG: "ฮ่องกง", NRT: "โตเกียว" };
+let airports = null; // [{code, city}] once asked; [] when the list could not be loaded
+const prefs = { airport: "", ccy: "" }; // the selects' values, kept across a language switch
+const city = (a) => (lang === "th" && CITY_TH[a.code]) || a.city;
+async function loadAirports() {
+  if (airports) return;
+  try { const r = await fetch("/api/travel/airports", { signal: AbortSignal.timeout(5000) }); if (!r.ok) throw new Error(String(r.status)); airports = (await r.json()).airports || []; }
+  catch { airports = []; }
+}
+function ccyLabel(code) { try { return code + " · " + new Intl.DisplayNames([lang], { type: "currency" }).of(code); } catch { return code; } }
+function drawPrefs() {
+  const a = $("pref-airport"), c = $("pref-ccy"), none = () => new Option(t("pref_none"), "");
+  a.replaceChildren(none(), ...(airports || []).map((x) => new Option(city(x) + " (" + x.code + ")", x.code)));
+  c.replaceChildren(none(), ...CCY.map((x) => new Option(ccyLabel(x), x)));
+  a.value = prefs.airport; c.value = prefs.ccy;
+  a.disabled = !!airports && !airports.length; // no list, no choice: the note says where to set it later
+  const hint = $("pref-airport-hint"); hint.dataset.i18n = a.disabled ? "pref_airports_down" : "pref_airport_hint"; hint.textContent = t(hint.dataset.i18n);
+}
+async function loadPrefs() {
+  prefs.airport = me.home_airport || ""; prefs.ccy = me.currency || "";
+  note($("pref-error"), null); drawPrefs();
+  await loadAirports();
+  if (!$("step3").hidden) drawPrefs(); // still on this step when the list arrived
+}
+$("pref-airport").addEventListener("change", (e) => { prefs.airport = e.target.value; });
+$("pref-ccy").addEventListener("change", (e) => { prefs.ccy = e.target.value; });
+// the examples on the last step: the home airport makes the first one a request that needs no follow-up question
+function drawTries() {
+  const home = airports && airports.find((x) => x.code === me.home_airport);
+  const to = home && home.code === "SIN" ? (lang === "th" ? CITY_TH.BKK : "Bangkok") : (lang === "th" ? CITY_TH.SIN : "Singapore");
+  const asks = [home ? t("try_flight_from", { from: city(home), to }) : t("try_flight", { to }), t("try_hotel"), t("try_day")];
+  $("tries").replaceChildren(...asks.map((q) => {
+    const a = document.createElement("a"), li = document.createElement("li");
+    a.className = "try"; a.href = "/center#/chat"; a.dataset.q = q; a.textContent = q; li.append(a); return li;
+  }));
+}
 // ---------- Dory session: sign in once, stay signed in (30 days, every page, survives reloads) ----------
 const SESSION_KEY = "dory_session";
 function session(op, v) {
@@ -322,9 +421,12 @@ function show(step) {
   $("steps").hidden = n === 1; // the welcome screen names the steps in words; the bar shows from step 2
   for (const s of document.querySelectorAll("[data-step]")) {
     const k = Number(s.dataset.step); s.classList.toggle("on", k === n); s.classList.toggle("done", k < n);
+    if (k === n) s.setAttribute("aria-current", "step"); else s.removeAttribute("aria-current");
   }
   window.scrollTo({ top: 0 });
   $(step).querySelector("h1, h2").focus({ preventScroll: true }); // keyboard and screen-reader users land on the new step
+  if (step === "step3") loadPrefs();
+  if (step === "step4") drawTries();
 }
 async function api(path, opts = {}) {
   const res = await fetch(API + path, { ...opts, headers: { ...(opts.body ? { "Content-Type": "application/json" } : {}), Authorization: "Bearer " + token } });
@@ -336,6 +438,10 @@ async function api(path, opts = {}) {
   }
   return res.json();
 }
+function rateText(e) {
+  const n = Math.ceil(e.retryAfter);
+  return n === 1 ? t("o_rate_1") : n > 0 ? t("o_rate", { n }) : t("o_rate_soon");
+}
 // A pressed button names what it is doing (the label survives a language switch) and takes no second press.
 function pending(btn, key) {
   btn.dataset.idle ||= btn.dataset.i18n;
@@ -345,7 +451,10 @@ function pending(btn, key) {
 function renderGoogleButton() {
   if (!CLIENT_ID) { $("not-configured").hidden = false; $("gsi-button").hidden = true; return; }
   if (!window.google || !google.accounts) { setTimeout(renderGoogleButton, 200); return; }
-  if (!gsiReady) { google.accounts.id.initialize({ client_id: CLIENT_ID, callback: async (r) => { token = r.credential; const s = await exchangeSession(token); if (s) token = s; signedIn(); } }); gsiReady = true; }
+  if (!gsiReady) { google.accounts.id.initialize({ client_id: CLIENT_ID, callback: async (r) => {
+    note($("login-error"), null); $("signing").hidden = false;
+    try { token = r.credential; const s = await exchangeSession(token); if (s) token = s; await signedIn(); } finally { $("signing").hidden = true; }
+  } }); gsiReady = true; }
   $("gsi-button").replaceChildren();
   google.accounts.id.renderButton($("gsi-button"), { theme: "outline", size: "large", text: "signup_with", locale: lang, width: 300 });
 }
@@ -356,16 +465,39 @@ async function signedIn(stored = false) {
     // the server no longer accepts this session (expired, secret rotated): forget it so the next load starts clean
     const rejected = [401, 403, 503].includes(e.status);
     if (rejected) session("clear");
-    if (!(stored && rejected)) note($("login-error"), () => t("login_failed", { status: e.status || "network" }));
+    if (!(stored && rejected)) note($("login-error"), () => e.status ? t("login_failed", { status: e.status }) : t("o_offline"));
     return;
   }
   syncLang(me.language);
   $("who").textContent = $("who").title = me.email; $("who").hidden = false;
-  show(me.orgs.length ? "existing" : "step2");
+  // no organization yet -> name it; one created in this tab but the travel step not finished -> back to that step;
+  // everyone else is a returning member (a person who skipped or saved is never offered the step again)
+  show(!me.orgs.length ? "step2" : !me.onboarded && resumeFlag("get") ? "step3" : "existing");
 }
 $("another").addEventListener("click", () => show("step2"));
-$("to3").addEventListener("click", () => show("step3"));
-$("back2").addEventListener("click", () => show("step2"));
+$("to-prefs").addEventListener("click", () => { note($("created-note"), null); show("step3"); });
+$("back3").addEventListener("click", () => show("step3"));
+// Save needs the answer (a failed save must not look saved); Skip never waits (keepalive: the request outlives a click on
+// "Start chatting" straight after it): the step is optional. A lost stamp
+// changes nothing the person sees: they stay a returning member, and the "Travel preferences" button reaches the step.
+$("pref-form").addEventListener("submit", async (ev) => {
+  ev.preventDefault();
+  const btn = $("pref-save");
+  if (btn.hasAttribute("aria-busy")) return;
+  note($("pref-error"), null); pending(btn, "pref_saving");
+  const body = { currency: prefs.ccy }; if (!$("pref-airport").disabled) body.home_airport = prefs.airport;
+  try {
+    me = await api("/me/travel", { method: "PUT", body: JSON.stringify(body) });
+    resumeFlag("clear"); show("step4");
+  } catch (e) {
+    note($("pref-error"), () => !e.status ? t("o_offline") : e.status === 422 ? t("pref_check") : e.status === 429 ? rateText(e) : t("pref_failed", { status: e.status }));
+  } finally { pending(btn, null); }
+});
+$("pref-skip").addEventListener("click", () => {
+  resumeFlag("clear");
+  api("/me/travel", { method: "PUT", keepalive: true, body: JSON.stringify({ skip: true }) }).then((m) => { me = m; }, () => {});
+  show("step4");
+});
 $("create").addEventListener("click", async () => {
   const btn = $("create"), field = $("org-name"), name = field.value.trim();
   if (btn.hasAttribute("aria-busy")) return; // a second click or Enter while the first request runs
@@ -377,7 +509,8 @@ $("create").addEventListener("click", async () => {
     // A retry after a lost answer is safe: the server returns the same organization for a repeat within 10 minutes.
     const org = await api("/orgs", { method: "POST", body: JSON.stringify({ name }) });
     note($("created-note"), () => t("created", { name: org.name || name, plan: t("pl_" + (org.license && org.license.plan || "trial")) }));
-    show("step4");
+    resumeFlag("set"); me.orgs = [...(me.orgs || []), org];
+    show("step3");
   } catch (e) {
     if (e.status === 422) return badName();
     if (e.status === 401) { // the sign-in died after step 1: sign in again; the name waits in this tab (Discord too)
@@ -386,10 +519,9 @@ $("create").addEventListener("click", async () => {
       show("step1"); renderGoogleButton(); note($("login-error"), () => t("login_again"));
       return;
     }
-    const n = Math.ceil(e.retryAfter);
     note($("org-error"), () => !e.status ? t("o_offline")
       : e.status === 409 ? t("o_too_many")
-      : e.status === 429 ? (n === 1 ? t("o_rate_1") : n > 0 ? t("o_rate", { n }) : t("o_rate_soon"))
+      : e.status === 429 ? rateText(e)
       : t("o_failed", { status: e.status }));
   } finally { pending(btn, null); }
 });
@@ -407,9 +539,14 @@ try {
 function tokenExp(tok) {
   try { return Number(JSON.parse(atob(tok.split(".")[1].replace(/-/g, "+").replace(/_/g, "/"))).exp) || 0; } catch { return 0; }
 }
-for (const a of document.querySelectorAll('a[href="/center"]')) a.addEventListener("click", () => {
-  if (!token) return;
-  try { sessionStorage.setItem("dory_center_handoff", JSON.stringify({ t: token, exp: tokenExp(token) })); } catch { /* then /center asks once */ }
+// An example the person picked travels as text for the chat box: /center fills the box and never sends it.
+document.addEventListener("click", (e) => {
+  const a = e.target.closest && e.target.closest('a[href^="/center"]');
+  if (!a) return;
+  try {
+    if (a.dataset.q) sessionStorage.setItem("dory_chat_prefill", JSON.stringify({ q: a.dataset.q, at: Date.now() }));
+    if (token) sessionStorage.setItem("dory_center_handoff", JSON.stringify({ t: token, exp: tokenExp(token) }));
+  } catch { /* storage blocked: /center asks once and the box starts empty */ }
 });
 applyStatic();
 // Back from "Sign up with Discord": the session arrives in the fragment.

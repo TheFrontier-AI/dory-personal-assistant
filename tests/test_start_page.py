@@ -112,3 +112,82 @@ def test_welcome_bullet_titles_stand_apart_from_their_descriptions():
     for k in ("g1_d", "g2_d", "g3_d"):
         en = re.search(rf'"{k}": \{{"th": "[^"]+", "en": "([^"]+)"\}}', html).group(1)
         assert en[0].isupper(), k  # a sentence of its own, not the tail of the title
+
+
+def test_sign_up_asks_for_nothing_it_does_not_need():
+    """Google or Discord proves the email: no password box, no marketing checkbox, and the only text
+    field before the preferences is the organization name."""
+    html, _ = page()
+    assert 'type="password"' not in html and 'type="checkbox"' not in html
+    assert len(re.findall(r'<input type="text"', html)) == 1  # the organization name
+
+
+def test_terms_and_privacy_and_the_sign_in_link_are_on_the_first_screen():
+    html, _ = page()
+    first = html.split('id="step1"', 1)[1].split("</section>", 1)[0]
+    assert 'data-i18n-html="terms_agree"' in first and 'data-i18n-html="have_account"' in first
+    data = json.loads(
+        re.search(
+            r'<script type="application/json" id="i18n-data">(.*?)</script>', html, re.S
+        ).group(1)
+    )
+    for lang in ("th", "en"):
+        terms = data["terms_agree"][lang]
+        assert 'href="/terms"' in terms and 'href="/privacy"' in terms
+        assert 'href="/center"' in data["have_account"][lang]  # /center is the sign-in
+
+
+def test_errors_are_announced_and_the_flow_has_four_labelled_steps():
+    html, _ = page()
+    for ident in ("login-error", "org-error", "pref-error"):
+        assert re.search(rf'id="{ident}" role="alert" hidden', html), ident
+    assert 'id="signing" role="status"' in html  # "Signing you in…" while the session is exchanged
+    sections = re.findall(r'<section class="card" id="(\w+)"', html)
+    assert sections == ["step1", "existing", "step2", "step3", "step4"]
+    assert len(re.findall(r'data-step="\d"', html)) == 4
+
+
+def test_the_travel_step_is_optional_labelled_and_never_asks_for_a_permission():
+    html, _ = page()
+    step = html.split('id="step3"', 1)[1].split("</section>", 1)[0]
+    assert step.count("<select") == 2 and step.count("<label>") == 2  # both wrap their control
+    for key in ("pref_airport", "pref_ccy"):  # "(optional)" is part of the label
+        en = re.search(rf'"{key}": \{{[^}}]*"en": "([^"]+)"', html).group(1)
+        assert "(optional)" in en, key
+    assert 'id="pref-skip"' in step and 'id="pref-save"' in step
+    for api in ("geolocation", "getUserMedia", "Notification.requestPermission"):
+        assert api not in html  # no location, microphone or notification prompt in sign-up
+
+
+def test_an_example_is_a_link_that_fills_the_chat_box_and_nothing_sends_it():
+    html, _ = page()
+    center = (START.parent / "center.html").read_text("utf-8")
+    assert 'a.href = "/center#/chat"' in html and "a.dataset.q = q" in html
+    assert 'sessionStorage.setItem("dory_chat_prefill"' in html
+    take = center.split("function takePrefill() {", 1)[1].split("\n}\n", 1)[0]
+    assert 'sessionStorage.getItem("dory_chat_prefill")' in take and "Date.now()" in take
+    use = center.split("const pre = prefillOnce;", 1)[1].split("\n", 1)[0]
+    assert "w.prefill(pre)" in use and ".ask(" not in use and "send(" not in use
+    assert "let prefillOnce = takePrefill();" in center  # read (and removed) when the page loads
+
+
+def test_skipping_never_waits_and_a_save_is_not_assumed():
+    html, _ = page()
+    skip = html.split('$("pref-skip").addEventListener', 1)[1].split("\n});", 1)[0]
+    assert "await" not in skip and 'show("step4")' in skip
+    assert (
+        "keepalive: true" in skip
+    )  # the request outlives a click on "Start chatting" right after it
+    save = html.split('$("pref-form").addEventListener', 1)[1].split("\n});", 1)[0]
+    assert save.index("await api(") < save.index('show("step4")')  # moves on only after the answer
+    assert 'pending(btn, "pref_saving")' in save and "aria-busy" in save  # one request per press
+
+
+def test_the_currency_lists_of_both_pages_are_the_servers_list():
+    from dory import travel_search
+
+    start, _ = page()
+    center = (START.parent / "center.html").read_text("utf-8")
+    for source, name in ((start, "CCY"), (center, "TRAVEL_CCY")):
+        listed = re.search(rf"const {name} = \[([^\]]+)\]", source).group(1)
+        assert tuple(re.findall(r'"([A-Z]{3})"', listed)) == travel_search.CURRENCIES, name

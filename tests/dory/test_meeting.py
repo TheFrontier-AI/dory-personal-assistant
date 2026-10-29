@@ -2,6 +2,7 @@
 wake-word answers and the summary on leave. No Discord connection, no Vertex."""
 
 import asyncio
+import logging
 import time
 from array import array
 from datetime import datetime, timedelta
@@ -1096,7 +1097,7 @@ async def test_rejoin_on_ready_continues_the_meeting_with_logged_lines(env, monk
     await env.mgr.end((1000, 77), "command")
 
 
-async def test_rejoin_with_an_empty_channel_ends_with_a_summary(env, monkeypatch):
+async def test_rejoin_with_an_empty_channel_ends_with_a_summary(env, monkeypatch, caplog):
     s = await start(env)
     monkeypatch.setattr(mt, "transcribe_pcm", lambda c, m, pcm: "ตกลงตามนี้")
     await env.mgr.handle_segment(s, segment(10))
@@ -1105,11 +1106,36 @@ async def test_rejoin_with_an_empty_channel_ends_with_a_summary(env, monkeypatch
     env.chan.members = []  # everyone left while the bot was down
     env.chan.sent.clear()
     _bot_guild(env, monkeypatch)
+    monkeypatch.setattr(mt, "RESUME_RETRY_S", 0)
     monkeypatch.setattr(mt, "summarize_transcript", lambda c, m, text, lang: "สรุป: " + text)
-    await env.mgr.resume_all()
+    with caplog.at_level(logging.INFO, logger="dory.meeting"):
+        await env.mgr.resume_all()
+    assert "not resumed: nobody in the channel" in caplog.text
+    assert "could not start listening" not in caplog.text  # ended on purpose, not by a crash
     assert (1000, 77) not in env.mgr.sessions
     assert env.bot.secretary_store.get_active_meeting(1000, 77) is None
     assert any("ตกลงตามนี้" in m and "สรุป" in m for m in env.chan.sent)
+
+
+async def test_rejoin_looks_again_when_the_first_look_finds_nobody(env, monkeypatch):
+    """Right after a restart the first look can find nobody (or no free body); a second look a few
+    seconds later rejoins the people who are there."""
+    await start(env)
+    await env.mgr.shutdown()
+    env.chan.members = [make_member(env.guild, 10, "แอน", env.chan)]
+    env.vc.disconnected = False
+    _bot_guild(env, monkeypatch)
+    monkeypatch.setattr(mt, "RESUME_RETRY_S", 0)
+    real, looks = env.mgr._humans, []
+
+    def humans(channel):
+        looks.append(1)
+        return [] if len(looks) == 1 else real(channel)
+
+    monkeypatch.setattr(env.mgr, "_humans", humans)
+    await env.mgr.resume_all()
+    assert (1000, 77) in env.mgr.sessions and isinstance(env.vc.listening, mt.MeetingSink)
+    await env.mgr.end((1000, 77), "command")
 
 
 async def test_unexpected_disconnect_retries_then_continues(env, monkeypatch):
