@@ -282,9 +282,9 @@ def test_a_waking_voice_server_shows_a_waking_up_status(page):
       MockLiveSocket.prototype.send = function (d) { if (!this.hello) { this.emit("waking", ""); setTimeout(() => send.call(this, d), 1500); return; } return send.call(this, d); }; }""")
     page.locator("#panel-live").click()
     status = page.locator(".call .speech .sx")
-    expect(status).to_have_text("Waking up Dory's voice server, about two minutes…")
+    expect(status).to_have_text("Waking up Dory's voice server, this can take up to ten minutes…")
     expect(status).not_to_have_text(
-        "Waking up Dory's voice server, about two minutes…", timeout=8000
+        "Waking up Dory's voice server, this can take up to ten minutes…", timeout=8000
     )
 
 
