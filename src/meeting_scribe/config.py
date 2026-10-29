@@ -67,6 +67,11 @@ class Settings(BaseSettings):
     legal_contact_email: str = "info@frontier-tech.ai"  # shown on /privacy and /terms
     # Workflow monitor in /center (`monitor_api.py`): off = every monitor route answers 404.
     monitor_enabled: bool = False
+    # Travel demo API (`travel_api.py`, public, sample data): per client IP and for everyone.
+    travel_rate_per_min: int = Field(default=120, ge=1)
+    travel_burst: int = Field(default=40, ge=1)
+    travel_global_rate_per_min: int = Field(default=1200, ge=1)
+    travel_max_concurrent: int = Field(default=8, ge=1)
 
 
 @lru_cache

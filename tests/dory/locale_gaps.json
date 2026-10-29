@@ -1,0 +1,15 @@
+{
+ "_about": "Reviewed 2026-10-29: catalog messages with no translation yet in the second-tier locales (the same in all seven). English is shown for them until scripts/dory_translate_catalog.py --only-missing translates them; then delete the translated keys here (the stale-entry test says which).",
+ "keys": [
+  "cmd_setup",
+  "glm_asleep",
+  "glm_wake_ack",
+  "glm_wake_awake",
+  "glm_waking",
+  "qa_claim_unbacked",
+  "setup_message",
+  "trip_confirm_failed",
+  "trip_confirm_partial",
+  "unlicensed"
+ ]
+}
