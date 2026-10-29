@@ -27,6 +27,29 @@ from typing import Literal
 from pydantic import BaseModel, Field, field_validator, model_validator
 
 CURRENCY = "THB"
+# what a person may choose as their preferred currency (the sign-up page, My profile and the server share it;
+# a test keeps the two pages' copies equal to this one)
+CURRENCIES = (
+    "THB",
+    "USD",
+    "EUR",
+    "GBP",
+    "JPY",
+    "SGD",
+    "HKD",
+    "MYR",
+    "VND",
+    "CNY",
+    "KRW",
+    "AUD",
+    "CAD",
+    "CHF",
+    "INR",
+    "IDR",
+    "PHP",
+    "NZD",
+    "TWD",
+)
 MAX_LIMIT = 10
 MAX_NIGHTS = 30
 MAX_DAYS_AHEAD = 330
@@ -923,13 +946,17 @@ def card_tools(ctx: CardCtx) -> list:
         """
         trip = ctx.trips.get(ctx.owner)
         prev, hotel = trip.flight, trip.hotel
-        o = place_code(origin) if origin.strip() else (prev.origin if prev else ctx.home or None)
+        o = place_code(origin) if origin.strip() else (prev.origin if prev else None)
         if origin.strip() and o is None:
             return _unknown(origin)
         d = place_code(destination) if destination.strip() else None
         if destination.strip() and d is None:
             return _unknown(destination)
         d = d or (prev.destination if prev else hotel.city if hotel else None)
+        if (
+            o is None and ctx.home and ctx.home != d
+        ):  # never a flight from X to X: then Dory asks where from
+            o = ctx.home
         day = _day(depart_date) if depart_date.strip() else None
         if depart_date.strip() and day is None:
             return {"status": "invalid", "problem": "depart_date must be YYYY-MM-DD"}

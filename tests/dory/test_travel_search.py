@@ -416,3 +416,11 @@ def test_picks_from_the_cards_form_one_trip_per_person():
     assert trips.pick("discord:3", back, TODAY) == "flight"
     trips.unpick("discord:1", "flight", "room")
     assert trips.picked("discord:1") == {}
+
+
+def test_the_home_airport_is_not_used_when_it_is_the_destination():
+    """Home BKK and "flights to Bangkok": Dory asks where from, instead of a from-X-to-X error."""
+    _, flights, _ = tools(home="BKK")
+    r = flights(destination="Bangkok", depart_date="2026-11-03")
+    assert r["status"] == "need_details" and r["missing"] == ["origin"]
+    assert flights(destination="Singapore", depart_date="2026-11-03")["status"] == "ok"
