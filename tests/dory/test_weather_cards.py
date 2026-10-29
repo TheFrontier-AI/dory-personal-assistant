@@ -190,6 +190,13 @@ def test_the_weather_tool_records_one_card_for_the_place_it_answered():
     assert ctx.cards[0]["days"] == 3
 
 
+def test_a_voice_turn_draws_no_card_and_says_nothing_about_one():
+    ctx = WeatherCtx(Net().service(), None, "en", ZONE, lambda: NOW, render=False)
+    (weather,) = build_weather_tools(ctx)
+    res = weather("Singapore")
+    assert res["place"] == "Singapore" and "shown" not in res and ctx.cards == []
+
+
 def test_no_card_when_the_tool_fails():
     weather, ctx = tool(Net(places=()))
     assert weather("Atlantis")["error"] == "place_not_found" and ctx.cards == []

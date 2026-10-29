@@ -484,6 +484,7 @@ class WeatherCtx:
     zone: object
     now: Callable[[], datetime]
     cards: list[dict] = field(default_factory=list)  # the weather cards to draw after the reply
+    render: bool = True  # False = a voice turn: no card is drawn, the answer is spoken
 
 
 class WeatherTools:
@@ -631,7 +632,7 @@ def build_weather_tools(ctx: WeatherCtx) -> list:
     def weather(place: str = "", when: str = "now", detail: str = "summary") -> dict:
         tools.located = None
         res = tools.weather(place, when, detail)
-        if "error" not in res and tools.located:  # a card for the place, next to the answer
+        if ctx.render and "error" not in res and tools.located:  # a card next to the answer
             label, lat, lng = tools.located
             day = str(res.get("when", ""))[:10]  # "now", or YYYY-MM-DD[ HH:MM]
             far = day[:1].isdigit() and day > (ctx.now() + timedelta(days=2)).date().isoformat()
@@ -639,7 +640,7 @@ def build_weather_tools(ctx: WeatherCtx) -> list:
             ctx.cards[:] = [c for c in ctx.cards if c.get("kind") != "weather"]
             ctx.cards.append({"kind": "weather", "place": label, "lat": round(lat, 4),
                               "lng": round(lng, 4), "days": ahead})  # fmt: skip
-            res = {**res, "shown": "A weather card for this place is drawn under your reply (chat); "
+            res = {**res, "shown": "A weather card for this place is drawn under your reply; "
                    "say the essentials in one or two sentences."}  # fmt: skip
         return res
 
