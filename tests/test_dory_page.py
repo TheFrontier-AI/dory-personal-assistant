@@ -566,7 +566,8 @@ def test_start_page_uses_only_existing_center_routes():
     assert 'const API = "/api/center"' in html
     assert 'api("/me")' in html and 'api("/orgs", { method: "POST"' in html
     assert "license/request" not in html  # launch: the trial is the only plan, nothing is charged
-    assert 'data-plan="trial"' in html and 'data-plan="monthly"' not in html
+    assert "data-plan" not in html  # one launch plan, nothing to choose: no plan screen
+    assert 'api("/me/travel", { method: "PUT"' in html  # the optional travel step
     assert 'href="/center"' in html
 
 
