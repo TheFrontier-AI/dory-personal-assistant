@@ -47,7 +47,9 @@ def _hero(html: str) -> str:
 def test_landing_page_is_served_without_an_invite_when_unconfigured(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert 'href="" data-invite' in r.text  # the page then shows "Create account" instead
+    assert (
+        'href="" data-invite' in r.text
+    )  # the invite buttons hide; "Create account" is there either way
     assert "__DORY_INVITE_URL__" not in r.text
 
 
@@ -62,8 +64,13 @@ def test_landing_page_uses_the_real_invite_link(client, monkeypatch):
         f"&scope=bot+applications.commands&permissions={DORY_PERMISSIONS}"
     )
     assert r.text.count(f'href="{url}" data-invite') == 4  # header, hero, plan, last section
-    # each one has a create-account fallback for a server without an invite link
-    assert r.text.count('href="/start" data-invite-fallback hidden') == 4
+    # "Create account" is always visible in the header, the hero and the plan card (it used to show only without
+    # an invite link, so a configured site had no visible way to register); the last section, whose organization
+    # form is the sign-up, keeps it as a fallback for a hidden invite button
+    assert (
+        len(re.findall(r'<a class="btn [\w -]+" href="/start" data-i18n="cta_create"', r.text)) == 3
+    )
+    assert r.text.count('href="/start" data-invite-fallback hidden') == 1
     assert "a.hidden = !ok;" in r.text and "a.hidden = ok;" in r.text
 
 
@@ -163,7 +170,8 @@ def test_the_header_links_land_on_real_sections_with_headings():
         assert sec, sid
         assert f'<h2 id="{sec.group(1)}"' in _section(html, sid), sid
     assert 'href="/center" data-i18n="nav_login"' in header and d["nav_login"]["en"] == "Log in"
-    assert "data-invite" in header and "data-invite-fallback" in header
+    assert "data-invite" in header and 'href="/start" data-i18n="cta_create"' in header
+    assert "data-invite-fallback" not in header  # never hidden: it is the visitor's way to sign up
     # on small screens the links fold into a menu button that says whether it is open
     assert 'class="menu-btn" aria-expanded="false" aria-controls="hd-menu"' in header
     assert 'id="hd-menu"' in header
@@ -181,7 +189,11 @@ def test_hero_matches_the_reference_layout():
     assert re.search(r"text-transform: uppercase", html.split(".eyebrow {", 1)[1].split("}", 1)[0])
     acts = hero.split('<div class="acts"', 1)[1].split("</div>", 1)[0]
     invite = acts.index('data-invite><svg class="i i-fill"><use href="#i-discord"/>')
-    assert invite < acts.index('href="/start" data-invite-fallback') < acts.index('id="film-open"')
+    create = acts.index('href="/start" data-i18n="cta_create"')
+    assert (
+        invite < create < acts.index('id="film-open"')
+    )  # Discord stays the primary action, sign-up second
+    assert "data-invite-fallback" not in acts
     assert [d[k]["en"] for k in ("chk1", "chk2", "chk3")] == [
         "Works in Thai & English",
         "Private to your team",
@@ -433,7 +445,8 @@ def test_pricing_is_the_one_free_launch_plan():
         "No card, no payment",
     ]
     assert "no payment in the system" in d["pr_note"]["en"]
-    assert "data-invite" in pricing and "data-invite-fallback" in pricing
+    assert "data-invite" in pricing and 'href="/start" data-i18n="cta_create"' in pricing
+    assert "data-invite-fallback" not in pricing
 
 
 def test_faq_gives_real_answers():

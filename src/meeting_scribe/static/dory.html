@@ -125,6 +125,13 @@
     font-weight: 600; text-decoration: none; transition: background-color 200ms ease; }
   .hd-nav a:hover { background: rgba(234, 242, 255, .12); color: #fff; }
   @media (max-width: 1439px) { .hd-in { gap: 16px; } .hd-nav a { padding: 0 10px; } }   /* Thai fits from 1280 up */
+  /* Three header actions (Log in, Create account, Add to Discord) overflow in Thai between 1280 and 1439: the Discord button
+     keeps only its logo there (its text stays for screen readers, and the hero has the full button) */
+  @media (min-width: 1280px) and (max-width: 1439px) {
+    .hd-act { gap: 8px; }
+    :lang(th) .hd-act [data-invite] { padding: 0 13px; }
+    :lang(th) .hd-act [data-invite] > span { position: absolute; width: 1px; height: 1px; overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; }
+  }
   .lang { order: 2; display: flex; padding: 3px; border-radius: 999px; background: rgba(4, 11, 34, .5); box-shadow: inset 0 0 0 1px rgba(234, 242, 255, .2); }
   .lang button { min-width: 48px; min-height: 44px; padding: 0 12px; border: 0; border-radius: 999px; background: none; color: #DCE6F8; font-weight: 600;
     font-size: var(--s1); transition: background-color 200ms ease, color 200ms ease; }
@@ -496,8 +503,8 @@
       </nav>
       <div class="hd-act">
         <a class="btn btn-dark btn-sm" href="/center" data-i18n="nav_login">Log in</a>
+        <a class="btn btn-grad btn-sm" href="/start" data-i18n="cta_create">Create account</a>
         <a class="btn btn-light btn-sm" href="__DORY_INVITE_URL__" data-invite><svg class="i i-fill"><use href="#i-discord"/></svg><span data-i18n="cta_add_short">Add to Discord</span></a>
-        <a class="btn btn-light btn-sm" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
       </div>
     </div>
     <div class="lang" role="group" aria-label="Choose language" data-i18n-attr="aria-label:lang_switch_aria">
@@ -522,7 +529,7 @@
         <p class="sub" data-rise style="--i:2" data-i18n="sub">Dory lives in your team's Discord. She takes meeting notes, logs receipts, follows up on tasks and answers from your company's own documents, in Thai or English.</p>
         <div class="acts" data-rise style="--i:3">
           <a class="btn btn-grad" href="__DORY_INVITE_URL__" data-invite><svg class="i i-fill"><use href="#i-discord"/></svg><span data-i18n="cta_add">Add Dory to Discord</span></a>
-          <a class="btn btn-grad" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
+          <a class="btn btn-light" href="/start" data-i18n="cta_create">Create account</a>
           <a class="btn btn-ghost" id="film-open" href="/static/dory/meet-dory.mp4" aria-haspopup="dialog"><svg class="i"><use href="#i-play"/></svg><span data-i18n="cta_film">See Dory at work</span></a>
         </div>
         <ul class="checks" data-rise style="--i:4">
@@ -712,7 +719,7 @@
         <div class="plan-side">
           <p class="price" data-i18n="pl_price">Free</p>
           <a class="btn btn-grad" href="__DORY_INVITE_URL__" data-invite><svg class="i i-fill"><use href="#i-discord"/></svg><span data-i18n="cta_add">Add Dory to Discord</span></a>
-          <a class="btn btn-grad" href="/start" data-invite-fallback hidden data-i18n="cta_create">Create account</a>
+          <a class="btn btn-light" href="/start" data-i18n="cta_create">Create account</a>
         </div>
       </div>
     </div>
@@ -1041,7 +1048,8 @@ for (const b of document.querySelectorAll("[data-lang]")) b.addEventListener("cl
 $("lang-other").addEventListener("click", () => setLang(lang === "th" ? "en" : "th"));
 
 // The invite URL is filled in by the server from DORY_DISCORD_CLIENT_ID. Never fabricate one: with
-// no client id the invite buttons hide and "Create account" takes their place instead.
+// no client id the invite buttons hide. "Create account" is always shown (header, hero, plan); in the last
+// section, whose organization form is the sign-up, it only stands in for a hidden invite button.
 function markInvite() {
   let ok = false;
   for (const a of document.querySelectorAll("[data-invite]")) {
