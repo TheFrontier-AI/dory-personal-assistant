@@ -414,6 +414,54 @@ def test_an_example_travels_to_the_chat_as_text_and_the_session_comes_along(page
     assert stored["q"] == "Show me hotels in Singapore for two nights"
 
 
+# ------------------------------------------------------------------ the first-time intro's hand-over
+# A stand-in for intro.js that records how this page calls the intro (the intro itself: test_start_intro.py).
+INTRO_SPY = """
+window.__intro = [];
+window.DoryIntro = {
+  shouldPlay: (o) => { __intro.push(['should', o.preview]); return true; },
+  play: (o) => {
+    __intro.push(['play', o.preview, typeof o.t, !document.getElementById('step4').hidden]);
+    window.__done = o.onDone;
+    return Promise.resolve();
+  },
+  relabel: () => __intro.push(['relabel']),
+};
+"""
+
+
+def spy_on_the_intro(page):
+    page.route(
+        "**/static/dory/intro/intro.js",
+        lambda route: route.fulfill(body=INTRO_SPY, content_type="text/javascript"),
+    )
+
+
+@pytest.mark.parametrize("button", ["Save and continue", "Skip for now"])
+def test_both_ends_of_the_travel_step_play_the_intro_over_step_4_already_shown(page, button):
+    spy_on_the_intro(page)
+    signup(page, CREATED)
+    create_org(page)
+    page.get_by_role("button", name=button).click()
+    expect(page.locator("#step4")).to_be_visible()
+    assert page.evaluate("__intro") == [["should", False], ["play", False, "function", True]]
+    page.evaluate("document.activeElement.blur(); __done()")  # closing the intro gives focus back
+    expect(page.locator("#step4 h2")).to_be_focused()
+
+
+def test_the_preview_link_plays_the_intro_once_the_page_has_loaded(page):
+    spy_on_the_intro(page)
+    page.goto("/start?intro=1")
+    assert page.evaluate("__intro") == [["should", True], ["play", True, "function", False]]
+
+
+def test_a_language_switch_lets_the_intro_relabel_its_controls(page):
+    spy_on_the_intro(page)
+    page.goto("/start")
+    page.get_by_role("button", name="ไทย").click()
+    assert ["relabel"] in page.evaluate("__intro")
+
+
 # ------------------------------------------------------------------ returning users
 def test_a_member_who_finished_is_welcomed_back_without_being_asked_again(page):
     flow = signup(page, me=person(orgs=True, onboarded=True, airport="SIN", currency="THB"))

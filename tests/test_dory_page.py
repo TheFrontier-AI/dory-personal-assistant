@@ -593,6 +593,45 @@ def test_start_hands_the_credential_to_center_once_per_tab():
     assert "localStorage" not in start.split("dory_center_handoff", 1)[1]  # never persisted
 
 
+INTRO = DORY / "intro"
+# the first-time intro tells its story in English only; these controls are all it translates
+INTRO_KEYS = {
+    "intro_label": {"th": "รู้จักดอรี่", "en": "Meet Dory"},
+    "intro_skip": {"th": "ข้าม", "en": "Skip"},
+    "intro_next": {"th": "ถัดไป", "en": "Next"},
+    "intro_pause": {"th": "หยุดชั่วคราว", "en": "Pause"},
+    "intro_play": {"th": "เล่นต่อ", "en": "Play"},
+    "intro_sound": {"th": "เสียง", "en": "Sound"},
+}
+
+
+def test_start_loads_the_intro_assets():
+    d, html = _start_dict_and_html()
+    head = html.split("</head>", 1)[0]
+    theme = '<link rel="stylesheet" href="/static/dory/theme.css">'
+    css = '<link rel="stylesheet" href="/static/dory/intro/intro.css">'
+    audio = '<script src="/static/dory/intro/intro-audio.js" defer></script>'
+    script = '<script src="/static/dory/intro/intro.js" defer></script>'
+    for tag in (theme, css, audio, script):
+        assert tag in head, tag
+    assert head.index(theme) < head.index(css)  # its rules come after the theme's
+    assert head.index(audio) < head.index(script)  # deferred scripts run in order: the synth first
+    assert {k: v for k, v in d.items() if k.startswith("intro_")} == INTRO_KEYS
+    js = (INTRO / "intro.js").read_text("utf-8")
+    assert all(f'"{k}"' in js for k in INTRO_KEYS)  # the intro labels its own controls from these
+
+
+def test_intro_assets_are_served_english_only_and_file_free(client):
+    for name, kind in (("intro.js", "javascript"), ("intro-audio.js", "javascript")):
+        r = client.get(f"/static/dory/intro/{name}")
+        assert r.status_code == 200 and kind in r.headers["content-type"], name
+    r = client.get("/static/dory/intro/intro.css")
+    assert r.status_code == 200 and r.headers["content-type"].startswith("text/css")
+    assert not re.search(r"[฀-๿]", (INTRO / "intro.js").read_text("utf-8"))
+    audio_files = {".mp3", ".wav", ".ogg", ".m4a"}
+    assert not [p.name for p in INTRO.rglob("*") if p.suffix in audio_files]  # sound is synthesised
+
+
 def test_every_page_shares_the_dory_theme(client):
     """One design system: every page links the shared stylesheet, which is served as CSS."""
     for name in ("dory.html", "start.html", "hub.html", "center.html", "index.html", "pm.html"):

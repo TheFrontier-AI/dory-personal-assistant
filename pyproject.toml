@@ -58,6 +58,7 @@ asyncio_mode = "auto"
 markers = [
     "live: hits real Vertex Gemini (deselected by default; run with -m live)",
     "e2e: Playwright browser tests against /center?mock=1 (deselected by default; run with -m e2e)",
+    "intro: e2e tests of the /start intro; the e2e fixtures mark it seen for every other test",
 ]
 addopts = "-m 'not live and not e2e'"
 
