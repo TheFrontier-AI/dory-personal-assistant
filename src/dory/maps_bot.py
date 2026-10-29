@@ -19,6 +19,7 @@ from .weather import (
     WeatherService,
     WeatherTools,
     build_weather_tools,
+    make_weather_service,
 )
 
 logger = logging.getLogger(__name__)
@@ -26,9 +27,19 @@ logger = logging.getLogger(__name__)
 
 class MapsMixin:
     _maps_svc: tuple[RouteService, WeatherService] | None = None
+    _weather_svc: tuple[tuple, WeatherService | None] | None = None  # (settings key, service)
 
     def _maps_on(self, guild_id: int) -> bool:
         return bool(self.s.maps_enabled) and self.team.enabled(guild_id, "maps")
+
+    def _weather_service(self) -> WeatherService | None:
+        """The forecast source of the weather tool and its cards (`weather.make_weather_service`:
+        Google Weather where maps is on, else Open-Meteo, None when off), built once per setting."""
+        key = (bool(self.s.maps_enabled), self.s.weather_provider)
+        if self._weather_svc is None or self._weather_svc[0] != key:
+            google = self._maps_services()[1] if key[0] else None
+            self._weather_svc = (key, make_weather_service(self.s, google))
+        return self._weather_svc[1]
 
     def _maps_services(self) -> tuple[RouteService, WeatherService]:
         if self._maps_svc is None:
@@ -51,17 +62,21 @@ class MapsMixin:
         )  # fmt: skip
 
     def _maps_tools(self, message, guild, asker, is_exec: bool, lang: str) -> list:
-        """travel_time + weather for one request. Never raises."""
+        """travel_time (Google Maps on) + weather (Google or Open-Meteo, `_weather_service`) for one
+        request. Never raises."""
         try:
-            if not self._maps_on(guild.id):
+            if not self.team.enabled(guild.id, "maps"):
                 return []
-            routes, weather = self._maps_services()
-            pc = self._maps_places(guild, asker, is_exec, message)
+            forecast = self._weather_service()
             zone, now = self.s.zone, self.s.now
-            return [
-                *build_travel_tools(TravelCtx(routes, pc, lang, zone, now, weather)),
-                *build_weather_tools(WeatherCtx(weather, pc, lang, zone, now)),
-            ]
+            pc = self._maps_places(guild, asker, is_exec, message)
+            weather = (
+                build_weather_tools(WeatherCtx(forecast, pc, lang, zone, now)) if forecast else []
+            )
+            if not self._maps_on(guild.id):
+                return weather  # no Google Maps: the weather tool alone (Open-Meteo)
+            routes, google = self._maps_services()
+            return [*build_travel_tools(TravelCtx(routes, pc, lang, zone, now, google)), *weather]
         except Exception:
             logger.warning("maps tools unavailable", exc_info=True)
             return []

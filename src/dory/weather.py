@@ -1,6 +1,10 @@
 """Weather for Dory: Google Maps Platform Weather API (WeatherNext models), plus an optional
-WeatherNext 2 ensemble read from BigQuery. Locations come from remembered places (visibility rules
-in `geo.py`) or the Places API text search. Answers carry a place NAME, never an address."""
+WeatherNext 2 ensemble read from BigQuery, or, where Google Maps is off, Open-Meteo (`OpenMeteoService`,
+no key; its free API is for NON-commercial use, so `DORY_OPENMETEO_API_KEY` switches to the paid
+customer hosts before a commercial launch). Locations come from remembered places (visibility rules
+in `geo.py`) or the geocoder of the service. Answers carry a place NAME, never an address. A
+successful `weather` call records a card (`WeatherCtx.cards`) that the web chat and Discord draw
+from `weather_card`."""
 
 from __future__ import annotations
 
@@ -8,8 +12,10 @@ import logging
 import math
 import time
 from collections.abc import Callable
-from dataclasses import dataclass
+from dataclasses import dataclass, field
 from datetime import UTC, datetime, timedelta
+
+import httpx
 
 from .geo import parse_when
 from .gmaps import Geocoder, GoogleHttp, MapsError
@@ -258,6 +264,217 @@ class WeatherService:
             return None
 
 
+# ---------------------------------------------------------------------------- Open-Meteo
+OPEN_METEO = "https://{host}api.open-meteo.com/v1/forecast"
+OPEN_METEO_GEO = "https://{host}geocoding-api.open-meteo.com/v1/search"
+OPEN_METEO_SOURCE = "Open-Meteo"
+OPEN_METEO_CREDIT = "Weather data by Open-Meteo.com (CC BY 4.0)"
+# WMO weather interpretation codes (Open-Meteo docs) -> (condition, icon key the cards draw)
+WMO = {
+    0: ("Clear sky", "sun"), 1: ("Mainly clear", "sun"), 2: ("Partly cloudy", "cloud-sun"),
+    3: ("Overcast", "cloud"), 45: ("Fog", "fog"), 48: ("Depositing rime fog", "fog"),
+    51: ("Light drizzle", "drizzle"), 53: ("Moderate drizzle", "drizzle"),
+    55: ("Dense drizzle", "drizzle"), 56: ("Light freezing drizzle", "drizzle"),
+    57: ("Dense freezing drizzle", "drizzle"), 61: ("Slight rain", "rain"),
+    63: ("Moderate rain", "rain"), 65: ("Heavy rain", "rain"), 66: ("Light freezing rain", "rain"),
+    67: ("Heavy freezing rain", "rain"), 71: ("Slight snowfall", "snow"),
+    73: ("Moderate snowfall", "snow"), 75: ("Heavy snowfall", "snow"), 77: ("Snow grains", "snow"),
+    80: ("Slight rain showers", "showers"), 81: ("Moderate rain showers", "showers"),
+    82: ("Violent rain showers", "showers"), 85: ("Slight snow showers", "snow"),
+    86: ("Heavy snow showers", "snow"), 95: ("Thunderstorm", "storm"),
+    96: ("Thunderstorm with slight hail", "storm"), 97: ("Heavy thunderstorm", "storm"),
+    99: ("Thunderstorm with heavy hail", "storm"),
+}  # fmt: skip
+STORM_CODES = {95, 96, 97, 99}
+
+
+def wmo(code) -> tuple[str, str]:
+    try:
+        return WMO.get(int(code), ("", "cloud"))
+    except (TypeError, ValueError):
+        return "", "cloud"
+
+
+class OpenMeteoGeo:
+    """Place name -> coordinates through Open-Meteo's geocoding API (10-minute cache)."""
+
+    def __init__(
+        self, get: Callable[[str, dict], dict], clock: Callable[[], float] = time.monotonic
+    ):
+        self.get, self.clock = get, clock
+        self._cache: dict = {}
+
+    def find(self, text: str, lang: str = "en") -> dict | None:
+        """The best match: {name, label, lat, lng, timezone, country}; None when nothing matches."""
+        key = (text.strip().casefold(), lang)
+        hit = self._cache.get(key)
+        if hit and hit[0] > self.clock():
+            return hit[1]
+        d = self.get("geo", {"name": text.strip(), "count": 1, "language": lang, "format": "json"})
+        r = (d.get("results") or [None])[0]
+        out = None
+        if r and r.get("latitude") is not None and r.get("longitude") is not None:
+            parts = [r.get("name") or text.strip(), r.get("country") or ""]
+            out = {"name": r.get("name") or text.strip(), "label": ", ".join(p for p in parts if p),
+                   "lat": float(r["latitude"]), "lng": float(r["longitude"]),
+                   "timezone": r.get("timezone") or "", "country": r.get("country") or ""}  # fmt: skip
+        self._cache[key] = (self.clock() + CACHE_SECONDS, out)
+        return out
+
+    def locate(self, text: str, lang: str = "en") -> tuple[float, float] | None:
+        got = self.find(text, lang)
+        return (got["lat"], got["lng"]) if got else None
+
+
+class OpenMeteoService(WeatherService):
+    """`WeatherService`'s interface (current / hours / days / rain_at / .geo) on Open-Meteo. Free and
+    keyless for NON-commercial use only (https://open-meteo.com/en/terms); `api_key` uses the paid
+    customer hosts. Network or API failures raise `MapsError("maps_unavailable")` like Google's."""
+
+    source, credit = OPEN_METEO_SOURCE, OPEN_METEO_CREDIT
+
+    def __init__(self, api_key: str = "", http: httpx.Client | None = None,
+                 clock: Callable[[], float] = time.monotonic):  # fmt: skip
+        self.key, self.client = api_key.strip(), http or httpx.Client(timeout=10.0)
+        self.http, self.bq, self.clock = None, None, clock
+        self._cache: dict = {}
+        self.geo = OpenMeteoGeo(self._get, clock)
+
+    def _get(self, which: str, params: dict) -> dict:
+        host = "customer-" if self.key else ""
+        url = (OPEN_METEO_GEO if which == "geo" else OPEN_METEO).format(host=host)
+        q = {**params, **({"apikey": self.key} if self.key else {})}
+        try:
+            r = self.client.get(url, params=q)
+        except httpx.HTTPError as e:
+            raise MapsError("maps_unavailable", type(e).__name__) from None
+        if r.status_code != 200:
+            raise MapsError("maps_unavailable", f"open-meteo {r.status_code}")
+        return r.json()
+
+    def _forecast(self, lat, lng, **params) -> dict:
+        p = {"latitude": round(lat, 4), "longitude": round(lng, 4), "timezone": "auto", **params}
+        return self._cached(("om", tuple(sorted(p.items()))), lambda: self._get("forecast", p))
+
+    def current(self, lat, lng, lang) -> dict:
+        d = self._forecast(lat, lng, current="temperature_2m,apparent_temperature,weather_code,"
+                           "precipitation,wind_speed_10m,relative_humidity_2m",
+                           daily="precipitation_probability_max,uv_index_max", forecast_days=1)  # fmt: skip
+        c, day = d.get("current") or {}, d.get("daily") or {}
+        text, icon = wmo(c.get("weather_code"))
+        return {"condition": text, "icon": icon, "code": c.get("weather_code"),
+                "temp_c": c.get("temperature_2m"), "feels_c": c.get("apparent_temperature"),
+                "rain_pct": (day.get("precipitation_probability_max") or [None])[0],
+                "rain_mm": c.get("precipitation"), "storm_pct": None,
+                "wind_kmh": c.get("wind_speed_10m"), "uv": (day.get("uv_index_max") or [None])[0],
+                "humidity": c.get("relative_humidity_2m"), "time": c.get("time") or "",
+                "timezone": d.get("timezone") or ""}  # fmt: skip
+
+    def days(self, lat, lng, lang, count: int = 10) -> list[dict]:
+        d = self._forecast(lat, lng, daily="weather_code,temperature_2m_max,temperature_2m_min,"
+                           "apparent_temperature_max,precipitation_probability_max,precipitation_sum,"
+                           "wind_speed_10m_max,uv_index_max", forecast_days=max(1, min(count, 16)))  # fmt: skip
+        day = d.get("daily") or {}
+
+        def col(k, i):
+            v = day.get(k) or []
+            return v[i] if i < len(v) else None
+
+        out = []
+        for i, date_s in enumerate(day.get("time") or []):
+            text, icon = wmo(col("weather_code", i))
+            out.append({"date": date_s, "condition": text, "icon": icon, "code": col("weather_code", i),
+                        "temp_c": col("temperature_2m_max", i), "min_c": col("temperature_2m_min", i),
+                        "feels_c": col("apparent_temperature_max", i),
+                        "rain_pct": col("precipitation_probability_max", i),
+                        "rain_mm": col("precipitation_sum", i),
+                        "storm_pct": 100 if col("weather_code", i) in STORM_CODES else None,
+                        "wind_kmh": col("wind_speed_10m_max", i), "uv": col("uv_index_max", i)})  # fmt: skip
+        return out
+
+    def hours(self, lat, lng, lang, ahead: int) -> list[dict]:
+        ahead = max(1, min(MAX_HOURS, ahead))
+        d = self._forecast(lat, lng, hourly="temperature_2m,apparent_temperature,weather_code,"
+                           "precipitation_probability,precipitation,wind_speed_10m",
+                           forecast_days=max(1, min(16, math.ceil(ahead / 24) + 1)))  # fmt: skip
+        h, off = d.get("hourly") or {}, timedelta(seconds=d.get("utc_offset_seconds") or 0)
+        rows = []
+        for i, ts in enumerate(h.get("time") or []):
+
+            def col(k, i=i):
+                v = h.get(k) or []
+                return v[i] if i < len(v) else None
+
+            text, icon = wmo(col("weather_code"))
+            start = (datetime.fromisoformat(ts) - off).replace(tzinfo=UTC)
+            rows.append({"condition": text, "icon": icon, "temp_c": col("temperature_2m"),
+                         "feels_c": col("apparent_temperature"),
+                         "rain_pct": col("precipitation_probability"), "rain_mm": col("precipitation"),
+                         "storm_pct": None, "wind_kmh": col("wind_speed_10m"), "uv": None,
+                         "start": start})  # fmt: skip
+        now = datetime.now(UTC) - timedelta(hours=1)
+        return [r for r in rows if r["start"] >= now][:ahead]
+
+
+def make_weather_service(settings, google: WeatherService | None = None) -> WeatherService | None:
+    """The forecast source for the weather tool and cards (`DORY_WEATHER_PROVIDER`): Google Weather
+    (`google`, or `auto` with maps_enabled; pass the bot's own to share its cache), Open-Meteo
+    (`open-meteo`, or `auto` without maps), None when `off`."""
+    mode = (getattr(settings, "weather_provider", "auto") or "auto").strip().lower()
+    if mode == "off":
+        return None
+    if mode == "google" or (mode == "auto" and getattr(settings, "maps_enabled", False)):
+        if google is not None:
+            return google
+        http = GoogleHttp(settings.gcp_project, api_key=settings.maps_api_key)
+        return WeatherService(http, Geocoder(http))
+    return OpenMeteoService(getattr(settings, "openmeteo_api_key", ""))
+
+
+def tip_for(current: dict, days: list[dict]) -> dict:
+    """One travel tip from the forecast, as a key the platforms word: storm / umbrella (with the
+    first wet day) / heat / sun / jacket / pleasant."""
+    for d in days:
+        if d.get("storm_pct"):
+            return {"key": "storm", "day": d.get("date")}
+    for d in days:
+        if (d.get("rain_pct") or 0) >= RAIN_NOTE_PCT or (d.get("rain_mm") or 0) >= 5:
+            return {"key": "umbrella", "day": d.get("date")}
+    highs = [x.get("temp_c") for x in (current, *days) if x.get("temp_c") is not None]
+    lows = [d["min_c"] for d in days if d.get("min_c") is not None]
+    if highs and max(highs) >= 34:
+        return {"key": "heat", "day": None}
+    if max([d.get("uv") or 0 for d in days] + [current.get("uv") or 0]) >= 8:
+        return {"key": "sun", "day": None}
+    if lows and min(lows) <= 12:
+        return {"key": "jacket", "day": None}
+    return {"key": "pleasant", "day": None}
+
+
+def weather_card(service, label: str, lat: float, lng: float, lang: str, days: int = 3) -> dict:
+    """What a weather card draws: the place, its local time, now, the next `days` days (3 or 5)
+    and one tip. Raises MapsError when the service is down (the card shows its fallback)."""
+    days = 5 if days >= 5 else 3
+    cur = service.current(lat, lng, lang)
+    rows = service.days(lat, lng, lang, days)[:days]
+    keep = ("date", "condition", "icon", "temp_c", "min_c", "rain_pct", "rain_mm", "storm_pct")
+    now_keys = ("condition", "icon", "temp_c", "feels_c", "rain_pct", "wind_kmh", "uv", "humidity")
+    return {
+        "kind": "weather",
+        "place": label,
+        "lat": round(lat, 4),
+        "lng": round(lng, 4),
+        "local_time": cur.get("time") or "",
+        "timezone": cur.get("timezone") or "",
+        "current": {k: cur.get(k) for k in now_keys if cur.get(k) is not None},
+        "days": [{k: d.get(k) for k in keep if d.get(k) is not None} for d in rows],
+        "tip": tip_for(cur, rows),
+        "source": getattr(service, "source", SOURCE),
+        "credit": getattr(service, "credit", ""),
+        "estimate": True,
+    }
+
+
 # ---------------------------------------------------------------------------- tools
 @dataclass
 class WeatherCtx:
@@ -266,11 +483,13 @@ class WeatherCtx:
     lang: str
     zone: object
     now: Callable[[], datetime]
+    cards: list[dict] = field(default_factory=list)  # the weather cards to draw after the reply
 
 
 class WeatherTools:
     def __init__(self, ctx: WeatherCtx):
         self.c = ctx
+        self.located: tuple[str, float, float] | None = None  # the last place `weather` looked up
 
     def locate(self, place: str):
         """(label, lat, lng) for a place name / address; the office, else Bangkok, when empty."""
@@ -298,7 +517,7 @@ class WeatherTools:
         return place.strip(), *got
 
     def weather(self, place: str = "", when: str = "now", detail: str = "summary") -> dict:
-        """Weather and forecast for a place (Google Weather API, WeatherNext models).
+        """Weather and forecast for a place (Google Weather API / WeatherNext, or Open-Meteo).
 
         Args:
             place: a remembered place ("สาขาบางนา", "ออฟฟิศ") or any address / area name. Empty =
@@ -312,9 +531,14 @@ class WeatherTools:
         now = c.now()
         try:
             label, lat, lng = self.locate(place or "")
+            self.located = (label, lat, lng)
             w = (when or "now").strip()
             key = w.casefold()
-            base = {"place": label, "source": SOURCE, "estimate": True}
+            base = {
+                "place": label,
+                "source": getattr(c.service, "source", SOURCE),
+                "estimate": True,
+            }
             day_off = _DAY_WORDS.get(key)
             if day_off is None and len(w) == 10 and w[4] == "-":
                 try:
@@ -402,4 +626,23 @@ def _error(e: MapsError) -> dict:
 
 
 def build_weather_tools(ctx: WeatherCtx) -> list:
-    return [WeatherTools(ctx).weather]
+    tools = WeatherTools(ctx)
+
+    def weather(place: str = "", when: str = "now", detail: str = "summary") -> dict:
+        tools.located = None
+        res = tools.weather(place, when, detail)
+        if "error" not in res and tools.located:  # a card for the place, next to the answer
+            label, lat, lng = tools.located
+            day = str(res.get("when", ""))[:10]  # "now", or YYYY-MM-DD[ HH:MM]
+            far = day[:1].isdigit() and day > (ctx.now() + timedelta(days=2)).date().isoformat()
+            ahead = 5 if far else 3  # a day 3+ days out is only on the 5-day card
+            ctx.cards[:] = [c for c in ctx.cards if c.get("kind") != "weather"]
+            ctx.cards.append({"kind": "weather", "place": label, "lat": round(lat, 4),
+                              "lng": round(lng, 4), "days": ahead})  # fmt: skip
+            res = {**res, "shown": "A weather card for this place is drawn under your reply (chat); "
+                   "say the essentials in one or two sentences."}  # fmt: skip
+        return res
+
+    weather.__doc__ = WeatherTools.weather.__doc__
+    weather.cards = ctx.cards  # type: ignore[attr-defined]  (read with travel_search.tool_cards)
+    return [weather]

@@ -49,6 +49,11 @@ class Settings(BaseSettings):
     # WeatherNext 2 ensemble in BigQuery (empty = disabled): "<project>.<dataset>"
     weathernext_bq_dataset: str = ""
     weathernext_bq_table: str = "weathernext_2_0_0"
+    # The weather tool and cards: auto = Google Weather where maps_enabled, else Open-Meteo (free,
+    # no key, NON-commercial terms: https://open-meteo.com/en/terms); google; open-meteo; off.
+    weather_provider: str = "auto"
+    # Open-Meteo's paid customer API (commercial use); empty = the free non-commercial API
+    openmeteo_api_key: str = Field(default="", repr=False)  # secret: never logged
     # Deep tasks (Gemini CLI, an external Node binary). Empty path = feature disabled.
     gemini_cli_path: str = ""
     deep_task_timeout: int = 600  # seconds
