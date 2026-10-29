@@ -48,19 +48,21 @@ Diagrams (open in a browser): [architecture map](docs/diagrams/architecture.html
 
 ## NVIDIA Nemotron on Nebius Token Factory
 
-Dory's brain is **NVIDIA Nemotron 3 Super** (`nvidia/nemotron-3-super-120b-a12b`, an open-weight
-hybrid Mamba-Transformer MoE) served by **Nebius Token Factory** (OpenAI-compatible API,
-`https://api.tokenfactory.nebius.com/v1/`). Set `DORY_NEBIUS_API_KEY` (an API key from
-https://tokenfactory.nebius.com/project/api-keys) and:
+Dory's brain is **GLM-5.3** (`zai-org/GLM-5.3`, open weights; NVIDIA Nemotron 3 Super until
+26 Oct 2026) and it reads images with **NVIDIA Nemotron 3.5 Super VL**, both served by **Nebius
+Token Factory** (OpenAI-compatible API, `https://api.tokenfactory.nebius.com/v1/`). Set
+`DORY_NEBIUS_API_KEY` (an API key from https://tokenfactory.nebius.com/project/api-keys) and:
 
 - every chat and voice answer (`dory.qa`, the Google ADK agent with its ~140 tool declarations) runs
-  on Nemotron through ADK's `LiteLlm` adapter with reasoning ON plus a one-paragraph tool rule in the
-  prompt: with reasoning off, or without the rule, the model narrated actions ("I'll set a reminder")
-  instead of calling the tool once it saw the full tool list (measured live, 25 Oct 2026);
+  on GLM-5.3 (`DORY_BRAIN_MODEL`) through ADK's `LiteLlm` adapter with reasoning ON at effort `low`
+  (`DORY_BRAIN_EFFORT`) plus a one-paragraph tool rule in the prompt: with reasoning off, or without
+  the rule, Nemotron 3 Super narrated actions ("I'll set a reminder") instead of calling the tool
+  once it saw the full tool list (measured live, 25 Oct 2026);
 - every text-only model call (`dory.llm.generate`: the yes/no gates, memory day summaries, task and
-  project listeners, translations, people dossiers, JSON extractions) goes to the same model with
-  reasoning off (`chat_template_kwargs.enable_thinking=false`, short JSON answers) and JSON-schema
-  outputs mapped to Token Factory's `response_format` with every property required;
+  project listeners, translations, people dossiers, JSON extractions) goes to the cheaper
+  **GLM-5.3-Flash** (`DORY_FAST_MODEL`) with reasoning as low as GLM allows (it has no off switch:
+  `reasoning_effort=low`, at least 1,024 output tokens) and JSON-schema outputs mapped to Token
+  Factory's `response_format` with every property required;
 - every call that carries images (receipt photos into the ledger, documents sent as images, image
   memory, Gantt-plan imports, a photo in a chat message) goes to **NVIDIA Nemotron 3.5 Super VL**
   (`DORY_NEMOTRON_VISION_MODEL`), images inlined as data URLs; a chat turn with a photo also uses it
@@ -68,22 +70,27 @@ https://tokenfactory.nebius.com/project/api-keys) and:
 - memory embeddings (meaning-based search over the team memory) use the open **Qwen3-Embedding-8B**
   on Token Factory (`DORY_NEBIUS_EMBED_MODEL`, 256 Matryoshka dimensions), since Token Factory
   serves no NVIDIA embedding model;
-- audio (voice meetings, voice clips), PDF bytes in a chat message, text-to-speech, live voice,
-  image generation and Google-grounded web search stay on Gemini (Vertex AI): Token Factory has no
-  open model for them today.
+- voice calls on the web, and Discord voice rooms with `DORY_VOICE_MODE=glm`, run on a self-hosted
+  cascade on a Nebius GPU VM when `DORY_GLM_VOICE_URL` points at it (`deploy/glm_voice/cascade.py`):
+  **NVIDIA Parakeet-TDT 0.6B v3** turns speech into text, the brain above answers with the same
+  tools, and **Kokoro-82M** speaks the answer;
+- other audio (voice clips, meeting transcripts), PDF bytes in a chat message, text-to-speech and
+  live voice without the cascade, image generation and Google-grounded web search stay on Gemini
+  (Vertex AI): Token Factory has no open model for them today.
 
-Without the key everything runs on Gemini as before. `scripts/dory_nemotron_probe.py` (model choice)
-and `scripts/dory_tool_calls_probe.py` (tool calling with the full bot) are the live probes that
-measured the models (billed).
+Without the key the text, image and embedding calls run on Gemini as before.
+`scripts/dory_nemotron_probe.py` (model choice) and `scripts/dory_tool_calls_probe.py` (tool calling
+with the full bot) are the live probes that measured the models (billed).
 
 | Work | Model | Where |
 | --- | --- | --- |
-| Chat and voice answers (ADK agent, ~140 tools) | nvidia/nemotron-3-super-120b-a12b, reasoning on | Nebius Token Factory |
+| Chat and voice answers (ADK agent, ~140 tools) | zai-org/GLM-5.3, reasoning on (effort low) | Nebius Token Factory |
 | Chat answers when the message has a photo | nvidia/Nemotron-3.5-Super-VL | Nebius Token Factory |
-| Gates, summaries, listeners, extractions (text) | nvidia/nemotron-3-super-120b-a12b, reasoning off | Nebius Token Factory |
+| Gates, summaries, listeners, extractions (text) | zai-org/GLM-5.3-Flash, reasoning effort low | Nebius Token Factory |
 | Receipts, documents as images, image memory | nvidia/Nemotron-3.5-Super-VL | Nebius Token Factory |
 | Memory embeddings | Qwen/Qwen3-Embedding-8B @ 256 | Nebius Token Factory |
-| Audio, PDF bytes, TTS, live voice, image generation, grounded search | Gemini | Vertex AI |
+| Voice calls with `DORY_GLM_VOICE_URL`: speech to text, text to speech | nvidia/parakeet-tdt-0.6b-v3, hexgrad/Kokoro-82M | Nebius GPU VM (`deploy/glm_voice/cascade.py`) |
+| Other audio, PDF bytes, TTS and live voice without the cascade, image generation, grounded search | Gemini | Vertex AI |
 
 ## Local development
 
@@ -153,7 +160,7 @@ message or a link, and say what you need.
   (admins and executives). The slash commands (`/โหมด`, `/ภาษา`, `/ความจำ`, ...) stay as optional shortcuts.
 
 A second package, `src/dory/`, is a Discord bot. Staff post receipt photos or PDFs in a receipt
-channel; Gemini (Vertex AI) extracts vendor, date, totals and a category into a ledger, flags
+channel; Dory extracts vendor, date, totals and a category into a ledger, flags
 low-confidence or duplicate receipts, and replies in Thai. Executives ask questions in Thai
 ("how much did we spend on ingredients this week?") and get answers from ledger tool calls, plus an
 optional daily digest. Non-executives only see their own receipts.
@@ -182,7 +189,7 @@ server's executive role names (default `ผู้บริหาร`, `Executive
 
 - **Files to Dory (agent).** Send Dory an image, PDF or small text file (up to 4 files, 15 MB each, 20 MB
   total) by @mention, name, reply, DM, in a chat-mode channel or inside the 3-minute conversation window. The
-  Google ADK agent (Gemini) reads the files itself, says what is inside, and decides what to do next:
+  Google ADK agent reads the files itself, says what is inside, and decides what to do next:
   receipts, tax invoices and transfer slips are recorded in the ledger (tool `record_receipt`, bound in code
   to that message, author and server, honouring the `receipts` switch; replying to Dory's message still
   corrects the receipt), documents, screenshots and charts are summarised with team memory and 1-3 suggested
@@ -252,7 +259,7 @@ server's executive role names (default `ผู้บริหาร`, `Executive
   sets their own in their private channel or DMs; an optional server wording note (up to 200 characters, e.g.
   "always call customers คุณลูกค้า") is refused when it touches permissions or the persona. Chat, voice, briefs and
   reports use the same tone; the confirmation is already written in the new tone.
-- **Q&A runs on Google ADK**: an `LlmAgent` (Gemini on Vertex) with four ledger `FunctionTool`s that
+- **Q&A runs on Google ADK**: an `LlmAgent` (GLM-5.3 on Token Factory, Gemini without the key) with four ledger `FunctionTool`s that
   are built per request around the asker's scope, so the model cannot widen it. At most 4 tool rounds.
 - **Read links and search the web (`web` feature, default on)**: the `read_web(request)` tool makes a
   separate Gemini call (`dory/web_read.py`) with Google's built-in `url_context` and `google_search`
