@@ -40,6 +40,7 @@ from dory.gmaps import Geocoder, GoogleHttp, MapsError
 from dory.places import PlaceRepo
 from dory.travel import ROUTES_URL, RouteService, TravelCtx, TravelTools, directions_link
 from dory.weather import (
+    OpenMeteoService,
     WeatherCtx,
     WeatherNextBigQuerySource,
     WeatherService,
@@ -557,13 +558,19 @@ async def test_flag_off_means_no_tools_and_flag_on_registers_both(bot, world):
     msg = SimpleNamespace(channel=world.pub, guild=world.g, room=None, id=1, jump_url="")
     fake_services(bot, Net())
     args = (msg, world.g, world.staff, False, "th")
-    assert bot._maps_tools(*args) == []  # DORY_MAPS_ENABLED false (the default)
+    # DORY_MAPS_ENABLED false (the default): no travel_time, the weather tool on Open-Meteo
+    assert tool_names(bot._maps_tools(*args)) == ["weather"]
+    assert isinstance(bot._weather_service(), OpenMeteoService)
+    bot.s.weather_provider = "off"
+    assert bot._maps_tools(*args) == []
+    bot.s.weather_provider = "auto"
     bot.s.maps_enabled = True
     assert tool_names(bot._maps_tools(*args)) == ["travel_time", "weather"]
     set_features(bot, maps=False)  # the guild flag
     assert bot._maps_tools(*args) == []
     set_features(bot, maps=True)
     assert len(bot._maps_tools(*args)) == 2
+    assert bot._weather_service() is bot._maps_svc[1]  # Google Weather shares the maps cache
 
 
 def test_settings_default_is_off_and_not_an_action_tool():

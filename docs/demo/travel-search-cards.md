@@ -161,6 +161,23 @@ default) must stay on.
 uv run python scripts/dory_travel_discord_preview.py --out /tmp/dory-discord --png
 ```
 
+## Weather cards (web)
+
+A chat reply whose brain called the `weather` tool carries `travel.weather = {kind, place, lat, lng, days}` (flights and
+hotels may be null). The page draws one forecast card next to the travel cards (floating panel and `#/chat`, live
+replies and history) and fetches the card itself, fresh, from `POST /api/travel/weather`
+`{place, lat, lng, days: 3|5, lang?}`: the same public router and protection as the searches (`guard`, bounded body,
+`extra="forbid"`), coordinates rounded to 2 decimals (about 1 km) before `dory.weather.weather_card`, answer
+`{card, data: {kind: "forecast", estimate: true, source, credit}}`. Errors keep the router's one shape (their `data` is
+still the sample-travel status): `weather_off` 503 (`DORY_WEATHER_PROVIDER=off`), `weather_unavailable` 503 (the source
+is down; no raw error). The card: place + its local time, now (temperature, condition in words + icon, feels like,
+humidity, wind, rain chance), a 3 / 5 day toggle, one row per day, the travel tip, "Forecast · estimate", the source's
+credit (Open-Meteo is CC BY 4.0: the credit is visible and links to https://open-meteo.com/), Refresh, a skeleton at
+the card's size, an error line with Try again, an offline line. It never shows the sample-travel note. A Thai page
+shows the icon's Thai name when the source's condition text is English (Open-Meteo's always is). Mock (`?mock=1`): a
+message with "weather" gets a weather card (with "flight" too: both), the card's fetch is a canned forecast (no
+network), "weather error" makes that fetch fail once.
+
 ## Tests
 
 ```bash
@@ -170,7 +187,7 @@ uv run pytest -q tests/dory/test_travel_search_bot.py  # Discord payloads, limit
 uv run pytest -q tests/dory/test_languages.py          # per-message translation coverage + the reviewed gaps list
 # browser: Playwright + axe WCAG 2.2 AA, 320 px overflow check (install chromium once)
 uvx --from 'uv>=0.10' uv run --no-sync playwright install chromium
-uvx --from 'uv>=0.10' uv run --no-sync pytest -m e2e tests/e2e/test_travel_smoke.py
+uvx --from 'uv>=0.10' uv run --no-sync pytest -m e2e tests/e2e/test_travel_smoke.py tests/e2e/test_weather_smoke.py
 uv run pytest -q tests/dory/test_trips.py              # booking: refs, round trip, receipts, reminder, approvals, plain yes (chat + voice)
 # LIVE probe (billed, Token Factory key from .env; every call metered by tests/dory/live_budget.py):
 PROBE_DRY=1 uv run pytest -m live -s "tests/dory/test_travel_live_probe.py::test_web_flow[sqlite]" tests/dory/test_travel_live_probe.py::test_discord_flow   # free size estimate

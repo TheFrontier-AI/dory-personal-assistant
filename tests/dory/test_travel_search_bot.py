@@ -594,6 +594,18 @@ async def test_cards_the_brain_searched_follow_the_answer_and_stay_owner_bound()
     assert mine.edited  # the asker's own buttons work
 
 
+async def test_a_weather_card_next_to_a_search_is_not_a_travel_search():
+    """The weather tool's card shares the reply's card list (`tool_cards`); the travel poster
+    leaves it alone (no error line), the weather poster draws it."""
+    bot = Bot()
+    agent, message = _chat(bot, **ASK)
+    weather = SimpleNamespace(__name__="weather", cards=[{"kind": "weather", "place": "Singapore",
+                              "lat": 1.29, "lng": 103.85, "days": 3}])  # fmt: skip
+    agent["extra_tools"].append(weather)
+    await bot._post_travel_cards(message, SimpleNamespace(id=ME), agent, "en")
+    assert len(message.channel.views) == 1 and message.channel.texts == []
+
+
 async def test_a_question_instead_of_a_search_posts_no_cards():
     bot = Bot()
     agent, message = _chat(bot, destination="Singapore")  # need_details: origin and date
