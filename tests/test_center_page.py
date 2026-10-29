@@ -626,3 +626,11 @@ def test_weather_cards_draw_from_their_own_route_with_every_icon_and_tip_worded(
     for k in ("storm", "umbrella", "heat", "sun", "jacket", "pleasant"):  # weather.tip_for keys
         assert f"tv_wx_tip_{k}:" in th and f"tv_wx_tip_{k}:" in en, k
     assert '"https://open-meteo.com/"' in src  # CC BY 4.0: the credit links to the source
+
+
+def test_my_account_has_a_travel_card_in_both_languages():
+    src = html()
+    th, en = src.split("\nen: {", 1)
+    for key in re.findall(r"\b(tp_[a-z]+):", src):
+        assert f"{key}:" in th and f"{key}:" in en, key
+    assert '"/api/center/me/travel"' in src and 'id: "a-airport"' in src and 'id: "a-ccy"' in src

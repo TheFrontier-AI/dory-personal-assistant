@@ -203,6 +203,10 @@ class Identity(BaseModel):
 class UserProfile(BaseModel):
     """The person behind an email: what every Dory page and the AI know about them, across orgs."""
 
+    # keep fields this version does not know: during a deploy an older web revision reads and writes
+    # this document too, and must not erase the travel preferences a newer one saved
+    model_config = ConfigDict(extra="allow")
+
     email: str
     name: str = ""  # display name (what Dory calls them)
     first_name: str = ""  # legal first name (from the Google account at sign-in, editable)
@@ -212,6 +216,9 @@ class UserProfile(BaseModel):
     about: str = ""  # what they do / are responsible for, in their own words
     job_description: str = ""  # their job description (JD), as long as it needs to be
     language: str | None = None  # web UI language (th / en)
+    home_airport: str = ""  # IATA code, the departure used when a flight request names none
+    currency: str = ""  # ISO 4217 code the person likes prices in
+    onboarded_at: str = ""  # set when the sign-up flow's optional travel step was saved or skipped
     identities: list[Identity] = Field(default_factory=list)
 
     def identity(self, platform: str) -> Identity | None:
@@ -728,6 +735,8 @@ class OrgStore:
         "last_name": SHORT_TEXT,
         "title": SHORT_TEXT,
         "department": SHORT_TEXT,
+        "home_airport": SHORT_TEXT,
+        "currency": SHORT_TEXT,
         "about": LONG_TEXT,
         "job_description": LONG_TEXT,
     }
@@ -741,6 +750,27 @@ class OrgStore:
                     raise ValueError(f"unknown profile field {k!r}")
                 if v is not None:
                     setattr(p, k, tidy(k, v, self.PROFILE_FIELDS[k]))
+            return self._save_profile(p)
+
+    def set_travel_prefs(
+        self,
+        email: str,
+        home_airport: str | None = None,
+        currency: str | None = None,
+        *,
+        onboarded: bool = False,
+    ) -> UserProfile:
+        """Save the person's travel preferences (None = leave unchanged, "" = clear). The values are
+        already validated by the caller. `onboarded` stamps the end of the sign-up flow's optional
+        step once (saving and skipping both count), so a returning user is not offered it again."""
+        with self._lock:
+            p = self.user_profile(email)
+            if home_airport is not None:
+                p.home_airport = home_airport
+            if currency is not None:
+                p.currency = currency
+            if onboarded and not p.onboarded_at:
+                p.onboarded_at = stamp(self._clock())
             return self._save_profile(p)
 
     def set_user_identity(self, email: str, identity: Identity) -> UserProfile:

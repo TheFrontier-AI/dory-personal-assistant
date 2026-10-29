@@ -1346,6 +1346,7 @@ th: {
   not_linked_hint:"เชื่อมบัญชีแล้ว ดอรี่จะจำคุณได้ทุกที่", discord_hint:"ยืนยันด้วย Discord หรือใช้รหัสจากคำสั่ง /ลิงก์บัญชี",
   verify_discord:"ยืนยันด้วย Discord", have_code:"ฉันมีรหัสจากดอรี่", code_hint:"พิมพ์ /ลิงก์บัญชี ใน Discord แล้ววางรหัสที่ได้ที่นี่", type_id:"พิมพ์ไอดีเอง", type_id_hint:"ไอดีที่พิมพ์เองจะเป็น “ยังไม่ยืนยัน” จนกว่าแพลตฟอร์มจะยืนยันให้",
   id_label:"ไอดีผู้ใช้", name_label:"ชื่อในแพลตฟอร์ม", confirm_unlink:"ลบบัญชี {p} ออกจากโปรไฟล์ของคุณ?", id_linked:"เชื่อมบัญชีแล้ว", id_verified_ok:"ยืนยันบัญชี Discord แล้วค่ะ", id_err:"ยืนยันไม่สำเร็จ ({e})", verify_unavailable:"ยังไม่เปิดให้ยืนยันด้วย Discord ใช้รหัสจากดอรี่แทนได้ค่ะ",
+  tp_h:"การตั้งค่าการเดินทาง", tp_p:"ไม่บังคับ ดอรี่จะใช้สนามบินต้นทางของคุณเมื่อค้นหาเที่ยวบินโดยไม่บอกต้นทาง และจำสกุลเงินที่คุณต้องการ ตอนนี้ราคาตัวอย่างเป็นเงินบาท", tp_airport:"สนามบินต้นทาง", tp_ccy:"สกุลเงินที่ต้องการ", tp_none:"ไม่ระบุ", tp_down:"ตอนนี้โหลดรายชื่อสนามบินไม่ได้",
   acc_account:"บัญชี", prof_who:"ฉันคือใคร", prof_title:"ตำแหน่ง", prof_title_ph:"เช่น CTO, หัวหน้าฝ่ายขาย", prof_dept:"แผนก", prof_dept_ph:"เช่น วิศวกรรม, การขาย", prof_about:"สิ่งที่ฉันทำ", prof_about_ph:"หน้าที่และเรื่องที่คุณดูแล เพื่อให้ดอรี่รู้ว่าควรนำเรื่องอะไรมาหาคุณ",
   prof_boss:"ฉันรายงานต่อ", prof_boss_none:"ไม่มี (อยู่บนสุดของผัง)", prof_hint:"ดอรี่ใช้ข้อมูลนี้เพื่อรู้ว่าคุณเป็นใครและดูแลเรื่องอะไร จะบอกดอรี่ในแชทแทนก็ได้ค่ะ", prof_no_org:"เข้าร่วมองค์กรก่อน แล้วจึงเลือกหัวหน้าได้",
   mt_intro:"งานมาจากบันทึกการประชุมและแชทกับดอรี่ใน Discord และที่นี่ บอกดอรี่ว่า “เพิ่มงาน …” เพื่อสร้างงานใหม่ได้เลยค่ะ", mt_mine:"งานที่มอบหมายให้ฉัน", mt_dory:"งานที่ฉันสั่งดอรี่ไว้", mt_dory_p:"งานที่บริษัทสั่งให้ดอรี่ทำ (ผู้บริหารและผู้ดูแลเห็น)", mt_done_h:"เสร็จแล้ว", mt_done_n:"{n} งาน", mt_none_open:"ไม่มีงานค้างค่ะ",
@@ -1521,6 +1522,7 @@ en: {
   not_linked_hint:"Link it and Dory recognizes you everywhere", discord_hint:"Verify with Discord, or use a code from the /linkaccount command",
   verify_discord:"Verify with Discord", have_code:"I have a code from Dory", code_hint:"Type /linkaccount in Discord and paste the code here", type_id:"Type my id", type_id_hint:"An id typed by hand stays “unverified” until the platform proves it",
   id_label:"User id", name_label:"Name on the platform", confirm_unlink:"Remove your {p} account from your profile?", id_linked:"Account linked", id_verified_ok:"Discord account verified", id_err:"Verification failed ({e})", verify_unavailable:"Discord verification is not available yet. Use a code from Dory instead.",
+  tp_h:"Travel preferences", tp_p:"Optional. Dory starts a flight search from your home airport when you don't say where from, and remembers your currency. Sample prices are in THB for now.", tp_airport:"Home airport", tp_ccy:"Preferred currency", tp_none:"No preference", tp_down:"The airport list isn't available right now.",
   acc_account:"Account", prof_who:"Who I am", prof_title:"Job title", prof_title_ph:"e.g. CTO, Head of Sales", prof_dept:"Department", prof_dept_ph:"e.g. Engineering, Sales", prof_about:"What I do", prof_about_ph:"What you look after, so Dory knows what to bring to you",
   prof_boss:"I report to", prof_boss_none:"No one (top of the chart)", prof_hint:"Dory uses this to know who you are and what you look after. You can also just tell her in chat.", prof_no_org:"Join an organization first to pick a manager.",
   mt_intro:"Tasks come from Dory's meeting notes and chat, in Discord and here; say “add a task …” to Dory to create one.", mt_mine:"Assigned to me", mt_dory:"Tasks I asked Dory for", mt_dory_p:"Tasks the company asked Dory to do (executives and admins)", mt_done_h:"Done", mt_done_n:"{n} tasks", mt_none_open:"Nothing open right now.",
@@ -1927,6 +1929,7 @@ function route(quiet) {
   const moved = cur !== id;
   if (cur === "chat" && id !== "chat" && chatPage.w) { chatPage.w.stop(); chatPage.w = null; }
   cur = id; renderNav();
+  if (id !== "chat") prefillOnce = ""; // an example from /start that did not land on the chat is dropped, not kept for later
   $("fab").hidden = id === "chat"; // the page is the chat
   if (id !== "chat" && !panel.open && panelWanted()) setTimeout(panelOpen, 0); // this tab had the panel open (reload, #/chat link)
   const nm = NAV.find((n) => n[0] === id);
@@ -3575,7 +3578,7 @@ function chatWidget(hist, prefix, opts = {}) {
     wrap.addEventListener("dragleave", (ev) => { if (!wrap.contains(ev.relatedTarget)) wrap.classList.remove("drag"); });
     wrap.addEventListener("drop", (ev) => { if (!files(ev)) return; ev.preventDefault(); wrap.classList.remove("drag"); attach(ev.dataTransfer.files); });
   }
-  return { wrap, msgs, form, focus: () => ta.focus(), end, stop: () => live.end("now"), live, attach, send, ask: (x) => sendWhenFree(x) };
+  return { wrap, msgs, form, focus: () => ta.focus(), prefill: (x) => { ta.value = x; ta.dispatchEvent(new Event("input")); }, end, stop: () => live.end("now"), live, attach, send, ask: (x) => sendWhenFree(x) };
 }
 
 /* ---------- #/chat: the same chat as the panel, full width, with a history rail (search, jump to a day) ---------- */
@@ -3620,8 +3623,22 @@ VIEWS.chat = async (body, my) => {
   };
   addEventListener("resize", fit); if (window.visualViewport) visualViewport.addEventListener("resize", fit); fit();
   fillDays(); new MutationObserver(fillDays).observe(w.msgs, { childList: true });
-  liveLabel(); w.end(); w.focus();
+  liveLabel(); w.end();
+  const pre = prefillOnce; prefillOnce = ""; if (pre) w.prefill(pre);
+  w.focus();
 };
+// An example request picked on /start arrives as text (sessionStorage: this tab, read once, ten minutes): the chat box is
+// filled and focused, and the person presses Send. Nothing is asked of the model on page load.
+function takePrefill() {
+  try {
+    const raw = sessionStorage.getItem("dory_chat_prefill"); sessionStorage.removeItem("dory_chat_prefill");
+    const x = raw ? JSON.parse(raw) : null;
+    return x && typeof x.q === "string" && Date.now() - Number(x.at) < 600000 ? x.q.slice(0, 2000) : "";
+  } catch { return ""; }
+}
+// Read when the page loads, so an example the person never reached the chat with is gone with this page and cannot
+// turn up in the box later.
+let prefillOnce = takePrefill();
 const chatData = () => api(O("/chat/history")).catch(() => ({ turns: [] }));
 
 /* ---------- floating "Talk to Dory" panel (every page of the logged-in shell) ---------- */
@@ -4287,9 +4304,13 @@ async function verifyDiscord() {
     else if (!handleAuth(e)) toast(errText(e), "error");
   }
 }
+const TRAVEL_CCY = ["THB", "USD", "EUR", "GBP", "JPY", "SGD", "HKD", "MYR", "VND", "CNY", "KRW", "AUD", "CAD", "CHF", "INR", "IDR", "PHP", "NZD", "TWD"]; // the server's travel_search.CURRENCIES (a test keeps them equal)
 VIEWS.account = async (body, my) => {
+  // the airports (public, bounded) load beside the members, so a slow list never holds the whole page
+  const airsP = fetch("/api/travel/airports", { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : null)).then((j) => (j && j.airports) || [], () => []);
   // the org's member list gives the "I report to" choices and my current manager (none without an org)
   let mem = null; if (orgId) { try { mem = items(await api(O("/members"))); } catch (e) { if (handleAuth(e)) return; mem = null; } }
+  const airs = await airsP; // the airports the search catalogue knows; an empty list disables the select and the card says so
   if (stale(my)) return; done(body);
   const myRow = mem && mem.find((m) => m.email === me.email);
   // (a) who I am: name, title, department, what I do, manager
@@ -4332,6 +4353,26 @@ VIEWS.account = async (body, my) => {
     saveB.disabled = false;
   });
   const profile = el("div", { class: "card" }, el("h2", { text: t("prof_who") }), pf);
+  // (a2) travel preferences: the departure airport and currency Dory uses without asking again (also asked once at sign-up)
+  const dn = (() => { try { return new Intl.DisplayNames([lang], { type: "currency" }); } catch { return null; } })();
+  const airSel = el("select", { id: "a-airport", disabled: !airs.length, "aria-describedby": "a-travel-p" }, el("option", { value: "" }, t("tp_none")),
+    airs.map((x) => el("option", { value: x.code, selected: x.code === me.home_airport }, x.city + " (" + x.code + ")")));
+  const ccySel = el("select", { id: "a-ccy" }, el("option", { value: "" }, t("tp_none")),
+    TRAVEL_CCY.map((c) => el("option", { value: c, selected: c === me.currency }, c + " · " + ((dn && dn.of(c)) || c))));
+  const tmsg = el("div", { id: "a-travel-msg" }), tsave = el("button", { class: "btn", type: "submit" }, t("save"));
+  const tf = el("form", {}, el("div", { class: "prof-grid" }, field(t("tp_airport"), airSel), field(t("tp_ccy"), ccySel)),
+    el("p", { class: "muted small", id: "a-travel-p", text: t("tp_p") + (airs.length ? "" : " " + t("tp_down")) }), tmsg, el("div", {}, tsave));
+  tf.addEventListener("submit", async (ev) => {
+    ev.preventDefault(); tmsg.replaceChildren(); tsave.disabled = true;
+    try {
+      const want = { currency: ccySel.value }; if (!airSel.disabled) want.home_airport = airSel.value;
+      const r = await api("/api/center/me/travel", J("PUT", want));
+      for (const k of ["home_airport", "currency", "onboarded"]) me[k] = r[k];
+      toast(t("saved"));
+    } catch (e) { if (!handleAuth(e)) tmsg.replaceChildren(el("div", { class: "notice error", role: "alert", text: t("not_saved", { e: errText(e) }) })); }
+    tsave.disabled = false;
+  });
+  const travel = el("div", { class: "card" }, el("h2", { text: t("tp_h") }), tf);
   // (c) account: sign-in and language
   const langSel = el("select", { id: "a-lang" }, ["en", "th"].map((l) => el("option", { value: l, selected: l === lang }, t("lang_" + l))));
   langSel.addEventListener("change", () => setLang(langSel.value));
@@ -4401,7 +4442,7 @@ VIEWS.account = async (body, my) => {
     }));
   };
   draw();
-  body.replaceChildren(profile, el("div", { class: "card" }, el("h2", { text: t("acc_plat_h") }), el("p", { class: "muted small", text: t("acc_plat_p") }), box), account);
+  body.replaceChildren(profile, travel, el("div", { class: "card" }, el("h2", { text: t("acc_plat_h") }), el("p", { class: "muted small", text: t("acc_plat_p") }), box), account);
 };
 
 /* ---------- my tasks / my calendar: what Dory holds for this person across the company's servers ---------- */
@@ -5613,13 +5654,17 @@ function mockApi(method, path, body) {
   const google = (email, name) => ({ platform: "google", external_id: email, name: name || "", verified: true, linked_at: "" });
   const myIds = () => [google(ME, s.me.name), ...(s.me.google || []), ...s.me.identities];
   const fullName = (x) => [x.first_name, x.last_name].filter(Boolean).map(mockLang).join(" ");
-  const meView = () => ({ email: ME, is_super: true, orgs: s.orgs, language: null, name: s.me.name, first_name: s.me.first_name || "", last_name: s.me.last_name || "", full_name: fullName(s.me), title: s.me.title, department: s.me.department, about: s.me.about, identities: myIds(), identity_platforms: ["discord", "slack", "clickup", "line"], discord_verify: true });
+  const meView = () => ({ email: ME, is_super: true, orgs: s.orgs, language: null, name: s.me.name, first_name: s.me.first_name || "", last_name: s.me.last_name || "", full_name: fullName(s.me), title: s.me.title, department: s.me.department, about: s.me.about, home_airport: s.me.home_airport || "", currency: s.me.currency || "", onboarded: !!s.me.onboarded, identities: myIds(), identity_platforms: ["discord", "slack", "clickup", "line"], discord_verify: true });
   const prof = (x) => (x.email === ME ? s.me : x);
   const memView = (x) => { if (x.status === "invited") return { email: x.email, role: x.role, name: "", first_name: "", last_name: "", full_name: "", title: "", department: "", about: "", reports_to: x.reports_to || null, identities: [], linked_platforms: 0, status: "invited" };
     const own = x.email === ME, pr = prof(x); const ids = own ? s.me.identities : x.identities || []; return { email: x.email, role: x.role, name: pr.name || "", first_name: pr.first_name || "", last_name: pr.last_name || "", full_name: fullName(pr), title: pr.title || "", department: pr.department || "", about: pr.about || "", reports_to: x.reports_to || null, identities: [google(x.email, pr.name), ...ids], linked_platforms: ids.length }; };
   if (p === "/api/center/me") return ok(meView());
   if (p.startsWith("/api/center/link-codes/")) return ok({ guild_name: "New server", icon_url: "", created_by: "owner#0001" });
   if (p === "/api/center/me/profile") { for (const k of ["first_name", "last_name", "name", "title", "department", "about"]) if (typeof body[k] === "string") s.me[k] = body[k].trim(); return ok(meView()); }
+  if (p === "/api/center/me/travel" && method === "PUT") { // mirrors the server: skip or save both end the step; "" clears
+    if (!body.skip) { if (typeof body.home_airport === "string") s.me.home_airport = body.home_airport; if (typeof body.currency === "string") s.me.currency = body.currency; }
+    s.me.onboarded = true; return ok(meView());
+  }
   if (p === "/api/center/me/identity" && method === "PUT") {
     if (!["discord", "slack", "clickup", "line"].includes(body.platform)) return fail("unknown platform", 400);
     s.me.identities = s.me.identities.filter((i) => i.platform !== body.platform);

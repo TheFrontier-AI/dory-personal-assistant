@@ -3465,6 +3465,7 @@ def test_discord_text_reply_in_thai_is_translated_on_an_english_only_server(monk
 WEB_UI_PARITY = {
     "edit my profile": "update_my_profile",
     "change my web language": "set_my_language",
+    "set my travel preferences (home airport, currency)": "update_my_profile",
     "edit a colleague's profile / manager": "update_member_profile",
     "edit the company profile": "update_company_profile",
     "rename the company / logo": "rename_company",
@@ -3806,3 +3807,127 @@ def test_members_from_before_invitations_and_edits_keep_acceptance(w, monkeypatc
     w.client.post(base, json={"email": "victim@example.com", "role": "member"}, headers=H["other"])
     rec = _rec(w, "org_o", "victim@example.com")
     assert not rec.pending and rec.accepted_at == at_ and rec.role == "member"
+
+
+# ------------------------------------------------------------------ sign-up: travel preferences
+def put_travel(w, who, **body):
+    return w.client.put("/api/center/me/travel", json=body, headers=H[who])
+
+
+def my_view(w, who):
+    return w.client.get("/api/center/me", headers=H[who]).json()
+
+
+def test_travel_preferences_are_saved_normalised_and_end_the_step(w):
+    v = my_view(w, "stranger")
+    assert (v["home_airport"], v["currency"], v["onboarded"]) == ("", "", False)
+    r = put_travel(w, "stranger", home_airport="bkk", currency="usd")
+    assert r.status_code == 200
+    assert (r.json()["home_airport"], r.json()["currency"], r.json()["onboarded"]) == (
+        "BKK",
+        "USD",
+        True,
+    )
+    assert my_view(w, "stranger")["home_airport"] == "BKK"  # a returning user gets them back
+    # a city name works; "" clears one preference and leaves the other
+    r = put_travel(w, "stranger", home_airport="Singapore", currency="")
+    assert (r.json()["home_airport"], r.json()["currency"]) == ("SIN", "")
+
+
+def test_a_bad_airport_or_currency_is_a_422_and_changes_nothing(w):
+    put_travel(w, "stranger", home_airport="SIN", currency="THB")
+    for bad in (
+        {"home_airport": "CNX"},
+        {"home_airport": "x" * 61},
+        {"currency": "dollars?!"},
+        {"currency": "abc"},  # three letters is not a currency
+    ):
+        assert put_travel(w, "stranger", **bad).status_code == 422, bad
+    v = my_view(w, "stranger")
+    assert (v["home_airport"], v["currency"]) == ("SIN", "THB")
+    assert put_travel(w, "stranger", home_airport="BKK", currency="nope1").status_code == 422
+    assert my_view(w, "stranger")["home_airport"] == "SIN"  # all or nothing
+
+
+def test_skipping_ends_the_step_without_saving_anything(w):
+    r = put_travel(w, "other", skip=True)
+    assert r.status_code == 200 and r.json()["onboarded"] is True
+    assert (r.json()["home_airport"], r.json()["currency"]) == ("", "")
+    # a skip after a save keeps the saved values (the step is already over)
+    put_travel(w, "other", home_airport="KUL")
+    put_travel(w, "other", skip=True)
+    assert my_view(w, "other")["home_airport"] == "KUL"
+
+
+def test_the_travel_route_needs_a_sign_in(w):
+    assert w.client.put("/api/center/me/travel", json={"skip": True}).status_code in (401, 403)
+
+
+def test_a_field_a_newer_revision_saved_survives_an_older_writer(w):
+    """The profile document is read and written by every web revision; during a deploy an older one
+    must not erase what a newer one stored (UserProfile keeps unknown fields)."""
+    from dory.orgs import USER_PREFS, _email_bucket
+
+    e = "mem@example.com"
+    doc = w.docs.get(USER_PREFS, _email_bucket(e), e) or {}
+    w.docs.put(USER_PREFS, _email_bucket(e), e, {**doc, "email": e, "future_field": "kept"})
+    w.orgs.set_user_language(e, "en")
+    assert w.docs.get(USER_PREFS, _email_bucket(e), e)["future_field"] == "kept"
+
+
+def test_dory_knows_the_travel_preferences_and_can_set_them(w, monkeypatch):
+    from dory.people_directory import PeopleBook
+
+    book = PeopleBook(w.docs)
+    monkeypatch.setattr(center, "get_people", lambda: book)
+    monkeypatch.setattr(center, "get_library", lambda: w.lib)
+
+    def chat():
+        w.client.post("/api/center/orgs/org_t/chat", json={"message": "hi"}, headers=H["boss"])
+        kw = w.asks[-1][1]
+        return {getattr(t, "__name__", ""): t for t in kw["extra_tools"]}, kw["profile"]
+
+    tools, profile = chat()
+    assert "Travel preferences" not in profile  # nothing set, nothing claimed
+    r = tools["update_my_profile"](home_airport="Singapore", currency="baht")
+    assert r["travel"] == {"home_airport": "SIN", "currency": "THB"}
+    saved = w.orgs.user_profile("boss@example.com")
+    assert (saved.home_airport, saved.currency) == ("SIN", "THB")
+    _, profile = chat()
+    assert "home airport SIN" in profile and "preferred currency THB" in profile
+    assert "never guess" in profile  # the prompt does not promise a conversion it cannot make
+    # a bad airport is an answer, and nothing else of the call is half-saved
+    bad = tools["update_my_profile"](title="CTO", home_airport="Atlantis")
+    assert bad["status"] == "error" and "Unknown airport" in bad["error"]
+    assert w.orgs.user_profile("boss@example.com").title != "CTO"
+    assert tools["update_my_profile"](home_airport="none")["travel"]["currency"] == "THB"
+    assert w.orgs.user_profile("boss@example.com").home_airport == ""
+
+
+def test_every_listed_currency_is_accepted_and_nothing_else(w):
+    from dory import travel_search
+
+    for code in travel_search.CURRENCIES:
+        r = put_travel(w, "stranger", currency=code.lower())
+        assert r.status_code == 200 and r.json()["currency"] == code, code
+    assert "CHF" in travel_search.CURRENCIES  # a stored value is always one the page can show
+    assert put_travel(w, "stranger", currency="XYZ").status_code == 422
+
+
+def test_the_tool_saves_the_profile_and_the_travel_preferences_in_one_write(w, monkeypatch):
+    from dory.people_directory import PeopleBook
+
+    book = PeopleBook(w.docs)
+    monkeypatch.setattr(center, "get_people", lambda: book)
+    monkeypatch.setattr(center, "get_library", lambda: w.lib)
+    w.client.post("/api/center/orgs/org_t/chat", json={"message": "hi"}, headers=H["boss"])
+    tools = {getattr(t, "__name__", ""): t for t in w.asks[-1][1]["extra_tools"]}
+    calls = []
+    real = w.orgs.set_user_profile
+    monkeypatch.setattr(
+        w.orgs, "set_user_profile", lambda *a, **k: (calls.append(k), real(*a, **k))[1]
+    )
+    tools["update_my_profile"](title="CTO", home_airport="KUL", currency="chf")
+    assert len(calls) == 1  # one locked write for the whole edit
+    saved = w.orgs.user_profile("boss@example.com")
+    assert (saved.title, saved.home_airport, saved.currency) == ("CTO", "KUL", "CHF")
