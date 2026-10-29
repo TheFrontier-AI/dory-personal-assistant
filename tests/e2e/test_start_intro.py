@@ -2,9 +2,9 @@
 
 It plays once per browser over step 4, right after the travel step, and gives the focus to step 4's heading when it
 ends; /start?intro=1 replays it with no account and remembers nothing. Skip and Esc end it at once, the decision beat
-waits at most four seconds, stills (reduced motion or the homepage's saved Pause) wait for Next, and only the controls
-follow the page language: the story is English. Its beats are timeouts, so every test holds the page's clock and
-moves it by hand."""
+waits at most four seconds, stills (reduced motion or the homepage's saved Pause) keep the same timeline without
+movement, and only the controls follow the page language: the story is English. Its beats are timeouts, so every test
+holds the page's clock and moves it by hand."""
 
 import datetime
 
@@ -18,6 +18,11 @@ pytestmark = [pytest.mark.e2e, pytest.mark.intro]
 T0 = datetime.datetime(2026, 10, 30, 9, 0, tzinfo=datetime.UTC)
 PREVIEW = "/start?intro=1"
 STORY_MS = 40_000  # every chapter with the full decision wait is about 36 s
+# the intro's own animations (the theme and the page run their own, reduced ones)
+INTRO_ANIMATIONS = (
+    "document.getAnimations().filter((a) => a.effect && a.effect.target"
+    " && a.effect.target.closest('#intro')).length"
+)
 # Sign-in keeps its session in storage, so storage is blocked from the moment step 4 is drawn: every read and write
 # the intro makes then throws, as in a browser that blocks site data.
 BLOCK_STORAGE_AT_STEP_4 = """(() => {
@@ -205,24 +210,32 @@ def test_pressing_decline_says_you_decide(page, choice):
     expect(control(page, "Next")).to_be_focused()  # the pressed button left with its chapter
 
 
-@pytest.mark.parametrize("still", ["reduced motion", "homepage pause"])
-def test_stills_wait_for_next_and_close_after_the_last(page, still):
-    if still == "reduced motion":
+@pytest.mark.parametrize(
+    ("reduce", "saved"),
+    [(True, None), (False, "off"), (True, "on")],
+    ids=["reduced motion", "homepage pause", "reduced motion beats the homepage's motion on"],
+)
+def test_stills_keep_the_timeline_and_close_at_the_end(page, reduce, saved):
+    if reduce:
         page.emulate_media(reduced_motion="reduce")
-    else:
-        page.add_init_script("try { localStorage.setItem('dory-motion', 'off'); } catch (e) {}")
-    page.goto(PREVIEW)
+    if saved:
+        page.add_init_script(f"localStorage.setItem('dory-motion', '{saved}');")
+    to_the_intro(page)
     expect(intro(page)).to_have_attribute("data-mode", "stills")
-    expect(page.locator("#intro-pause")).to_be_hidden()  # nothing plays, so nothing to pause
+    # stills play on their own too, so they can pause
+    expect(control(page, "Pause")).to_be_visible()
+    page.clock.run_for(2000)
+    expect(intro(page)).to_have_attribute("data-chapter", "1")  # the same timeline as motion
+    next_times(page, 2)  # Next still steps: on to the decision
+    page.clock.run_for(3900)
+    expect(stage(page).get_by_text("Accepted", exact=True)).to_have_count(0)
+    page.clock.run_for(200)  # it waits at most four seconds here too
+    expect(stage(page).get_by_text("Accepted", exact=True)).to_be_visible()
+    assert page.evaluate(INTRO_ANIMATIONS) == 0  # nothing moves
     page.clock.run_for(STORY_MS)
-    expect(intro(page)).to_have_attribute("data-chapter", "0")
-    next_times(page, 3)
-    page.clock.run_for(STORY_MS)  # the decision waits for the person too
-    expect(intro(page)).to_have_attribute("data-chapter", "3")
-    next_times(page, 5)
-    expect(intro(page)).to_have_attribute("data-chapter", "8")
-    control(page, "Next").click()
-    expect(page.locator("#intro")).to_have_count(0)
+    expect(page.locator("#intro")).to_have_count(0)  # it closes by itself
+    expect(step4_heading(page)).to_be_focused()  # and hands over to step 4
+    assert seen_flag(page) == "seen"
 
 
 # ------------------------------------------------------------------ the review focus

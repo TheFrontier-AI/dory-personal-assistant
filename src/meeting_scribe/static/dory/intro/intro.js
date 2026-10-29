@@ -52,7 +52,7 @@
   }
   const animates = () => typeof Element.prototype.animate === "function"; // no Web Animations API: straight to step 4
 
-  let run = null; // the open intro: { t, preview, done, motion, i, paused, decided, timer, due, left, after }
+  let run = null; // the open intro: { t, preview, done, mode, i, paused, decided, timer, due, left, after }
   const guard = (fn) => (...a) => { try { fn(...a); } catch { finish(); } }; // an error ends the intro, never a stuck layer
 
   function build() {
@@ -64,7 +64,7 @@
         el("p", { "data-ui": "result", id: "intro-result" })] : []),
       ...(c.line ? [el("p", { "data-ui": "line" }, c.line)] : []));
     const layer = el("dialog", { id: "intro", role: "dialog", "aria-modal": "true", "aria-labelledby": "intro-title", "data-theme": "deep",
-      "data-mode": run.motion ? "motion" : "stills", "data-chapter": "0" },
+      "data-mode": run.mode, "data-chapter": "0" },
       el("h2", { id: "intro-title", class: "sr", "data-key": KEYS.title }),
       el("div", { class: "intro-bar" }, button("intro-skip", KEYS.skip)),
       // the story is English on a Thai page too: screen readers voice it as English
@@ -72,8 +72,7 @@
       el("p", { id: "intro-live", class: "sr", "aria-live": "polite", lang: "en" }),
       el("div", { class: "intro-bar" }, el("ol", { id: "intro-dots", "aria-hidden": "true" }, ...CHAPTERS.map(() => el("li"))),
         button("intro-sound", KEYS.sound, { "aria-pressed": "false" }), // every run starts silent
-        button("intro-pause", KEYS.pause, run.motion ? {} : { hidden: "" }), // stills never play on their own
-        button("intro-next", KEYS.next)));
+        button("intro-pause", KEYS.pause), button("intro-next", KEYS.next)));
     const actions = { "intro-skip": finish, "intro-next": () => go(run.i + 1), "intro-pause": togglePause, "intro-sound": toggleSound };
     layer.addEventListener("click", guard((e) => {
       const b = e.target.closest("button");
@@ -98,11 +97,11 @@
     (e.shiftKey ? shown[shown.length - 1] : shown[0]).focus();
   }
 
-  // One beat timer at a time; a pause keeps what is left of it, and stills never move on their own.
+  // One beat timer at a time (stills keep the same timeline, they only do not move); a pause keeps what is left of it.
   function wait(ms, fn) {
     clearTimeout(run.timer);
     Object.assign(run, { after: fn, left: ms });
-    if (run.motion && !run.paused) { run.due = Date.now() + ms; run.timer = setTimeout(guard(fn), ms); }
+    if (!run.paused) { run.due = Date.now() + ms; run.timer = setTimeout(guard(fn), ms); }
   }
 
   function go(n) {
@@ -161,7 +160,8 @@
         if (run) return done(); // one intro at a time
         run = { t, preview: !!preview, done, i: 0, paused: false, decided: false };
         try {
-          run.motion = !(matchMedia("(prefers-reduced-motion: reduce)").matches || stored("dory-motion") === "off");
+          // either one means stills: the OS setting wins over a "dory-motion" of "on" saved on the homepage
+          run.mode = matchMedia("(prefers-reduced-motion: reduce)").matches || stored("dory-motion") === "off" ? "stills" : "motion";
           document.body.append(build());
           label();
           $("intro").showModal();

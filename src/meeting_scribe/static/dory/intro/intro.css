@@ -3,6 +3,7 @@
 #intro { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 16px; border: 0;
   display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
 #intro:not([open]) { display: none; }
+#intro[data-mode="stills"] * { transition: none; } /* stills: nothing moves, not even the theme's button colour fades */
 #intro-stage { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
 #intro-stage > * { margin: auto; display: grid; gap: 12px; max-width: 40rem; } /* auto margins centre it, yet it scrolls from the top */
 .intro-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
