@@ -1793,6 +1793,10 @@ CATALOG: dict[str, dict[str, str]] = {
         "th": "ขออภัย ตอบไม่ได้ในตอนนี้ ลองถามใหม่อีกครั้งนะคะ",
         "en": "Sorry, I can't answer right now. Please try asking again.",
     },
+    "qa_claim_unbacked": {
+        "th": "ขออภัยค่ะ ดอรี่ยืนยันเรื่องนี้ไม่ได้ เพราะรอบนี้ยังไม่ได้ทำอะไรจริง ลองสั่งอีกครั้งนะคะ",
+        "en": "Sorry, I can't confirm that: nothing was actually done just now. Please ask me again.",
+    },
     # ---------------------------------------------------------------- deep tasks
     "deep_disabled": {
         "th": "ฟีเจอร์งานใหญ่ยังไม่ได้เปิดใช้งานค่ะ (ยังไม่ได้ตั้งค่า DORY_GEMINI_CLI_PATH) ลองถามคำถามสั้นๆ แทนได้เลย",
