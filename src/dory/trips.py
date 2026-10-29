@@ -956,6 +956,7 @@ TRIPS_PROMPT = (
     "search_flights / search_hotels (sample flights and fictional hotels; every result has a booking_ref; "
     "a round trip = a second search_flights for the way back), not flight_prices; pass the chosen "
     "booking_refs to book_trip (flight_offer_id, return_flight_offer_id, hotel_offer_id). "
+    "Each new request for flights or hotels (find, suggest, recommend, compare, other dates) is a new search_flights / search_hotels call in this turn, even when earlier results are in the conversation: never answer it from those results. "
     "Apply what you already know before asking anything: the meeting's date and place from the calendar, "
     "the travel profile (travel_profile: passport name, seat, meal, loyalty) and the company travel rules "
     "in the company notes. Present at most two or three options with the number that matters (price, "

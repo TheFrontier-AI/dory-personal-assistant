@@ -68,6 +68,7 @@ from .travel_search import (
     search_flights,
     search_hotels,
     tool_cards,
+    unsearched_cards,
 )
 
 logger = logging.getLogger(__name__)
@@ -1147,7 +1148,12 @@ class TravelSearchMixin:
         """After the reply: one results message per search the brain ran (flights first), each
         an owner-bound session. A failure is logged by type and told in one short line."""
         searches = ("flights", "hotels")  # a weather card rides in the same list (its own poster)
-        cards = [c for c in tool_cards(agent.get("extra_tools") or []) if c["kind"] in searches]
+        tools = agent.get("extra_tools") or []
+        cards = [c for c in tool_cards(tools) if c["kind"] in searches]
+        if not cards and not getattr(message, "attachments", None):  # answered without a search
+            cards = unsearched_cards(
+                tools, getattr(message, "content", "") or "", self._travel_today()
+            )
         if not cards:
             return  # no search ran (or it asked a question first: need_details)
         today = self._travel_today()

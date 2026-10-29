@@ -63,7 +63,7 @@ logger = logging.getLogger(__name__)
 # dory.travel_search (TRIPS_PROMPT, about booking, is for the voice tools of dory.trips)
 CARDS_PROMPT = (
     "\nFlight and hotel search: to find, compare or narrow flights or hotels use search_flights / "
-    "search_hotels; the results appear as interactive cards under your reply. flight_prices is "
+    "search_hotels; the results appear as interactive cards under your reply. Each new request for flights or hotels (find, suggest, recommend, compare, other dates) is a new search_flights / search_hotels call in this turn, even when earlier results are in the conversation: never answer it from those results. flight_prices is "
     "only for a quick web estimate of ticket prices. Nothing can be booked in this chat: say so if "
     "asked to book, and never say anything is booked."
 )

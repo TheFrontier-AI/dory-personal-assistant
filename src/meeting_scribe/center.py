@@ -4487,6 +4487,7 @@ def answer_question(
     voice_history: str = "",
     voice_call: str = "",
     travel_out: list | None = None,
+    typed: str = "",
 ) -> str:
     """Blocking: Dory's text brain for one web question, scoped like the chat route (the org's
     workspace, the caller's memory rights, their profile, the web tools). Used by the chat route
@@ -4494,8 +4495,17 @@ def answer_question(
     what the call heard and said so far, after the typed thread; `voice_call`: that call's id, whose
     turns saved in the thread are left out because `voice_history` already carries them).
     `travel_out`: a typed chat's list that receives the flight / hotel cards the brain's search
-    tools recorded; None (voice) = nothing is drawn, the tools tell the model to speak the results."""
+    tools recorded; None (voice) = nothing is drawn, the tools tell the model to speak the results.
+    `typed`: the person's own words (no attached files), read for a trip when the brain answered
+    without searching (`travel_search.unsearched_cards`)."""
     from dory.qa import MemoryTools
+
+    def drawn_cards(drawn: list) -> list[dict]:
+        today = travel_api.get_today()
+        return [
+            *travel_search.tool_cards(drawn),
+            *travel_search.unsearched_cards(drawn, typed, today),
+        ]
 
     s, store = hub.get_dory_runtime()
     profile = orgs.user_profile(ctx.email)
@@ -4547,7 +4557,7 @@ def answer_question(
             **kw,
         )
         if travel_out is not None:
-            travel_out.extend(travel_search.tool_cards(drawn))
+            travel_out.extend(drawn_cards(drawn))
         return conform_language(ans.text, lang)
     company = ""
     if ws.platform == "discord":  # fallback: the company knowledge without the full bot
@@ -4575,7 +4585,7 @@ def answer_question(
         spoken=spoken,
     )
     if travel_out is not None:
-        travel_out.extend(travel_search.tool_cards(drawn))
+        travel_out.extend(drawn_cards(drawn))
     return conform_language(ans.text, lang)
 
 
@@ -4792,7 +4802,17 @@ async def chat(
     fallback = False
     try:
         text = await run_in_threadpool(
-            answer_question, ctx, orgs, lib, ask, guilds, ws, asked, body.page, travel_out=cards
+            answer_question,
+            ctx,
+            orgs,
+            lib,
+            ask,
+            guilds,
+            ws,
+            asked,
+            body.page,
+            travel_out=cards,
+            typed="" if ids else question,
         )
     except HTTPException:
         raise
