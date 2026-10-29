@@ -11,11 +11,13 @@ from dory.digest import build_daily_digest
 from dory.qa import (
     ACTION_RULE,
     CAPABILITIES_PROMPT,
+    CLAIM_CHECK,
     MAX_ROUNDS,
     MEMORY_PROMPT,
     NO_REPLY,
     LedgerTools,
     ask,
+    claims_done,
     stable_prompt,
     system_prompt,
 )
@@ -479,3 +481,74 @@ def test_no_deck_tool_without_deck_and_prompt_only_with_it(settings, seeded):
     decls = {d.name: d for t_ in llm2.requests[0].config.tools for d in t_.function_declarations}
     assert '"kind"' in json.dumps(decls["create_deck"].parameters_json_schema)  # nested schema
     assert "create_deck" in llm2.requests[0].config.system_instruction
+
+
+# ----------------------------------------------------------------------------- "done" with no tool (DEF-07)
+@pytest.mark.parametrize(
+    "text",
+    ["I've saved that: passport name SOMCHAI/TEST, aisle seat preference.",
+     "Booked! Your receipts are filed under Travel.", "I have gone ahead and booked both for you.",
+     "Your profile has been saved.", "I've set a reminder for 9am.", "บันทึกไว้แล้วค่ะ",
+     "จองให้เรียบร้อยแล้วค่ะ", "ตั้งเตือนให้แล้วค่ะ"],
+)  # fmt: skip
+def test_an_answer_that_says_it_did_something_is_a_claim(text):
+    assert claims_done(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["Shall I book it?", "I haven't booked anything yet.", "Was it booked?",
+     "Once the trip is booked, the receipts will be filed.", "I can save that if you like.",
+     "What I can do is set a 3am reminder for you.", "I've set out two options below.",
+     "I've updated the numbers below.", "I've added up the totals.", "ยังไม่ได้จองค่ะ",
+     "I checked the trip records: nothing has been booked.", "There are no trips booked.",
+     "None of them is booked.",
+     "ถ้าจองแล้ว ดอรี่จะส่งใบเสร็จให้ค่ะ", "ตั้งแต่เมื่อวานแล้วค่ะ", "ไฟล์ที่คุณส่งมาแล้วค่ะ"],
+)  # fmt: skip
+def test_explanations_questions_and_negations_are_not(text):
+    assert not claims_done(text)
+
+
+def _profile_tool(saved):
+    def travel_profile(update: str = "") -> dict:
+        """Save the travel profile."""
+        saved.append(update)
+        return {"status": "saved"}
+
+    return travel_profile
+
+
+def test_a_claim_without_a_tool_call_is_asked_again_and_the_tool_runs(seeded, settings):
+    saved = []
+    llm = scripted(
+        text_resp("I've saved that: passport name SOMCHAI/TEST."),
+        fc_resp(("travel_profile", {"update": "passport name SOMCHAI/TEST"})),
+        text_resp("Saved: passport name SOMCHAI/TEST."),
+    )
+    a = ask(settings, seeded, "Remember my passport name is SOMCHAI/TEST", guild_id=GUILD,
+            is_exec=True, user_id=EXEC_ID, model=llm, extra_tools=[_profile_tool(saved)])  # fmt: skip
+    assert saved == ["passport name SOMCHAI/TEST"] and a.rounds == 1
+    assert a.text == "Saved: passport name SOMCHAI/TEST."
+    assert CLAIM_CHECK in str(llm.requests[1].contents[-1])
+
+
+def test_a_claim_made_twice_without_a_tool_is_replaced_by_the_truth(seeded, settings):
+    saved = []
+    llm = scripted(text_resp("I've saved that."), text_resp("Done, I've saved it for you."))
+    a = ask(settings, seeded, "Remember my seat is 12A", guild_id=GUILD, is_exec=True,
+            user_id=EXEC_ID, model=llm, extra_tools=[_profile_tool(saved)])  # fmt: skip
+    assert saved == [] and a.rounds == 0 and len(llm.requests) == 2
+    assert a.text.startswith("Sorry, I can't confirm that") and "saved" not in a.text
+
+
+def test_a_claim_backed_by_a_tool_call_or_no_claim_is_left_alone(seeded, settings):
+    saved = []
+    llm = scripted(
+        fc_resp(("travel_profile", {"update": "seat 12A"})), text_resp("I've saved that.")
+    )
+    a = ask(settings, seeded, "Remember my seat is 12A", guild_id=GUILD, is_exec=True,
+            user_id=EXEC_ID, model=llm, extra_tools=[_profile_tool(saved)])  # fmt: skip
+    assert a.text == "I've saved that." and len(llm.requests) == 2 and saved == ["seat 12A"]
+    llm = scripted(text_resp("Hello! How can I help?"))
+    a = ask(settings, seeded, "hi", guild_id=GUILD, is_exec=True, user_id=EXEC_ID, model=llm)
+    assert a.text == "Hello! How can I help?" and len(llm.requests) == 1

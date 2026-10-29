@@ -212,6 +212,13 @@ def tools(bot, world, who=STAFF, is_exec=False):
     return {f.__name__: f for f in kw_for(bot, world, who, is_exec)["extra_tools"]}
 
 
+def said(tl, text="Go ahead and book it for the kickoff"):
+    """The person's next message as `qa.ask_async` hands it to the tools before the model runs; a
+    wordy yes is not booked by code, so the model's own book_trip call is what books."""
+    assert tl["book_trip"].on_confirm(text) is None
+    return tl
+
+
 async def test_tools_are_registered_and_the_flag_removes_them(bot, world):
     names = set(tools(bot, world))
     assert {"search_flights", "search_hotels", "book_trip", "travel_profile", "list_trips"} <= names
@@ -254,7 +261,7 @@ async def test_book_trip_confirms_then_books_files_receipts_and_sets_the_reminde
     ]
     # the same request id again is still the proposal; a later message (new tools) confirms
     assert tl["book_trip"](fid, hid, "Lumen kickoff")["status"] == "needs_confirmation"
-    done = tools(bot, world)["book_trip"](fid, hid, "Lumen kickoff")
+    done = said(tools(bot, world))["book_trip"](fid, hid, "Lumen kickoff")
     assert done["status"] == "booked" and done["provider"] == "sample"
     assert len(done["references"]["flight"]) == 6 and len(done["references"]["hotel"]) == 8
     assert len(done["filed_receipts"]) == 2
@@ -296,7 +303,7 @@ async def test_book_trip_confirms_then_books_files_receipts_and_sets_the_reminde
     # only a new hotel: proposed, then booked on its own (the flight is not booked again)
     other = tl2["search_hotels"]("SIN", DEP, RET)["hotels"][2]["offer_id"]
     assert tl2["book_trip"](hotel_offer_id=other)["status"] == "needs_confirmation"
-    hotel_only = tools(bot, world)["book_trip"](hotel_offer_id=other)
+    hotel_only = said(tools(bot, world))["book_trip"](hotel_offer_id=other)
     assert hotel_only["status"] == "booked" and list(hotel_only["references"]) == ["hotel"]
     assert tools(bot, world)["list_trips"](upcoming=False)["count"] == 2
 
@@ -329,7 +336,7 @@ async def test_book_trip_refuses_an_approval_that_is_not_approved_or_not_mine(bo
     assert (
         tl["book_trip"](hotel_offer_id=hid, approval_id=mine.id)["status"] == "needs_confirmation"
     )
-    done = tools(bot, world)["book_trip"](hotel_offer_id=hid, approval_id=mine.id)
+    done = said(tools(bot, world))["book_trip"](hotel_offer_id=hid, approval_id=mine.id)
     assert (
         done["status"] == "booked" and "checkin_reminder" not in done
     )  # hotel only: no flight reminder
@@ -418,6 +425,69 @@ async def test_a_refused_booking_after_a_plain_yes_says_so(bot, world, monkeypat
     monkeypatch.setattr(bot.trips_provider, "book_hotel", refuse)
     text = tools(bot, world)["book_trip"].on_confirm("yes")
     assert text.startswith("I couldn't book it") and "Booked before the error: flight " in text
+    assert tools(bot, world)["list_trips"]()["count"] == 0
+
+
+# ----------------------------------------------------------------------------- only a booking request books (DEF-03)
+@pytest.mark.parametrize(
+    "text",
+    ["Yes, confirm.", "Go ahead and book both for the kickoff", "Please book it",
+     "confirmed, go ahead", "ยืนยันการจองค่ะ", "โอเค จองให้หน่อย"],
+)  # fmt: skip
+def test_a_booking_request_asks_to_book(text):
+    assert trips.asks_to_book(text)
+
+
+@pytest.mark.parametrize(
+    "text",
+    ["What did I just book, and what will you remind me about?", "what did I just book",
+     "tell me what I booked", "Yes but the cheaper hotel", "Don't book it yet", "wait",
+     "Switch to the second hotel", "How much is it in baht", "จองอะไรไปแล้วบ้าง", "ไม่ต้องจองค่ะ",
+     "จองแล้วหรือยัง", "Thanks!", "", None],
+)  # fmt: skip
+def test_a_question_a_refusal_or_a_change_does_not(text):
+    assert not trips.asks_to_book(text)
+
+
+async def test_a_question_while_a_quote_waits_never_books_it(bot, world):
+    tl = tools(bot, world)
+    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
+    hid = tl["search_hotels"]("SIN", DEP, RET)["hotels"][3]["offer_id"]
+    assert tl["book_trip"](fid, hid, "Lumen kickoff")["status"] == "needs_confirmation"
+    # the next message is a question; the model calls book_trip again with the same arguments
+    asked = said(tools(bot, world), "What did I just book, and what will you remind me about?")
+    again = asked["book_trip"](fid, hid, "Lumen kickoff")
+    assert (
+        again["status"] == "needs_confirmation"
+        and "Do NOT say it is booked" in again["instruction"]
+    )
+    assert bot.docs.find(trips.TRIP_KIND, GUILD) == []  # (building tools would count as a message)
+    # the quote was shown again, so a plain yes right after it books it, once
+    text = tools(bot, world)["book_trip"].on_confirm("yes")
+    assert text.startswith("Booked!") and len(bot.docs.find(trips.TRIP_KIND, GUILD)) == 1
+
+
+async def test_a_confirmed_quote_books_even_when_the_purpose_is_reworded(bot, world):
+    tl = tools(bot, world)
+    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
+    assert tl["book_trip"](fid, "", "Client kickoff")["status"] == "needs_confirmation"
+    asked = said(tools(bot, world), "What did I just book?")
+    assert asked["book_trip"](fid, "", "client kickoff")["status"] == "needs_confirmation"
+    done = said(tools(bot, world), "Go ahead and book it")["book_trip"](
+        fid, "", "the client kickoff"
+    )
+    assert done["status"] == "booked" and done["purpose"] == "the client kickoff"
+
+
+async def test_a_call_with_no_message_heard_never_books(bot, world):
+    tl = tools(bot, world)
+    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
+    assert tl["book_trip"](fid, "", "Lumen kickoff")["status"] == "needs_confirmation"
+    for _ in range(2):  # later requests whose message was never handed to the tools
+        assert (
+            tools(bot, world)["book_trip"](fid, "", "Lumen kickoff")["status"]
+            == "needs_confirmation"
+        )
     assert tools(bot, world)["list_trips"]()["count"] == 0
 
 
