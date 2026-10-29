@@ -269,3 +269,99 @@ def test_axe_finds_no_wcag_aa_violations_on_the_homepage(page, lang, motion):
         _scroll_through(page)  # every entrance has finished before the scan
     res = Axe().run(page, options=WCAG)
     assert res.violations_count == 0, res.generate_report()
+
+
+# ------------------------------------------------------------------ the sign-up button
+@pytest.fixture
+def invite_configured(monkeypatch):
+    """Production's state: a Discord invite link is configured, so the invite buttons show. (Without one the page
+    used to be the only state with a visible "Create account"; production had none.)"""
+    from meeting_scribe import app as web
+
+    monkeypatch.setattr(
+        web,
+        "dory_invite_url",
+        lambda cid: "https://discord.com/oauth2/authorize?client_id=1&scope=bot",
+    )
+
+
+def test_a_sign_up_button_is_in_the_header_and_the_hero_and_leads_to_registration(
+    page, invite_configured
+):
+    page.set_viewport_size({"width": 1440, "height": 900})
+    page.goto("/")
+    expect(
+        page.locator(".hero .acts [data-invite]")
+    ).to_be_visible()  # Discord stays the primary action
+    hero = page.locator(".hero .acts").get_by_role("link", name="Create account")
+    head = page.locator("header").get_by_role("link", name="Create account")
+    for button in (head, hero):
+        expect(button).to_be_visible()
+        box = button.bounding_box()
+        assert box["y"] + box["height"] < 900, "in the first screen"
+        assert box["height"] >= 44
+    hero.click()
+    page.wait_for_url("**/start")
+    expect(page.get_by_role("heading", level=1)).to_have_text("Bring Dory to your team")
+    page.go_back()
+    head.click()
+    page.wait_for_url("**/start")
+    expect(page.get_by_role("heading", level=1)).to_have_text("Bring Dory to your team")
+
+
+def test_the_plan_card_offers_it_too(page, invite_configured):
+    page.goto("/")
+    plan = page.locator(".plan-side").get_by_role("link", name="Create account")
+    plan.scroll_into_view_if_needed()
+    expect(plan).to_be_visible()
+    plan.click()
+    page.wait_for_url("**/start")
+
+
+@pytest.mark.parametrize("lang", ["en", "th"])
+@pytest.mark.parametrize("width", [1280, 1366, 1440, 1920])
+def test_the_header_with_three_actions_fits(page, invite_configured, width, lang):
+    """Log in, Create account and Add to Discord overflowed in Thai at 1280: there the Discord button keeps only its
+    logo (its name stays "Add to Discord" for screen readers)."""
+    page.add_init_script(
+        f"try {{ localStorage.setItem('dory-language', '{lang}'); }} catch (e) {{}}"
+    )
+    page.set_viewport_size({"width": width, "height": 800})
+    page.goto("/")
+    expect(
+        page.locator("header").get_by_role("link", name=re.compile("Create account|สร้างบัญชี"))
+    ).to_be_visible()
+    discord = page.locator("header [data-invite]")
+    expect(discord).to_be_visible()
+    expect(discord).to_have_accessible_name(re.compile("Discord"))
+    box = page.evaluate(
+        """() => { const r = (s) => document.querySelector(s).getBoundingClientRect();
+          return { navRight: r('.hd-nav').right, actLeft: r('.hd-act').left, actRight: r('.hd-act').right,
+                   scroll: document.documentElement.scrollWidth }; }"""
+    )
+    assert box["actRight"] <= width and box["scroll"] <= width, box
+    assert box["navRight"] <= box["actLeft"], box  # the links never run under the buttons
+
+
+@pytest.mark.parametrize("width", [320, 390])
+def test_on_a_phone_the_hero_has_a_sign_up_button_and_the_menu_has_one_too(
+    page, invite_configured, width
+):
+    page.set_viewport_size({"width": width, "height": 740})
+    page.goto("/")
+    hero = page.locator(".hero .acts").get_by_role("link", name="Create account")
+    expect(hero).to_be_visible()
+    box = hero.bounding_box()
+    assert box["y"] + box["height"] <= 740 and box["height"] >= 44
+    assert page.evaluate("document.documentElement.scrollWidth") <= width
+    page.locator(".menu-btn").click()
+    expect(page.locator("#hd-menu").get_by_role("link", name="Create account")).to_be_visible()
+
+
+@pytest.mark.parametrize("width", [390, 1440])
+def test_axe_finds_no_wcag_aa_violations_with_the_sign_up_button(page, invite_configured, width):
+    page.emulate_media(reduced_motion="reduce")
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto("/")
+    res = Axe().run(page, options=WCAG)
+    assert res.violations_count == 0, res.generate_report()
