@@ -318,6 +318,131 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 #panel label.f { font-size: 13px; }
 #panel .card { margin: 0; }
 
+/* travel cards in the chat (sample flights and hotels from /api/travel): quiet bordered cards, one indigo action each,
+   every control at least 44 x 44 px; flex children shrink (min-width: 0) so a 320 px panel never scrolls sideways */
+.trv { display: flex; flex-direction: column; gap: 18px; margin-top: 12px; min-width: 0; }
+.msg .trv ul, .msg .tv-review ul { margin: 0; padding: 0; } /* not the chat's markdown list indent */
+.msg .trv p + p, .msg .tv-review p + p { margin-top: 0; }
+.tv-block { display: flex; flex-direction: column; gap: 10px; min-width: 0; border-radius: var(--radius-lg); }
+.tv-block:focus-visible { outline-offset: 4px; }
+.tv-ic { flex: none; display: inline-grid; place-items: center; width: 18px; height: 18px; }
+.tv-ic svg { width: 100%; height: 100%; display: block; }
+.tv-sum, .tv-card, .tv-review { min-width: 0; border: 1px solid var(--line); border-radius: var(--radius-lg); background: var(--card); box-shadow: 0 1px 2px rgba(43, 47, 122, .06); }
+.tv-sum { display: flex; flex-wrap: wrap; align-items: center; gap: 10px 12px; padding: 12px 14px; }
+.tv-sum > .tv-ic { width: 22px; height: 22px; color: var(--indigo-2); }
+.tv-q { flex: 1 1 150px; min-width: 0; }
+.tv-q h3 { font-size: 15.5px; line-height: 1.35; color: var(--ink); }
+.tv-q p { font-size: 13.5px; color: var(--muted); }
+.tv-btn { flex: none; min-height: 44px; min-width: 44px; padding: 8px 16px; border-radius: 99px; border: 1px solid var(--indigo-2); background: var(--card); color: var(--indigo); font-size: 14px; font-weight: 600; line-height: 1.25; }
+.tv-btn:hover { background: var(--chip); }
+.tv-chips { display: flex; flex-wrap: wrap; gap: 8px; min-width: 0; }
+.tv-chip { min-height: 44px; min-width: 44px; max-width: 100%; padding: 8px 14px; border-radius: 99px; border: 1px solid var(--color-border-control); background: var(--card); color: var(--ink); font-size: 14px; font-weight: 500; line-height: 1.25; display: inline-flex; align-items: center; gap: 6px; }
+.tv-chip:hover { border-color: var(--indigo-2); }
+.tv-chip[aria-pressed=true], .tv-chip.on { background: var(--chip); border-color: var(--indigo-2); color: var(--indigo); font-weight: 600; }
+.tv-chip[aria-pressed=true]::before { content: "\2713"; font-weight: 700; }
+.tv-chip[aria-expanded=true] { border-color: var(--indigo); box-shadow: inset 0 0 0 1px var(--indigo); }
+.tv-caret { font-size: 12px; }
+.tv-pop { display: flex; flex-direction: column; padding: 6px 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--bg); }
+.tv-opt { display: flex; align-items: center; gap: 10px; min-height: 44px; font-size: 14px; font-weight: 400; color: var(--ink); cursor: pointer; }
+.tv-opt input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--indigo-2); }
+.tv-list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 12px; min-width: 0; }
+.tv-card { container-type: inline-size; display: flex; flex-direction: column; gap: 12px; padding: 14px; }
+.tv-card.sel { border-color: var(--indigo-2); box-shadow: 0 0 0 1px var(--indigo-2); }
+.tv-skel { gap: 10px; }
+.tv-top { display: flex; flex-wrap: wrap; align-items: center; gap: 6px 10px; min-width: 0; }
+.tv-logo { flex: none; width: 38px; height: 38px; border-radius: 50%; display: grid; place-items: center; border: 1px solid var(--line); background: var(--bg-2); color: var(--muted); } /* one generic aircraft for every airline */
+.tv-logo .tv-ic { width: 20px; height: 20px; }
+.tv-name { flex: 1 1 100px; min-width: 0; font-size: 15px; line-height: 1.35; font-weight: 600; }
+.tv-fno { display: block; font-size: 13px; font-weight: 500; color: var(--muted); }
+.tv-tag { flex: none; align-self: flex-start; padding: 3px 10px; border-radius: 99px; background: var(--chip); color: var(--indigo); font-size: 12px; font-weight: 600; }
+.tv-route { display: grid; grid-template-columns: auto minmax(0, 1fr) auto; align-items: center; gap: 10px; }
+.tv-pt { display: flex; flex-direction: column; min-width: 0; }
+.tv-pt.end { text-align: right; }
+.tv-t { font-size: 22px; line-height: 1.15; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tv-t sup { font-size: 12px; font-weight: 600; color: var(--warn-ink); margin-left: 2px; }
+.tv-code { font-size: 13.5px; font-weight: 600; color: var(--ink); text-decoration: underline dotted var(--color-border-control); text-underline-offset: 3px; }
+.tv-d, .tv-pl { font-size: 13px; color: var(--muted); }
+.tv-mid { display: flex; flex-direction: column; align-items: center; gap: 2px; min-width: 0; font-size: 12.5px; color: var(--muted); text-align: center; }
+.tv-line { width: 100%; height: 1px; background: var(--color-border-control); position: relative; }
+.tv-line::before, .tv-line::after { content: ""; position: absolute; top: -3px; width: 7px; height: 7px; border-radius: 50%; background: var(--color-border-control); }
+.tv-line::before { left: 0; } .tv-line::after { right: 0; }
+.tv-row { display: flex; flex-wrap: wrap; align-items: flex-end; justify-content: space-between; gap: 12px 16px; padding-top: 12px; border-top: 1px solid var(--line); }
+.tv-details { flex: 1 1 140px; min-width: 0; list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.tv-details li, .tv-loc, .tv-ok, .tv-neutral { display: flex; align-items: flex-start; gap: 6px; min-width: 0; }
+.tv-details .tv-ic, .tv-loc .tv-ic, .tv-ok .tv-ic { width: 16px; height: 16px; margin-top: 2px; }
+.tv-price { flex: 1 1 150px; min-width: 0; display: flex; flex-direction: column; align-items: flex-end; text-align: right; }
+.tv-big { font-size: 21px; line-height: 1.2; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tv-sample { margin-top: 2px; font-size: 12px; font-weight: 600; color: var(--warn-ink); }
+.tv-flight > .tv-sample { margin-top: -6px; }
+.tv-primary { width: 100%; min-height: 44px; padding: 10px 16px; border: 1px solid var(--color-action); border-radius: var(--radius); background: var(--color-action); color: var(--color-on-action); font-size: 15px; font-weight: 600; line-height: 1.25; display: inline-flex; align-items: center; justify-content: center; gap: 8px; }
+.tv-primary:hover { background: var(--color-action-hover); }
+.tv-primary:disabled, .tv-primary:disabled:hover { background: var(--chip); border-color: var(--chip); color: var(--indigo); cursor: default; }
+.tv-primary[aria-pressed=true] { background: var(--chip); color: var(--indigo); border-color: var(--indigo-2); }
+.tv-primary[aria-pressed=true]::before { content: "\2713"; font-weight: 700; }
+.tv-hrow { display: flex; gap: 12px; min-width: 0; }
+.tv-photo { --h: 222; flex: 0 0 96px; height: 120px; border-radius: var(--radius); overflow: hidden; background: hsl(var(--h) 55% 90%); }
+.tv-photo svg { width: 100%; height: 100%; display: block; }
+.tv-photo .sky { fill: hsl(var(--h) 55% 90%); } .tv-photo .sun { fill: hsl(var(--h) 70% 97%); }
+.tv-photo .far { fill: hsl(var(--h) 22% 70%); } .tv-photo .near { fill: hsl(var(--h) 28% 42%); }
+.tv-photo .water { fill: hsl(var(--h) 45% 74%); } .tv-photo .wave { fill: none; stroke: #fff; stroke-width: 2; stroke-linecap: round; opacity: .7; }
+.tv-hinfo { flex: 1 1 auto; min-width: 0; display: flex; flex-direction: column; gap: 4px; font-size: 13px; color: var(--muted); }
+.tv-stars { display: flex; flex-wrap: wrap; align-items: center; gap: 2px 8px; }
+.tv-starrow { display: inline-flex; gap: 1px; color: var(--warn-ink); }
+.tv-starrow .ic { width: 14px; height: 14px; }
+.tv-rate { display: flex; flex-wrap: wrap; align-items: center; gap: 4px 8px; }
+.tv-score { display: inline-grid; place-items: center; min-width: 34px; height: 26px; padding: 0 6px; border-radius: 8px 8px 8px 2px; background: var(--indigo); color: #fff; font-size: 13.5px; font-weight: 700; }
+.tv-amen { list-style: none; margin: 0; padding: 0; display: flex; flex-wrap: wrap; gap: 6px; }
+.tv-amen li { padding: 2px 9px; border-radius: 99px; background: var(--bg-2); color: var(--muted); font-size: 12.5px; }
+.tv-ok { color: var(--ok-ink); font-size: 13.5px; font-weight: 500; }
+.tv-neutral { color: var(--muted); font-size: 13.5px; }
+.tv-stay { font-size: 13.5px; color: var(--ink); }
+.tv-hprice { flex-basis: 100%; }
+.tv-rooms { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); }
+.tv-rooms:focus-visible { outline-offset: 2px; }
+.tv-room { display: flex; flex-direction: column; gap: 4px; padding: 12px; border: 1px solid var(--line); border-radius: var(--radius); background: var(--card); }
+.tv-room.sel { border-color: var(--indigo-2); box-shadow: 0 0 0 1px var(--indigo-2); }
+.tv-rname { font-size: 14.5px; }
+.tv-rprice { display: flex; flex-wrap: wrap; align-items: baseline; gap: 2px 10px; margin: 2px 0 6px; font-size: 14.5px; }
+.tv-foot { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; }
+.tv-count { font-size: 13px; color: var(--muted); }
+.tv-note { font-size: 12.5px; color: var(--faint); }
+.tv-msg:empty { display: none; }
+.tv-empty, .tv-alert { display: flex; flex-wrap: wrap; align-items: center; gap: 8px 12px; padding: 12px 14px; border-radius: var(--radius); font-size: 14px; }
+.tv-empty { background: var(--bg-2); color: var(--ink); }
+.tv-alert { background: var(--err-bg); color: var(--err-ink); }
+.tv-empty p, .tv-alert p { flex: 1 1 180px; min-width: 0; }
+.tv-form { flex: 1 1 100%; min-width: 0; display: flex; flex-direction: column; gap: 4px; padding-top: 12px; border-top: 1px solid var(--line); }
+.tv-form label { margin-top: 6px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.tv-form input, .tv-form select { width: 100%; min-width: 0; min-height: 44px; }
+.tv-form [aria-invalid=true] { border-color: var(--err-ink); }
+.tv-err { font-size: 13px; color: var(--err-ink); }
+.tv-err:empty { display: none; }
+.tv-acts { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 8px; }
+.tv-acts .tv-primary { width: auto; flex: 1 1 140px; }
+.tv-acts .tv-btn { flex: 1 1 auto; }
+.tv-review { display: flex; flex-direction: column; gap: 12px; padding: 14px; margin-top: 10px; }
+.tv-review h3 { font-size: 16px; }
+.tv-review h4 { font-size: 13px; font-weight: 600; letter-spacing: .04em; text-transform: uppercase; color: var(--muted); margin-bottom: 4px; }
+.tv-review ul { list-style: none; display: flex; flex-direction: column; gap: 2px; font-size: 14px; }
+.tv-review .tv-lay { color: var(--muted); font-size: 13px; padding-left: 12px; border-left: 2px dashed var(--color-border-control); }
+.tv-dl { display: grid; grid-template-columns: minmax(0, 1fr) auto; gap: 6px 0; margin: 0; font-size: 14px; }
+.tv-dl dt { color: var(--muted); min-width: 0; }
+.tv-dl dd { margin: 0; padding-left: 12px; text-align: right; font-variant-numeric: tabular-nums; }
+.tv-dl .tot { padding-top: 6px; border-top: 1px solid var(--line); color: var(--ink); font-weight: 700; }
+.tv-ref { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.tv-confirm { display: flex; flex-direction: column; gap: 10px; padding-top: 12px; border-top: 1px solid var(--line); min-width: 0; }
+.tv-confirm fieldset { border: 0; margin: 0; padding: 0; min-width: 0; }
+.tv-confirm legend { padding: 0; font-size: 14px; font-weight: 600; }
+.tv-check { display: flex; align-items: flex-start; gap: 10px; min-height: 44px; padding: 10px 0 4px; font-size: 14px; overflow-wrap: anywhere; cursor: pointer; }
+.tv-check input { width: 20px; height: 20px; margin: 0; flex: none; accent-color: var(--color-action); }
+.tv-purpose { display: flex; flex-direction: column; gap: 4px; font-size: 14px; font-weight: 500; color: var(--muted); }
+.tv-purpose input { width: 100%; min-width: 0; min-height: 44px; }
+.tv-quote[aria-busy=true] { opacity: .6; }
+.tv-done { padding: 10px 12px; border-radius: var(--radius); background: var(--ok-bg); color: var(--ok-ink); font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
+.tv-nb { padding: 10px 12px; border-radius: var(--radius); background: var(--warn-bg); color: var(--warn-ink); font-size: 13.5px; font-weight: 500; }
+@container (max-width: 220px) { .tv-route { grid-template-columns: minmax(0, 1fr); } .tv-pt.end { text-align: left; } .tv-mid { align-items: flex-start; text-align: left; } }
+@container (max-width: 280px) { .tv-hrow { flex-direction: column; } .tv-photo { flex-basis: auto; height: 110px; } }
+
 /* platforms, identities */
 .plat.sm { width: 30px; height: 30px; border-radius: 9px; font-size: 13px; }
 /* a connected server: its own icon, with the platform's icon as a small badge at the corner */
@@ -1236,6 +1361,40 @@ th: {
   mon_d_attempts:"พยายาม {n} ครั้ง", mon_d_started:"เริ่ม {t}", mon_d_finished:"เสร็จ {t}",
   mon_dismiss:"ซ่อน", mon_licence:"แพ็กเกจของบริษัทยังไม่ใช้งาน จึงยังดูหน้าติดตามงานไม่ได้ค่ะ เจ้าของบริษัทต่ออายุได้ที่หน้าแพ็กเกจ", mon_forbidden:"ตอนนี้คุณดูงานของบริษัทนี้ไม่ได้แล้วค่ะ ถ้าบทบาทของคุณถูกเปลี่ยนโดยไม่ตั้งใจ ติดต่อเจ้าของหรือผู้ดูแลนะคะ",
   mon_view:"ดู", mon_toast:"มี {n} รายการที่ต้องดูแลค่ะ", mon_announce:"อัปเดตแล้ว {n} รายการ",
+  tv_flights:"เที่ยวบิน", tv_h_hotels:"โรงแรมใน {city}", tv_edit:"แก้ไขการค้นหา", tv_trav:"ผู้โดยสาร {n} คน", tv_trav1:"ผู้โดยสาร 1 คน", tv_economy:"ชั้นประหยัด", tv_business:"ชั้นธุรกิจ",
+  tv_s_best:"คุ้มค่าที่สุด", tv_s_cheapest:"ถูกที่สุด", tv_s_fastest:"เร็วที่สุด", tv_s_recommended:"แนะนำ", tv_s_price:"ราคาต่ำสุด", tv_s_rating:"คะแนนรีวิวสูงสุด", tv_sort:"เรียงตาม",
+  tv_nonstop:"บินตรง", tv_1stop:"แวะ 1 ครั้ง", tv_morning:"ช่วงเช้า", tv_afternoon:"ช่วงบ่าย", tv_evening:"ช่วงเย็น", tv_airlines:"สายการบิน", tv_price:"ราคา", tv_any_price:"ทุกราคา",
+  tv_upto_pp:"ไม่เกิน {p} ต่อคน", tv_upto_night:"ไม่เกิน {p} ต่อคืน", tv_ff:"ตัวกรองเที่ยวบิน", tv_hf:"ตัวกรองโรงแรม", tv_n_selected:"เลือก {n}",
+  tv_free_cancel:"ยกเลิกฟรี", tv_breakfast:"รวมอาหารเช้า", tv_4stars:"4 ดาวขึ้นไป", tv_score8:"คะแนนรีวิว 8+",
+  tv_tag_best_value:"คุ้มค่าที่สุด", tv_tag_cheapest:"ถูกที่สุด", tv_tag_fastest:"เร็วที่สุด", tv_tag_popular:"ยอดนิยม", tv_tag_top_rated:"คะแนนสูงสุด",
+  tv_dur:"{h} ชม. {m} นาที", tv_via:"แวะ 1 ครั้ง · {c}", tv_layover:"แวะเปลี่ยนเครื่องที่ {c} {d}", tv_plus_day:"ถึงวันถัดไป", tv_cabin_bag:"กระเป๋าถือขึ้นเครื่อง {kg} กก.", tv_checked:"กระเป๋าโหลด {kg} กก.", tv_checked_none:"ไม่รวมกระเป๋าโหลด",
+  tv_meal_included:"รวมอาหาร", tv_meal_for_sale:"อาหารมีจำหน่าย", tv_total_for:"ราคารวมสำหรับ {n} คน", tv_total_for1:"ราคาสำหรับ 1 คน", tv_per_trav:"{p} ต่อคน · รวมภาษีแล้ว", tv_sample_price:"ราคาตัวอย่าง",
+  tv_select_flight:"เลือกเที่ยวบินนี้", tv_selected:"เลือกแล้ว", tv_more_flights:"ดูเที่ยวบินเพิ่ม", tv_more_hotels:"ดูโรงแรมเพิ่ม",
+  tv_count_f:"แสดง {n} จาก {total} เที่ยวบินตัวอย่าง", tv_count_h:"แสดง {n} จาก {total} โรงแรมตัวอย่าง", tv_note:"ผลลัพธ์ตัวอย่างสำหรับเดโม ไม่ใช่ที่ว่างจริงและยังไม่ได้จองใดๆ", tv_sample_f:"เที่ยวบินตัวอย่าง · ราคาตัวอย่าง", tv_fictional:"ที่พักสมมติ · คะแนนและรีวิวตัวอย่าง", tv_thb:"{n} บาท",
+  tv_stars:"โรงแรม {n} ดาว", tv_score_of:"จาก 10", tv_reviews:"{n} รีวิว", tv_sw_9:"ยอดเยี่ยม", tv_sw_8:"ดีมาก", tv_sw_7:"ดี", tv_sw_0:"พอใช้",
+  tv_free_until:"ยกเลิกฟรีถึง {d}", tv_nonref:"ขอคืนเงินไม่ได้", tv_nights:"{n} คืน", tv_nights1:"1 คืน", tv_rooms:"{n} ห้อง", tv_rooms1:"1 ห้อง", tv_guests:"ผู้เข้าพัก {n} คน", tv_guests1:"ผู้เข้าพัก 1 คน",
+  tv_per_night:"ต่อห้อง ต่อคืน", tv_stay_total:"รวม {p} · {nights} · {rooms} · รวมภาษีแล้ว", tv_view_rooms:"ดูห้องพัก", tv_hide_rooms:"ซ่อนห้องพัก", tv_photo:"ภาพแทนรูปโรงแรม {name} (ยังไม่มีรูปจริง)",
+  tv_am_wifi:"Wi-Fi ฟรี", tv_am_pool:"สระว่ายน้ำ", tv_am_gym:"ฟิตเนส", tv_am_spa:"สปา", tv_am_restaurant:"ร้านอาหาร", tv_am_breakfast:"อาหารเช้า", tv_am_terrace:"ระเบียง", tv_am_beach:"ชายหาด", tv_am_shuttle:"รถรับส่ง", tv_am_bar:"บาร์",
+  tv_rooms_at:"ห้องพักของ {name}", tv_room_size:"{m} ตร.ม.", tv_max_guests:"พักได้ {n} คน", tv_bf_yes:"รวมอาหารเช้า", tv_bf_no:"ไม่รวมอาหารเช้า", tv_choose_room:"เลือกห้องนี้", tv_nightly:"{p} ต่อคืน", tv_stay:"{p} ตลอดการเข้าพัก",
+  tv_rev_f_line:"นี่คือสรุปค่าโดยสารตัวอย่างของเที่ยวบินที่เลือกค่ะ", tv_rev_h_line:"นี่คือสรุปการเข้าพักตัวอย่างของห้องที่เลือกค่ะ", tv_rev_f:"สรุปค่าโดยสาร", tv_rev_h:"สรุปการเข้าพัก",
+  tv_itinerary:"แผนการเดินทาง", tv_baggage:"สัมภาระ", tv_rules:"เงื่อนไขค่าโดยสาร", tv_breakdown:"รายละเอียดราคา", tv_cancel_h:"การยกเลิก",
+  tv_change_fee:"ค่าเปลี่ยนเที่ยวบิน {p} ต่อคน", tv_change_free:"เปลี่ยนเที่ยวบินได้ฟรี", tv_refund_fee:"ค่าธรรมเนียมคืนเงิน {p} ต่อคน", tv_no_refund:"ขอคืนเงินไม่ได้",
+  tv_base:"ค่าโดยสาร ต่อคน", tv_taxes_pp:"ภาษีและค่าธรรมเนียม ต่อคน", tv_total_x:"รวม ({p} × {n} คน)", tv_before_tax:"ค่าห้องก่อนภาษี", tv_taxes:"ภาษีและค่าธรรมเนียม", tv_total_stay:"รวม ({p} × {nights} × {rooms})",
+  tv_not_booked:"แผนการเดินทางตัวอย่าง ยังไม่ได้จองอะไร และยังไม่ได้เช็กที่ว่างจริง", tv_not_booked_h:"การเข้าพักตัวอย่าง ยังไม่ได้จองอะไร และยังไม่ได้เช็กที่ว่างจริง",
+  tv_change_flight:"เปลี่ยนเที่ยวบิน", tv_change_room:"เปลี่ยนห้อง", tv_copy_sum:"คัดลอกสรุป",
+  tv_book:"จองแบบทดลอง", tv_ref:"รหัสสำหรับจอง: {r}",
+  tv_bk_h:"จองแบบทดลอง", tv_bk_what:"สิ่งที่จะจอง", tv_bk_out:"เที่ยวบิน: {x}", tv_bk_back:"เที่ยวบินขากลับ: {x}", tv_bk_room:"ห้องพัก: {x}",
+  tv_bk_purpose:"จองเพื่ออะไร (ไม่บังคับ)", tv_bk_quoting:"กำลังคิดราคา…", tv_bk_total:"รวม", tv_bk_back_on:"ขากลับ {d}",
+  tv_bk_note:"ราคาตัวอย่าง เป็นการจองทดลอง: ไม่มีการออกตั๋วและไม่มีการเก็บเงิน", tv_bk_confirm:"ยืนยันการจอง", tv_bk_cancel:"ยกเลิก", tv_bk_booking:"กำลังจอง…",
+  tv_bk_done:"จองแบบทดลองแล้ว · รหัสอ้างอิง {r}", tv_booked:"จองแล้ว", tv_bk_again:"ใบเสนอราคาเปลี่ยนหรือหมดอายุ ตรวจดูแล้วกดยืนยันอีกครั้งนะคะ",
+  tv_bk_expired:"ข้อเสนอนี้ไม่มีแล้ว ลองค้นหาใหม่นะคะ", tv_bk_not:"ยังไม่ได้จอง: {r}", tv_bk_unavail:"บริษัทนี้ยังจองจากการ์ดไม่ได้ (ต้องเชื่อม Discord ของบริษัทและเปิดฟีเจอร์การเดินทาง) ยังขอให้ดอรี่จองในแชตได้ค่ะ",
+  tv_bk_err:"จองไม่สำเร็จ: {e}",
+  tv_empty_route_f:"ไม่มีเที่ยวบินตัวอย่างสำหรับ {r} ข้อมูลตัวอย่างมีเฉพาะ {ok}", tv_empty_route_h:"ไม่มีโรงแรมตัวอย่างใน {city} ข้อมูลตัวอย่างมีเฉพาะ {ok}", tv_search_x:"ค้นหา {x}",
+  tv_empty_filters_f:"ไม่มีเที่ยวบินที่ตรงกับตัวกรองนี้", tv_empty_filters_h:"ไม่มีโรงแรมที่ตรงกับตัวกรองนี้", tv_clear:"ล้างตัวกรอง", tv_empty_none_f:"ไม่มีเที่ยวบินตัวอย่างในชั้นโดยสารนี้", tv_empty_none_h:"ไม่มีห้องตัวอย่างที่พักได้ตามจำนวนผู้เข้าพักต่อห้องนี้",
+  tv_err_f:"โหลดเที่ยวบินตัวอย่างไม่สำเร็จ: {e}", tv_err_h:"โหลดโรงแรมตัวอย่างไม่สำเร็จ: {e}", tv_err_rev:"โหลดสรุปไม่สำเร็จ: {e}", tv_err_rooms:"โหลดห้องพักไม่สำเร็จ: {e}",
+  tv_past_date:"วันที่นี้ผ่านไปแล้ว เลือกวันนี้หรือหลังจากนี้ค่ะ", tv_too_far:"วันที่นี้ไกลเกินกว่าข้อมูลตัวอย่าง เลือกวันที่เร็วขึ้นค่ะ",
+  tv_from:"ต้นทาง", tv_to:"ปลายทาง", tv_date:"วันเดินทาง", tv_travellers:"ผู้โดยสาร (1-9)", tv_cabin:"ชั้นโดยสาร", tv_city:"เมือง", tv_check_in:"เช็กอิน", tv_check_out:"เช็กเอาต์", tv_rooms_l:"จำนวนห้อง (1-4)", tv_guests_l:"ผู้เข้าพัก (1-12)",
+  tv_update:"อัปเดตผลการค้นหา", tv_e_same:"เลือกปลายทางที่ไม่ใช่ต้นทาง", tv_e_date:"ใส่วันที่", tv_e_trav:"ใส่จำนวนผู้โดยสาร 1-9 คน", tv_e_out:"เช็กเอาต์ต้องอยู่หลังเช็กอิน 1-30 คืน", tv_e_rooms:"ใส่จำนวนห้อง 1-4 ห้อง", tv_e_guests:"ใส่ผู้เข้าพัก 1-12 คน อย่างน้อยห้องละ 1 คน", tv_e_form:"ตรวจการค้นหาแล้วลองอีกครั้ง: {e}", tv_rate_limited:"ค้นหาถี่เกินไป รอสักครู่แล้วลองใหม่ค่ะ", tv_busy:"ระบบเดโมมีคนใช้มาก ลองใหม่อีกครั้งในอีกสักครู่ค่ะ",
   lang_label:"ภาษา", qs_ph:"ค้นหาทุกอย่าง…", qs_label:"ค้นหาทุกอย่างกับดอรี่", search_ask:"ช่วยค้นหา \"{q}\" จากทุกที่",
   sub_overview:"จัดการข้อมูลและการตั้งค่าขององค์กร", sub_noorg:"ตั้งค่าองค์กรเพื่อเริ่มใช้ดอรี่กับทีมของคุณ", can_h:"องค์กรช่วยอะไรได้บ้าง",
   can_members_h:"จัดการสมาชิก", can_members_p:"เชิญเพื่อนร่วมทีม และกำหนดบทบาทของแต่ละคน", can_know_h:"จัดระเบียบความรู้", can_know_p:"เก็บเอกสาร วิกิ และบันทึกการประชุมไว้ด้วยกัน",
@@ -1369,6 +1528,40 @@ en: {
   mon_d_attempts:"{n} attempts", mon_d_started:"Started {t}", mon_d_finished:"Finished {t}",
   mon_dismiss:"Dismiss", mon_licence:"This company's licence is not active, so the monitor is unavailable. An owner can renew it on the License page.", mon_forbidden:"You can no longer see this company's work here. If your role changed by mistake, ask an owner or admin.",
   mon_view:"View", mon_toast:"{n} items need attention", mon_announce:"Items updated: {n}",
+  tv_flights:"Flights", tv_h_hotels:"Hotels in {city}", tv_edit:"Edit search", tv_trav:"{n} travellers", tv_trav1:"1 traveller", tv_economy:"Economy", tv_business:"Business",
+  tv_s_best:"Best value", tv_s_cheapest:"Cheapest", tv_s_fastest:"Fastest", tv_s_recommended:"Recommended", tv_s_price:"Lowest price", tv_s_rating:"Top rated", tv_sort:"Sort by",
+  tv_nonstop:"Non-stop", tv_1stop:"1 stop", tv_morning:"Morning", tv_afternoon:"Afternoon", tv_evening:"Evening", tv_airlines:"Airlines", tv_price:"Price", tv_any_price:"Any price",
+  tv_upto_pp:"Up to {p} per traveller", tv_upto_night:"Up to {p} per night", tv_ff:"Flight filters", tv_hf:"Hotel filters", tv_n_selected:"{n} selected",
+  tv_free_cancel:"Free cancellation", tv_breakfast:"Breakfast included", tv_4stars:"4+ stars", tv_score8:"Guest score 8+",
+  tv_tag_best_value:"Best value", tv_tag_cheapest:"Cheapest", tv_tag_fastest:"Fastest", tv_tag_popular:"Popular", tv_tag_top_rated:"Top rated",
+  tv_dur:"{h}h {m}m", tv_via:"1 stop · {c}", tv_layover:"{d} layover in {c}", tv_plus_day:"arrives the next day", tv_cabin_bag:"Cabin bag {kg} kg", tv_checked:"Checked bag {kg} kg", tv_checked_none:"Checked bag not included",
+  tv_meal_included:"Meal included", tv_meal_for_sale:"Meal for sale", tv_total_for:"Total for {n} travellers", tv_total_for1:"Total for 1 traveller", tv_per_trav:"{p} per traveller · taxes included", tv_sample_price:"Sample price",
+  tv_select_flight:"Select flight", tv_selected:"Selected", tv_more_flights:"See more flights", tv_more_hotels:"See more hotels",
+  tv_count_f:"Showing {n} of {total} sample flights", tv_count_h:"Showing {n} of {total} sample hotels", tv_note:"Demo results—not live availability or a confirmed booking.", tv_sample_f:"Sample itinerary · Sample price", tv_fictional:"Fictional property · Sample rating and reviews", tv_thb:"THB {n}",
+  tv_stars:"{n}-star hotel", tv_score_of:"out of 10", tv_reviews:"{n} reviews", tv_sw_9:"Excellent", tv_sw_8:"Very good", tv_sw_7:"Good", tv_sw_0:"Pleasant",
+  tv_free_until:"Free cancellation until {d}", tv_nonref:"Non-refundable", tv_nights:"{n} nights", tv_nights1:"1 night", tv_rooms:"{n} rooms", tv_rooms1:"1 room", tv_guests:"{n} guests", tv_guests1:"1 guest",
+  tv_per_night:"per room, per night", tv_stay_total:"{p} total · {nights} · {rooms} · taxes included", tv_view_rooms:"View rooms", tv_hide_rooms:"Hide rooms", tv_photo:"Placeholder picture for {name} (no real photo yet)",
+  tv_am_wifi:"Free Wi-Fi", tv_am_pool:"Pool", tv_am_gym:"Gym", tv_am_spa:"Spa", tv_am_restaurant:"Restaurant", tv_am_breakfast:"Breakfast", tv_am_terrace:"Terrace", tv_am_beach:"Beach", tv_am_shuttle:"Shuttle", tv_am_bar:"Bar",
+  tv_rooms_at:"Rooms at {name}", tv_room_size:"{m} m²", tv_max_guests:"Sleeps {n}", tv_bf_yes:"Breakfast included", tv_bf_no:"Room only", tv_choose_room:"Choose room", tv_nightly:"{p} per night", tv_stay:"{p} for the stay",
+  tv_rev_f_line:"Here's the sample fare review for the flight you picked.", tv_rev_h_line:"Here's the sample stay review for the room you picked.", tv_rev_f:"Fare review", tv_rev_h:"Stay review",
+  tv_itinerary:"Itinerary", tv_baggage:"Baggage", tv_rules:"Fare rules", tv_breakdown:"Price breakdown", tv_cancel_h:"Cancellation",
+  tv_change_fee:"Change fee {p} per traveller", tv_change_free:"Free changes", tv_refund_fee:"Refund fee {p} per traveller", tv_no_refund:"Not refundable",
+  tv_base:"Base fare per traveller", tv_taxes_pp:"Taxes and fees per traveller", tv_total_x:"Total ({p} × {n} travellers)", tv_before_tax:"Room price before taxes", tv_taxes:"Taxes and fees", tv_total_stay:"Total ({p} × {nights} × {rooms})",
+  tv_not_booked:"Sample itinerary — nothing has been booked and availability isn't live.", tv_not_booked_h:"Sample stay — nothing has been booked and availability isn't live.",
+  tv_change_flight:"Change flight", tv_change_room:"Change room", tv_copy_sum:"Copy summary",
+  tv_book:"Book in sandbox", tv_ref:"Booking reference: {r}",
+  tv_bk_h:"Book in the sandbox", tv_bk_what:"What to book", tv_bk_out:"Flight: {x}", tv_bk_back:"Way back: {x}", tv_bk_room:"Room: {x}",
+  tv_bk_purpose:"What is it for? (optional)", tv_bk_quoting:"Getting the quote…", tv_bk_total:"Total", tv_bk_back_on:"back {d}",
+  tv_bk_note:"Sample prices. A sandbox booking: no ticket is issued and no money is charged.", tv_bk_confirm:"Confirm booking", tv_bk_cancel:"Cancel", tv_bk_booking:"Booking…",
+  tv_bk_done:"Booked in the sandbox · references {r}", tv_booked:"Booked", tv_bk_again:"The quote changed or expired. Check it and confirm again.",
+  tv_bk_expired:"This offer is no longer available. Search again.", tv_bk_not:"Not booked: {r}", tv_bk_unavail:"Booking from the cards is not available for this company (it needs the company's Discord workspace with travel turned on). You can still ask Dory in the chat.",
+  tv_bk_err:"Couldn't book: {e}",
+  tv_empty_route_f:"No sample flights for {r}. The sample data covers {ok}.", tv_empty_route_h:"No sample hotels in {city}. The sample data covers {ok}.", tv_search_x:"Search {x}",
+  tv_empty_filters_f:"No flights match these filters.", tv_empty_filters_h:"No hotels match these filters.", tv_clear:"Clear filters", tv_empty_none_f:"No sample flights in this cabin.", tv_empty_none_h:"No sample room sleeps this many guests per room.",
+  tv_err_f:"Couldn't load sample flights: {e}", tv_err_h:"Couldn't load sample hotels: {e}", tv_err_rev:"Couldn't load the review: {e}", tv_err_rooms:"Couldn't load the rooms: {e}",
+  tv_past_date:"That date has passed. Pick today or a later date.", tv_too_far:"That date is too far ahead for the sample data. Pick an earlier date.",
+  tv_from:"From", tv_to:"To", tv_date:"Departure date", tv_travellers:"Travellers (1-9)", tv_cabin:"Cabin", tv_city:"City", tv_check_in:"Check-in", tv_check_out:"Check-out", tv_rooms_l:"Rooms (1-4)", tv_guests_l:"Guests (1-12)",
+  tv_update:"Update results", tv_e_same:"Pick a destination different from the origin.", tv_e_date:"Enter a date.", tv_e_trav:"Enter 1 to 9 travellers.", tv_e_out:"Check-out must be 1 to 30 nights after check-in.", tv_e_rooms:"Enter 1 to 4 rooms.", tv_e_guests:"Enter 1 to 12 guests, at least one per room.", tv_e_form:"Check the search and try again: {e}", tv_rate_limited:"Too many searches in a short time. Wait a moment and try again.", tv_busy:"The demo is busy. Try again in a moment.",
   lang_label:"Language", qs_ph:"Search anything…", qs_label:"Search anything with Dory", search_ask:"Search everything for \"{q}\"",
   sub_overview:"Manage your organization's information and settings.", sub_noorg:"Set up your organization to start using Dory with your team.", can_h:"What you can do with an organization",
   can_members_h:"Manage members", can_members_p:"Invite teammates and set each person's role.", can_know_h:"Organize knowledge", can_know_p:"Keep documents, wiki and meeting notes together.",
@@ -2651,6 +2844,447 @@ function chatEmpty(onAsk) {
     el("div", { class: "sugs", role: "group", "aria-label": t("chat_try") },
       asks.map(([k, icon]) => el("button", { type: "button", class: "sugbtn", onclick: () => onAsk(t(k)) }, ic(icon), t(k)))));
 }
+/* ---------- travel cards in the chat: sample flights and hotels ----------
+   A chat answer (or history turn) carrying `travel` = {flights: FlightQuery, hotels: HotelQuery} draws these cards inside
+   Dory's message. Search, filters, sorting and every price come from /api/travel (dory.travel_search): the page only draws
+   them. That API is public (sample data only, rate limited), so it has its own fetch, the same in mock mode; its errors are
+   {error: {code, message, fields?}, data}. */
+const TV_ICON = {
+  search: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="11" cy="11" r="7"/><path d="m20 20-3.6-3.6"/></svg>',
+  pin: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><path d="M12 21s-7-6.2-7-11.5a7 7 0 0 1 14 0C19 14.8 12 21 12 21z"/><circle cx="12" cy="9.5" r="2.5"/></svg>',
+  check: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m5 12.5 4.5 4.5L19 7.5"/></svg>',
+  bag: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="6" y="7" width="12" height="13" rx="2"/><path d="M9 7V4h6v3M9 20v1M15 20v1"/></svg>',
+  case: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linejoin="round"><rect x="4" y="8" width="16" height="12" rx="2"/><path d="M9 8V5h6v3M9 12v4M15 12v4"/></svg>',
+  meal: '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 3v8M5 3v5a2 2 0 0 0 4 0V3M7 11v10M16 21V3c-2 1.5-3 4-3 7h3"/></svg>',
+  plane: '<svg viewBox="0 0 24 24" fill="currentColor"><path d="M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z"/></svg>',
+};
+// placeholder hotel picture: a waterfront skyline tinted by the hotel's photo_hue (--h), never a real photo
+const TV_PHOTO = '<svg viewBox="0 0 96 120" preserveAspectRatio="xMidYMid slice" aria-hidden="true"><rect class="sky" width="96" height="120"/><circle class="sun" cx="70" cy="26" r="9"/>'
+  + '<path class="far" d="M0 84V60h8v-8h7v32h6V44h9v40h5V54h10v30h6V34h3l3-7 3 7h3v50h8V58h10v26h6V66h6v18z"/>'
+  + '<path class="near" d="M0 90V72h12v18h4V62h10v28h8V76h9v14h7V68h11v22h6V58h10v32h6V74h13v16z"/>'
+  + '<rect class="water" y="90" width="96" height="30"/><path class="wave" d="M8 99h16M38 106h20M70 98h16M18 113h14M60 114h22"/></svg>';
+const TV_FILTERS = { flights: { sort: "best", stops: [], times: [], airlines: [], max_price: null }, hotels: { sort: "recommended", min_stars: null, min_score: null, free_cancellation: false, breakfast: false, max_nightly: null } };
+let tvSeq = 0, tvMetaP = null, tvMeta = { airports: [], routes: [], hotel_cities: [] };
+async function travelApi(path, body) {
+  let res;
+  try { res = await fetch("/api/travel" + path, body ? { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(body) } : undefined); } catch { throw new Error(t("err_net")); }
+  let j = null; try { j = await res.json(); } catch { /* not JSON */ }
+  if (!res.ok) { const er = (j && j.error) || {}, e = new ApiError(er.code || "", res.status); e.detail = er.code; e.fields = er.fields; throw e; }
+  return j;
+}
+const tvLoadMeta = () => tvMetaP || (tvMetaP = travelApi("/airports").then((m) => (tvMeta = m)).catch(() => { tvMetaP = null; return tvMeta; }));
+const tvPlace = (c) => tvMeta.airports.find((a) => a.code === c) || { code: c, city: c, airport: c };
+const tvCity = (p) => p.city + " (" + p.code + ")";
+const tvMoney = (n) => t("tv_thb", { n: Number(n || 0).toLocaleString(locale()) });
+const tvYmd = (iso) => String(iso).slice(0, 10).split("-").map(Number);
+const tvDate = (iso, o) => { const [y, m, d] = tvYmd(iso); return new Date(y, m - 1, d).toLocaleDateString(locale(), o || { weekday: "short", day: "numeric", month: "short" }); };
+const tvLong = (iso) => tvDate(iso, { weekday: "short", day: "numeric", month: "short", year: "numeric" });
+const tvTime = (iso) => String(iso).slice(11, 16); // local time at that airport, never converted
+const tvDur = (min) => t("tv_dur", { h: Math.floor(min / 60), m: min % 60 });
+const tvN = (k, n) => t(n === 1 ? k + "1" : k, { n });
+const tvNights = (q) => { const [a, b] = [tvYmd(q.check_in), tvYmd(q.check_out)]; return Math.round((Date.UTC(b[0], b[1] - 1, b[2]) - Date.UTC(a[0], a[1] - 1, a[2])) / 864e5); };
+const tvStayDates = (q) => tvDate(q.check_in, { day: "numeric", month: "short" }) + "–" + tvDate(q.check_out, { day: "numeric", month: "short", year: "numeric" });
+const tvStayLine = (q) => [tvStayDates(q), tvN("tv_nights", tvNights(q)), tvN("tv_rooms", q.rooms), tvN("tv_guests", q.guests)].join(" · ");
+const tvToday = () => { const d = new Date(); return [d.getFullYear(), String(d.getMonth() + 1).padStart(2, "0"), String(d.getDate()).padStart(2, "0")].join("-"); };
+const tvErr = (e) => { const k = { past_date: "tv_past_date", too_far: "tv_too_far", rate_limited: "tv_rate_limited", busy: "tv_busy" }[e && e.detail]; return k ? t(k) : errText(e); };
+const tvScore = (s) => t(s >= 9 ? "tv_sw_9" : s >= 8 ? "tv_sw_8" : s >= 7 ? "tv_sw_7" : "tv_sw_0");
+function tvIcon(k) { const s = el("span", { class: "tv-ic", "aria-hidden": "true" }); s.innerHTML = TV_ICON[k]; return s; }
+function tvAlert(text, retry) {
+  const n = el("div", { class: "tv-alert", role: "alert" }, el("p", { text }), el("button", { type: "button", class: "tv-btn", onclick: () => { n.remove(); retry(); } }, t("retry")));
+  return n;
+}
+const tvSkeleton = () => el("li", { class: "tv-card tv-skel", "aria-hidden": "true" }, ["45%", "90%", "70%", "100%"].map((w) => el("div", { class: "skeleton", style: "width:" + w })));
+const tvDl = (rows) => el("dl", { class: "tv-dl" }, rows.map(([k, v, tot]) => [el("dt", { class: tot ? "tot" : null, text: k }), el("dd", { class: tot ? "tot" : null, text: v })]));
+
+// ctx (from chatWidget): post(text, node) adds a new Dory message at the end of the log, reveal(node) scrolls the log to it
+// picks: what the person selected in THIS reply's cards, by slot (flight / return / room); "Book in sandbox" books them together
+function travelCards(travel, ctx) {
+  const box = el("div", { class: "trv", "aria-live": "off" }); // the log announces Dory's line; counts speak in their own status
+  const picks = {}, at = (slot) => ({ ...ctx, picks, slot });
+  if (travel.flights) box.append(tvBlock("flights", travel.flights, at("flight"), travel.flight_filters));
+  if (travel.return_flights) box.append(tvBlock("flights", travel.return_flights, at("return"), travel.return_flight_filters));
+  if (travel.hotels) box.append(tvBlock("hotels", travel.hotels, at("room"), travel.hotel_filters));
+  box.append(el("p", { class: "tv-note", text: t("tv_note") }));
+  return box;
+}
+
+// filters: what Dory's search tool applied ("only non-stop"), the chips start pressed accordingly
+function tvBlock(kind, query, ctx, filters) {
+  const F = kind === "flights", id = "tv" + ++tvSeq;
+  const st = { q: { ...query }, f: { ...JSON.parse(JSON.stringify(TV_FILTERS[kind])), ...(filters || {}) }, list: [], data: null, seq: 0, sel: null };
+  const sec = el("section", { class: "tv-block", "aria-labelledby": id + "-h", tabindex: "-1" });
+  const h3 = el("h3", { id: id + "-h" }), meta = el("p");
+  const summary = () => {
+    const q = st.q;
+    if (F) { h3.replaceChildren(el("span", { class: "sr", text: t("tv_flights") + ": " }), tvCity(tvPlace(q.origin)) + " → " + tvCity(tvPlace(q.destination))); meta.textContent = [tvLong(q.depart), tvN("tv_trav", q.adults), t("tv_" + q.cabin)].join(" · "); }
+    else { h3.textContent = t("tv_h_hotels", { city: tvPlace(q.city).city }); meta.textContent = tvStayLine(q); }
+  };
+  const list = el("ul", { class: "tv-list", "aria-labelledby": id + "-h", "aria-busy": "false" });
+  const msg = el("div", { class: "tv-msg" });
+  const moreB = el("button", { type: "button", class: "tv-btn", hidden: true, onclick: () => load(true) }, t(F ? "tv_more_flights" : "tv_more_hotels"));
+  const count = el("p", { class: "tv-count", role: "status" });
+
+  // ---- filter chips: toggles (aria-pressed) and disclosures (aria-expanded) whose panels open in flow below the row
+  const chipsRow = el("div", { class: "tv-chips", role: "group", "aria-label": t(F ? "tv_ff" : "tv_hf") }), pops = el("div");
+  const syncs = [], discs = [];
+  const refilter = () => { syncs.forEach((f) => f()); load(false); };
+  const toggle = (label, isOn, flip) => {
+    const b = el("button", { type: "button", class: "tv-chip", "aria-pressed": "false", onclick: () => { flip(); refilter(); } }, label);
+    syncs.push(() => b.setAttribute("aria-pressed", String(!!isOn()))); chipsRow.append(b);
+  };
+  const inList = (k, v) => toggle(t("tv_" + v), () => st.f[k].includes(v), () => { st.f[k] = st.f[k].includes(v) ? st.f[k].filter((x) => x !== v) : [...st.f[k], v]; });
+  const disc = (key, label, sr, on, fill) => {
+    const pid = id + "-" + key, panel = el("div", { class: "tv-pop", id: pid, role: "group", "aria-label": label, hidden: true });
+    const b = el("button", { type: "button", class: "tv-chip", "aria-expanded": "false", "aria-controls": pid });
+    const d = { b, panel, close: () => { panel.hidden = true; b.setAttribute("aria-expanded", "false"); } };
+    b.addEventListener("click", () => { const open = panel.hidden; discs.forEach((x) => x.close()); if (open) { fill(panel); panel.hidden = false; b.setAttribute("aria-expanded", "true"); } });
+    const esc = (ev) => { if (ev.key === "Escape" && !panel.hidden) { ev.preventDefault(); ev.stopPropagation(); d.close(); b.focus(); } };
+    b.addEventListener("keydown", esc); panel.addEventListener("keydown", esc);
+    // sr() = [hidden lead-in, visible label, hidden state]: the name always contains the visible words
+    syncs.push(() => { b.classList.toggle("on", !!on()); const [pre, label, extra] = sr(); b.replaceChildren(pre ? el("span", { class: "sr", text: pre + ": " }) : null, el("span", { text: label }), extra ? el("span", { class: "sr", text: ", " + extra }) : null, el("span", { class: "tv-caret", "aria-hidden": "true", text: "▾" })); });
+    discs.push(d); chipsRow.append(b); pops.append(panel);
+  };
+  const radios = (panel, name, opts, cur, pick) => panel.replaceChildren(opts.map(([v, text]) => el("label", { class: "tv-opt" },
+    el("input", { type: "radio", name: id + "-" + name, checked: v === cur, onchange: () => { pick(v); refilter(); } }), el("span", { text }))));
+  const steps = (r) => { if (!r) return []; const out = new Set(); for (const k of [0.25, 0.5, 0.75]) out.add(Math.ceil((r.min + (r.max - r.min) * k) / 500) * 500); return [...out].filter((v) => v < r.max); };
+  const priceDisc = (fkey, upto) => disc("price", t("tv_price"), () => ["", t("tv_price"), st.f[fkey] == null ? "" : t(upto, { p: tvMoney(st.f[fkey]) })], () => st.f[fkey] != null,
+    (p) => radios(p, "price", [[null, t("tv_any_price")], ...steps(st.data && st.data.price_range).map((v) => [v, t(upto, { p: tvMoney(v) })])], st.f[fkey], (v) => { st.f[fkey] = v; }));
+  const sortDisc = (opts) => disc("sort", t("tv_sort"), () => [t("tv_sort"), t("tv_s_" + st.f.sort), ""], () => true,
+    (p) => radios(p, "sort", opts.map((v) => [v, t("tv_s_" + v)]), st.f.sort, (v) => { st.f.sort = v; }));
+  if (F) {
+    sortDisc(["best", "cheapest", "fastest"]);
+    inList("stops", "nonstop"); inList("stops", "1stop"); for (const w of ["morning", "afternoon", "evening"]) inList("times", w);
+    disc("air", t("tv_airlines"), () => ["", t("tv_airlines") + (st.f.airlines.length ? " (" + st.f.airlines.length + ")" : ""), st.f.airlines.length ? t("tv_n_selected", { n: st.f.airlines.length }) : ""], () => st.f.airlines.length,
+      (p) => p.replaceChildren(((st.data && st.data.airlines) || []).map((a) => el("label", { class: "tv-opt" },
+        el("input", { type: "checkbox", checked: st.f.airlines.includes(a.code), onchange: (ev) => { st.f.airlines = ev.target.checked ? [...st.f.airlines, a.code] : st.f.airlines.filter((x) => x !== a.code); refilter(); } }),
+        el("span", { text: a.name + " (" + a.code + ")" })))));
+    priceDisc("max_price", "tv_upto_pp");
+  } else {
+    toggle(t("tv_free_cancel"), () => st.f.free_cancellation, () => { st.f.free_cancellation = !st.f.free_cancellation; });
+    toggle(t("tv_breakfast"), () => st.f.breakfast, () => { st.f.breakfast = !st.f.breakfast; });
+    toggle(t("tv_4stars"), () => st.f.min_stars === 4, () => { st.f.min_stars = st.f.min_stars === 4 ? null : 4; });
+    toggle(t("tv_score8"), () => st.f.min_score === 8, () => { st.f.min_score = st.f.min_score === 8 ? null : 8; });
+    priceDisc("max_nightly", "tv_upto_night");
+    sortDisc(["recommended", "price", "rating"]);
+  }
+
+  // ---- results
+  // one selection per block: a flight id, or "hotel/room"
+  const markSel = () => {
+    for (const li of list.querySelectorAll("[data-key]")) {
+      const on = li.dataset.key === st.sel, b = li.querySelector(":scope > .tv-primary");
+      li.classList.toggle("sel", on); b.setAttribute("aria-pressed", String(on)); b.textContent = t(on ? "tv_selected" : F ? "tv_select_flight" : "tv_choose_room");
+    }
+  };
+  const pt = (iso, p, plus) => el("div", { class: "tv-pt" + (plus == null ? "" : " end") },
+    el("strong", { class: "tv-t" }, tvTime(iso), plus ? el("sup", {}, "+" + plus, el("span", { class: "sr", text: " (" + t("tv_plus_day") + ")" })) : null),
+    el("span", { class: "tv-code", title: p.airport }, p.code, el("span", { class: "sr", text: " " + p.airport })),
+    el("span", { class: "tv-d", text: tvDate(iso) }));
+  const flightCard = (o) => el("li", { class: "tv-card tv-flight", "data-key": o.id },
+    el("div", { class: "tv-top" }, el("span", { class: "tv-logo", "aria-hidden": "true" }, tvIcon("plane")),
+      el("h4", { class: "tv-name" }, o.airline.name, el("span", { class: "tv-fno", text: o.flights.join(" · ") })),
+      o.tags[0] ? el("span", { class: "tv-tag", text: t("tv_tag_" + o.tags[0]) }) : null),
+    el("p", { class: "tv-sample", text: t("tv_sample_f") }),
+    el("div", { class: "tv-route" }, pt(o.depart, o.origin),
+      el("div", { class: "tv-mid" }, el("span", { text: tvDur(o.duration_min) }), el("span", { class: "tv-line", "aria-hidden": "true" }),
+        el("span", { text: o.stops ? t("tv_via", { c: o.via.map((v) => v.code).join(", ") }) : t("tv_nonstop") })),
+      pt(o.arrive, o.destination, o.arrive_day_offset)),
+    el("div", { class: "tv-row" },
+      el("ul", { class: "tv-details" },
+        el("li", {}, tvIcon("bag"), t("tv_cabin_bag", { kg: o.baggage.cabin_kg })),
+        el("li", {}, tvIcon("case"), o.baggage.checked_kg ? t("tv_checked", { kg: o.baggage.checked_kg }) : t("tv_checked_none")),
+        el("li", {}, tvIcon("meal"), t("tv_meal_" + o.meal))),
+      el("div", { class: "tv-price" }, el("span", { class: "tv-pl", text: tvN("tv_total_for", o.travellers) }), el("strong", { class: "tv-big", text: tvMoney(o.price.total) }),
+        el("span", { class: "tv-pl", text: t("tv_per_trav", { p: tvMoney(o.price.per_traveller) }) }))),
+    el("button", { type: "button", class: "tv-primary", "aria-pressed": "false", onclick: (ev) => pickFlight(o, ev.currentTarget.closest("li")) }, t("tv_select_flight")));
+  const pickFlight = async (o, li) => {
+    if (st.sel === o.id && st.review && st.review.isConnected) { ctx.reveal(st.review); st.review.focus({ preventScroll: true }); return; }
+    st.sel = o.id; markSel();
+    try {
+      const r = await travelApi("/flights/review", { query: st.q, id: o.id });
+      st.review = ctx.post(t("tv_rev_f_line"), tvFareReview(r, ctx, () => { st.sel = null; markSel(); delete ctx.picks[ctx.slot]; ctx.reveal(sec); sec.focus({ preventScroll: true }); }));
+      st.review.focus({ preventScroll: true });
+    } catch (e) { if (st.sel === o.id) { st.sel = null; markSel(); } li.append(tvAlert(t("tv_err_rev", { e: tvErr(e) }), () => pickFlight(o, li))); }
+  };
+  const hotelCard = (c) => {
+    const rid = id + "-r-" + c.id, photo = el("div", { class: "tv-photo" });
+    photo.innerHTML = TV_PHOTO; photo.style.setProperty("--h", String(Number(c.photo_hue) || 0));
+    const roomsBox = el("ul", { class: "tv-list tv-rooms", id: rid, hidden: true, tabindex: "-1", "aria-label": t("tv_rooms_at", { name: c.name }) });
+    const viewB = el("button", { type: "button", class: "tv-primary", "aria-expanded": "false", "aria-controls": rid }, t("tv_view_rooms"));
+    const li = el("li", { class: "tv-card tv-hotel" },
+      el("div", { class: "tv-hrow" }, photo,
+        el("div", { class: "tv-hinfo" },
+          el("div", { class: "tv-top" }, el("h4", { class: "tv-name", text: c.name }), c.tags[0] ? el("span", { class: "tv-tag", text: t("tv_tag_" + c.tags[0]) }) : null),
+          el("span", { class: "sr", text: t("tv_photo", { name: c.name }) }),
+          el("p", { class: "tv-loc" }, tvIcon("pin"), c.area + ", " + c.city),
+          el("p", { class: "tv-stars" }, el("span", { class: "tv-starrow", "aria-hidden": "true" }, Array.from({ length: c.stars }, () => ic("star"))), el("span", { text: t("tv_stars", { n: c.stars }) })),
+          el("p", { class: "tv-rate" }, el("span", { class: "tv-score" }, String(c.review.score), el("span", { class: "sr", text: " " + t("tv_score_of") })),
+            el("span", { text: tvScore(c.review.score) + " · " + t("tv_reviews", { n: c.review.count.toLocaleString(locale()) }) })),
+          el("p", { class: "tv-sample", text: t("tv_fictional") }))),
+      el("ul", { class: "tv-amen" }, c.amenities.slice(0, 4).map((a) => el("li", { text: t("tv_am_" + a) }))),
+      c.cancellation.free ? el("p", { class: "tv-ok" }, tvIcon("check"), t("tv_free_until", { d: tvDate(c.cancellation.until) })) : el("p", { class: "tv-neutral", text: t("tv_nonref") }),
+      el("p", { class: "tv-stay", text: tvStayLine(c) }),
+      el("div", { class: "tv-price tv-hprice" }, el("strong", { class: "tv-big", text: tvMoney(c.price.nightly) }), el("span", { class: "tv-pl", text: t("tv_per_night") }),
+        el("span", { class: "tv-pl", text: t("tv_stay_total", { p: tvMoney(c.price.total), nights: tvN("tv_nights", c.nights), rooms: tvN("tv_rooms", c.rooms) }) }),
+        el("span", { class: "tv-sample", text: t("tv_sample_price") })),
+      viewB, roomsBox);
+    const q = { ...st.q };
+    const loadRooms = async () => {
+      roomsBox.setAttribute("aria-busy", "true"); roomsBox.replaceChildren(tvSkeleton());
+      try {
+        const r = await travelApi("/hotels/rooms", { query: q, hotel_id: c.id });
+        roomsBox.replaceChildren(r.rooms.map((x) => el("li", { class: "tv-room", "data-key": c.id + "/" + x.id },
+          el("strong", { class: "tv-rname", text: x.name }),
+          el("p", { class: "tv-pl", text: [x.beds, t("tv_room_size", { m: x.size_m2 }), t("tv_max_guests", { n: x.max_guests })].join(" · ") }),
+          x.breakfast ? el("p", { class: "tv-ok" }, tvIcon("check"), t("tv_bf_yes")) : el("p", { class: "tv-neutral", text: t("tv_bf_no") }),
+          x.cancellation.free ? el("p", { class: "tv-ok" }, tvIcon("check"), t("tv_free_until", { d: tvDate(x.cancellation.until) })) : el("p", { class: "tv-neutral", text: t("tv_nonref") }),
+          el("p", { class: "tv-rprice" }, el("strong", { text: t("tv_nightly", { p: tvMoney(x.price.nightly) }) }), el("span", { class: "tv-pl", text: t("tv_stay", { p: tvMoney(x.price.total) }) })),
+          el("button", { type: "button", class: "tv-primary", "aria-pressed": "false", onclick: (ev) => pickRoom(x, ev.currentTarget.closest("li")) }, t("tv_choose_room")))));
+        markSel();
+      } catch (e) { roomsBox.replaceChildren(el("li", {}, tvAlert(t("tv_err_rooms", { e: tvErr(e) }), loadRooms))); }
+      finally { roomsBox.setAttribute("aria-busy", "false"); }
+    };
+    const pickRoom = async (x, rli) => {
+      const key = c.id + "/" + x.id;
+      if (st.sel === key && st.review && st.review.isConnected) { ctx.reveal(st.review); st.review.focus({ preventScroll: true }); return; }
+      st.sel = key; markSel();
+      try {
+        const r = await travelApi("/hotels/review", { query: q, hotel_id: c.id, room_id: x.id });
+        st.review = ctx.post(t("tv_rev_h_line"), tvStayReview(r, q, ctx, () => { st.sel = null; markSel(); delete ctx.picks.room; if (roomsBox.hidden) viewB.click(); ctx.reveal(li); roomsBox.focus({ preventScroll: true }); }));
+        st.review.focus({ preventScroll: true });
+      } catch (e) { if (st.sel === key) { st.sel = null; markSel(); } rli.append(tvAlert(t("tv_err_rev", { e: tvErr(e) }), () => pickRoom(x, rli))); }
+    };
+    viewB.addEventListener("click", () => {
+      const open = roomsBox.hidden; roomsBox.hidden = !open; viewB.setAttribute("aria-expanded", String(open)); viewB.textContent = t(open ? "tv_hide_rooms" : "tv_view_rooms");
+      if (open && !roomsBox.querySelector(".tv-room")) loadRooms();
+    });
+    return li;
+  };
+  const card = F ? flightCard : hotelCard;
+  const empty = (why) => {
+    const box = el("div", { class: "tv-empty" });
+    if (why === "route") {
+      const r = tvMeta.routes[0], c = tvMeta.hotel_cities[0];
+      box.append(el("p", { text: F ? t("tv_empty_route_f", { r: st.q.origin + " → " + st.q.destination, ok: tvMeta.routes.map(([a, b]) => tvCity(tvPlace(a)) + " → " + tvCity(tvPlace(b))).join(", ") })
+        : t("tv_empty_route_h", { city: tvPlace(st.q.city).city, ok: tvMeta.hotel_cities.map((x) => tvPlace(x).city).join(", ") }) }));
+      if (F ? r : c) box.append(el("button", { type: "button", class: "tv-btn", onclick: () => { if (F) { st.q.origin = r[0]; st.q.destination = r[1]; } else st.q.city = c; summary(); load(false); } },
+        t("tv_search_x", { x: F ? r[0] + " → " + r[1] : tvPlace(c).city })));
+    } else if (why === "filters") {
+      box.append(el("p", { text: t(F ? "tv_empty_filters_f" : "tv_empty_filters_h") }),
+        el("button", { type: "button", class: "tv-btn", onclick: () => { st.f = JSON.parse(JSON.stringify(TV_FILTERS[kind])); discs.forEach((d) => d.close()); refilter(); } }, t("tv_clear")));
+    } else box.append(el("p", { text: t(F ? "tv_empty_none_f" : "tv_empty_none_h") }));
+    return box;
+  };
+  const render = (r, more) => {
+    st.data = r;
+    const cards = r.results.map(card);
+    if (more) { st.list.push(...r.results); list.append(...cards); } else { st.list = r.results.slice(); list.replaceChildren(...cards); }
+    markSel();
+    msg.replaceChildren(r.empty ? empty(r.empty) : null);
+    moreB.hidden = !r.has_more;
+    count.textContent = r.total ? t(F ? "tv_count_f" : "tv_count_h", { n: st.list.length, total: r.total }) : "";
+    summary(); syncs.forEach((f) => f());
+  };
+  const body = (more, q) => ({ query: q || st.q, filters: st.f, offset: more ? st.list.length : 0, limit: more ? 3 : Math.min(10, Math.max(1, st.list.length)) });
+  const load = async (more) => {
+    const my = ++st.seq, sk = tvSkeleton();
+    msg.replaceChildren(); moreB.hidden = true; list.setAttribute("aria-busy", "true");
+    if (more) list.append(sk); else list.replaceChildren(sk);
+    try {
+      const [r] = await Promise.all([travelApi("/" + kind, body(more)), tvLoadMeta()]);
+      if (my !== st.seq) return;
+      sk.remove(); render(r, more);
+    } catch (e) {
+      if (my !== st.seq) return;
+      sk.remove(); if (!more) { st.list = []; count.textContent = ""; }
+      else moreB.hidden = false;
+      msg.replaceChildren(tvAlert(t(F ? "tv_err_f" : "tv_err_h", { e: tvErr(e) }), () => load(more)));
+    } finally { if (my === st.seq) list.setAttribute("aria-busy", "false"); }
+  };
+
+  // ---- Edit search: one column, labels above fields, each error under its field (aria-describedby); Cancel restores
+  const editB = el("button", { type: "button", class: "tv-btn", "aria-expanded": "false", "aria-controls": id + "-form" }, t("tv_edit"));
+  const form = el("form", { class: "tv-form", id: id + "-form", hidden: true, novalidate: true, "aria-label": t("tv_edit") });
+  const fields = F ? [["origin", "tv_from", "air"], ["destination", "tv_to", "air"], ["depart", "tv_date", "date"], ["adults", "tv_travellers", "num", 1, 9], ["cabin", "tv_cabin", "cabin"]]
+    : [["city", "tv_city", "air"], ["check_in", "tv_check_in", "date"], ["check_out", "tv_check_out", "date"], ["rooms", "tv_rooms_l", "num", 1, 4], ["guests", "tv_guests_l", "num", 1, 12]];
+  const inp = {}, err = {};
+  for (const [k, label, type, min, max] of fields) {
+    const fid = id + "-" + k;
+    inp[k] = type === "air" || type === "cabin" ? el("select", { id: fid }) : el("input", { id: fid, type: type === "date" ? "date" : "number", min: type === "num" ? min : null, max: type === "num" ? max : null, step: type === "num" ? "1" : null, inputmode: type === "num" ? "numeric" : null, required: true });
+    err[k] = el("p", { class: "tv-err", id: fid + "-e" });
+    inp[k].setAttribute("aria-describedby", fid + "-e");
+    form.append(el("label", { for: fid, text: t(label) }), inp[k], err[k]);
+  }
+  const formErr = el("p", { class: "tv-err", role: "alert" }), saveB = el("button", { type: "submit", class: "tv-primary" }, t("tv_update"));
+  form.append(formErr, el("div", { class: "tv-acts" }, saveB, el("button", { type: "button", class: "tv-btn", onclick: () => closeForm() }, t("cancel"))));
+  const setErr = (k, text) => { err[k].textContent = text || ""; if (text) inp[k].setAttribute("aria-invalid", "true"); else inp[k].removeAttribute("aria-invalid"); };
+  const openForm = async () => {
+    await tvLoadMeta();
+    const codes = tvMeta.airports.map((a) => a.code), opts = (cur) => [...new Set([...codes, cur])].map((c) => el("option", { value: c, text: tvCity(tvPlace(c)) }));
+    for (const [k, , type] of fields) {
+      if (type === "air") inp[k].replaceChildren(...opts(st.q[k]));
+      if (type === "cabin") inp[k].replaceChildren(...["economy", "business"].map((c) => el("option", { value: c, text: t("tv_" + c) })));
+      if (type === "date") inp[k].min = tvToday();
+      inp[k].value = String(st.q[k]); setErr(k, "");
+    }
+    formErr.textContent = ""; form.hidden = false; editB.setAttribute("aria-expanded", "true"); inp[fields[0][0]].focus();
+  };
+  const closeForm = () => { form.hidden = true; editB.setAttribute("aria-expanded", "false"); editB.focus(); };
+  editB.addEventListener("click", () => (form.hidden ? openForm() : closeForm()));
+  form.addEventListener("keydown", (ev) => { if (ev.key === "Escape") { ev.preventDefault(); ev.stopPropagation(); closeForm(); } });
+  const check = () => {
+    const v = {}, bad = {}, today = tvToday();
+    for (const [k, , type, min, max] of fields) {
+      v[k] = type === "num" ? Number(inp[k].value) : inp[k].value;
+      if (type === "num" && (!Number.isInteger(v[k]) || v[k] < min || v[k] > max)) bad[k] = t(k === "adults" ? "tv_e_trav" : k === "rooms" ? "tv_e_rooms" : "tv_e_guests");
+      if (type === "date") bad[k] = !v[k] ? t("tv_e_date") : v[k] < today ? t("tv_past_date") : bad[k];
+    }
+    if (F && v.origin === v.destination) bad.destination = t("tv_e_same");
+    if (!F && !bad.check_in && !bad.check_out) { const n = tvNights(v); if (n < 1 || n > 30) bad.check_out = t("tv_e_out"); }
+    if (!F && !bad.rooms && !bad.guests && v.guests < v.rooms) bad.guests = t("tv_e_guests");
+    for (const [k] of fields) bad[k] = bad[k] || "";
+    return { v, bad };
+  };
+  form.addEventListener("submit", async (ev) => {
+    ev.preventDefault(); if (form.getAttribute("aria-busy") === "true") return;
+    const { v, bad } = check(); formErr.textContent = "";
+    for (const [k] of fields) setErr(k, bad[k]);
+    const first = fields.find(([k]) => bad[k]); if (first) { inp[first[0]].focus(); return; }
+    form.setAttribute("aria-busy", "true"); saveB.disabled = true;
+    try {
+      const r = await travelApi("/" + kind, body(false, v));
+      st.q = v; st.sel = null; st.seq++; render(r, false); closeForm();
+    } catch (e) {
+      const f0 = e.fields && e.fields[0], loc = f0 ? String(f0.field).split(".").pop() : null;
+      const k = e.detail === "past_date" ? (F ? "depart" : "check_in") : e.detail === "too_far" ? (F ? "depart" : "check_out") : loc in inp ? loc : null;
+      if (k) { setErr(k, f0 ? String(f0.message || "").replace(/^Value error, /, "") : tvErr(e)); inp[k].focus(); }
+      else formErr.textContent = t("tv_e_form", { e: tvErr(e) });
+    } finally { form.removeAttribute("aria-busy"); saveB.disabled = false; }
+  });
+
+  sec.append(el("div", { class: "tv-sum" }, tvIcon("search"), el("div", { class: "tv-q" }, h3, meta), editB, form), chipsRow, pops, msg, list, el("div", { class: "tv-foot" }, moreB, count));
+  summary(); syncs.forEach((f) => f()); load(false);
+  return sec;
+}
+
+// "Book in sandbox" books straight from the card (POST /travel/book, no AI): this review's item plus whatever else
+// the person picked in the same reply; the quote first, then "Confirm booking". Typed "book <ref>" still goes to Dory.
+const TV_SLOTS = ["flight", "return", "room"];
+function tvBookActs(item, ctx, change, changeKey, plain) {
+  ctx.picks[ctx.slot] = item; // { ref, label }: the latest pick of this kind
+  const bookB = el("button", { type: "button", class: "tv-primary" }, t("tv_book"));
+  const acts = el("div", { class: "tv-acts" }, bookB,
+    el("button", { type: "button", class: "tv-btn", onclick: change }, t(changeKey)), el("button", { type: "button", class: "tv-btn", onclick: () => copyText(plain) }, t("tv_copy_sum")));
+  const wrap = el("div", {}, el("p", { class: "tv-ref", text: t("tv_ref", { r: item.ref }) }), acts);
+  item.booked = () => { bookB.disabled = true; bookB.textContent = t("tv_booked"); };
+  bookB.addEventListener("click", () => { const open = wrap.querySelector(".tv-confirm"); if (open) { open.querySelector("input").focus(); return; } wrap.append(tvConfirm(ctx, bookB)); });
+  return wrap;
+}
+function tvConfirm(ctx, bookB) {
+  const id = "tv" + ++tvSeq, picks = ctx.picks, here = ctx.slot;
+  const boxes = TV_SLOTS.filter((s) => picks[s]).map((s) => {
+    const cb = el("input", { type: "checkbox", checked: true, disabled: s === here }); // the clicked item is always booked
+    cb.dataset.slot = s; cb.addEventListener("change", () => quote());
+    return el("label", { class: "tv-check" }, cb, el("span", { text: t("tv_bk_" + (s === "flight" ? "out" : s === "return" ? "back" : "room"), { x: picks[s].label }) }));
+  });
+  const purpose = el("input", { type: "text", id: id + "-p", maxlength: "200", autocomplete: "off" });
+  purpose.addEventListener("change", () => quote());
+  const out = el("div", { class: "tv-quote", "aria-live": "polite" }), msg = el("div", { role: "status" });
+  const confirmB = el("button", { type: "button", class: "tv-primary", disabled: true }, t("tv_bk_confirm"));
+  const cancelB = el("button", { type: "button", class: "tv-btn" }, t("tv_bk_cancel"));
+  const panel = el("div", { class: "tv-confirm", role: "group", "aria-labelledby": id + "-h" },
+    el("h4", { id: id + "-h", text: t("tv_bk_h") }),
+    el("fieldset", {}, el("legend", { text: t("tv_bk_what") }), boxes),
+    el("label", { class: "tv-purpose", for: id + "-p" }, t("tv_bk_purpose"), purpose),
+    out, msg, el("div", { class: "tv-acts" }, confirmB, cancelB));
+  let busy = false, seq = 0;
+  const sel = () => TV_SLOTS.filter((s) => picks[s] && (s === here || panel.querySelector('input[data-slot="' + s + '"]')?.checked));
+  const body = (confirm) => {
+    const s = sel(), f = s.includes("flight") ? picks.flight.ref : "", b = s.includes("return") ? picks.return.ref : "";
+    // a way back without its outbound is just a one-way flight
+    return { flight_ref: f || b, return_ref: f && b ? b : "", room_ref: s.includes("room") ? picks.room.ref : "", purpose: purpose.value.trim(), confirm };
+  };
+  const call = (confirm) => api(O("/travel/book"), J("POST", body(confirm)));
+  const fail = (e) => {
+    if (e instanceof AuthError) { handleAuth(e); return; }
+    const text = e instanceof ApiError && e.status === 409 ? t("tv_bk_unavail") : e instanceof ApiError && e.status === 429 ? t("tv_rate_limited") : t("tv_bk_err", { e: errText(e) });
+    msg.replaceChildren(e instanceof ApiError && e.status === 409 ? el("p", { class: "tv-neutral", text }) : tvAlert(text, () => quote()));
+  };
+  const showQuote = (q) => {
+    const rows = [];
+    if (q.flight) rows.push([[q.flight.carrier_name || q.flight.carrier, q.flight.flights.join(" + "), q.flight.origin + " → " + q.flight.destination, tvLong(q.flight.depart)].join(" · ")
+      + (q.flight.return_depart ? " · " + t("tv_bk_back_on", { d: tvLong(q.flight.return_depart) }) : ""), tvMoney(q.flight.price)]);
+    if (q.hotel) rows.push([[q.hotel.name, q.hotel.room, tvStayDates(q.hotel)].join(" · "), tvMoney(q.hotel.total)]);
+    rows.push([t("tv_bk_total"), q.totals.map((x) => tvMoney(x.amount)).join(" + "), true]);
+    out.replaceChildren(tvDl(rows), el("p", { class: "tv-pl", text: t("tv_bk_note") }));
+  };
+  const quote = async () => {
+    const my = ++seq; confirmB.disabled = true; msg.replaceChildren(); out.setAttribute("aria-busy", "true");
+    if (!out.firstChild) out.append(el("p", { class: "tv-pl", text: t("tv_bk_quoting") }));
+    try {
+      const r = await call(false); if (my !== seq) return;
+      if (r.status === "needs_confirmation") { showQuote(r.quote); confirmB.disabled = false; }
+      else { out.replaceChildren(); msg.replaceChildren(el("p", { class: "tv-neutral", text: t("tv_bk_expired") })); }
+    } catch (e) { if (my === seq) { out.replaceChildren(); fail(e); } }
+    finally { if (my === seq) out.setAttribute("aria-busy", "false"); }
+  };
+  confirmB.addEventListener("click", async () => {
+    if (busy) return; busy = true; confirmB.disabled = true; cancelB.disabled = true; confirmB.textContent = t("tv_bk_booking"); msg.replaceChildren();
+    const slots = sel();
+    try {
+      const r = await call(true);
+      if (r.status === "booked") {
+        const refs = Object.values(r.references || {}).join(", ");
+        panel.replaceChildren(el("p", { class: "tv-done", role: "status", text: t("tv_bk_done", { r: refs }) }));
+        slots.forEach((s) => { if (picks[s]) { picks[s].booked(); delete picks[s]; } });
+        if (r.text) ctx.post(r.text);
+        return;
+      }
+      if (r.status === "needs_confirmation") { showQuote(r.quote); msg.replaceChildren(el("p", { class: "tv-neutral", text: t("tv_bk_again") })); }
+      else msg.replaceChildren(el("p", { class: "tv-neutral", text: r.status === "expired" ? t("tv_bk_expired") : t("tv_bk_not", { r: r.reason || r.error || r.status }) }));
+    } catch (e) { fail(e); }
+    finally { busy = false; if (panel.isConnected && confirmB.isConnected) { confirmB.textContent = t("tv_bk_confirm"); confirmB.disabled = !out.querySelector(".tv-dl"); cancelB.disabled = false; } }
+  });
+  cancelB.addEventListener("click", () => { panel.remove(); bookB.focus(); });
+  setTimeout(() => { purpose.focus({ preventScroll: true }); quote(); }, 0);
+  return panel;
+}
+function tvFareReview(r, ctx, change) {
+  const o = r.flight, b = r.breakdown, ru = r.rules, segs = [];
+  o.segments.forEach((s, i) => {
+    if (i) { const v = o.via[i - 1]; segs.push(el("li", { class: "tv-lay", text: t("tv_layover", { d: tvDur(v.layover_min), c: tvCity(v) }) })); }
+    segs.push(el("li", {}, el("strong", { text: s.flight }), " · " + tvLong(s.depart), el("br"), s.from.code + " " + tvTime(s.depart) + " → " + s.to.code + " " + tvTime(s.arrive) + " · " + tvDur(s.minutes)));
+  });
+  const bags = [t("tv_cabin_bag", { kg: o.baggage.cabin_kg }), o.baggage.checked_kg ? t("tv_checked", { kg: o.baggage.checked_kg }) : t("tv_checked_none"), t("tv_meal_" + o.meal)];
+  const rules = [ru.change_fee ? t("tv_change_fee", { p: tvMoney(ru.change_fee) }) : t("tv_change_free"), ru.refund_fee == null ? t("tv_no_refund") : t("tv_refund_fee", { p: tvMoney(ru.refund_fee) })];
+  const head = [o.airline.name + " " + o.flights.join(" · "), t("tv_" + o.cabin), tvN("tv_trav", b.travellers)].join(" · ");
+  const rows = [[t("tv_base"), tvMoney(b.base_per_traveller)], [t("tv_taxes_pp"), tvMoney(b.taxes_per_traveller)], [t("tv_total_x", { p: tvMoney(b.per_traveller), n: b.travellers }), tvMoney(b.total), true]];
+  const plain = [t("tv_rev_f") + ": " + head, ...o.segments.map((s) => s.flight + " · " + tvLong(s.depart) + " · " + s.from.code + " " + tvTime(s.depart) + " → " + s.to.code + " " + tvTime(s.arrive)),
+    t("tv_baggage") + ": " + bags.join(", "), t("tv_rules") + ": " + rules.join(", "), ...rows.map(([k, v]) => k + ": " + v), t("tv_not_booked")].join("\n");
+  return el("div", { class: "tv-review", "aria-live": "off" },
+    el("div", {}, el("h3", { text: t("tv_rev_f") }), el("p", { class: "tv-pl", text: head })),
+    el("div", {}, el("h4", { text: t("tv_itinerary") }), el("ul", {}, segs)),
+    el("div", {}, el("h4", { text: t("tv_baggage") }), el("ul", {}, bags.map((x) => el("li", { text: x })))),
+    el("div", {}, el("h4", { text: t("tv_rules") }), el("ul", {}, rules.map((x) => el("li", { text: x })))),
+    el("div", {}, el("h4", { text: t("tv_breakdown") }), tvDl(rows)),
+    el("p", { class: "tv-nb", text: t("tv_not_booked") }),
+    tvBookActs({ ref: o.booking_ref, label: [o.airline.name, o.flights.join(" · "), tvLong(o.depart), tvMoney(b.total)].join(" · ") }, ctx, change, "tv_change_flight", plain));
+}
+
+function tvStayReview(r, q, ctx, change) {
+  const h = r.hotel, x = r.room, p = x.price;
+  const head = h.name + " · " + x.name, stay = tvStayLine(q);
+  const cancel = x.cancellation.free ? t("tv_free_until", { d: tvDate(x.cancellation.until) }) : t("tv_nonref");
+  const rows = [[t("tv_before_tax"), tvMoney(p.before_taxes)], [t("tv_taxes"), tvMoney(p.taxes)], [t("tv_total_stay", { p: tvMoney(p.nightly), nights: tvN("tv_nights", p.nights), rooms: tvN("tv_rooms", p.rooms) }), tvMoney(p.total), true]];
+  const plain = [t("tv_rev_h") + ": " + head, h.area + ", " + h.city, stay, ...rows.map(([k, v]) => k + ": " + v), t("tv_cancel_h") + ": " + cancel, t("tv_not_booked_h")].join("\n");
+  return el("div", { class: "tv-review", "aria-live": "off" },
+    el("div", {}, el("h3", { text: t("tv_rev_h") }), el("p", { class: "tv-pl", text: head }), el("p", { class: "tv-stay", text: stay })),
+    el("div", {}, el("h4", { text: t("tv_breakdown") }), tvDl(rows)),
+    el("div", {}, el("h4", { text: t("tv_cancel_h") }), x.cancellation.free ? el("p", { class: "tv-ok" }, tvIcon("check"), cancel) : el("p", { class: "tv-neutral", text: cancel })),
+    el("p", { class: "tv-nb", text: t("tv_not_booked_h") }),
+    tvBookActs({ ref: x.booking_ref, label: [h.name, x.name, tvStayDates(q), tvMoney(p.total)].join(" · ") }, ctx, change, "tv_change_room", plain));
+}
+
 function chatWidget(hist, prefix, opts = {}) {
   const msgs = el("div", { class: "msgs", role: "log", "aria-live": "polite", "aria-relevant": "additions", "aria-label": t("talk"), tabindex: "0" });
   const status = el("div", { class: "sr", role: "status", "aria-live": "polite" });
@@ -2658,8 +3292,9 @@ function chatWidget(hist, prefix, opts = {}) {
   const unEmpty = () => { const emp = msgs.querySelector(".chat-empty"); if (emp) emp.remove(); };
   const end = () => { msgs.scrollTop = msgs.scrollHeight; };
   const dayRow = (d) => { const k = d.toDateString(); if (k === lastDay) return; lastDay = k; lastWho = ""; msgs.append(el("div", { class: "day", "data-day": k }, el("span", { text: dayLabel(d) }))); };
-  // q = the question that led to an answer: "Ask again" sends it once more
-  const add = (who, text, at, q) => {
+  // q = the question that led to an answer: "Ask again" sends it once more; extra = a node under Dory's words (travel
+  // cards, a fare review). A review (extra without q) carries its own actions, so it has no Copy / Ask again row.
+  const add = (who, text, at, q, extra, retry) => {
     const d = at ? new Date(at) : new Date(), ok = !isNaN(d), me = who === "user" || who === "me";
     if (ok) dayRow(d);
     const tm = ok ? d.toLocaleTimeString(locale(), { hour: "2-digit", minute: "2-digit" }) : "";
@@ -2671,14 +3306,17 @@ function chatWidget(hist, prefix, opts = {}) {
       for (const x of msgs.querySelectorAll(".msg.last")) x.classList.remove("last");
       n = el("article", { class: "msg bot last" + (lastWho === "bot" ? " cont" : ""), tabindex: "-1" },
         el("div", { class: "who", "aria-hidden": "true" }, el("span", { class: "mark" }), el("span", { text: t("dory_name") }), tm ? el("time", { text: tm }) : null),
-        sr, body,
-        el("div", { class: "mact" },
+        sr, body, extra,
+        extra && !q ? null : el("div", { class: "mact" },
           el("button", { type: "button", onclick: () => copyText(text) }, t("copy")),
-          q ? el("button", { type: "button", onclick: () => send(q) }, t("ask_again")) : null));
+          q ? el("button", { type: "button", onclick: () => send(q, null, retry) }, t(retry ? "retry" : "ask_again")) : null));
     }
     lastWho = me ? "me" : "bot";
     msgs.append(n); end(); return n;
   };
+  const reveal = (node) => { msgs.scrollTop += node.getBoundingClientRect().top - msgs.getBoundingClientRect().top - 8; };
+  const trip = { post: (text, node) => { const n = add("bot", text, null, null, node); reveal(n); return n; }, reveal };
+  const cards = (travel) => (travel && (travel.flights || travel.hotels || travel.return_flights) ? travelCards(travel, trip) : null);
   const coarse = matchMedia("(pointer: coarse)").matches; // touch: Enter is a new line, the button sends
   const ta = el("textarea", { id: prefix + "-in", rows: "1", placeholder: t("chat_ph"), "aria-label": t("chat_ph"), enterkeyhint: coarse ? "enter" : "send" });
   const btn = el("button", { class: "ib send", type: "submit" });
@@ -2689,7 +3327,7 @@ function chatWidget(hist, prefix, opts = {}) {
   const wrap = el("div", { class: "chat", "data-drop": t("drop_files") }, msgs, status, offNote, form, el("div", { class: "hintline", "aria-hidden": "true", text: t("send_hint") }), fileIn);
   const h = items(hist, "turns");
   let asked = "";
-  for (const m of h) { const me = m.role === "user"; add(m.role, m.text || "", m.at, me ? null : asked); asked = me ? m.text || "" : ""; }
+  for (const m of h) { const me = m.role === "user"; add(m.role, m.text || "", m.at, me ? null : asked, me ? null : cards(m.travel)); asked = me ? m.text || "" : ""; }
   if (!h.length) msgs.append(chatEmpty((x) => send(x)));
   const grow = () => { ta.style.height = "auto"; ta.style.height = Math.min(ta.scrollHeight, 192) + "px"; };
   const syncSend = () => { offNote.hidden = navigator.onLine; btn.disabled = !busy && (!navigator.onLine || !ta.value.trim()); };
@@ -2747,7 +3385,7 @@ function chatWidget(hist, prefix, opts = {}) {
       let turns; try { turns = items(await api(O("/chat/history")), "turns"); } catch { continue; }
       const i = turns.findIndex((m, k) => k >= from - 2 && m.role === "user" && m.text === q);
       const a = i >= 0 ? turns.slice(i + 1).find((m) => m.role !== "user") : null;
-      if (a) { noteEl.remove(); add("bot", a.text || "", a.at, q); return; }
+      if (a) { noteEl.remove(); add("bot", a.text || "", a.at, q, cards(a.travel)); return; }
     }
   };
   // again = the question is already on screen (Retry after an error, Ask again after Stop waiting)
@@ -2772,7 +3410,7 @@ function chatWidget(hist, prefix, opts = {}) {
       // Stop waiting aborts the browser's request only: the server may still finish and keep the answer in the history
       const stop = new Promise((_, rej) => ac.signal.addEventListener("abort", () => rej(STOPPED), { once: true }));
       const r = await Promise.race([api(O("/chat"), { ...J("POST", { message: text, page: pageName(), document_ids: Array.isArray(docId) ? docId : docId ? [docId] : [] }), signal: ac.signal }), stop]);
-      row.remove(); add("bot", r.answer || "", null, text); refreshView();
+      row.remove(); const n = add("bot", r.answer || "", null, text, cards(r.travel), r.travel_fallback); if (r.travel) reveal(n); else refreshView();
     } catch (e) {
       row.remove();
       if (e === STOPPED) lateAnswer(text, note(false, t("stopped"), text));
@@ -4998,11 +5636,87 @@ function mockApi(method, path, body) {
   // chat: no workspace_id from the page; the company's workspace (its first connected Discord server) answers
   if (!mockApi.chat) mockApi.chat = [{ role: "user", text: "สรุปประชุมทีมขายเมื่อวานให้หน่อย", at: d(1), workspace_id: "discord-1" }, { role: "dory", text: "สรุปประชุมทีมขายค่ะ\n- ปิดดีลร้านกาแฟบางรักได้แล้ว\n- มะลิส่งใบเสนอราคาให้ลูกค้า X ภายในวันศุกร์", at: d(1), workspace_id: "discord-1" }, { role: "dory", text: "สวัสดีค่ะ ถามดอรี่ได้เลยนะคะ", at: d(0), workspace_id: "discord-1" }];
   if (sub === "/chat/history") return ok({ turns: mockApi.chat });
+  if (sub === "/travel/book") return mockCardBook(body || {}, d);
+  if (sub === "/chat" && (TV_MOCK_REF.test((body && body.message) || "") || (mockTrip.quote && /^\s*(yes|yep|ok|confirm|ใช่|จองเลย)\b/i.test(body.message)))) return mockBook(body.message, d);
+  if (sub === "/chat" && /flight|fly|hotel|เที่ยวบิน|โรงแรม|ที่พัก/i.test((body && body.message) || "")) return mockTrip(body.message, d);
   if (sub === "/chat" && /\berror\b/i.test((body && body.message) || "")) return new Promise((_, rej) => setTimeout(() => rej(new ApiError("mock failure", 502)), 900));
   if (sub === "/chat") { const ans = "ยอดใบเสร็จเดือนนี้รวม **48,570 บาท** ค่ะ\n- ร้านกาแฟบางรัก 420 บาท\n- ไทยซัพพลาย 48,150 บาท\nดูรายละเอียดที่ [เอกสาร](https://example.com)";
     mockApi.chat.push({ role: "user", text: (body && body.message) || "", at: d(0), workspace_id: "discord-1" }, { role: "dory", text: ans, at: d(0), workspace_id: "discord-1" });
     return new Promise((r) => setTimeout(() => r({ answer: ans, workspace_id: "discord-1", at: d(0) }), 1200)); }
   return fail("mock: not found", 404);
+}
+
+// mock brain for a trip message, like the server: enough details -> the search tools' cards (with the filters it heard);
+// no destination or date -> one question, no cards; "error" -> the AI is down, so the cards are read from the message
+// (travel_fallback, Retry); "error" without a city -> the usual failure
+const TV_MOCK_REF = /\b(?:[A-Z]{6}\.[A-Z0-9-]+-\d{8}-[EB]\.\d|[A-Za-z]{3}\.[a-z0-9-]+\.[a-z0-9-]+\.\d{8}\.\d+\.\d\.\d+)\b/;
+// mock card booking (POST /travel/book): the quote is priced through the real public /api/travel reviews; a confirm books
+// only a quote shown before (like the server), with sample sandbox references
+const mockQuotes = new Set();
+async function mockCardBook(b, d) {
+  const data = { source: "sample", live_availability: false, bookable: false, notice: "Demo results—not live availability or a confirmed booking." };
+  const fl = async (ref) => {
+    const m = /^([A-Z]{3})([A-Z]{3})\.(.+-(\d{4})(\d\d)(\d\d)-([EB]))\.(\d)$/i.exec(ref || ""); if (!m) throw new Error("ref");
+    return (await travelApi("/flights/review", { query: { origin: m[1].toUpperCase(), destination: m[2].toUpperCase(), depart: m[4] + "-" + m[5] + "-" + m[6], adults: Number(m[8]), cabin: m[7].toUpperCase() === "B" ? "business" : "economy" }, id: m[3].toUpperCase() })).flight;
+  };
+  const rm = async (ref) => {
+    const m = /^([a-z]{3})\.([a-z0-9-]+)\.([a-z0-9-]+)\.(\d{4})(\d\d)(\d\d)\.(\d+)\.(\d)\.(\d+)$/i.exec(ref || ""); if (!m) throw new Error("ref");
+    const ci = new Date(Date.UTC(+m[4], +m[5] - 1, +m[6])), co = new Date(ci.getTime() + Number(m[7]) * 864e5);
+    const q = { city: m[1].toUpperCase(), check_in: ci.toISOString().slice(0, 10), check_out: co.toISOString().slice(0, 10), rooms: Number(m[8]), guests: Number(m[9]) };
+    return { q, r: await travelApi("/hotels/review", { query: q, hotel_id: m[2].toLowerCase(), room_id: m[3].toLowerCase() }) };
+  };
+  let f = null, back = null, stay = null;
+  try { f = b.flight_ref ? await fl(b.flight_ref) : null; back = b.return_ref ? await fl(b.return_ref) : null; stay = b.room_ref ? await rm(b.room_ref) : null; }
+  catch { return { status: "expired", reason: "that offer is unknown or in the past; search again", data }; }
+  const total = (f ? f.price.total : 0) + (back ? back.price.total : 0) + (stay ? stay.r.room.price.total : 0);
+  const quote = {
+    flight: f && { carrier: f.airline.code, carrier_name: f.airline.name, flights: [...f.flights, ...(back ? back.flights : [])].map((x) => x.replace(" ", "")), origin: f.origin.code, destination: f.destination.code,
+      depart: f.depart, arrive: f.arrive, return_depart: back ? back.depart : "", return_arrive: back ? back.arrive : "", price: f.price.total + (back ? back.price.total : 0), currency: "THB" },
+    hotel: stay && { name: stay.r.hotel.name, room: stay.r.room.name, check_in: stay.q.check_in, check_out: stay.q.check_out, nights: stay.r.room.price.nights, total: stay.r.room.price.total, currency: "THB" },
+    totals: [{ amount: total, currency: "THB" }], purpose: (b.purpose || "").trim() };
+  const key = [b.flight_ref, b.return_ref, b.room_ref, quote.purpose].join("|");
+  if (!b.confirm) { mockQuotes.add(key); return { status: "needs_confirmation", quote, data }; }
+  if (!mockQuotes.delete(key)) return { status: "needs_confirmation", quote, data };
+  const references = { ...(f ? { flight: "KQ6YLN" } : {}), ...(stay ? { hotel: "JKLMYA7B" } : {}) };
+  const items = [f && quote.flight.carrier_name + " " + quote.flight.flights.join(" + "), stay && stay.r.hotel.name + " (" + stay.r.room.name + ")"].filter(Boolean).join(", ");
+  const text = "Booked in the sandbox: " + items + ". References: " + Object.entries(references).map(([k, v]) => k + " " + v).join(", ") + ". Total " + total.toLocaleString("en") + " THB. The receipts are filed in the expense ledger under Travel."
+    + (f ? " I'll remind you to check in 24 hours before the flight." : "") + " This is a sandbox booking: no ticket is issued and no money is charged.";
+  mockApi.chat.push({ role: "dory", text, at: d(0), workspace_id: "discord-1" });
+  return new Promise((r) => setTimeout(() => r({ status: "booked", trip_id: "T-mock0001", references, totals: quote.totals, purpose: quote.purpose, filed_receipts: [1, 2].slice(0, Object.keys(references).length), provider: "sample", ...(f ? { checkin_reminder: "R-0001" } : {}), text, data }), 500));
+}
+// mock book_trip: a booking ref -> the quote and "Shall I book it?"; the next yes -> booked (sandbox references)
+function mockBook(said, d) {
+  const ref = (said.match(TV_MOCK_REF) || [])[0];
+  const ans = ref ? "Here is the sandbox quote for **" + ref + "**: the itinerary and the total in the review above, sample price, taxes included. Shall I book it?"
+    : "Booked in the sandbox! Reference **KQ6YLN**. The receipt is filed in the expense ledger under Travel. This is a sandbox booking: no ticket is issued and no money is charged.";
+  mockTrip.quote = ref || null;
+  mockApi.chat.push({ role: "user", text: said, at: d(0), workspace_id: "discord-1" }, { role: "dory", text: ans, at: d(0), workspace_id: "discord-1" });
+  return new Promise((r) => setTimeout(() => r({ answer: ans, workspace_id: "discord-1", at: d(0) }), 600));
+}
+function mockTrip(said, d) {
+  const fl = /flight|fly|เที่ยวบิน/i.test(said), ho = /hotel|โรงแรม|ที่พัก/i.test(said) || !fl, down = /\berror\b/i.test(said);
+  const where = /singapore|\bsin\b|สิงคโปร์/i.test(said);
+  const when = /next week|tomorrow|today|monday|tuesday|wednesday|thursday|friday|saturday|sunday|\d{4}-\d\d-\d\d|\b\d{1,2}\s*(jan|feb|mar|apr|may|jun|jul|aug|sep|oct|nov|dec)|สัปดาห์หน้า|พรุ่งนี้/i.test(said);
+  const reply = (ans, travel, extra) => {
+    mockApi.chat.push({ role: "user", text: said, at: d(0), workspace_id: "discord-1" }, { role: "dory", text: ans, at: d(0), workspace_id: "discord-1", travel });
+    return new Promise((r) => setTimeout(() => r({ answer: ans, workspace_id: "discord-1", at: d(0), travel, ...extra }), 600));
+  };
+  if (down && !where) return new Promise((_, rej) => setTimeout(() => rej(new ApiError("mock failure", 502)), 900));
+  if (!down && (!where || !when)) return reply(where ? "Which date would you like to travel?" : "Where would you like to go, and on which date?", null);
+  const now = new Date(), dep = new Date(now.getFullYear(), now.getMonth(), now.getDate() + 8 - (now.getDay() + 6) % 7); // Tuesday of next week
+  const ymd = (x) => [x.getFullYear(), String(x.getMonth() + 1).padStart(2, "0"), String(x.getDate()).padStart(2, "0")].join("-");
+  const out = new Date(dep.getFullYear(), dep.getMonth(), dep.getDate() + 3), people = Number((said.match(/(\d)\s*(people|persons|travellers|adults|คน)/i) || [])[1]) || 2;
+  const travel = {
+    flights: fl ? { origin: "BKK", destination: "SIN", depart: ymd(dep), adults: people, cabin: "economy" } : null,
+    hotels: ho ? { city: "SIN", check_in: ymd(dep), check_out: ymd(out), rooms: Math.ceil(people / 2), guests: people } : null,
+    flight_filters: fl && !down && /non-?stop|direct/i.test(said) ? { stops: ["nonstop"] } : null,
+    hotel_filters: ho && !down && /free cancel/i.test(said) ? { free_cancellation: true } : null,
+    return_flights: fl && /round trip|return|and back|ไป-กลับ/i.test(said) ? { origin: "SIN", destination: "BKK", depart: ymd(out), adults: people, cabin: "economy" } : null,
+  };
+  const what = [fl && "flights Bangkok (BKK) to Singapore (SIN) next Tuesday, " + people + " travellers", travel.return_flights && "the way back on Friday",
+    ho && "a hotel in Singapore (SIN) for 3 nights"].filter(Boolean).join("; ");
+  if (down) return reply("I couldn't interpret this with Dory's AI just now, so this search uses what I could read from your message: " + what + ". Use Edit search to change it.", travel, { travel_fallback: true });
+  return reply("I searched " + what + ". Use the filters to narrow them down.", travel);
 }
 
 /* ---------- boot ---------- */

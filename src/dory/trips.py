@@ -4,8 +4,9 @@ The providers are free sandboxes behind the `Provider` protocol (no tickets, no 
 mode for flights and the LiteAPI (Nuitee Connect) sandbox for hotels. Amadeus Self-Service, the first
 sandbox, was decommissioned on 17 July 2026. `SampleProvider` is deterministic sample data (tests, no
 key, sandbox outage); `Fallback` searches the sandbox first and serves the sample on an error, a
-timeout or an empty answer, and every result says which (`source`). Tools bound per request:
-`search_flights`, `search_hotels`, `book_trip` (two-step confirm through `SecretaryState`; an
+timeout or an empty answer, and every result says which (`source`). Tools bound per request
+(the searches are `dory.travel_search`'s card tools; their booking_refs are booked here):
+`book_trip` (two-step confirm through `SecretaryState`; an
 approval id, when given, must be APPROVED and the asker's own: checked here, never by the model),
 `travel_profile` and `list_trips`. A booking writes a trip record (`dory_trips`), one ledger receipt
 per booked item (category ค่าเดินทาง) and a check-in reminder 24 h before departure.
@@ -26,6 +27,7 @@ from typing import Any, Protocol
 import httpx
 from pydantic import BaseModel
 
+from . import travel_search
 from .i18n import CATALOG, t
 from .models import Receipt
 from .secretary import CONFIRM_TTL_S, fingerprint
@@ -590,18 +592,6 @@ def _item_key(offer: FlightOffer | HotelOffer) -> str:
     return fingerprint("hotel", offer.hotel_id, offer.check_in, offer.check_out)
 
 
-def _bad_date(s: str, today: date, *, after: date | None = None) -> str | None:
-    try:
-        d = date.fromisoformat((s or "").strip())
-    except ValueError:
-        return "dates must be YYYY-MM-DD"
-    if d < today:
-        return f"{s} is in the past (today is {today.isoformat()})"
-    if after is not None and d <= after:
-        return f"{s} must be after {after.isoformat()}"
-    return None
-
-
 def traveller_for(ctx: TripsCtx) -> dict:
     """Name for the booking: the travel profile's `passport name LAST/FIRST` line, else the
     Discord name. Contact fields are placeholders for the sandbox."""
@@ -614,6 +604,50 @@ def traveller_for(ctx: TripsCtx) -> dict:
             "phone": "+66812345678"}  # fmt: skip
 
 
+def catalog_flight(ref: str, return_ref: str, today: date) -> FlightOffer | None:
+    """A card tool's flight booking_ref (and the way back's) -> ONE sample FlightOffer priced
+    from the catalogue; out and back become one round-trip offer, like a provider's. None = any
+    ref unknown, in the past, or a way back that is not the reverse route on a later date."""
+    out = travel_search.by_booking_ref(ref, today)
+    back = travel_search.by_booking_ref(return_ref, today) if return_ref else None
+    if (
+        not out
+        or out["kind"] != "flight"
+        or (return_ref and (not back or back["kind"] != "flight"))
+    ):
+        return None
+    o, b = out["flight"], back["flight"] if back else None
+    if b and ((b["origin"]["code"], b["destination"]["code"]) != (
+            o["destination"]["code"], o["origin"]["code"]) or b["depart"] < o["arrive"]):  # fmt: skip
+        return None
+    legs = [*o["flights"], *(b["flights"] if b else [])]
+    return FlightOffer(
+        offer_id=f"{ref}+{return_ref}" if return_ref else ref, provider=SampleProvider.name,
+        carrier=o["airline"]["code"], carrier_name=o["airline"]["name"],
+        flights=[x.replace(" ", "") for x in legs], origin=o["origin"]["code"],
+        destination=o["destination"]["code"], depart=f"{o['depart']}:00", arrive=f"{o['arrive']}:00",
+        return_depart=f"{b['depart']}:00" if b else "", return_arrive=f"{b['arrive']}:00" if b else "",
+        duration_min=o["duration_min"], stops=o["stops"], cabin=o["cabin"],
+        price=o["price"]["total"] + (b["price"]["total"] if b else 0), currency=o["price"]["currency"],
+    )  # fmt: skip
+
+
+def catalog_hotel(ref: str, today: date) -> HotelOffer | None:
+    """A card tool's room booking_ref -> a sample HotelOffer priced from the catalogue."""
+    got = travel_search.by_booking_ref(ref, today)
+    if not got or got["kind"] != "stay":
+        return None
+    h, r = got["hotel"], got["room"]
+    until = r["cancellation"]["until"]
+    return HotelOffer(
+        offer_id=ref, provider=SampleProvider.name, hotel_id=h["id"], name=h["name"],
+        area=f"{h['area']}, {h['city']}", check_in=h["check_in"], check_out=h["check_out"],
+        nights=h["nights"], room=r["name"], price_per_night=r["price"]["nightly"],
+        total=r["price"]["total"], currency=r["price"]["currency"],
+        cancellation=f"free cancellation until {until}" if until else "non-refundable",
+    )  # fmt: skip
+
+
 def trips_tools(ctx: TripsCtx) -> list:
     today = ctx.now().date()
     prev_request = ctx.pending.turn(ctx.guild_id, ctx.asker_id, ctx.request_id)
@@ -621,86 +655,10 @@ def trips_tools(ctx: TripsCtx) -> list:
     # the model on every path); None = unknown, which never completes a booking
     heard: dict[str, str | None] = {"text": None}
 
-    def search_flights(origin: str, destination: str, depart_date: str, return_date: str = "",
-                       adults: int = 1, cabin: str = "economy") -> dict:  # fmt: skip
-        """Bookable flight offers (airline, flight numbers, local times, price). Use this, not
-        flight_prices, when the person wants to BOOK or asks for options to choose from. Offers
-        carry an offer_id for book_trip. Apply the company travel rules (cabin, caps) from the
-        company notes and the person's travel profile; never invent a price or a time.
-
-        Args:
-            origin: IATA airport or city code, e.g. BKK.
-            destination: IATA airport or city code, e.g. SIN, HKG, NRT.
-            depart_date: YYYY-MM-DD.
-            return_date: YYYY-MM-DD for a round trip, empty for one way.
-            adults: number of adult passengers.
-            cabin: economy, premium_economy, business or first.
-        """
-        o, d = origin.strip().upper(), destination.strip().upper()
-        if not (_IATA.match(o) and _IATA.match(d)) or o == d:
-            return {
-                "status": "error",
-                "error": "origin and destination must be different IATA codes",
-            }
-        cab = (cabin or "economy").strip().lower()
-        if cab not in CABINS:
-            return {"status": "error", "error": f"cabin must be one of {', '.join(CABINS)}"}
-        if err := _bad_date(depart_date, today):
-            return {"status": "error", "error": err}
-        ret = (return_date or "").strip()
-        if ret and (err := _bad_date(ret, today, after=date.fromisoformat(depart_date))):
-            return {"status": "error", "error": err}
-        try:
-            offers = ctx.provider.flights(o, d, depart_date.strip(), ret, max(1, int(adults)), cab)
-        except Exception as e:  # noqa: BLE001 - the model must hear "unavailable", not a trace
-            logger.warning("trips: flights unavailable (%s)", type(e).__name__)
-            return {"status": "unavailable", "reason": "flight search failed, try again later"}
-        if not offers:
-            return {"status": "none", "reason": f"no offers for {o}-{d} on {depart_date}"}
-        for of in offers[:MAX_RESULTS]:
-            ctx.offers.remember(of, ctx.guild_id, ctx.asker_id)
-        return {"status": "ok", "source": offers[0].provider, "flights": [_view(x) for x in offers[:MAX_RESULTS]],
-                "note": "sandbox prices (no real ticket is issued)"}  # fmt: skip
-
-    def search_hotels(city: str, check_in: str, check_out: str, adults: int = 1) -> dict:
-        """Hotel offers with an offer_id for book_trip. Compare the nightly price with the company's
-        hotel cap for that city (company notes); say the cap and the difference when one is over it
-        and offer the nearest in-policy one. Never invent a price.
-
-        Args:
-            city: IATA city code, e.g. SIN, HKG, TYO.
-            check_in: YYYY-MM-DD.
-            check_out: YYYY-MM-DD, after check_in.
-            adults: guests in the room.
-        """
-        c = city.strip().upper()
-        if not _IATA.match(c):
-            return {"status": "error", "error": "city must be an IATA city code, e.g. SIN"}
-        if err := _bad_date(check_in, today):
-            return {"status": "error", "error": err}
-        if err := _bad_date(check_out, today, after=date.fromisoformat(check_in)):
-            return {"status": "error", "error": err}
-        try:
-            offers = ctx.provider.hotels(
-                c, check_in.strip(), check_out.strip(), max(1, int(adults))
-            )
-        except Exception as e:  # noqa: BLE001
-            logger.warning("trips: hotels unavailable (%s)", type(e).__name__)
-            return {"status": "unavailable", "reason": "hotel search failed, try again later"}
-        if not offers:
-            return {"status": "none", "reason": f"no hotel offers in {c} for those dates"}
-        for of in offers[:MAX_RESULTS]:
-            ctx.offers.remember(of, ctx.guild_id, ctx.asker_id)
-        return {
-            "status": "ok",
-            "source": offers[0].provider,
-            "hotels": [_view(x) for x in offers[:MAX_RESULTS]],
-            "note": "sandbox prices (no real room is reserved, no money is charged)",
-        }
-
     def book_trip(flight_offer_id: str = "", hotel_offer_id: str = "", purpose: str = "",
-                  approval_id: str = "") -> dict:  # fmt: skip
-        """Book a flight and/or a hotel from offer_ids shown by search_flights / search_hotels.
+                  approval_id: str = "", return_flight_offer_id: str = "") -> dict:  # fmt: skip
+        """Book a flight (one way or out and back) and/or a hotel room from the booking_ref values
+        that search_flights / search_hotels returned (a sandbox: no ticket, no money).
         Two steps: the first call returns needs_confirmation with the quote; read it back (items,
         totals, the meeting it is for) and ask the person to confirm; after they confirm in a LATER
         message call again with EXACTLY the same arguments. A choice outside the company rules (cabin,
@@ -709,20 +667,32 @@ def trips_tools(ctx: TripsCtx) -> list:
         under Travel and a check-in reminder is set.
 
         Args:
-            flight_offer_id: offer_id of the chosen flight, or empty.
-            hotel_offer_id: offer_id of the chosen hotel, or empty.
+            flight_offer_id: booking_ref of the chosen (outbound) flight, or empty.
+            hotel_offer_id: booking_ref of the chosen hotel room, or empty.
             purpose: what the trip is for, e.g. the meeting title.
             approval_id: the approved approval's id when the choice was out of policy.
+            return_flight_offer_id: booking_ref of the way back for a round trip, or empty.
         """
         fid, hid = (flight_offer_id or "").strip().upper(), (hotel_offer_id or "").strip().upper()
+        rid = (return_flight_offer_id or "").strip().upper()
         if not fid and not hid:
             return {"status": "error", "error": "give a flight_offer_id and/or a hotel_offer_id"}
+        if rid and not fid:
+            return {
+                "status": "error",
+                "error": "a return flight needs the outbound flight_offer_id",
+            }
         flight = ctx.offers.recall(fid, ctx.guild_id, ctx.asker_id) if fid else None
         hotel = ctx.offers.recall(hid, ctx.guild_id, ctx.asker_id) if hid else None
+        if fid and flight is None:  # a booking_ref from the card tools: priced from the catalogue
+            flight = catalog_flight(fid, rid, today)
+        if hid and hotel is None:
+            hotel = catalog_hotel(hid, today)
         if (fid and not isinstance(flight, FlightOffer)) or (
             hid and not isinstance(hotel, HotelOffer)
         ):
-            return {"status": "expired", "reason": "that offer is no longer held; search again"}
+            return {"status": "expired",
+                    "reason": "that offer is unknown, in the past or no longer held; search again"}  # fmt: skip
         # never the same flight or hotel twice for one person (by content: offer ids restart with the
         # process): a second "yes", a voice retry or a new search of the same offer gets the trip
         items = {k: _item_key(x) for k, x in (("flight", flight), ("hotel", hotel)) if x}
@@ -758,7 +728,7 @@ def trips_tools(ctx: TripsCtx) -> list:
                  "totals": [{"amount": v, "currency": k} for k, v in totals.items()], "purpose": why}  # fmt: skip
         # what is confirmed: the items and the approval; the purpose is a label the model rewords
         # between turns ("Client kickoff" / "client kickoff" made a confirmed quote ask again)
-        key = ("trip", ctx.guild_id, ctx.asker_id, fingerprint(fid, hid, aid))
+        key = ("trip", ctx.guild_id, ctx.asker_id, fingerprint(fid, rid, hid, aid))
         # Only a message that asks to book completes it: a question asked while a quote waits
         # ("what did I just book?") once made the model call book_trip again with the same args.
         wants = asks_to_book(heard["text"])
@@ -766,7 +736,8 @@ def trips_tools(ctx: TripsCtx) -> list:
             ctx.state.propose(key, ctx.request_id)
         if not (wants and ctx.state.confirm(key, ctx.request_id)):
             ctx.pending.put(ctx.guild_id, ctx.asker_id, ctx.request_id, {
-                "flight_offer_id": fid, "hotel_offer_id": hid, "purpose": why, "approval_id": aid})  # fmt: skip
+                "flight_offer_id": fid, "hotel_offer_id": hid, "purpose": why, "approval_id": aid,
+                "return_flight_offer_id": rid})  # fmt: skip
             return {"status": "needs_confirmation", "quote": quote, "instruction": (
                 "Read the quote back (flight, hotel, totals, what it is for) and ask the person to "
                 "confirm (English: “Shall I book it?”; Thai: “จองเลยไหมคะ”; in a voice room say it "
@@ -880,8 +851,16 @@ def trips_tools(ctx: TripsCtx) -> list:
         args = ctx.pending.take(ctx.guild_id, ctx.asker_id, prev_request)
         return _confirm_reply(ctx, book_trip(**args)) if args else None
 
+    def clicked(*args, **kwargs) -> dict:
+        """book_trip after the person's own Confirm booking click on a travel card (web or
+        Discord, no model in between): the click is their request to book, like a typed yes."""
+        heard["text"] = "yes"
+        return book_trip(*args, **kwargs)
+
     book_trip.on_confirm = on_confirm  # type: ignore[attr-defined]
-    tools = [search_flights, search_hotels, book_trip, travel_profile, list_trips]
+    book_trip.clicked = clicked  # type: ignore[attr-defined]
+    # search_flights / search_hotels are dory.travel_search's card tools (ONE search per job)
+    tools = [book_trip, travel_profile, list_trips]
     for fn in tools:
         fn.dory_group = "travel"  # type: ignore[attr-defined]
     return tools
@@ -974,7 +953,9 @@ def _checkin_reminder(
 
 TRIPS_PROMPT = (
     "\nTrips (booking): when someone wants to book, or asks for flights or hotels to choose from, use "
-    "search_flights / search_hotels (bookable sandbox offers with offer_ids), not flight_prices. "
+    "search_flights / search_hotels (sample flights and fictional hotels; every result has a booking_ref; "
+    "a round trip = a second search_flights for the way back), not flight_prices; pass the chosen "
+    "booking_refs to book_trip (flight_offer_id, return_flight_offer_id, hotel_offer_id). "
     "Apply what you already know before asking anything: the meeting's date and place from the calendar, "
     "the travel profile (travel_profile: passport name, seat, meal, loyalty) and the company travel rules "
     "in the company notes. Present at most two or three options with the number that matters (price, "

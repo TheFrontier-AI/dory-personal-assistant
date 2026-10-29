@@ -44,7 +44,7 @@ class TravelMixin:
 
     def _travel_tools(self, guild, asker, lang: str, is_exec: bool = False) -> list:
         """convert_currency, flight_status, flight_prices, track_flight and the trips tools
-        (search_flights, search_hotels, book_trip, travel_profile, list_trips) for one request.
+        (book_trip, travel_profile, list_trips; the searches are travel_search's card tools).
         Never raises: without them Dory just cannot do these."""
         try:
             if not self._travel_on(guild.id):

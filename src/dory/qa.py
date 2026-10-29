@@ -59,6 +59,14 @@ from .web_read import make_read_web
 from .wiki import WIKI_PROMPT
 
 logger = logging.getLogger(__name__)
+# the travel section of a typed chat, where search_flights / search_hotels are the card tools of
+# dory.travel_search (TRIPS_PROMPT, about booking, is for the voice tools of dory.trips)
+CARDS_PROMPT = (
+    "\nFlight and hotel search: to find, compare or narrow flights or hotels use search_flights / "
+    "search_hotels; the results appear as interactive cards under your reply. flight_prices is "
+    "only for a quick web estimate of ticket prices. Nothing can be booked in this chat: say so if "
+    "asked to book, and never say anything is booked."
+)
 MAX_ROUNDS = 10  # a typed answer; policy / document look-ups often need several searches
 SPOKEN_MAX_ROUNDS = 5  # a spoken answer: 5 tool rounds at most, then it must answer
 APP_NAME = "dory"
@@ -1593,6 +1601,7 @@ def stable_prompt(
     maps: bool = False,
     search: bool = False,
     travel: bool = False,
+    booking: bool = True,
     markets: bool = False,
     reminders: bool = False,
     projects: bool = False,
@@ -1653,7 +1662,8 @@ def stable_prompt(
     if search:
         p += SEARCH_PROMPT
     if travel:
-        p += CURRENCY_PROMPT + FLIGHT_PROMPT + TRIPS_PROMPT
+        # booking: trips.py's tools (voice); typed chat has the card tools and nothing books
+        p += CURRENCY_PROMPT + FLIGHT_PROMPT + (TRIPS_PROMPT if booking else CARDS_PROMPT)
     if markets:
         p += MARKETS_PROMPT
     if reminders:
@@ -1764,6 +1774,7 @@ def system_prompt(
     maps: bool = False,
     search: bool = False,
     travel: bool = False,
+    booking: bool = True,
     markets: bool = False,
     reminders: bool = False,
     projects: bool = False,
@@ -1793,6 +1804,7 @@ def system_prompt(
         maps=maps,
         search=search,
         travel=travel,
+        booking=booking,
         markets=markets,
         reminders=reminders,
         projects=projects,
@@ -2265,6 +2277,7 @@ def build_agent(
     maps: bool = False,
     search: bool = False,
     travel: bool = False,
+    booking: bool = True,
     markets: bool = False,
     reminders: bool = False,
     projects: bool = False,
@@ -2310,6 +2323,7 @@ def build_agent(
         maps=maps,
         search=search,
         travel=travel,
+        booking=booking,
         markets=markets,
         reminders=reminders,
         projects=projects,
@@ -2565,6 +2579,7 @@ async def ask_async(
         maps="travel_time" in tool_names or "weather" in tool_names,
         search="search_everything" in tool_names,
         travel="convert_currency" in tool_names,
+        booking="book_trip" in tool_names,
         markets="stock_quote" in tool_names,
         reminders="set_reminder" in tool_names,
         projects="project_create" in tool_names,

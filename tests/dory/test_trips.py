@@ -4,6 +4,7 @@ fallback, and the tools through the bot's real wiring (confirm gate, approval ga
 check-in reminder, trip record, profile). Offline."""
 
 import json
+from datetime import UTC, datetime, timedelta
 
 import httpx
 import pytest
@@ -199,17 +200,19 @@ def test_make_provider_uses_free_sandboxes_only():
 
 
 # ----------------------------------------------------------------------------- tools via the bot
-def kw_for(bot, world, who=STAFF, is_exec=False):
+def kw_for(bot, world, who=STAFF, is_exec=False, spoken=False):
+    """Typed chat (`spoken` False) or voice (True): both builders get THE flight / hotel search
+    (dory.travel_search's card tools) and book_trip, which books their booking_refs."""
     member = world.g.members[who]
     msg = bot.room_message(world.g, member, world.pub)
     return bot._agent_kwargs(
         msg, world.g, member, is_exec, setting="en", lang="en", question="q", memory=None,
-        profile=None,
+        profile=None, spoken=spoken,
     )  # fmt: skip
 
 
-def tools(bot, world, who=STAFF, is_exec=False):
-    return {f.__name__: f for f in kw_for(bot, world, who, is_exec)["extra_tools"]}
+def tools(bot, world, who=STAFF, is_exec=False, spoken=False):
+    return {f.__name__: f for f in kw_for(bot, world, who, is_exec, spoken)["extra_tools"]}
 
 
 def said(tl, text="Go ahead and book it for the kickoff"):
@@ -219,64 +222,102 @@ def said(tl, text="Go ahead and book it for the kickoff"):
     return tl
 
 
-async def test_tools_are_registered_and_the_flag_removes_them(bot, world):
-    names = set(tools(bot, world))
-    assert {"search_flights", "search_hotels", "book_trip", "travel_profile", "list_trips"} <= names
+def trip(tl):
+    """Out on DEP, back on RET (the second search is the way back) and Bugis Garden's cheapest
+    room for those nights: the search results' booking_refs."""
+    out = tl["search_flights"](origin="BKK", destination="SIN", depart_date=DEP)["top"][0]
+    back = tl["search_flights"](origin="SIN", destination="BKK", depart_date=RET)["top"][0]
+    room = tl["search_hotels"](hotel_id="bugis-garden")["rooms"][0]  # SIN, DEP -> RET: the trip
+    return out, back, room
+
+
+def room_of(tl, hotel_id):
+    """The cheapest room of `hotel_id` for DEP -> RET in Singapore."""
+    got = tl["search_hotels"](city="SIN", check_in=DEP, check_out=RET, hotel_id=hotel_id)
+    return got["rooms"][0]
+
+
+def checkin_at(out) -> datetime:
+    """24 h before the first flight, which departs at Bangkok time (UTC+7)."""
+    return datetime.fromisoformat(f"{out['depart']}+07:00") - timedelta(hours=24)
+
+
+@pytest.mark.parametrize("spoken", [False, True])
+async def test_tools_are_registered_and_the_flag_removes_them(bot, world, spoken):
+    names = [f.__name__ for f in kw_for(bot, world, spoken=spoken)["extra_tools"]]
+    assert {"search_flights", "search_hotels", "book_trip", "travel_profile", "list_trips"} <= set(
+        names
+    )
+    assert names.count("search_flights") == names.count("search_hotels") == 1  # ONE search each
     assert {"book_trip", "travel_profile"} <= ACTION_TOOL_NAMES
     assert "search_flights" not in ACTION_TOOL_NAMES  # a read stays in the room agent
     bot.guilds_store.save_settings(GUILD, GuildSettingsUpdate(features={"travel": False}), "x")
     bot.team._cache.clear()
-    assert not set(tools(bot, world)) & {"search_flights", "book_trip"}
+    assert not set(tools(bot, world, spoken=spoken)) & {"search_flights", "book_trip"}
 
 
-async def test_search_validates_and_returns_sample_offers(bot, world):
+async def test_the_one_search_validates_and_returns_booking_refs(bot, world):
     tl = tools(bot, world)
-    assert tl["search_flights"]("BKK", "BKK", DEP)["status"] == "error"
-    assert "past" in tl["search_flights"]("BKK", "SIN", "2026-01-01")["error"]
-    assert tl["search_flights"]("BKK", "SIN", DEP, "2026-11-11")["status"] == "error"
-    assert tl["search_flights"]("BKK", "SIN", DEP, cabin="deck")["status"] == "error"
-    res = tl["search_flights"]("BKK", "SIN", DEP, RET)
-    assert res["status"] == "ok" and res["source"] == "sample" and len(res["flights"]) == 5
-    f = res["flights"][0]
-    assert f["offer_id"].startswith("F") and "raw" not in f and f["price"] == 13700
-    assert tl["search_flights"]("BKK", "XXX", DEP)["status"] == "none"
-    assert tl["search_hotels"]("SIN", DEP, DEP)["status"] == "error"
-    hres = tl["search_hotels"]("SIN", DEP, RET)
-    assert hres["status"] == "ok" and hres["hotels"][0]["offer_id"].startswith("H")
+    assert tl["search_flights"](destination="SIN")["status"] == "need_details"  # no trip yet
+    bad = tl["search_flights"](origin="BKK", destination="BKK", depart_date=DEP)
+    assert bad["status"] == "invalid"
+    past = tl["search_flights"](origin="BKK", destination="SIN", depart_date="2026-01-01")
+    assert past["problem"] == "past_date"
+    deck = tl["search_flights"](origin="BKK", destination="SIN", depart_date=DEP, cabin="deck")
+    assert deck["status"] == "invalid"
+    where = tl["search_flights"](origin="BKK", destination="Atlantis", depart_date=DEP)
+    assert where["status"] == "unknown_place"
+    res = tl["search_flights"](origin="BKK", destination="SIN", depart_date=DEP)
+    f = res["top"][0]
+    assert res["status"] == "ok" and res["total"] == 12 and res["data"]["bookable"] is False
+    assert f["booking_ref"] == f"BKKSIN.{f['id']}.1" and "raw" not in f
+    assert f["total_for_all_travellers"] == f["price_per_traveller"] and f["currency"] == "THB"
+    none = tl["search_flights"](origin="BKK", destination="HKG", depart_date=DEP)
+    assert none["status"] == "no_results" and none["empty"] == "route"
+    same_day = tl["search_hotels"](city="SIN", check_in=DEP, check_out=DEP)
+    assert same_day["status"] == "invalid"
+    hres = tl["search_hotels"](city="SIN", check_in=DEP, check_out=RET)
+    assert hres["status"] == "ok" and hres["top"][0]["booking_ref"].startswith("SIN.")
 
 
 async def test_book_trip_confirms_then_books_files_receipts_and_sets_the_reminder(bot, world):
     tl = tools(bot, world)
-    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
-    hid = tl["search_hotels"]("SIN", DEP, RET)["hotels"][3]["offer_id"]  # Carlton City, in policy
+    out, back, room = trip(tl)
+    fid, rid, hid = out["booking_ref"], back["booking_ref"], room["booking_ref"]
+    fares = out["total_for_all_travellers"] + back["total_for_all_travellers"]
     assert tl["book_trip"]()["status"] == "error"
-    assert tl["book_trip"]("F999")["status"] == "expired"
-    # another person (or another server) cannot book an offer that was shown to Mint
-    assert tools(bot, world, who=BOSS)["book_trip"](fid)["status"] == "expired"
-    first = tl["book_trip"](fid, hid, "Lumen kickoff")
+    assert tl["book_trip"](return_flight_offer_id=rid)["status"] == "error"  # no outbound
+    for gone in ("F999", "BKKSIN.XX1-20261112-E.1", "BKKSIN.SL106-20261001-E.1"):
+        assert tl["book_trip"](gone)["status"] == "expired"  # malformed / unknown / past
+    first = tl["book_trip"](fid, hid, "Lumen kickoff", return_flight_offer_id=rid)
     assert first["status"] == "needs_confirmation"
     assert first["quote"]["totals"] == [
-        {"amount": 13700, "currency": "THB"},
-        {"amount": 420, "currency": "SGD"},
-    ]
+        {"amount": fares + room["total_for_stay"], "currency": "THB"}
+    ]  # priced again from the catalogue: out + back + the stay, one currency
     # the same request id again is still the proposal; a later message (new tools) confirms
-    assert tl["book_trip"](fid, hid, "Lumen kickoff")["status"] == "needs_confirmation"
-    done = said(tools(bot, world))["book_trip"](fid, hid, "Lumen kickoff")
+    again = tl["book_trip"](fid, hid, "Lumen kickoff", return_flight_offer_id=rid)
+    assert again["status"] == "needs_confirmation"
+    done = said(tools(bot, world))["book_trip"](
+        fid, hid, "Lumen kickoff", return_flight_offer_id=rid
+    )
     assert done["status"] == "booked" and done["provider"] == "sample"
     assert len(done["references"]["flight"]) == 6 and len(done["references"]["hotel"]) == 8
     assert len(done["filed_receipts"]) == 2
     r = bot.store.get(done["filed_receipts"][0])
-    assert r.category == "ค่าเดินทาง" and r.vendor == "Thai Airways" and r.total == 13700
+    assert r.category == "ค่าเดินทาง" and r.vendor == out["airline"] and r.total == fares
     assert "Lumen kickoff" in r.notes and done["references"]["flight"] in r.notes
-    assert bot.store.get(done["filed_receipts"][1]).currency == "SGD"
+    h = bot.store.get(done["filed_receipts"][1])
+    assert h.currency == "THB" and h.vendor == "Bugis Garden Hotel"
+    assert h.total == room["total_for_stay"]
     rem = bot.reminder_book.get(GUILD, done["checkin_reminder"])
-    assert (
-        rem["kind"] == "once" and rem["next_at"] == "2026-11-11T01:00:00+00:00"
-    )  # 08:00 Bangkok, 24 h before
-    assert "TG403" in rem["message"] and rem["user_id"] == STAFF
-    trip = bot.docs.get(trips.TRIP_KIND, GUILD, done["trip_id"])
-    assert (
-        trip["destination"] == "SIN" and trip["depart_date"] == DEP and trip["return_date"] == RET
+    assert rem["kind"] == "once"
+    assert rem["next_at"] == checkin_at(out).astimezone(UTC).isoformat(timespec="seconds")
+    assert out["flights"][0].replace(" ", "") in rem["message"] and rem["user_id"] == STAFF
+    record = bot.docs.get(trips.TRIP_KIND, GUILD, done["trip_id"])
+    assert (record["destination"], record["depart_date"], record["return_date"]) == (
+        "SIN",
+        DEP,
+        RET,
     )
     # a colleague sees the trip without amounts; the traveller and executives with them
     other = tools(bot, world, who=BOSS)["list_trips"]()
@@ -286,31 +327,41 @@ async def test_book_trip_confirms_then_books_files_receipts_and_sets_the_reminde
     assert tools(bot, world)["list_trips"](upcoming=False)["count"] == 1
     # asked again (a second "yes", a voice retry): the same trip, never a second booking
     for _ in range(2):
-        again = tools(bot, world)["book_trip"](fid, hid, "Lumen kickoff")
+        again = tools(bot, world)["book_trip"](
+            fid, hid, "Lumen kickoff", return_flight_offer_id=rid
+        )
         assert again["status"] == "already_booked" and again["trip_id"] == done["trip_id"]
         assert again["references"] == done["references"]
-    # the same flight and hotel found by a new search (new offer ids) is still that trip
+    # the same flights and room found by a new search (the same refs) are still that trip
     tl2 = tools(bot, world)
-    fid2 = tl2["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
-    hid2 = tl2["search_hotels"]("SIN", DEP, RET)["hotels"][3]["offer_id"]
-    assert (fid2, hid2) != (fid, hid)
-    # a re-search may quote another price or seat count for the same flight: still the same flight
-    redo = trips.OFFERS._items[fid2][0]
-    redo.price, redo.seats = redo.price + 850, 3
-    assert tl2["book_trip"](fid2, hid2, "Lumen kickoff")["trip_id"] == done["trip_id"]
-    alone = tl2["book_trip"](fid2)  # the flight alone: still that trip's flight
+    out2, back2, room2 = trip(tl2)
+    assert (out2["booking_ref"], back2["booking_ref"], room2["booking_ref"]) == (fid, rid, hid)
+    alone = tl2["book_trip"](fid, return_flight_offer_id=rid)  # the flights alone: still booked
     assert alone["status"] == "already_booked" and alone["already"] == ["flight"]
-    # only a new hotel: proposed, then booked on its own (the flight is not booked again)
-    other = tl2["search_hotels"]("SIN", DEP, RET)["hotels"][2]["offer_id"]
+    # only a new hotel: proposed, then booked on its own (the flights are not booked again)
+    other = room_of(tl2, "riverside-inn")["booking_ref"]
     assert tl2["book_trip"](hotel_offer_id=other)["status"] == "needs_confirmation"
     hotel_only = said(tools(bot, world))["book_trip"](hotel_offer_id=other)
     assert hotel_only["status"] == "booked" and list(hotel_only["references"]) == ["hotel"]
     assert tools(bot, world)["list_trips"](upcoming=False)["count"] == 2
 
 
+async def test_a_booking_ref_is_a_public_sample_fare_anyone_can_book_for_themselves(bot, world):
+    """A booking_ref names a catalogue fare, priced again at booking: another person can book the
+    same ref for themselves (their own trip, the same price). Search state stays per person
+    (tests/dory/test_travel_search.py)."""
+    found = tools(bot, world)["search_flights"](origin="BKK", destination="SIN", depart_date=DEP)
+    fid, price = found["top"][0]["booking_ref"], found["top"][0]["price_per_traveller"]
+    assert tools(bot, world, who=BOSS)["book_trip"](fid)["status"] == "needs_confirmation"
+    done = said(tools(bot, world, who=BOSS))["book_trip"](fid)
+    assert done["status"] == "booked"
+    record = bot.docs.get(trips.TRIP_KIND, GUILD, done["trip_id"])
+    assert record["user_id"] == BOSS and record["totals"] == [{"amount": price, "currency": "THB"}]
+
+
 async def test_book_trip_refuses_an_approval_that_is_not_approved_or_not_mine(bot, world):
     tl = tools(bot, world)
-    hid = tl["search_hotels"]("SIN", DEP, RET)["hotels"][0]["offer_id"]
+    hid = tl["search_hotels"](city="SIN", check_in=DEP, check_out=RET)["top"][0]["booking_ref"]
     pending = bot.approvals.create(
         Approval(guild_id=GUILD, requester_id=STAFF, approver_id=BOSS, title="hotel")
     )
@@ -385,33 +436,71 @@ def test_anything_more_than_a_plain_yes_is_not(text):
     assert not trips.is_confirmation(text)
 
 
-async def test_a_plain_yes_after_a_quote_is_booked_by_code_not_the_model(bot, world):
-    tl = tools(bot, world)
-    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
-    hid = tl["search_hotels"]("SIN", DEP, RET)["hotels"][3]["offer_id"]
-    assert tl["book_trip"](fid, hid, "Lumen kickoff")["status"] == "needs_confirmation"
-    kw = kw_for(bot, world)  # the person's next message, through the real agent wiring
+@pytest.mark.parametrize("spoken", [False, True])  # typed chat and voice both book by code
+async def test_a_plain_yes_after_a_quote_is_booked_by_code_not_the_model(bot, world, spoken):
+    tl = tools(bot, world, spoken=spoken)
+    out = tl["search_flights"](origin="BKK", destination="SIN", depart_date=DEP)["top"][0]
+    room = tl["search_hotels"](check_out=RET, hotel_id="bugis-garden")["rooms"][0]
+    quote = tl["book_trip"](out["booking_ref"], room["booking_ref"], "Lumen kickoff")
+    assert quote["status"] == "needs_confirmation"
+    kw = kw_for(bot, world, spoken=spoken)  # the person's next message, the real agent wiring
     uid = kw.pop("user_id", STAFF)
     ans = await qa.ask_async(
         bot.s, bot.store, "Yes, confirm.", guild_id=GUILD, is_exec=False, user_id=uid,
         model=object(), **kw,
     )  # fmt: skip
     assert ans.rounds == 0 and ans.tool_calls == [("book_trip", {})]  # the model was never asked
-    trip = tools(bot, world)["list_trips"]()["trips"][0]
-    assert ans.text.startswith("Booked!") and trip["id"] in ans.text
-    assert trip["references"]["flight"] in ans.text and trip["references"]["hotel"] in ans.text
-    assert "13,700.00 THB + 420.00 SGD" in ans.text
-    assert "2026-11-11 08:00" in ans.text  # the stored check-in reminder, in Bangkok time
+    trip_ = tools(bot, world)["list_trips"]()["trips"][0]
+    assert ans.text.startswith("Booked!") and trip_["id"] in ans.text
+    assert trip_["references"]["flight"] in ans.text and trip_["references"]["hotel"] in ans.text
+    assert f"{out['total_for_all_travellers'] + room['total_for_stay']:,.2f} THB" in ans.text
+    assert checkin_at(out).strftime("%Y-%m-%d %H:%M") in ans.text  # the reminder, Bangkok time
+    assert "sandbox booking" in ans.text and "no money is charged" in ans.text
+
+
+async def test_a_plain_yes_books_the_round_trip_it_quoted(bot, world):
+    tl = tools(bot, world)
+    out, back, room = trip(tl)
+    quote = tl["book_trip"](
+        out["booking_ref"], room["booking_ref"], "Lumen kickoff",
+        return_flight_offer_id=back["booking_ref"],
+    )  # fmt: skip
+    assert quote["status"] == "needs_confirmation"
+    assert tools(bot, world)["book_trip"].on_confirm("yes").startswith("Booked!")
+    booked = tools(bot, world)["list_trips"]()["trips"][0]
+    assert back["flights"][0].replace(" ", "") in booked["flights"]  # the way back was booked too
+
+
+async def test_adding_the_way_back_is_a_new_quote_that_needs_its_own_yes(bot, world):
+    tl = tools(bot, world)
+    out, back, _ = trip(tl)
+    assert tl["book_trip"](out["booking_ref"])["status"] == "needs_confirmation"
+    later = said(tools(bot, world))["book_trip"](
+        out["booking_ref"], return_flight_offer_id=back["booking_ref"]
+    )
+    assert later["status"] == "needs_confirmation"  # another itinerary, another price: ask again
 
 
 async def test_only_a_plain_yes_in_the_very_next_message_books(bot, world):
     tl = tools(bot, world)
-    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
+    fid = tl["search_flights"](origin="BKK", destination="SIN", depart_date=DEP)["top"][0][
+        "booking_ref"
+    ]
     assert tl["book_trip"](fid, "", "Lumen kickoff")["status"] == "needs_confirmation"
     assert tools(bot, world, who=BOSS)["book_trip"].on_confirm("yes") is None  # not BOSS's quote
     assert tools(bot, world)["book_trip"].on_confirm("yes, but the later flight") is None
     assert tools(bot, world)["book_trip"].on_confirm("Yes, confirm.") is None  # a message too late
     assert tools(bot, world)["list_trips"]()["count"] == 0
+
+
+async def test_a_card_click_books_without_a_typed_message(bot, world):
+    """The person's own Confirm booking click on a travel card (web or Discord, no model) is the
+    request to book: a quote first, then a NEW request books it; the plain tool never does."""
+    out = tools(bot, world)["search_flights"](origin="BKK", destination="SIN", depart_date=DEP)
+    fid = out["top"][0]["booking_ref"]
+    assert tools(bot, world)["book_trip"].clicked(fid, "", "x")["status"] == "needs_confirmation"
+    done = tools(bot, world)["book_trip"].clicked(fid, "", "x")
+    assert done["status"] == "booked" and done["provider"] == "sample"
 
 
 async def test_a_hotel_refused_after_the_flight_keeps_the_flight_booked_once(
@@ -427,23 +516,23 @@ async def test_a_hotel_refused_after_the_flight_keeps_the_flight_booked_once(
         raise RuntimeError("hotel sold out")
 
     tl = tools(bot, world)
-    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
-    hid = tl["search_hotels"]("SIN", DEP, RET)["hotels"][3]["offer_id"]
+    out, _, room = trip(tl)
+    fid, hid, fare = out["booking_ref"], room["booking_ref"], out["total_for_all_travellers"]
     assert tl["book_trip"](fid, hid, "Lumen kickoff")["status"] == "needs_confirmation"
     monkeypatch.setattr(bot.trips_provider, "book_flight", count)
     monkeypatch.setattr(bot.trips_provider, "book_hotel", refuse)
     text = tools(bot, world)["book_trip"].on_confirm("yes")
     # the booked flight is recorded: trip, receipt and check-in reminder (DEF-01: it was lost)
-    [trip] = bot.docs.find(trips.TRIP_KIND, GUILD)
-    assert list(trip["references"]) == ["flight"] and trip["hotel"] is None
-    assert len(trip["receipt_ids"]) == 1 and trip["reminder_id"]
-    assert trip["totals"] == [{"amount": 13700, "currency": "THB"}]
+    [trip_] = bot.docs.find(trips.TRIP_KIND, GUILD)
+    assert list(trip_["references"]) == ["flight"] and trip_["hotel"] is None
+    assert len(trip_["receipt_ids"]) == 1 and trip_["reminder_id"]
+    assert trip_["totals"] == [{"amount": fare, "currency": "THB"}]
     assert text.startswith("Only part of the trip is booked") and "NOT booked: the hotel" in text
-    assert trip["references"]["flight"] in text and "13,700.00 THB" in text and "SGD" not in text
+    assert trip_["references"]["flight"] in text and f"{fare:,.2f} THB" in text
     # a retry of the same flight and hotel never buys the flight again
     again = said(tools(bot, world))["book_trip"](fid, hid, "Lumen kickoff")
     assert again["status"] == "already_booked" and again["already"] == ["flight"]
-    assert flights_bought == [fid] and len(bot.docs.find(trips.TRIP_KIND, GUILD)) == 1
+    assert flights_bought == [fid.upper()] and len(bot.docs.find(trips.TRIP_KIND, GUILD)) == 1
 
 
 async def test_the_model_hears_what_is_booked_and_a_refused_flight_books_nothing(
@@ -456,14 +545,9 @@ async def test_the_model_hears_what_is_booked_and_a_refused_flight_books_nothing
         raise RuntimeError("refused")
 
     tl = tools(bot, world)
-    flights = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"]
-    hotels = tl["search_hotels"]("SIN", DEP, RET)["hotels"]
-    f1, f2, h1, h2 = (
-        flights[0]["offer_id"],
-        flights[1]["offer_id"],
-        hotels[3]["offer_id"],
-        hotels[2]["offer_id"],
-    )
+    flights = tl["search_flights"](origin="BKK", destination="SIN", depart_date=DEP)["top"]
+    f1, f2 = flights[0]["booking_ref"], flights[1]["booking_ref"]
+    h1, h2 = (room_of(tl, h)["booking_ref"] for h in ("bugis-garden", "riverside-inn"))
     assert tl["book_trip"](f1, h1, "x")["status"] == "needs_confirmation"
     monkeypatch.setattr(bot.trips_provider, "book_hotel", refuse)
     res = said(tools(bot, world))["book_trip"](f1, h1, "x")
@@ -478,7 +562,7 @@ async def test_the_model_hears_what_is_booked_and_a_refused_flight_books_nothing
     tried.clear()
     res = said(tools(bot, world))["book_trip"](f2, h2, "y")
     assert res == {"status": "failed", "error": "the booking service refused"}
-    assert tried == [f2] and len(bot.docs.find(trips.TRIP_KIND, GUILD)) == 1
+    assert tried == [f2.upper()] and len(bot.docs.find(trips.TRIP_KIND, GUILD)) == 1
     text = trips._confirm_reply(trips.TripsCtx(GUILD, STAFF, "Mint", False, "en", None, bot.docs,
                                 bot.store, bot.secretary_state, "r", bot.s.now), res)  # fmt: skip
     assert text.startswith("I couldn't book it") and "nothing is booked" in text
@@ -507,8 +591,8 @@ def test_a_question_a_refusal_or_a_change_does_not(text):
 
 async def test_a_question_while_a_quote_waits_never_books_it(bot, world):
     tl = tools(bot, world)
-    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
-    hid = tl["search_hotels"]("SIN", DEP, RET)["hotels"][3]["offer_id"]
+    out, _, room = trip(tl)
+    fid, hid = out["booking_ref"], room["booking_ref"]
     assert tl["book_trip"](fid, hid, "Lumen kickoff")["status"] == "needs_confirmation"
     # the next message is a question; the model calls book_trip again with the same arguments
     asked = said(tools(bot, world), "What did I just book, and what will you remind me about?")
@@ -525,7 +609,9 @@ async def test_a_question_while_a_quote_waits_never_books_it(bot, world):
 
 async def test_a_confirmed_quote_books_even_when_the_purpose_is_reworded(bot, world):
     tl = tools(bot, world)
-    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
+    fid = tl["search_flights"](origin="BKK", destination="SIN", depart_date=DEP)["top"][0][
+        "booking_ref"
+    ]
     assert tl["book_trip"](fid, "", "Client kickoff")["status"] == "needs_confirmation"
     asked = said(tools(bot, world), "What did I just book?")
     assert asked["book_trip"](fid, "", "client kickoff")["status"] == "needs_confirmation"
@@ -537,7 +623,9 @@ async def test_a_confirmed_quote_books_even_when_the_purpose_is_reworded(bot, wo
 
 async def test_a_call_with_no_message_heard_never_books(bot, world):
     tl = tools(bot, world)
-    fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
+    fid = tl["search_flights"](origin="BKK", destination="SIN", depart_date=DEP)["top"][0][
+        "booking_ref"
+    ]
     assert tl["book_trip"](fid, "", "Lumen kickoff")["status"] == "needs_confirmation"
     for _ in range(2):  # later requests whose message was never handed to the tools
         assert (
@@ -549,7 +637,7 @@ async def test_a_call_with_no_message_heard_never_books(bot, world):
 
 async def test_hotel_results_and_the_quote_say_they_are_sandbox(bot, world):
     tl = tools(bot, world)
-    hotels = tl["search_hotels"]("SIN", DEP, RET)
-    assert "sandbox" in hotels["note"]
-    quote = tl["book_trip"]("", hotels["hotels"][0]["offer_id"], "x")
+    hotels = tl["search_hotels"](city="SIN", check_in=DEP, check_out=RET)
+    assert hotels["data"]["bookable"] is False and hotels["data"]["source"] == "sample"
+    quote = tl["book_trip"]("", hotels["top"][0]["booking_ref"], "x")
     assert quote["status"] == "needs_confirmation" and "sandbox quote" in quote["instruction"]

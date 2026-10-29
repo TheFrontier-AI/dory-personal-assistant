@@ -67,14 +67,15 @@ def test_voice_langs_take_profiles_or_plain_codes():
     assert aud.voice_langs("en", []) == ["en"]
 
 
-def test_tt_renders_each_language_and_dedupes_identical_ones():
+def test_tt_renders_each_language_and_dedupes_identical_ones(monkeypatch):
     both = aud.tt("aud_personal_unset", ["en", "th"])
     th = aud.translation_label("th") + t("aud_personal_unset", "th")  # labelled as a translation
     assert both == t("aud_personal_unset", "en") + "\n\n" + th
     assert aud.translation_label("th") == "*(Thai translation)*\n"
     assert aud.tt("aud_personal_unset", ["en", "en"]) == t("aud_personal_unset", "en")
     # a key that reads the same in every language is shown once
-    CATALOG["aud_test_same"] = {"th": "OK", "en": "OK"}
+    # removed after the test: a leftover key would read as an untranslated message
+    monkeypatch.setitem(CATALOG, "aud_test_same", {"th": "OK", "en": "OK"})
     assert aud.tt("aud_test_same", ["en", "th"]) == "OK"
     # a callable value is asked for its text per language
     text = aud.tt("aud_personal_set", ["en", "th"], lname=aud.name_in("th"))
