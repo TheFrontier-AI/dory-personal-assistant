@@ -585,3 +585,7 @@ def test_live_waiting_sounds_toggle_off_by_default_and_operation_status():
     # every way a wait ends stops the pad: Dory's first audio, the person's voice, heard / turn / interrupted, the call's end
     assert call.count("waitStop()") >= 7 and "waitArm()" in call
     assert "opLabel(S.thinkQ) ||" in call
+    # a filler line mid-turn stops the pad but not the turn: thinking ends on turn / interrupted / error, the pad re-arms
+    enqueue = between("const enqueue = (buf) => {", "const stopPlayback")
+    assert "S.thinking = false" not in enqueue
+    assert "if (S.thinking && !playing && S.waitOn && !S.wait && !S.waitT) waitArm();" in call
