@@ -695,6 +695,7 @@ def trips_tools(ctx: TripsCtx) -> list:
             "status": "ok",
             "source": offers[0].provider,
             "hotels": [_view(x) for x in offers[:MAX_RESULTS]],
+            "note": "sandbox prices (no real room is reserved, no money is charged)",
         }
 
     def book_trip(flight_offer_id: str = "", hotel_offer_id: str = "", purpose: str = "",
@@ -769,7 +770,8 @@ def trips_tools(ctx: TripsCtx) -> list:
             return {"status": "needs_confirmation", "quote": quote, "instruction": (
                 "Read the quote back (flight, hotel, totals, what it is for) and ask the person to "
                 "confirm (English: “Shall I book it?”; Thai: “จองเลยไหมคะ”; in a voice room say it "
-                "aloud). Do NOT say it is booked. After they confirm in a later message call "
+                "aloud), and say it is a sandbox quote: no real ticket or room, no money. Do NOT say it is "
+                "booked. After they confirm in a later message call "
                 "book_trip again with exactly the same arguments.")}  # fmt: skip
         traveller = traveller_for(ctx)
         refs: dict[str, str] = {}

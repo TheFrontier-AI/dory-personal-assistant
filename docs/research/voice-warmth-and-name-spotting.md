@@ -45,8 +45,9 @@ is accepted anywhere a voice name is, so weighted blends are two lines:
 ```python
 from kokoro import KPipeline
 import torch
+
 tts = KPipeline(lang_code="a", repo_id="hexgrad/Kokoro-82M")
-soft = tts.load_voice("af_heart,af_nicole")                      # equal average, cached under that key
+soft = tts.load_voice("af_heart,af_nicole")  # equal average, cached under that key
 warm = 0.7 * tts.load_single_voice("af_heart") + 0.3 * tts.load_single_voice("af_bella")  # weighted
 for _, _, audio in tts("Hello, I'm Dory.", voice=warm, speed=0.92):
     ...  # audio: 24 kHz float tensor for this chunk
@@ -67,6 +68,8 @@ Recommendation (judgment, with Alexa's rule "add spacing between phrases and sen
 
 ```python
 import numpy as np
+
+
 def with_pause(audio: np.ndarray, ms: int = 300, rate: int = 24_000) -> np.ndarray:
     return np.concatenate([audio, np.zeros(int(rate * ms / 1000), dtype=audio.dtype)])
 ```
@@ -95,15 +98,18 @@ non-letters, collapse doubled letters, fold vowel runs. `dory/dori/dorie/dorey/d
 
 ```python
 import re
+
 CUES = {"hey", "hi", "ok", "okay", "thanks", "thank", "please", "so"}
 MENTION_NEXT = {"said", "told", "was", "has", "had", "did", "went", "already", "also"}
-NAME_KEYS = {"d-r-", "t-r-"}                       # Dory and the ASR's "Tory"
+NAME_KEYS = {"d-r-", "t-r-"}  # Dory and the ASR's "Tory"
+
 
 def key(w: str) -> str:
-    w = re.sub(r"[^a-z]", "", re.sub(r"'s$", "", w.lower()))   # door-y -> doory, dory's -> dory
+    w = re.sub(r"[^a-z]", "", re.sub(r"'s$", "", w.lower()))  # door-y -> doory, dory's -> dory
     return re.sub(r"[aeiouy]+", "-", re.sub(r"(.)\1+", r"\1", w))  # dorry -> dory -> d-r-
 
-def spot(text: str) -> str | None:                 # "addressed" | "mentioned" | None
+
+def spot(text: str) -> str | None:  # "addressed" | "mentioned" | None
     toks = re.findall(r"[A-Za-z'-]+|[,?!.]", text)
     hits = [i for i, t in enumerate(toks) if key(t) in NAME_KEYS]
     if not hits:
@@ -111,11 +117,11 @@ def spot(text: str) -> str | None:                 # "addressed" | "mentioned" |
     i = hits[0]
     prev = toks[i - 1].lower() if i else ""
     nxt = toks[i + 1].lower() if i + 1 < len(toks) else ""
-    if nxt.endswith("ed") or nxt in MENTION_NEXT:   # "Dory booked it yesterday", "Dory said..."
+    if nxt.endswith("ed") or nxt in MENTION_NEXT:  # "Dory booked it yesterday", "Dory said..."
         return "mentioned"
     if prev in CUES or nxt in (",", "?", "!") or i <= 1 or i >= len(toks) - 2:
-        return "addressed"                          # vocative: start, end, after a cue, before a comma
-    return "mentioned"                              # mid-sentence subject/object
+        return "addressed"  # vocative: start, end, after a cue, before a comma
+    return "mentioned"  # mid-sentence subject/object
 ```
 
 Scoring in words: name as the first or last word, after "hey/ok/thanks/so", or before a comma or
@@ -167,10 +173,15 @@ It wants a float tensor, so from the 16 kHz int16 frames:
 ```python
 import numpy as np, torch
 from silero_vad import load_silero_vad, VADIterator
-vad = VADIterator(load_silero_vad(), threshold=0.5, sampling_rate=16000, min_silence_duration_ms=100)
-def is_speech(pcm16: bytes) -> dict | None:                 # exactly 512 samples = 1024 bytes per call
+
+vad = VADIterator(
+    load_silero_vad(), threshold=0.5, sampling_rate=16000, min_silence_duration_ms=100
+)
+
+
+def is_speech(pcm16: bytes) -> dict | None:  # exactly 512 samples = 1024 bytes per call
     x = torch.from_numpy(np.frombuffer(pcm16, np.int16).astype(np.float32) / 32768.0)
-    return vad(x, return_seconds=True)                       # {'start': s} / {'end': s} / None
+    return vad(x, return_seconds=True)  # {'start': s} / {'end': s} / None
 ```
 
 Keep the RMS gate as the cheap first stage and let Silero decide "voiced": RMS fires on keyboard noise and
@@ -217,20 +228,40 @@ safe) ([misaki/en.py](https://github.com/hexgrad/misaki/blob/main/misaki/en.py))
 
 ```python
 import re
-EMOJI = re.compile("[\U0001F300-\U0001FAFF\U0001F1E6-\U0001F1FF☀-➿⬀-⯿️‍⃣]+")
-MD = [(r"```.*?```", " "), (r"`([^`]*)`", r"\1"), (r"!?\[([^\]]*)\]\([^)]*\)", r"\1"),   # code, links
-      (r"(?m)^\s{0,3}#{1,6}\s*", ""), (r"(?m)^\s*(?:[-*•]|\d+[.)])\s+", ""),               # headers, bullets
-      (r"(\*\*|__|~~)(.+?)\1", r"\2"), (r"(?<!\w)[*_](.+?)[*_](?!\w)", r"\1")]             # bold, italic
-CUR = {"THB": "baht", "฿": "baht", "USD": "dollars", "$": "dollars", "EUR": "euros", "€": "euros",
-       "GBP": "pounds", "£": "pounds"}
+
+EMOJI = re.compile("[\U0001f300-\U0001faff\U0001f1e6-\U0001f1ff☀-➿⬀-⯿️‍⃣]+")
+MD = [
+    (r"```.*?```", " "),
+    (r"`([^`]*)`", r"\1"),
+    (r"!?\[([^\]]*)\]\([^)]*\)", r"\1"),  # code, links
+    (r"(?m)^\s{0,3}#{1,6}\s*", ""),
+    (r"(?m)^\s*(?:[-*•]|\d+[.)])\s+", ""),  # headers, bullets
+    (r"(\*\*|__|~~)(.+?)\1", r"\2"),
+    (r"(?<!\w)[*_](.+?)[*_](?!\w)", r"\1"),
+]  # bold, italic
+CUR = {
+    "THB": "baht",
+    "฿": "baht",
+    "USD": "dollars",
+    "$": "dollars",
+    "EUR": "euros",
+    "€": "euros",
+    "GBP": "pounds",
+    "£": "pounds",
+}
+
 
 def speakable(s: str) -> str:
     s = EMOJI.sub("", s)
     for rx, rep in MD:
         s = re.sub(rx, rep, s, flags=re.S)
-    s = re.sub(r"(THB|USD|EUR|GBP|[฿$€£])\s?(\d[\d,]*(?:\.\d+)?)", lambda m: f"{m.group(2)} {CUR[m.group(1)]}", s)
+    s = re.sub(
+        r"(THB|USD|EUR|GBP|[฿$€£])\s?(\d[\d,]*(?:\.\d+)?)",
+        lambda m: f"{m.group(2)} {CUR[m.group(1)]}",
+        s,
+    )
     s = re.sub(r"(\d)\s?%", r"\1 percent", s)
-    s = re.sub(r"\s*\n+\s*", ". ", s)                      # a line break becomes a sentence end (a pause)
+    s = re.sub(r"\s*\n+\s*", ". ", s)  # a line break becomes a sentence end (a pause)
     return re.sub(r"\.\s*\.", ".", re.sub(r"[ \t]+", " ", s)).strip()
 ```
 
