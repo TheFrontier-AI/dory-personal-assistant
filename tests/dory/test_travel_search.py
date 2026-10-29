@@ -294,9 +294,20 @@ def test_every_result_says_it_is_sample_data():
 
 
 # ----------------------------------------------------------------------------- the AI's tools
-def tools(owner="web:a@x", trips=None, render=True):
-    ctx = T.CardCtx(owner=owner, today=TODAY, trips=trips or T.Trips(), render=render)
+def tools(owner="web:a@x", trips=None, render=True, home=""):
+    ctx = T.CardCtx(owner=owner, today=TODAY, trips=trips or T.Trips(), render=render, home=home)
     return ctx, *T.card_tools(ctx)
+
+
+def test_the_home_airport_is_the_departure_only_when_the_request_names_none():
+    _, flights, _ = tools(home="BKK")
+    r = flights(destination="Singapore", depart_date="2026-11-03")
+    assert r["status"] == "ok" and r["query"]["origin"] == "BKK"
+    # a named origin wins, and a person without a home airport is still asked
+    named = flights(origin="Singapore", destination="Bangkok", depart_date="2026-11-03")
+    assert named["query"]["origin"] == "SIN"
+    _, flights, _ = tools()
+    assert flights(destination="Singapore", depart_date="2026-11-03")["missing"] == ["origin"]
 
 
 def test_tools_ask_for_essentials_instead_of_guessing():

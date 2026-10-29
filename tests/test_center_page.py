@@ -608,3 +608,11 @@ def test_travel_card_strings_exist_in_both_languages():
     used = set(re.findall(r'"(tv_[a-z0-9_]*[a-z0-9])"', src))
     assert used <= keys, used - keys
     assert 'fetch("/api/travel" + path' in src  # the public sample API, never the mock detour
+
+
+def test_my_account_has_a_travel_card_in_both_languages():
+    src = html()
+    th, en = src.split("\nen: {", 1)
+    for key in re.findall(r"\b(tp_[a-z]+):", src):
+        assert f"{key}:" in th and f"{key}:" in en, key
+    assert '"/api/center/me/travel"' in src and 'id: "a-airport"' in src and 'id: "a-ccy"' in src

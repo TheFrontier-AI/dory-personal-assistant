@@ -57,6 +57,7 @@ from dory.connectors import (
     SlackConnector,
 )
 from dory.connectors.base import TOKENS
+from dory.currency import resolve_currency
 from dory.guild_settings import LinkError
 from dory.identity_links import (
     CODE_PLATFORMS,
@@ -367,6 +368,9 @@ class MeView(BaseModel):
     department: str = ""
     about: str = ""
     job_description: str = ""
+    home_airport: str = ""  # IATA code the travel searches start from when a request names none
+    currency: str = ""  # ISO 4217 code of the person's preferred price currency
+    onboarded: bool = False  # the sign-up flow's optional travel step was saved or skipped
     identities: list[IdentityView] = Field(default_factory=list)  # "my account" on each platform
     identity_platforms: list[str] = Field(default_factory=lambda: list(IDENTITY_PLATFORMS))
     discord_verify: bool = False  # True when "Verify with Discord" (OAuth) is configured
@@ -563,6 +567,9 @@ async def me(email: str = Depends(hub.require_user), orgs: OrgStore = Depends(ge
         department=profile.department,
         about=profile.about,
         job_description=profile.job_description,
+        home_airport=profile.home_airport,
+        currency=profile.currency,
+        onboarded=bool(profile.onboarded_at),
         identities=identity_views(profile),
         discord_verify=bool(get_settings().dory_discord_client_secret),
         orgs=[
@@ -639,6 +646,64 @@ async def set_my_profile(
         about=body.about,
         job_description=body.job_description,
     )
+    return await me(email, orgs)
+
+
+class TravelPrefsBody(BaseModel):
+    home_airport: str | None = Field(default=None, max_length=60)  # None = unchanged, "" = clear
+    currency: str | None = Field(default=None, max_length=60)
+    skip: bool = False  # end the step without saving anything
+
+
+NO_PREFERENCE = {"", "none", "clear", "-", "ไม่มี"}
+
+
+def clean_travel_prefs(
+    home_airport: str | None, currency: str | None
+) -> tuple[str | None, str | None]:
+    """The two travel preferences as stored: an airport the search catalogue knows (a code or a
+    city name), a 3-letter currency code (or a name like "baht"). None stays None, "" / "none"
+    clears. ValueError names what is wrong. shortcut: any 3-letter currency passes (no ISO list
+    here), the converter rejects a made-up one when it is used."""
+    out: list[str | None] = []
+    for raw, kind in ((home_airport, "airport"), (currency, "currency")):
+        if raw is None:
+            out.append(None)
+        elif raw.strip().casefold() in NO_PREFERENCE:
+            out.append("")
+        elif kind == "airport":
+            code = travel_search.place_code(raw)
+            if code not in travel_search.AIRPORTS:
+                raise ValueError(
+                    f"Unknown airport {raw.strip()[:40]!r}; use one of "
+                    + ", ".join(travel_search.AIRPORTS)
+                )
+            out.append(code)
+        else:
+            code = resolve_currency(raw)
+            if code is None:
+                raise ValueError(
+                    f"Unknown currency {raw.strip()[:40]!r}; use a code such as THB or USD"
+                )
+            out.append(code)
+    return out[0], out[1]
+
+
+@router.put("/me/travel")
+async def set_my_travel(
+    body: TravelPrefsBody,
+    email: str = Depends(hub.require_user),
+    orgs: OrgStore = Depends(get_orgs),
+) -> MeView:
+    """The sign-up flow's optional travel step, and My account's travel card: save the departure
+    airport and currency, or skip. Saving and skipping both end the step for good."""
+    try:
+        airport, ccy = (
+            (None, None) if body.skip else clean_travel_prefs(body.home_airport, body.currency)
+        )
+    except ValueError as exc:
+        raise HTTPException(422, str(exc)) from exc
+    await run_in_threadpool(lambda: orgs.set_travel_prefs(email, airport, ccy, onboarded=True))
     return await me(email, orgs)
 
 
@@ -2981,6 +3046,8 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
         first_name: str = "",
         last_name: str = "",
         job_description: str = "",
+        home_airport: str = "",
+        currency: str = "",
     ) -> dict:
         """Remember who the person talking to you is: their display name (nickname), real
         first / last name, job title (e.g. CTO), job_description (their full JD, any length),
@@ -2988,7 +3055,16 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
         (e.g. Engineering), what they do / are responsible for, and `manager` = who they report
         to (a member's name or email; "none" = top of the chart). Call it whenever they tell
         you any of these; leave a field empty to keep its current value. Other members and the
-        company directory / org chart see title, department and manager."""
+        company directory / org chart see title, department and manager. Also their travel
+        preferences: `home_airport` (the airport they fly from, a code or city; it is the
+        departure of a flight request that names none) and `currency` (a code such as THB or
+        USD, for prices); "none" clears either."""
+        try:  # checked first: a bad airport must not leave the rest half saved
+            airport, ccy = clean_travel_prefs(
+                home_airport.strip() or None, currency.strip() or None
+            )
+        except ValueError as exc:
+            return {"status": "error", "error": str(exc)}
         p = orgs.set_user_profile(
             email,
             name=name or None,
@@ -3009,6 +3085,10 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
                 "about": p.about,
             },
         }
+        if airport is not None or ccy is not None:
+            p = orgs.set_travel_prefs(email, airport, ccy)
+        if p.home_airport or p.currency:
+            out["travel"] = {"home_airport": p.home_airport, "currency": p.currency}
         if manager:
             want = manager.strip().casefold()
             if want in ("none", "nobody", "-", "ไม่มี"):
@@ -4158,6 +4238,17 @@ def who_block(ctx: Ctx, p: UserProfile, page: str | None = None) -> str:
         f"Role in {ctx.org.name}: {ctx.role}" + (" (executive)" if ctx.is_exec else ""),
         f"Linked accounts: {linked or 'none yet (signed in with Google only)'}",
     ]
+    if p.home_airport or p.currency:
+        bits = [
+            f"home airport {p.home_airport} (the departure of a flight request that names none)"
+            if p.home_airport
+            else "",
+            f"preferred currency {p.currency} (catalogue prices are THB: convert only with a "
+            "tool or a rate you were given, never guess one)"
+            if p.currency
+            else "",
+        ]
+        lines.append("Travel preferences: " + "; ".join(b for b in bits if b))
     if p.about:
         lines.append(f"What they do: {p.about}")
     else:
@@ -4406,12 +4497,14 @@ def answer_question(
     from dory.qa import MemoryTools
 
     s, store = hub.get_dory_runtime()
+    profile = orgs.user_profile(ctx.email)
     cards = travel_search.card_tools(
         travel_search.CardCtx(
             owner=f"web:{ctx.email}",
             today=travel_api.get_today(),
             trips=TRIPS,
             render=travel_out is not None,
+            home=profile.home_airport,
         )
     )
     is_exec = ctx.is_exec and ws.platform == "discord"
@@ -4429,7 +4522,6 @@ def answer_question(
     if voice_history:
         history = f"{history}\n{voice_history}".strip()
     lang = language or company_language(guilds, ws)
-    profile = orgs.user_profile(ctx.email)
     tools = web_tools(ctx, orgs, guilds, ws)
     who = who_block(ctx, profile, page)
     # ONE Dory: the Discord bot's own agent assembly (every feature's tools, company playbook,
