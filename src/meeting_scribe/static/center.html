@@ -2513,7 +2513,6 @@ function liveCall(wrap, addMsg, page) {
     const s = S.ac.createBufferSource(); s.buffer = ab; s.connect(S.out); s.start(S.next);
     S.chunks.push({ t0: S.next, t1: S.next + ab.duration, rms: Math.sqrt(sum / n) }); S.next += ab.duration;
     S.sources.add(s); s.onended = () => S.sources.delete(s);
-    S.thinking = false; S.thinkQ = "";
   };
   const stopPlayback = () => { S.sources.forEach((s) => { try { s.stop(); } catch { /* ignore */ } }); S.sources.clear(); S.chunks = []; S.next = 0; };
   // ---- one frame: mic level -> rings, output level -> mouth, and the state that follows from what is happening
@@ -2527,6 +2526,7 @@ function liveCall(wrap, addMsg, page) {
     if (S.ac) { const now = S.ac.currentTime; while (S.chunks.length && S.chunks[0].t1 < now) S.chunks.shift(); const c = S.chunks[0];
       if (c && c.t0 <= now) { m = Math.min(1, c.rms * 8); playing = true; } else if (S.chunks.length) playing = true; }
     if (S.forcedMouth != null) m = S.forcedMouth;
+    if (S.thinking && !playing && S.waitOn && !S.wait && !S.waitT) waitArm(); // after a filler line, while she still works
     S.mouth += (m - S.mouth) * (m > S.mouth ? .6 : .3); v.style.setProperty("--mouth", S.mouth.toFixed(3));
     if (!S.forced) {
       if (playing) { setState("speaking"); S.wasSpeaking = true; }
