@@ -4466,9 +4466,10 @@ TRIPS = travel_search.Trips()
 def with_card_tools(tools: list, mine: list) -> tuple[list, list]:
     """`tools` with exactly one `search_flights` / `search_hotels`, and the tools whose `.cards`
     to read: the headless bot's own (its `spoken` set their `render`, next to its book_trip), else
-    `mine` (the web-only path: search, nothing books)."""
+    `mine` (the web-only path: search, nothing books); plus the weather tool's, when offered."""
     named = [f for f in tools if getattr(f, "__name__", "") in travel_search.CARD_TOOL_NAMES]
-    return (tools, named) if named else (tools + mine, mine)
+    weather = [f for f in tools if getattr(f, "__name__", "") == "weather"]
+    return (tools, named + weather) if named else (tools + mine, mine + weather)
 
 
 def answer_question(
@@ -4552,6 +4553,11 @@ def answer_question(
     if ws.platform == "discord":  # fallback: the company knowledge without the full bot
         company, more = company_knowledge(ctx, profile, ws, lib, guilds, question, lang)
         tools = tools + more
+    if (forecast := travel_api.get_weather()) is not None:  # the bot's weather tool, without it
+        from dory.weather import WeatherCtx, build_weather_tools
+
+        wctx = WeatherCtx(forecast, None, lang, s.zone, s.now, render=travel_out is not None)
+        tools = tools + build_weather_tools(wctx)
     tools, drawn = with_card_tools(tools, cards)
     ans = ask(
         s,

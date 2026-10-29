@@ -610,6 +610,24 @@ def test_travel_card_strings_exist_in_both_languages():
     assert 'fetch("/api/travel" + path' in src  # the public sample API, never the mock detour
 
 
+def test_weather_cards_draw_from_their_own_route_with_every_icon_and_tip_worded():
+    src = html()
+    th, en = src.split("\nen: {", 1)
+    en = en.split("}};", 1)[0]
+    # a reply may carry ONLY weather: the cards render, and the sample-travel note stays off it
+    assert "travel.flights || travel.hotels || travel.return_flights || travel.weather" in src
+    assert 'travelApi("/weather"' in src and "if (MOCK) return mockWeatherCard(" in src
+    icons = re.search(r"const WX_ICON = \{(.*?)\n\};", src, re.S).group(1)
+    keys = ("sun", "cloud-sun", "cloud", "fog", "drizzle", "rain", "showers", "snow", "storm")
+    for k in keys:  # dory.weather.wmo's icon keys, each drawn and named in both languages
+        assert re.search(rf'^\s*"?{k}"?: \'<svg', icons, re.M), k
+        name = "tv_wx_i_" + k.replace("-", "_")
+        assert f"{name}:" in th and f"{name}:" in en, name
+    for k in ("storm", "umbrella", "heat", "sun", "jacket", "pleasant"):  # weather.tip_for keys
+        assert f"tv_wx_tip_{k}:" in th and f"tv_wx_tip_{k}:" in en, k
+    assert '"https://open-meteo.com/"' in src  # CC BY 4.0: the credit links to the source
+
+
 def test_my_account_has_a_travel_card_in_both_languages():
     src = html()
     th, en = src.split("\nen: {", 1)

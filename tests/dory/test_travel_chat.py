@@ -52,7 +52,7 @@ def brain(w, monkeypatch):  # noqa: F811
                 return SimpleNamespace(text=text)
         got = [tools[name](**args) for name, args in script.get(question, [])]
         seen.append(got)
-        if got and got[-1]["status"] == "need_details":
+        if got and got[-1].get("status") == "need_details":
             return SimpleNamespace(text="Where are you flying to, and on which date?")
         return SimpleNamespace(text="Here is what I found." if got else "ans:" + question)
 
@@ -64,6 +64,21 @@ def say(w, text, who="mem", status=200):  # noqa: F811
     r = w.client.post(URL, json={"message": text}, headers=H[who])
     assert r.status_code == status, r.text
     return r.json()
+
+
+def test_a_weather_answer_carries_its_card_and_history_keeps_it(w, brain, monkeypatch):  # noqa: F811
+    from test_weather_cards import Net
+
+    svc = Net().service()  # fake Open-Meteo
+    monkeypatch.setattr(type(brain.bot), "_weather_service", lambda self: svc)
+    ask = "What's the weather in Singapore this week?"
+    brain.script[ask] = [("weather", {"place": "Singapore"})]
+    got = say(w, ask)
+    card = {"kind": "weather", "place": "Singapore", "lat": 1.2897, "lng": 103.8501, "days": 3}
+    assert got["travel"]["weather"] == card and got["travel"]["flights"] is None
+    assert got["travel"]["hotels"] is None and got["travel_fallback"] is False
+    turns = w.client.get(URL + "/history", headers=H["mem"]).json()["turns"]
+    assert turns[-1]["role"] == "dory" and turns[-1]["travel"]["weather"] == card
 
 
 def test_cards_come_from_the_brains_tool_call_with_its_filters(w, brain):  # noqa: F811
@@ -247,6 +262,20 @@ def test_the_web_only_path_searches_but_cannot_book(w, brain, monkeypatch):  # n
     assert result["status"] == "ok" and "only book_trip" in result["rule"]
     assert {"search_flights", "search_hotels"} <= brain.offered[-1]
     assert "book_trip" not in brain.offered[-1]  # nothing books without the bot's trips tools
+
+
+def test_the_web_only_path_has_the_weather_card_too(w, brain, monkeypatch):  # noqa: F811
+    from test_weather_cards import Net
+
+    monkeypatch.setattr(center, "get_bot", lambda: None)
+    svc = Net().service()  # fake Open-Meteo, shared with the public weather route
+    monkeypatch.setattr(travel_api, "get_weather", lambda: svc)
+    brain.script["weather in Singapore"] = [("weather", {"place": "Singapore"})]
+    got = say(w, "weather in Singapore")
+    assert got["travel"]["weather"]["place"] == "Singapore" and "weather" in brain.offered[-1]
+    monkeypatch.setattr(travel_api, "get_weather", lambda: None)  # DORY_WEATHER_PROVIDER=off
+    say(w, "hello")
+    assert "weather" not in brain.offered[-1]
 
 
 def test_a_chat_yes_after_a_card_quote_or_booking_books_nothing(w, brain):  # noqa: F811

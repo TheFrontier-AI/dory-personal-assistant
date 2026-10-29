@@ -438,6 +438,38 @@ pre.preview { white-space: pre-wrap; overflow-wrap: anywhere; background: var(--
 .tv-purpose { display: flex; flex-direction: column; gap: 4px; font-size: 14px; font-weight: 500; color: var(--muted); }
 .tv-purpose input { width: 100%; min-width: 0; min-height: 44px; }
 .tv-quote[aria-busy=true] { opacity: .6; }
+/* weather card (a real forecast from /api/travel/weather): the same quiet card; icons in theme tokens, always beside the
+   condition in words; the skeleton keeps the card's height so a refresh never makes the chat jump */
+.tv-wx { gap: 10px; }
+.tv-wbody { display: flex; flex-direction: column; gap: 10px; min-width: 0; }
+.tv-wskel { display: flex; flex-direction: column; gap: 10px; }
+.tv-wnow { display: flex; align-items: center; gap: 12px; min-width: 0; }
+.tv-wnow > .tv-ic { width: 44px; height: 44px; }
+.tv-wtemp { font-size: 32px; line-height: 1.1; font-weight: 700; color: var(--ink); font-variant-numeric: tabular-nums; white-space: nowrap; }
+.tv-wnow p { min-width: 0; font-size: 14.5px; color: var(--ink); }
+.tv-wstats { display: grid; grid-template-columns: repeat(auto-fit, minmax(108px, 1fr)); gap: 6px 12px; margin: 0; }
+.tv-wstats div { min-width: 0; }
+.tv-wstats dt { font-size: 12.5px; color: var(--muted); }
+.tv-wstats dd { margin: 0; font-size: 14.5px; font-weight: 600; color: var(--ink); font-variant-numeric: tabular-nums; }
+.tv-wdays { list-style: none; display: flex; flex-direction: column; }
+.tv-wday { display: grid; grid-template-columns: minmax(3.4em, auto) 24px minmax(0, 1fr) auto; align-items: center; gap: 4px 10px; padding: 8px 0; border-top: 1px solid var(--line); font-size: 14px; color: var(--ink); }
+.tv-wday .tv-ic { width: 24px; height: 24px; }
+.tv-wdn { font-weight: 600; }
+@container (max-width: 260px) { /* a 320 px panel: the condition gets its own line under the day, never cut mid-word */
+  .tv-wday { grid-template-columns: 24px minmax(0, 1fr) auto; grid-template-areas: "i d r" "i c c"; align-items: start; }
+  .tv-wday > .tv-wdn { grid-area: d; } .tv-wday > .tv-ic { grid-area: i; align-self: start; } .tv-wday > .tv-wc { grid-area: c; } .tv-wday > .tv-wr { grid-area: r; }
+}
+.tv-wr { display: flex; flex-direction: column; align-items: flex-end; text-align: right; font-variant-numeric: tabular-nums; }
+.tv-wr span { font-size: 12.5px; color: var(--muted); }
+.tv-wtip { padding: 10px 12px; border-radius: var(--radius); background: var(--bg-2); color: var(--ink); font-size: 14px; }
+.tv-wcredit { font-size: 12.5px; color: var(--muted); overflow-wrap: anywhere; }
+.tv-wcredit a { display: inline-block; padding: 4px 0; color: var(--indigo); }
+.tv-wfoot { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 8px 12px; padding-top: 12px; border-top: 1px solid var(--line); }
+.tv-wic .wx-s { stroke: var(--warn-ink); }
+.tv-wic .wx-c { fill: var(--card); stroke: var(--muted); }
+.tv-wic .wx-r { stroke: var(--indigo-2); }
+.tv-wic .wx-f { stroke: var(--muted); }
+.tv-wic .wx-b { fill: var(--warn-ink); stroke: none; }
 .tv-done { padding: 10px 12px; border-radius: var(--radius); background: var(--ok-bg); color: var(--ok-ink); font-size: 14px; font-weight: 600; overflow-wrap: anywhere; }
 .tv-nb { padding: 10px 12px; border-radius: var(--radius); background: var(--warn-bg); color: var(--warn-ink); font-size: 13.5px; font-weight: 500; }
 @container (max-width: 220px) { .tv-route { grid-template-columns: minmax(0, 1fr); } .tv-pt.end { text-align: left; } .tv-mid { align-items: flex-start; text-align: left; } }
@@ -1395,6 +1427,14 @@ th: {
   tv_err_f:"โหลดเที่ยวบินตัวอย่างไม่สำเร็จ: {e}", tv_err_h:"โหลดโรงแรมตัวอย่างไม่สำเร็จ: {e}", tv_err_rev:"โหลดสรุปไม่สำเร็จ: {e}", tv_err_rooms:"โหลดห้องพักไม่สำเร็จ: {e}",
   tv_past_date:"วันที่นี้ผ่านไปแล้ว เลือกวันนี้หรือหลังจากนี้ค่ะ", tv_too_far:"วันที่นี้ไกลเกินกว่าข้อมูลตัวอย่าง เลือกวันที่เร็วขึ้นค่ะ",
   tv_from:"ต้นทาง", tv_to:"ปลายทาง", tv_date:"วันเดินทาง", tv_travellers:"ผู้โดยสาร (1-9)", tv_cabin:"ชั้นโดยสาร", tv_city:"เมือง", tv_check_in:"เช็กอิน", tv_check_out:"เช็กเอาต์", tv_rooms_l:"จำนวนห้อง (1-4)", tv_guests_l:"ผู้เข้าพัก (1-12)",
+  tv_wx:"สภาพอากาศ", tv_wx_label:"พยากรณ์อากาศ · ค่าประมาณ", tv_wx_local:"เวลาท้องถิ่น {t}", tv_wx_feels:"รู้สึกเหมือน", tv_wx_humidity:"ความชื้น", tv_wx_wind:"ลม", tv_wx_rain:"โอกาสฝน", tv_wx_kmh:"{n} กม./ชม.",
+  tv_wx_len:"ช่วงพยากรณ์", tv_wx_3:"3 วัน", tv_wx_5:"5 วัน", tv_wx_days:"พยากรณ์ {n} วัน", tv_wx_today:"วันนี้", tv_wx_high:"สูงสุด", tv_wx_low:"ต่ำสุด", tv_wx_rain_d:"ฝน {p}%", tv_wx_refresh:"รีเฟรช",
+  tv_wx_on:"{d}", tv_wx_today_l:"วันนี้", tv_wx_soon:"ช่วงนี้",
+  tv_wx_tip_storm:"{day}อาจมีพายุฝนฟ้าคะนอง วางแผนกิจกรรมในร่มและเผื่อเวลาเดินทางไว้ด้วยค่ะ", tv_wx_tip_umbrella:"{day}มีโอกาสฝนตก พกร่มไปด้วยนะคะ", tv_wx_tip_heat:"อากาศร้อน ดื่มน้ำบ่อยๆ และทำกิจกรรมกลางแจ้งช่วงเช้าหรือเย็นค่ะ",
+  tv_wx_tip_sun:"รังสี UV สูง เตรียมครีมกันแดดและหมวกไปด้วยค่ะ", tv_wx_tip_jacket:"กลางคืนอากาศเย็น พกเสื้อแจ็กเก็ตบางๆ ไปด้วยค่ะ", tv_wx_tip_pleasant:"อากาศดี เหมาะกับการเดินทางค่ะ",
+  tv_wx_i_sun:"ท้องฟ้าแจ่มใส", tv_wx_i_cloud_sun:"มีเมฆบางส่วน", tv_wx_i_cloud:"เมฆมาก", tv_wx_i_fog:"หมอก", tv_wx_i_drizzle:"ฝนปรอยๆ", tv_wx_i_rain:"ฝนตก", tv_wx_i_showers:"ฝนตกเป็นช่วงๆ", tv_wx_i_snow:"หิมะตก", tv_wx_i_storm:"พายุฝนฟ้าคะนอง",
+  tv_wx_err:"โหลดพยากรณ์อากาศไม่สำเร็จ: {e}", tv_wx_off:"ปิดการพยากรณ์อากาศไว้", tv_wx_down:"บริการพยากรณ์อากาศไม่ตอบในขณะนี้", tv_wx_offline:"ออฟไลน์อยู่ จะโหลดพยากรณ์อากาศอีกครั้งเมื่อกลับมาออนไลน์ค่ะ",
+  tv_wx_loading:"กำลังโหลดพยากรณ์อากาศ…", tv_wx_updated:"อัปเดตพยากรณ์อากาศ {n} วันของ {place} แล้ว", tv_wx_source:"ข้อมูลพยากรณ์: {s}",
   tv_update:"อัปเดตผลการค้นหา", tv_e_same:"เลือกปลายทางที่ไม่ใช่ต้นทาง", tv_e_date:"ใส่วันที่", tv_e_trav:"ใส่จำนวนผู้โดยสาร 1-9 คน", tv_e_out:"เช็กเอาต์ต้องอยู่หลังเช็กอิน 1-30 คืน", tv_e_rooms:"ใส่จำนวนห้อง 1-4 ห้อง", tv_e_guests:"ใส่ผู้เข้าพัก 1-12 คน อย่างน้อยห้องละ 1 คน", tv_e_form:"ตรวจการค้นหาแล้วลองอีกครั้ง: {e}", tv_rate_limited:"ค้นหาถี่เกินไป รอสักครู่แล้วลองใหม่ค่ะ", tv_busy:"ระบบเดโมมีคนใช้มาก ลองใหม่อีกครั้งในอีกสักครู่ค่ะ",
   lang_label:"ภาษา", qs_ph:"ค้นหาทุกอย่าง…", qs_label:"ค้นหาทุกอย่างกับดอรี่", search_ask:"ช่วยค้นหา \"{q}\" จากทุกที่",
   sub_overview:"จัดการข้อมูลและการตั้งค่าขององค์กร", sub_noorg:"ตั้งค่าองค์กรเพื่อเริ่มใช้ดอรี่กับทีมของคุณ", can_h:"องค์กรช่วยอะไรได้บ้าง",
@@ -1563,6 +1603,14 @@ en: {
   tv_err_f:"Couldn't load sample flights: {e}", tv_err_h:"Couldn't load sample hotels: {e}", tv_err_rev:"Couldn't load the review: {e}", tv_err_rooms:"Couldn't load the rooms: {e}",
   tv_past_date:"That date has passed. Pick today or a later date.", tv_too_far:"That date is too far ahead for the sample data. Pick an earlier date.",
   tv_from:"From", tv_to:"To", tv_date:"Departure date", tv_travellers:"Travellers (1-9)", tv_cabin:"Cabin", tv_city:"City", tv_check_in:"Check-in", tv_check_out:"Check-out", tv_rooms_l:"Rooms (1-4)", tv_guests_l:"Guests (1-12)",
+  tv_wx:"Weather", tv_wx_label:"Forecast · estimate", tv_wx_local:"Local time {t}", tv_wx_feels:"Feels like", tv_wx_humidity:"Humidity", tv_wx_wind:"Wind", tv_wx_rain:"Rain chance", tv_wx_kmh:"{n} km/h",
+  tv_wx_len:"Forecast length", tv_wx_3:"3 days", tv_wx_5:"5 days", tv_wx_days:"{n}-day forecast", tv_wx_today:"Today", tv_wx_high:"High", tv_wx_low:"Low", tv_wx_rain_d:"Rain {p}%", tv_wx_refresh:"Refresh",
+  tv_wx_on:"on {d}", tv_wx_today_l:"today", tv_wx_soon:"in the coming days",
+  tv_wx_tip_storm:"Thunderstorms are possible {day}. Plan indoor time and allow extra travel time.", tv_wx_tip_umbrella:"Rain is likely {day}. Pack an umbrella.", tv_wx_tip_heat:"It will be hot. Drink plenty of water and keep outdoor plans to the morning or evening.",
+  tv_wx_tip_sun:"The UV index is high. Bring sunscreen and a hat.", tv_wx_tip_jacket:"Nights get cool. Pack a light jacket.", tv_wx_tip_pleasant:"The weather looks pleasant for the trip.",
+  tv_wx_i_sun:"Clear", tv_wx_i_cloud_sun:"Partly cloudy", tv_wx_i_cloud:"Cloudy", tv_wx_i_fog:"Fog", tv_wx_i_drizzle:"Drizzle", tv_wx_i_rain:"Rain", tv_wx_i_showers:"Showers", tv_wx_i_snow:"Snow", tv_wx_i_storm:"Thunderstorm",
+  tv_wx_err:"Couldn't load the forecast: {e}", tv_wx_off:"Weather forecasts are turned off.", tv_wx_down:"The forecast service isn't answering right now.", tv_wx_offline:"You're offline. The forecast loads again when you reconnect.",
+  tv_wx_loading:"Loading the forecast…", tv_wx_updated:"{n}-day forecast for {place} updated.", tv_wx_source:"Forecast data: {s}",
   tv_update:"Update results", tv_e_same:"Pick a destination different from the origin.", tv_e_date:"Enter a date.", tv_e_trav:"Enter 1 to 9 travellers.", tv_e_out:"Check-out must be 1 to 30 nights after check-in.", tv_e_rooms:"Enter 1 to 4 rooms.", tv_e_guests:"Enter 1 to 12 guests, at least one per room.", tv_e_form:"Check the search and try again: {e}", tv_rate_limited:"Too many searches in a short time. Wait a moment and try again.", tv_busy:"The demo is busy. Try again in a moment.",
   lang_label:"Language", qs_ph:"Search anything…", qs_label:"Search anything with Dory", search_ask:"Search everything for \"{q}\"",
   sub_overview:"Manage your organization's information and settings.", sub_noorg:"Set up your organization to start using Dory with your team.", can_h:"What you can do with an organization",
@@ -2907,8 +2955,99 @@ function travelCards(travel, ctx) {
   if (travel.flights) box.append(tvBlock("flights", travel.flights, at("flight"), travel.flight_filters));
   if (travel.return_flights) box.append(tvBlock("flights", travel.return_flights, at("return"), travel.return_flight_filters));
   if (travel.hotels) box.append(tvBlock("hotels", travel.hotels, at("room"), travel.hotel_filters));
-  box.append(el("p", { class: "tv-note", text: t("tv_note") }));
+  if (box.childElementCount) box.append(el("p", { class: "tv-note", text: t("tv_note") })); // the sample searches only
+  if (travel.weather) box.append(wxBlock(travel.weather));
   return box;
+}
+
+/* ---------- weather card in the chat: a real forecast ----------
+   travel.weather = {kind, place, lat, lng, days} (Dory's weather tool) draws one forecast card. The page fetches the card
+   itself from /api/travel/weather (fresh, on a history re-render too; mock mode: a canned card, no network). It is a
+   forecast, not sample data: labelled "Forecast · estimate" with the source's credit (Open-Meteo: CC BY 4.0, linked),
+   never the sample-travel note. Icons: dory.weather's 9 icon keys in theme tokens, always next to the condition in words. */
+const WX_SVG = 'viewBox="0 0 24 24" fill="none" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round"';
+const wxCloud = (y) => '<path class="wx-c" transform="translate(0 ' + y + ')" d="M7 18h10a4 4 0 0 0 .5-7.97A5.7 5.7 0 0 0 6.3 10.6 3.75 3.75 0 0 0 7 18z"/>';
+const WX_ICON = {
+  sun: '<svg ' + WX_SVG + '><g class="wx-s"><circle cx="12" cy="12" r="4.5"/><path d="M12 2.5v2M12 19.5v2M2.5 12h2M19.5 12h2M5.3 5.3l1.4 1.4M17.3 17.3l1.4 1.4M5.3 18.7l1.4-1.4M17.3 6.7l1.4-1.4"/></g></svg>',
+  "cloud-sun": '<svg ' + WX_SVG + '><g class="wx-s"><circle cx="8" cy="8" r="3"/><path d="M8 2v1.5M2 8h1.5M3.8 3.8l1 1M12.2 3.8l-1 1"/></g>' + wxCloud(3) + '</svg>',
+  cloud: '<svg ' + WX_SVG + '>' + wxCloud(0) + '</svg>',
+  fog: '<svg ' + WX_SVG + '>' + wxCloud(-3) + '<path class="wx-f" d="M4 18.5h16M7 21.5h10"/></svg>',
+  drizzle: '<svg ' + WX_SVG + '>' + wxCloud(-3) + '<path class="wx-r" d="M8 18.5v1M12 20.5v1M16 18.5v1"/></svg>',
+  rain: '<svg ' + WX_SVG + '>' + wxCloud(-3) + '<path class="wx-r" d="m8.5 18-1.5 3.5M12.5 18 11 21.5M16.5 18 15 21.5"/></svg>',
+  showers: '<svg ' + WX_SVG + '><g class="wx-s"><circle cx="19" cy="5" r="2.5"/></g>' + wxCloud(-3) + '<path class="wx-r" d="M8 18v2M12 19.5v2M16 18v2"/></svg>',
+  snow: '<svg ' + WX_SVG + '>' + wxCloud(-3) + '<path class="wx-r" d="M8 18.5v2.5M6.75 19.75h2.5M12 20v2.5M10.75 21.25h2.5M16 18.5v2.5M14.75 19.75h2.5"/></svg>',
+  storm: '<svg ' + WX_SVG + '>' + wxCloud(-4) + '<path class="wx-b" d="m13.5 12.5-3.5 5h3l-1.5 4.5 5-6h-3l2-3.5z"/></svg>',
+};
+const WX_TIPS = ["storm", "umbrella", "heat", "sun", "jacket", "pleasant"];
+const wxKey = (k) => (WX_ICON[k] ? k : "cloud");
+function wxIcon(k) { const s = el("span", { class: "tv-ic tv-wic", "aria-hidden": "true" }); s.innerHTML = WX_ICON[wxKey(k)]; return s; }
+const wxDeg = (n) => Math.round(n) + "°";
+// the condition in words: the source's own text, else (or when a Thai page gets English text) the icon's name
+const wxCond = (x) => { const s = String(x.condition || ""); return s && (lang !== "th" || /[\u0E00-\u0E7F]/.test(s)) ? s : t("tv_wx_i_" + wxKey(x.icon).replace("-", "_")); };
+const wxErr = (e) => { const k = { weather_off: "tv_wx_off", weather_unavailable: "tv_wx_down" }[e && e.detail]; return k ? t(k) : tvErr(e); };
+function wxFetch(body) {
+  if (MOCK) return mockWeatherCard(body);
+  return travelApi("/weather", body);
+}
+// w = the reply's {place, lat, lng, days}; place came from the person's words through the model: text nodes only
+function wxBlock(w) {
+  const id = "wx" + ++tvSeq, st = { days: w.days === 5 ? 5 : 3, seq: 0 };
+  const sec = el("section", { class: "tv-block", "aria-labelledby": id + "-h" });
+  const body = el("div", { class: "tv-wbody", "aria-busy": "false" }), said = el("p", { class: "sr", role: "status" });
+  const lenB = [3, 5].map((n) => el("button", { type: "button", class: "tv-chip", "aria-pressed": "false", onclick: () => { if (st.days !== n) { st.days = n; sync(); load(true); } } }, t("tv_wx_" + n)));
+  const sync = () => lenB.forEach((b, i) => b.setAttribute("aria-pressed", String([3, 5][i] === st.days)));
+  const refreshB = el("button", { type: "button", class: "tv-btn", onclick: () => load(true) }, t("tv_wx_refresh"));
+  const draw = (c) => {
+    const cur = c.current || {}, today = String(c.local_time || "").slice(0, 10), tip = c.tip || {};
+    const stats = [["tv_wx_feels", cur.feels_c, (v) => wxDeg(v) + "C"], ["tv_wx_humidity", cur.humidity, (v) => Math.round(v) + "%"],
+      ["tv_wx_wind", cur.wind_kmh, (v) => t("tv_wx_kmh", { n: Math.round(v) })], ["tv_wx_rain", cur.rain_pct, (v) => Math.round(v) + "%"]].filter(([, v]) => v != null);
+    const when = !tip.day ? t("tv_wx_soon") : tip.day === today ? t("tv_wx_today_l") : t("tv_wx_on", { d: tvDate(tip.day, { weekday: "long" }) });
+    const credit = !c.credit ? t("tv_wx_source", { s: c.source || "" }) : /open-meteo/i.test(c.source || "")
+      ? el("a", { href: "https://open-meteo.com/", target: "_blank", rel: "noopener noreferrer", lang: "en", text: c.credit }) : el("span", { lang: "en", text: c.credit });
+    return [
+      c.local_time ? el("p", { class: "tv-pl", text: t("tv_wx_local", { t: tvDate(c.local_time) + ", " + tvTime(c.local_time) }) }) : null,
+      cur.temp_c != null ? el("div", { class: "tv-wnow" }, wxIcon(cur.icon), el("strong", { class: "tv-wtemp", text: wxDeg(cur.temp_c) + "C" }), el("p", { text: wxCond(cur) })) : null,
+      stats.length ? el("dl", { class: "tv-wstats" }, stats.map(([k, v, f]) => el("div", {}, el("dt", { text: t(k) }), el("dd", { text: f(v) })))) : null,
+      el("ul", { class: "tv-wdays", "aria-label": t("tv_wx_days", { n: (c.days || []).length }) }, (c.days || []).map((d) => el("li", { class: "tv-wday" },
+        el("span", { class: "tv-wdn", text: d.date === today ? t("tv_wx_today") : tvDate(d.date, { weekday: "short", day: "numeric" }) }),
+        wxIcon(d.icon), el("span", { class: "tv-wc", text: wxCond(d) }),
+        el("span", { class: "tv-wr" },
+          el("strong", {}, d.temp_c != null ? [el("span", { class: "sr", text: t("tv_wx_high") + " " }), wxDeg(d.temp_c)] : null, d.temp_c != null && d.min_c != null ? " / " : null,
+            d.min_c != null ? [el("span", { class: "sr", text: t("tv_wx_low") + " " }), wxDeg(d.min_c)] : null),
+          d.rain_pct != null ? el("span", { text: t("tv_wx_rain_d", { p: Math.round(d.rain_pct) }) }) : null)))),
+      WX_TIPS.includes(tip.key) ? el("p", { class: "tv-wtip", text: t("tv_wx_tip_" + tip.key, { day: when }) }) : null,
+      el("p", { class: "tv-wcredit" }, credit),
+    ];
+  };
+  const skel = () => el("div", { class: "tv-wskel", "aria-hidden": "true" }, [["40%"], ["55%", 44], ["90%", 36], ...Array.from({ length: st.days }, () => ["100%", 28]), ["80%", 36]]
+    .map(([wd, h]) => el("div", { class: "skeleton", style: "width:" + wd + (h ? ";height:" + h + "px" : "") })));
+  const offline = () => { addEventListener("online", () => { if (sec.isConnected) load(false); }, { once: true });
+    return el("div", { class: "tv-alert", role: "status" }, el("p", { text: t("tv_wx_offline") }), el("button", { type: "button", class: "tv-btn", onclick: () => { load(true); refreshB.focus(); } }, t("retry"))); };
+  // spoken = the person asked (toggle, Refresh, Try again): the result is announced; the first load is announced by the log
+  const load = async (spoken) => {
+    const my = ++st.seq;
+    if (!navigator.onLine) { body.replaceChildren(offline()); return; }
+    if (body.offsetHeight) body.style.minHeight = body.offsetHeight + "px"; // the skeleton keeps the card's size
+    body.setAttribute("aria-busy", "true"); body.replaceChildren(skel());
+    if (spoken) said.textContent = t("tv_wx_loading");
+    try {
+      const r = await wxFetch({ place: w.place, lat: w.lat, lng: w.lng, days: st.days, lang });
+      if (my !== st.seq) return;
+      body.replaceChildren(...draw(r.card).filter(Boolean));
+      if (spoken) said.textContent = t("tv_wx_updated", { n: st.days, place: w.place });
+    } catch (e) {
+      if (my !== st.seq) return;
+      body.replaceChildren(navigator.onLine ? tvAlert(t("tv_wx_err", { e: wxErr(e) }), () => { load(true); refreshB.focus(); }) : offline());
+      if (spoken) said.textContent = "";
+    } finally { if (my === st.seq) { body.setAttribute("aria-busy", "false"); body.style.minHeight = ""; } }
+  };
+  sec.append(el("div", { class: "tv-card tv-wx" },
+    el("div", { class: "tv-top" }, el("h3", { id: id + "-h", class: "tv-name" }, el("span", { class: "sr", text: t("tv_wx") + ": " }), w.place), el("span", { class: "tv-sample", text: t("tv_wx_label") })),
+    body,
+    el("div", { class: "tv-wfoot" }, el("div", { class: "tv-chips", role: "group", "aria-label": t("tv_wx_len") }, lenB), refreshB),
+    said));
+  sync(); load(false);
+  return sec;
 }
 
 // filters: what Dory's search tool applied ("only non-stop"), the chips start pressed accordingly
@@ -3319,7 +3458,7 @@ function chatWidget(hist, prefix, opts = {}) {
   };
   const reveal = (node) => { msgs.scrollTop += node.getBoundingClientRect().top - msgs.getBoundingClientRect().top - 8; };
   const trip = { post: (text, node) => { const n = add("bot", text, null, null, node); reveal(n); return n; }, reveal };
-  const cards = (travel) => (travel && (travel.flights || travel.hotels || travel.return_flights) ? travelCards(travel, trip) : null);
+  const cards = (travel) => (travel && (travel.flights || travel.hotels || travel.return_flights || travel.weather) ? travelCards(travel, trip) : null);
   const coarse = matchMedia("(pointer: coarse)").matches; // touch: Enter is a new line, the button sends
   const ta = el("textarea", { id: prefix + "-in", rows: "1", placeholder: t("chat_ph"), "aria-label": t("chat_ph"), enterkeyhint: coarse ? "enter" : "send" });
   const btn = el("button", { class: "ib send", type: "submit" });
@@ -5684,6 +5823,7 @@ function mockApi(method, path, body) {
   if (sub === "/travel/book") return mockCardBook(body || {}, d);
   if (sub === "/chat" && (TV_MOCK_REF.test((body && body.message) || "") || (mockTrip.quote && /^\s*(yes|yep|ok|confirm|ใช่|จองเลย)\b/i.test(body.message)))) return mockBook(body.message, d);
   if (sub === "/chat" && /flight|fly|hotel|เที่ยวบิน|โรงแรม|ที่พัก/i.test((body && body.message) || "")) return mockTrip(body.message, d);
+  if (sub === "/chat" && /weather|forecast|อากาศ/i.test((body && body.message) || "")) return mockWeather(body.message, d);
   if (sub === "/chat" && /\berror\b/i.test((body && body.message) || "")) return new Promise((_, rej) => setTimeout(() => rej(new ApiError("mock failure", 502)), 900));
   if (sub === "/chat") { const ans = "ยอดใบเสร็จเดือนนี้รวม **48,570 บาท** ค่ะ\n- ร้านกาแฟบางรัก 420 บาท\n- ไทยซัพพลาย 48,150 บาท\nดูรายละเอียดที่ [เอกสาร](https://example.com)";
     mockApi.chat.push({ role: "user", text: (body && body.message) || "", at: d(0), workspace_id: "discord-1" }, { role: "dory", text: ans, at: d(0), workspace_id: "discord-1" });
@@ -5757,11 +5897,35 @@ function mockTrip(said, d) {
     flight_filters: fl && !down && /non-?stop|direct/i.test(said) ? { stops: ["nonstop"] } : null,
     hotel_filters: ho && !down && /free cancel/i.test(said) ? { free_cancellation: true } : null,
     return_flights: fl && /round trip|return|and back|ไป-กลับ/i.test(said) ? { origin: "SIN", destination: "BKK", depart: ymd(out), adults: people, cabin: "economy" } : null,
+    weather: !down && /weather|forecast|อากาศ/i.test(said) ? MOCK_WX : null,
   };
   const what = [fl && "flights Bangkok (BKK) to Singapore (SIN) next Tuesday, " + people + " travellers", travel.return_flights && "the way back on Friday",
     ho && "a hotel in Singapore (SIN) for 3 nights"].filter(Boolean).join("; ");
   if (down) return reply("I couldn't interpret this with Dory's AI just now, so this search uses what I could read from your message: " + what + ". Use Edit search to change it.", travel, { travel_fallback: true });
   return reply("I searched " + what + ". Use the filters to narrow them down.", travel);
+}
+
+// mock brain for a weather message: the weather tool's card payload; "error" -> the card's own fetch fails once (the
+// chat answer stays), so Try again shows the recovery
+const MOCK_WX = { kind: "weather", place: "Singapore", lat: 1.2897, lng: 103.8501, days: 3 };
+function mockWeather(said, d) {
+  mockWeatherCard.fail = /\berror\b/i.test(said);
+  const travel = { flights: null, hotels: null, weather: { ...MOCK_WX, days: /\b(5|five)[- ]day/i.test(said) ? 5 : 3 } };
+  const ans = "Singapore is warm and humid, with showers today and a thunderstorm likely in two days. The forecast card has the details.";
+  mockApi.chat.push({ role: "user", text: said, at: d(0), workspace_id: "discord-1" }, { role: "dory", text: ans, at: d(0), workspace_id: "discord-1", travel });
+  return new Promise((r) => setTimeout(() => r({ answer: ans, workspace_id: "discord-1", at: d(0), travel, travel_fallback: false }), 600));
+}
+// mock /api/travel/weather: a canned card shaped like dory.weather.weather_card (no network), days from today
+function mockWeatherCard(b) {
+  const fail = mockWeatherCard.fail; mockWeatherCard.fail = false;
+  const now = new Date(), ymd = (n) => { const x = new Date(now.getFullYear(), now.getMonth(), now.getDate() + n); return [x.getFullYear(), String(x.getMonth() + 1).padStart(2, "0"), String(x.getDate()).padStart(2, "0")].join("-"); };
+  const rows = [["Slight rain showers", "showers", 32.1, 25.9, 55], ["Overcast", "cloud", 31, 26.1, 20], ["Thunderstorm", "storm", 30.4, 25.4, 80], ["Mainly clear", "sun", 31.8, 25.8, 10], ["Slight rain", "rain", 30.9, 25.6, 70]];
+  const card = { kind: "weather", place: b.place, lat: b.lat, lng: b.lng, local_time: ymd(0) + "T16:00", timezone: "Asia/Singapore",
+    current: { condition: "Slight rain showers", icon: "showers", temp_c: 31.2, feels_c: 36.4, rain_pct: 55, wind_kmh: 9.7, uv: 7.5, humidity: 74 },
+    days: rows.slice(0, b.days).map(([condition, icon, temp_c, min_c, rain_pct], i) => ({ date: ymd(i), condition, icon, temp_c, min_c, rain_pct, ...(icon === "storm" ? { storm_pct: 100 } : {}) })),
+    tip: { key: "storm", day: ymd(2) }, source: "Open-Meteo", credit: "Weather data by Open-Meteo.com (CC BY 4.0)", estimate: true };
+  const down = Object.assign(new ApiError("weather_unavailable", 503), { detail: "weather_unavailable" });
+  return new Promise((r, rej) => setTimeout(() => (fail ? rej(down) : r({ card, data: { kind: "forecast", estimate: true, source: card.source, credit: card.credit } })), 600));
 }
 
 /* ---------- boot ---------- */
