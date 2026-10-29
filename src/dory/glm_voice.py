@@ -23,6 +23,7 @@ import logging
 import random
 import re
 import time
+from array import array
 from collections.abc import Callable
 from datetime import UTC, datetime
 from typing import Any
@@ -119,6 +120,8 @@ class GlmVoice(WebLive):
             self.timer = StageTimer(path)
         self.cascade = ask is not None  # a cascade server sends "heard": Dory's brain answers it
         self._answer: asyncio.Task | None = None
+        self._had_session, self._spoke = False, False  # a reconnect wakes the box only after speech
+        self._min_rms = float(getattr(settings, "name_min_rms", 250.0))
         self._pending: tuple[float, str, str, str] | None = (
             None  # started, question, speaker, history
         )
@@ -145,13 +148,19 @@ class GlmVoice(WebLive):
             code = ""
             try:
                 if self.waker is not None and not await self.waker.healthy():
-                    # the box stopped itself while idle: wake it and tell the person why they wait
+                    # the box stopped itself while idle: wake it and tell the person why they wait.
+                    # A RECONNECT waits for somebody to speak or type first (a silent room must
+                    # not keep a stopped box cycling, 29 Oct 2026)
+                    while self._had_session and not self._spoke and not self._closing:
+                        await asyncio.sleep(1.0)
+                    if self._closing:
+                        return
                     await self.out("waking", "")
                     if not await self.waker.ensure_running():
                         await self.out("error", "voice_server_down")
                         return
                 async with self._connect() as ws:
-                    self._ws = ws
+                    self._ws, self._had_session, self._spoke = ws, True, False
                     sender = asyncio.create_task(self._send(ws))
                     try:
                         code = await self._receive(ws)
@@ -239,6 +248,20 @@ class GlmVoice(WebLive):
         return ""
 
     # ---- cascade: the brain answers what the server heard
+    def feed(self, pcm16k: bytes) -> None:
+        if not self._spoke and pcm16k and self._rms(pcm16k) >= self._min_rms:
+            self._spoke = True
+        super().feed(pcm16k)
+
+    def say(self, text: str) -> None:
+        self._spoke = True  # typed text counts as somebody there
+        super().say(text)
+
+    @staticmethod
+    def _rms(pcm: bytes) -> float:
+        a = array("h", pcm[: len(pcm) // 2 * 2])
+        return (sum(x * x for x in a) / len(a)) ** 0.5 if a else 0.0
+
     def greet(self, lang: str = "en") -> None:
         """A fixed warm line (C3), not a brain turn; the Gemini path keeps its cue."""
         if self.cascade:
