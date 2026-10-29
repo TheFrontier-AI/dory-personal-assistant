@@ -36,7 +36,10 @@ from .web_live import TOOL_TIMEOUT_S, WebLive
 
 logger = logging.getLogger(__name__)
 ACKS = sorted(k for k in CATALOG if k.startswith("ack_voice_"))
-FILLER_AFTER_S = 1.0  # a fast answer needs no filler; a slow one gets one line (C8)
+FILLER_AFTER_S = (
+    3.5  # plain turns answer in 3.5-4 s (29 Oct 2026): no filler; a tool turn gets one (C8)
+)
+ACK_WAIT_S = 0.7  # how long the request-specific line may still take once the filler is due
 FILLER_MEMORY = 3  # never the same canned line as the last three
 HISTORY_WINDOW_S, HISTORY_MAX_CHARS = 180.0, 3000  # as LiveVoice._ask_dory (C9)
 PERSON, DORY = "Person", "Dory"
@@ -100,12 +103,13 @@ class GlmVoice(WebLive):
         lang: str = "en",
         path: str = "web",
         on_heard: Callable[[str], None] | None = None,
+        ack: Callable[[str, str], str] | None = None,
     ):
         """`ask(question, history)` is Dory's brain for a cascade server; `on_heard(text)`, when
         given (a Discord room), decides what to do with an utterance and calls `answer` / `speak`
         itself; without it everything heard is answered (the web call, C3)."""
         super().__init__(settings, None, instruction="", ask=ask or (lambda q, h: ""), out=out)
-        self.url, self.lang, self.on_heard = url, lang, on_heard
+        self.url, self.lang, self.on_heard, self.ack = url, lang, on_heard, ack
         self.transcript = Transcript()  # what this call heard and said, memory only (C9)
         self._recent_fillers: list[str] = []
         self.last_said = ""
@@ -271,8 +275,17 @@ class GlmVoice(WebLive):
             self._answer.cancel()
         self._answer = None
 
+    async def _ack_line(self, ack_job: asyncio.Future | None) -> str:
+        """The prepared request-specific line (waited for up to ACK_WAIT_S), else a canned one."""
+        if ack_job is not None:
+            with contextlib.suppress(Exception):
+                line = await asyncio.wait_for(asyncio.shield(ack_job), ACK_WAIT_S)
+                if line and line.strip():
+                    return line.strip()
+        return self.filler()
+
     def filler(self) -> str:
-        """One short line, never one of the last three."""
+        """One short canned line, never one of the last three."""
         keys = [k for k in ACKS if k not in self._recent_fillers] or ACKS
         if not keys:
             return ""
@@ -285,11 +298,17 @@ class GlmVoice(WebLive):
         answer is spoken in its plain form (C10) and remembered (C9)."""
         await self.out("thinking", question)
         job = asyncio.ensure_future(asyncio.to_thread(self.ask, question, history))
+        # a request-specific line is prepared alongside and spoken only if the brain is slow
+        ack_job = (
+            asyncio.ensure_future(asyncio.to_thread(self.ack, question, self.lang))
+            if self.ack is not None
+            else None
+        )
         try:
             try:
                 answer = await asyncio.wait_for(asyncio.shield(job), FILLER_AFTER_S)
             except TimeoutError:
-                if filler := self.filler():
+                if filler := await self._ack_line(ack_job):
                     await self._say(ws, filler, final=False)
                 answer = await asyncio.wait_for(job, TOOL_TIMEOUT_S - FILLER_AFTER_S)
         except asyncio.CancelledError:
@@ -298,6 +317,9 @@ class GlmVoice(WebLive):
         except Exception as e:
             logger.warning("glm voice: ask failed (%s)", type(e).__name__)
             answer = ""
+        finally:
+            if ack_job is not None:
+                ack_job.cancel()
         self.timer.mark("tool_result")
         if not self._closing:
             text = (answer or "").strip() or t("glm_answer_failed", self.lang)

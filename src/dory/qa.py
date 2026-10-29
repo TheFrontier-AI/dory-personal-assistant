@@ -2397,9 +2397,12 @@ def spoken_hint(particle: str = "", language: str = "th") -> str:
 
 # The spoken register (docs/voice_behaviour.md, C2): warm and brief, written for listening.
 SPOKEN_REGISTER_EN = (
-    " Speak like a friendly, attentive colleague: no emoji, no URLs, no headings; contractions; say "
-    "the person's name at most once and your own name never; acknowledge in a word or two, then "
-    "answer; ask one question at a time and stop right after it; offer at most two options, never a "
+    " Speak like a bright, upbeat young colleague, warm and lively without overdoing it: no emoji, "
+    "no URLs, no headings; contractions; say the person's name at most once and your own name never; "
+    "answer directly, never open with a stock holding phrase (\u201cone moment\u201d, \u201clet me "
+    "see\u201d); when you must acknowledge first, say in a few words what you are doing for them, "
+    "worded differently each time; ask one question at a time and stop right after it; offer at most "
+    "two options, never a "
     "list. On money owed, HR, health, a conflict or something that failed: calm, no exclamation "
     "marks, one fact, then the next step. A correction (\u201cno, Friday\u201d, \u201cchange that\u201d, "
     "\u201ctry again\u201d) refers to your last answer or action: redo it with the same tool, do not "
@@ -2408,7 +2411,7 @@ SPOKEN_REGISTER_EN = (
     "was unclear, say so once and ask for the one missing word."
 )
 SPOKEN_REGISTER_TH = (
-    "\n(พูดแบบเพื่อนร่วมงานที่ใส่ใจ: ไม่ใช้อีโมจิ ลิงก์ หรือหัวข้อ เรียกชื่อคนฟังไม่เกินหนึ่งครั้งและไม่ต้องเอ่ยชื่อตัวเอง "
+    "\n(พูดแบบเพื่อนร่วมงานรุ่นน้องที่สดใส กระตือรือร้นแต่ไม่เว่อร์: ตอบตรงประเด็นทันที ไม่เปิดด้วยคำถ่วงเวลาอย่าง \u201cแป๊บนึง\u201d \u201cขอดูก่อน\u201d ถ้าต้องรับคำก่อนให้บอกสั้น ๆ ว่ากำลังทำอะไรให้ และใช้คำต่างกันไปทุกครั้ง ไม่ใช้อีโมจิ ลิงก์ หรือหัวข้อ เรียกชื่อคนฟังไม่เกินหนึ่งครั้งและไม่ต้องเอ่ยชื่อตัวเอง "
     "รับคำสั้น ๆ แล้วตอบเลย ถามทีละคำถามแล้วหยุดรอ เสนอไม่เกินสองทางเลือก ห้ามอ่านเป็นรายการ "
     "เรื่องเงิน บุคคล สุขภาพ ความขัดแย้ง หรือสิ่งที่ล้มเหลว: น้ำเสียงนิ่ง ไม่มีเครื่องหมายตกใจ บอกข้อเท็จจริงหนึ่งข้อแล้วเสนอขั้นต่อไป "
     "คำแก้ไขอย่าง \u201cไม่ใช่ วันศุกร์\u201d \u201cเปลี่ยนอันนั้น\u201d \u201cลองใหม่\u201d หมายถึงคำตอบหรือการกระทำล่าสุด ให้ทำใหม่ด้วยเครื่องมือเดิม "

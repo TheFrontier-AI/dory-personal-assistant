@@ -4768,9 +4768,17 @@ async def live_voice(
 
         if s.glm_voice_url:  # the owner's GLM-4-Voice server (deploy/glm_voice): English, no tools
             from dory.glm_voice import GlmVoice
+            from dory.llm import make_client
+            from dory.voice_ack import make_ack
 
             live = GlmVoice(
-                s, out=out, url=s.glm_voice_url, token=s.glm_voice_token, ask=ask_fn, lang=lang
+                s,
+                out=out,
+                url=s.glm_voice_url,
+                token=s.glm_voice_token,
+                ask=ask_fn,
+                lang=lang,
+                ack=make_ack(make_client(s), s.gate_model),
             )
         else:
             from google import genai
