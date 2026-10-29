@@ -17,6 +17,7 @@ import hashlib
 import json
 import logging
 import mimetypes
+import threading
 import time
 from collections.abc import Callable
 from dataclasses import dataclass, field
@@ -63,18 +64,25 @@ class SecretaryState:
         self.clock = clock
         self._pending: dict[tuple, tuple[str, float]] = {}
         self._pdfs: dict[tuple[int, int, str], tuple[bytes, float]] = {}
+        self._lock = threading.Lock()  # two quick "yes" messages must not both pass
 
     def confirm(self, key: tuple, request_id: str) -> bool:
         """True when `key` was proposed in an earlier, still-fresh request (consumes it)."""
-        now = self.clock()
-        self._pending = {k: v for k, v in self._pending.items() if v[1] > now}
-        entry = self._pending.get(key)
-        if entry is not None and entry[0] != request_id:
-            del self._pending[key]
-            return True
-        if entry is None:
-            self._pending[key] = (request_id, now + CONFIRM_TTL_S)
-        return False
+        with self._lock:
+            now = self.clock()
+            self._pending = {k: v for k, v in self._pending.items() if v[1] > now}
+            entry = self._pending.get(key)
+            if entry is not None and entry[0] != request_id:
+                del self._pending[key]
+                return True
+            if entry is None:
+                self._pending[key] = (request_id, now + CONFIRM_TTL_S)
+            return False
+
+    def propose(self, key: tuple, request_id: str) -> None:
+        """(Re)show `key` in this request without consuming it: a later request may confirm it."""
+        with self._lock:
+            self._pending[key] = (request_id, self.clock() + CONFIRM_TTL_S)
 
     def remember_pdf(self, guild_id: int, user_id: int, name: str, data: bytes) -> None:
         now = self.clock()
