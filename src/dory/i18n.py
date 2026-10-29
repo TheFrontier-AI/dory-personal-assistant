@@ -1793,6 +1793,19 @@ CATALOG: dict[str, dict[str, str]] = {
         "th": "ขออภัย ตอบไม่ได้ในตอนนี้ ลองถามใหม่อีกครั้งนะคะ",
         "en": "Sorry, I can't answer right now. Please try asking again.",
     },
+    "glm_asleep": {
+        "th": 'ระบบเสียงของดอรี่พักอยู่ค่ะ ถ้าต้องการให้ตื่น พิมพ์ว่า "ดอรี่ ตื่น" ในแชตนี้ได้เลยนะคะ',
+        "en": 'Dory\'s voice server is asleep. Type "@Dory wake up" here to start it (it takes up to '
+        "ten minutes).",
+    },
+    "glm_wake_ack": {
+        "th": "รับทราบค่ะ กำลังปลุกระบบเสียงของดอรี่ อาจใช้เวลาถึงสิบนาทีนะคะ",
+        "en": "On it: waking Dory's voice server now. This can take up to ten minutes.",
+    },
+    "glm_wake_awake": {
+        "th": "ระบบเสียงของดอรี่ตื่นอยู่แล้วค่ะ",
+        "en": "Dory's voice server is already awake.",
+    },
     "qa_claim_unbacked": {
         "th": "ขออภัยค่ะ ดอรี่ยืนยันเรื่องนี้ไม่ได้ เพราะรอบนี้ยังไม่ได้ทำอะไรจริง ลองสั่งอีกครั้งนะคะ",
         "en": "Sorry, I can't confirm that: nothing was actually done just now. Please ask me again.",

@@ -175,6 +175,19 @@ def parse_voice_talk_command(text: str) -> str | None:
     return "may_talk" if _MAY_TALK_RE.fullmatch(s) else None
 
 
+_WAKE_RE = re.compile(
+    r"wake(?: up| the (?:voice )?(?:server|box|gpu))?|start (?:the )?(?:voice )?(?:server|box|gpu)"
+    r"|ตื่น(?:ได้แล้ว|หน่อย)?|ปลุก(?:เครื่อง|ระบบเสียง)?(?:ขึ้นมา|หน่อย)?",
+    re.I,
+)
+
+
+def parse_voice_wake_command(text: str) -> bool:
+    """An explicit request to start the sleeping voice box: "Dory, wake up", "wake the voice
+    server", "ดอรี่ ตื่นได้แล้ว". The whole short message must be the command."""
+    return bool(_WAKE_RE.fullmatch(_talk_core(text)))
+
+
 def parse_voice_talk_default_command(text: str) -> str | None:
     """The org default: "ประชุมทุกครั้งฟังอย่างเดียว" / "listen only by default" -> "listen_only",
     "พูดได้ทุกประชุม" / "may talk by default" -> "may_talk"; else None."""
@@ -1949,7 +1962,9 @@ class MeetingManager:
             asyncio.create_task(self._worker(session)) for _ in range(TRANSCRIBE_WORKERS)
         ]
         session.tasks.append(asyncio.create_task(self._ticker(session)))
-        self._start_live(session)
+        self._start_live(
+            session, resumed=True
+        )  # a restart is not a request: it never wakes the GPU
         if rec.get("captions_hidden"):
             session.captions_defaulted = True  # hidden in this meeting before the restart
         self._captions_from_default(session)
@@ -2048,7 +2063,7 @@ class MeetingManager:
             getattr(s, "starter_id", 0) == uid or bool(self.bot.is_exec_member(member))
         )
 
-    def _start_live(self, session: MeetingSession) -> None:
+    def _start_live(self, session: MeetingSession, resumed: bool = False) -> None:
         """Live voice mode: connect a Gemini Live session now (it takes ~2 s) so the first question
         is answered fast. If it cannot connect the meeting falls back to classic wake words."""
         s = self.bot.s
@@ -2066,7 +2081,9 @@ class MeetingManager:
             session.voice_mode = "glm"
             session.recording = "not_recording"  # nothing transcribed or summarised (no Google)
             session.consent = "assumed"
-            session.live = GlmRoom(self.bot, session, post=lambda text: self._notice(session, text))
+            session.live = GlmRoom(
+                self.bot, session, post=lambda text: self._notice(session, text), wake=not resumed
+            )
             session.live.start()
             return
         from .live_voice import LiveVoice

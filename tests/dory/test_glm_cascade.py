@@ -87,6 +87,7 @@ def test_cascade_turn_heard_say_turn_and_barge_in(cascade):
             assert ("interrupted", "") in got
             ws.send_text(json.dumps({"type": "close"}))
         assert client.get("/health").json()["busy"] is False
+        assert client.get("/health").json()["idle_s"] is None  # no call open: nothing to be idle
 
 
 def test_cascade_refuses_a_bad_token_and_a_second_caller(cascade):
@@ -100,6 +101,7 @@ def test_cascade_refuses_a_bad_token_and_a_second_caller(cascade):
         with client.websocket_connect("/voice", headers={"Authorization": "Bearer tok"}) as first:
             first.receive_text()
             assert client.get("/health").json()["busy"] is True
+            assert client.get("/health").json()["idle_s"] < 5  # an open call reports its idle time
             with client.websocket_connect(
                 "/voice", headers={"Authorization": "Bearer tok"}
             ) as second:
