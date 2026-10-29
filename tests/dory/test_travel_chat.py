@@ -81,6 +81,16 @@ def test_a_weather_answer_carries_its_card_and_history_keeps_it(w, brain, monkey
     assert turns[-1]["role"] == "dory" and turns[-1]["travel"]["weather"] == card
 
 
+def test_a_trip_request_answered_without_a_search_still_draws_cards(w, brain):  # noqa: F811
+    """The brain answered from earlier results in the chat and called no search: the reply is the
+    brain's, and the cards come from the message (not the fallback: the AI did answer)."""
+    got = say(w, "Any hotel and flight suggestions for Singapore on 2026-11-03 for 3 nights?")
+    assert got["answer"].startswith("ans:") and got["travel_fallback"] is False
+    assert got["travel"]["flights"]["destination"] == "SIN"
+    assert got["travel"]["hotels"]["check_in"] == "2026-11-03"
+    assert say(w, "thanks!")["travel"] is None  # not a trip: nothing drawn
+
+
 def test_cards_come_from_the_brains_tool_call_with_its_filters(w, brain):  # noqa: F811
     ask = "Find non-stop flights from Bangkok to Singapore on 3 Nov for 2"
     brain.script[ask] = [

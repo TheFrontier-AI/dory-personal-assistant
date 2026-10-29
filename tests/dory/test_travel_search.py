@@ -424,3 +424,20 @@ def test_the_home_airport_is_not_used_when_it_is_the_destination():
     r = flights(destination="Bangkok", depart_date="2026-11-03")
     assert r["status"] == "need_details" and r["missing"] == ["origin"]
     assert flights(destination="Singapore", depart_date="2026-11-03")["status"] == "ok"
+
+
+def test_a_trip_request_the_brain_did_not_search_still_draws_cards():
+    """The brain sometimes answers a new request from the results already in the chat ("I just
+    pulled both") without calling a search: no call, no cards. Then code reads the message."""
+    text = "Any hotel and flight suggestions for Singapore on 2026-11-10 for 3 nights?"
+    tools = T.card_tools(T.CardCtx("web:a@x.co", TODAY, T.Trips()))
+    cards = T.unsearched_cards(tools, text, TODAY)
+    assert [c["kind"] for c in cards] == ["flights", "hotels"]
+    assert cards[0]["query"]["destination"] == "SIN" and cards[0]["query"]["depart"] == "2026-11-10"
+    assert cards[1]["query"]["check_out"] == "2026-11-13" and cards[1]["filters"]
+    assert T.unsearched_cards(tools, "Thanks, that's all for today", TODAY) == []
+    assert T.unsearched_cards([], text, TODAY) == []  # no card tools offered (travel off)
+    voice = T.card_tools(T.CardCtx("web:a@x.co", TODAY, T.Trips(), render=False))
+    assert T.unsearched_cards(voice, text, TODAY) == []  # a voice turn draws nothing
+    assert tools[1](city="Singapore")["status"] == "need_details"  # it searched and asks a question
+    assert T.unsearched_cards(tools, text, TODAY) == []  # code stays out of that turn

@@ -606,6 +606,14 @@ async def test_a_weather_card_next_to_a_search_is_not_a_travel_search():
     assert len(message.channel.views) == 1 and message.channel.texts == []
 
 
+async def test_a_trip_request_answered_without_a_search_still_posts_cards():
+    bot = Bot()
+    agent, message = _chat(bot)  # the card tools were offered, the brain called none
+    message.content = "<@1> any hotel and flight suggestions for Singapore next Tuesday?"
+    await bot._post_travel_cards(message, SimpleNamespace(id=ME), agent, "en")
+    assert len(message.channel.views) == 2 and message.channel.texts == []  # flights, then hotels
+
+
 async def test_a_question_instead_of_a_search_posts_no_cards():
     bot = Bot()
     agent, message = _chat(bot, destination="Singapore")  # need_details: origin and date
