@@ -36,10 +36,9 @@ from .web_live import TOOL_TIMEOUT_S, WebLive
 
 logger = logging.getLogger(__name__)
 ACKS = sorted(k for k in CATALOG if k.startswith("ack_voice_"))
-FILLER_AFTER_S = (
-    3.5  # plain turns answer in 3.5-4 s (29 Oct 2026): no filler; a tool turn gets one (C8)
-)
-ACK_WAIT_S = 0.7  # how long the request-specific line may still take once the filler is due
+FILLER_AFTER_S = 4.5  # plain turns answer in 3.5-4.2 s (29 Oct 2026; 3.5 still fired on them): no
+# filler; a tool turn (9-11 s) gets one line (C8)
+ACK_WAIT_S = 1.0  # how long the request-specific line may still take once the filler is due
 FILLER_MEMORY = 3  # never the same canned line as the last three
 HISTORY_WINDOW_S, HISTORY_MAX_CHARS = 180.0, 3000  # as LiveVoice._ask_dory (C9)
 PERSON, DORY = "Person", "Dory"
@@ -281,7 +280,11 @@ class GlmVoice(WebLive):
             with contextlib.suppress(Exception):
                 line = await asyncio.wait_for(asyncio.shield(ack_job), ACK_WAIT_S)
                 if line and line.strip():
+                    logger.info("glm voice: ack from the model (%d chars)", len(line.strip()))
                     return line.strip()
+        logger.info(
+            "glm voice: ack canned (%s)", "no model" if ack_job is None else "model late or empty"
+        )
         return self.filler()
 
     def filler(self) -> str:
