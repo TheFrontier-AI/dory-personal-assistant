@@ -47,9 +47,7 @@ def _hero(html: str) -> str:
 def test_landing_page_is_served_without_an_invite_when_unconfigured(client):
     r = client.get("/")
     assert r.status_code == 200
-    assert (
-        'href="" data-invite' in r.text
-    )  # the invite buttons hide; "Create account" is there either way
+    assert 'href="" data-invite' in r.text  # the invite buttons hide; "Sign up" is there either way
     assert "__DORY_INVITE_URL__" not in r.text
 
 
@@ -64,7 +62,7 @@ def test_landing_page_uses_the_real_invite_link(client, monkeypatch):
         f"&scope=bot+applications.commands&permissions={DORY_PERMISSIONS}"
     )
     assert r.text.count(f'href="{url}" data-invite') == 4  # header, hero, plan, last section
-    # "Create account" is always visible in the header, the hero and the plan card (it used to show only without
+    # "Sign up" is always visible in the header, the hero and the plan card (it used to show only without
     # an invite link, so a configured site had no visible way to register); the last section, whose organization
     # form is the sign-up, keeps it as a fallback for a hidden invite button
     assert (
