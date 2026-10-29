@@ -309,3 +309,19 @@ def test_glm_room_holds_side_talk_while_she_speaks_and_echoes_answers(monkeypatc
 
     asyncio.run(echo())
     assert posted == ["💬 **Dory:** **Booked.** Reference ABC123"]
+
+
+def test_glm_room_wants_the_name_again_after_a_cancelled_answer(monkeypatch):
+    """When a new utterance cancels an answer she never spoke (the person kept talking), the
+    engaged window ends: the next utterance needs her name again (C5)."""
+    mint = SimpleNamespace(id=2, bot=False, display_name="Mint")
+    room, asked, spoken, _ = _room(monkeypatch, members=[mint])
+    room._last_speaker = 2
+    room.voice.answer = lambda text, speaker="Person": asked.append((text, speaker)) or True
+    room._on_heard("Dory, book my trip for the Lumen kickoff.")  # cancels an older pending answer
+    assert asked == [("Dory, book my trip for the Lumen kickoff.", "Mint")]
+    assert room._engaged_until == 0.0
+    room._on_heard("and a hotel near Marina Bay")  # no name, not engaged any more: nothing
+    assert len(asked) == 1
+    room._on_heard("Dory, and a hotel near Marina Bay")  # her name: answered
+    assert asked[-1] == ("Dory, and a hotel near Marina Bay", "Mint")
