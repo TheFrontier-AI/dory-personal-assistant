@@ -61,7 +61,9 @@ class MapsMixin:
             room=getattr(message, "room", None), in_guild=message.guild is not None,
         )  # fmt: skip
 
-    def _maps_tools(self, message, guild, asker, is_exec: bool, lang: str) -> list:
+    def _maps_tools(
+        self, message, guild, asker, is_exec: bool, lang: str, *, spoken: bool = False
+    ) -> list:
         """travel_time (Google Maps on) + weather (Google or Open-Meteo, `_weather_service`) for one
         request. Never raises."""
         try:
@@ -70,9 +72,8 @@ class MapsMixin:
             forecast = self._weather_service()
             zone, now = self.s.zone, self.s.now
             pc = self._maps_places(guild, asker, is_exec, message)
-            weather = (
-                build_weather_tools(WeatherCtx(forecast, pc, lang, zone, now)) if forecast else []
-            )
+            wctx = WeatherCtx(forecast, pc, lang, zone, now, render=not spoken)
+            weather = build_weather_tools(wctx) if forecast else []
             if not self._maps_on(guild.id):
                 return weather  # no Google Maps: the weather tool alone (Open-Meteo)
             routes, google = self._maps_services()

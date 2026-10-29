@@ -2478,7 +2478,11 @@ class SecretaryBot(
             *([] if interjection else self._wiki_tools(guild, asker, is_exec, memory, lang)),
             *([] if interjection else self._approval_tools(guild, asker, is_exec, lang)),
             *([] if interjection else self._places_tools(message, guild, asker, is_exec)),
-            *([] if interjection else self._maps_tools(message, guild, asker, is_exec, lang)),
+            *(
+                []
+                if interjection
+                else self._maps_tools(message, guild, asker, is_exec, lang, spoken=spoken)
+            ),
             # fx + flights + trips + THE flight / hotel search (cards in chat, spoken in voice)
             *(
                 []
