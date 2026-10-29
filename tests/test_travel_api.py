@@ -6,6 +6,7 @@ from datetime import date
 import pytest
 from fastapi.testclient import TestClient
 
+from dory.gmaps import MapsError
 from meeting_scribe import travel_api
 from meeting_scribe.app import app
 
@@ -49,9 +50,12 @@ def post(client, path, body, status=200, ip=None):
     return r.json()
 
 
-def is_error(body, code):
-    """The ONE error shape of /api/travel, with the sample-data status."""
-    assert set(body) == {"error", "data"} and body["data"] == SAMPLE, body
+FORECAST = {"kind": "forecast", "estimate": True}
+
+
+def is_error(body, code, data=SAMPLE):
+    """The ONE error shape of /api/travel, with the sample-data status (the forecast's on /weather)."""
+    assert set(body) == {"error", "data"} and body["data"] == data, body
     assert body["error"]["code"] == code and body["error"]["message"], body
     return body["error"]
 
@@ -243,3 +247,80 @@ def test_rooms_and_room_review(client):
 
 def test_bangkok_today_is_a_date():
     assert isinstance(travel_api.get_today(), date)
+
+
+# ----------------------------------------------------------------------------- weather cards
+SIN_W = {"place": "Singapore", "lat": 1.28967, "lng": 103.85007, "days": 3}
+
+
+class Forecast:
+    """What `weather.weather_card` reads from a forecast source; records the coordinates asked."""
+
+    source, credit = "Open-Meteo", "Weather data by Open-Meteo.com (CC BY 4.0)"
+
+    def __init__(self, down=False):
+        self.down, self.asked = down, []
+
+    def current(self, lat, lng, lang):
+        self.asked.append((lat, lng, lang))
+        if self.down:
+            raise MapsError("maps_unavailable", "ConnectError open-meteo")
+        return {"condition": "Slight rain showers", "icon": "showers", "temp_c": 31.2,
+                "feels_c": 36.4, "humidity": 74, "wind_kmh": 9.7, "time": "2026-10-29T16:00",
+                "timezone": "Asia/Singapore"}  # fmt: skip
+
+    def days(self, lat, lng, lang, count):
+        return [{"date": f"2026-10-{29 + i}", "condition": "Overcast", "icon": "cloud",
+                 "temp_c": 31 + i, "min_c": 25, "rain_pct": 20} for i in range(count)]  # fmt: skip
+
+
+@pytest.fixture
+def forecast(monkeypatch):
+    svc = Forecast()
+    monkeypatch.setattr(travel_api, "get_weather", lambda: svc)
+    return svc
+
+
+def test_weather_answers_the_card_and_says_it_is_an_estimate(client, forecast):
+    r = post(client, "/weather", SIN_W)
+    assert set(r) == {"card", "data"}
+    card = r["card"]
+    assert card["kind"] == "weather" and card["place"] == "Singapore" and len(card["days"]) == 3
+    assert card["current"]["temp_c"] == 31.2 and card["local_time"] == "2026-10-29T16:00"
+    assert r["data"] == {"kind": "forecast", "estimate": True, "source": "Open-Meteo",
+                         "credit": "Weather data by Open-Meteo.com (CC BY 4.0)"}  # fmt: skip
+    assert forecast.asked == [(1.29, 103.85, "en")]  # ~1 km: more cache hits
+    assert len(post(client, "/weather", {**SIN_W, "days": 5, "lang": "th"})["card"]["days"]) == 5
+    assert forecast.asked[-1][2] == "th"
+
+
+def test_weather_bodies_are_bounded(client, forecast):
+    for bad in ({**SIN_W, "lat": 90.5}, {**SIN_W, "lng": -181}, {**SIN_W, "days": 4},
+                {**SIN_W, "place": " "}, {**SIN_W, "place": "x" * 121}, {**SIN_W, "kind": "x"},
+                {**SIN_W, "lang": "english-please"}, {"place": "Singapore"}):  # fmt: skip
+        is_error(post(client, "/weather", bad, 422), "invalid", data=FORECAST)
+    assert forecast.asked == []
+
+
+def test_weather_off_and_down_are_503_with_their_own_codes(client, monkeypatch):
+    monkeypatch.setattr(travel_api, "get_weather", lambda: None)  # DORY_WEATHER_PROVIDER=off
+    is_error(post(client, "/weather", SIN_W, 503), "weather_off", data=FORECAST)
+    monkeypatch.setattr(travel_api, "get_weather", lambda: Forecast(down=True))
+    r = client.post("/api/travel/weather", json=SIN_W)
+    assert r.status_code == 503 and is_error(r.json(), "weather_unavailable", data=FORECAST)
+    assert "maps_unavailable" not in r.text and "ConnectError" not in r.text  # no raw error
+    assert r.json()["data"] == {
+        "kind": "forecast",
+        "estimate": True,
+    }  # not the sample-travel status
+    bad = client.post("/api/travel/weather", json={**SIN_W, "days": 4}).json()
+    assert bad["error"]["code"] == "invalid" and bad["data"]["kind"] == "forecast"
+
+
+def test_weather_is_rate_limited_like_the_searches(client, forecast):
+    use_limits(per_min=60, burst=1)
+    post(client, "/weather", SIN_W, ip="203.0.113.7")
+    r = client.post("/api/travel/weather", json=SIN_W, headers={"X-Forwarded-For": "203.0.113.7"})
+    assert r.status_code == 429 and r.headers["Retry-After"] == "1"
+    is_error(r.json(), "rate_limited", data=FORECAST)
+    assert len(forecast.asked) == 1

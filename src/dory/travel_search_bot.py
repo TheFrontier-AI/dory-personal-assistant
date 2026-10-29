@@ -1243,6 +1243,8 @@ class TravelSearchMixin:
                 },
             )
 
+        if hasattr(self, "_register_weather_command"):  # /dory weather (dory.weather_bot)
+            self._register_weather_command(group)
         self.tree.add_command(group)
 
     async def handle_travel_search(self, interaction, kind: str, values: dict) -> None:
