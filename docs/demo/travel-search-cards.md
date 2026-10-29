@@ -72,7 +72,7 @@ Web API (POST, JSON, validated; `today` = Bangkok date): `/api/travel/flights` a
 
 Booking from the website's cards, no AI (`POST /api/center/orgs/{org_id}/travel/book`, signed-in
 member, licence check, 30 per hour per person, errors in the same one shape with codes
-`unauthorized`, `license`, `forbidden`, `invalid`, `rate_limited`, `needs_discord`, `travel_off`):
+`unauthorized`, `license`, `forbidden`, `invalid`, `rate_limited`, `booking_unavailable`, `travel_off`):
 body `{flight_ref?, return_ref?, room_ref?, purpose? (<= 200), confirm}`, refs <= 80 characters, a
 flight or a room required, a way back only with its outbound. `confirm=false` returns the quote
 (`center.card_quote`: priced from the catalogue with trips.py's own `catalog_flight` /
@@ -83,8 +83,10 @@ was shown (consumed: a double click or a second confirm answers the quote again,
 `book_trip`, built for this person exactly like the chat agent's tools (`center.web_person`, also
 used by `headless_kwargs`), called as a proposal and then a confirmation (two fresh requests), so
 the booking, receipts (THB, ค่าเดินทาง), trip record and check-in reminder are the chat's. The answer
-carries `text`, a "Booked in the sandbox: ..." line also stored in the chat history. No headless bot
-(a web-only company) -> 409 `needs_discord`; travel turned off -> 409 `travel_off`. On the page the
+carries `text`, a "Booked in the sandbox: ..." line also stored in the chat history. A company on
+the website only books the same way in its web workspace (its own ledger and trip record; no
+check-in reminder: nothing delivers one to a web-only person). No headless bot -> 409
+`booking_unavailable`; travel turned off -> 409 `travel_off`. On the page the
 review's "Book in sandbox" opens an inline step: every item picked in that reply's cards (outbound,
 way back, room; the clicked one always included) as checkboxes, "What is it for?", the quote, then
 "Confirm booking" -> the review shows the references and Dory posts the booked line.

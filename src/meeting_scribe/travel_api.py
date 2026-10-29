@@ -59,7 +59,7 @@ MESSAGES = {
     "unauthorized": "Sign in again.",
     "license": "This company's licence is not active.",
     "forbidden": "You are not a member of this company.",
-    "needs_discord": "Booking from the cards needs the company's Discord workspace (Dory's ledger).",
+    "booking_unavailable": "Booking from the cards is not available right now.",
     "travel_off": "Travel is turned off for this company.",
 }
 _BY_STATUS = {401: "unauthorized", 402: "license", 403: "forbidden", 404: "not_found",
