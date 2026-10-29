@@ -419,3 +419,11 @@ async def test_a_refused_booking_after_a_plain_yes_says_so(bot, world, monkeypat
     text = tools(bot, world)["book_trip"].on_confirm("yes")
     assert text.startswith("I couldn't book it") and "Booked before the error: flight " in text
     assert tools(bot, world)["list_trips"]()["count"] == 0
+
+
+async def test_hotel_results_and_the_quote_say_they_are_sandbox(bot, world):
+    tl = tools(bot, world)
+    hotels = tl["search_hotels"]("SIN", DEP, RET)
+    assert "sandbox" in hotels["note"]
+    quote = tl["book_trip"]("", hotels["hotels"][0]["offer_id"], "x")
+    assert quote["status"] == "needs_confirmation" and "sandbox quote" in quote["instruction"]

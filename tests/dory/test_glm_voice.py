@@ -127,7 +127,9 @@ def test_glm_voice_tells_once_then_keeps_trying_while_the_box_is_busy_or_off(mon
 
     class DroppingSocket(FakeSocket):
         async def __anext__(self):
-            if not any(msgs for _, msgs in self.phases):  # nothing left to send: the server drops us
+            if not any(
+                msgs for _, msgs in self.phases
+            ):  # nothing left to send: the server drops us
                 raise ConnectionClosedError("received 1011 (internal error) keepalive ping timeout")
             return await super().__anext__()
 
