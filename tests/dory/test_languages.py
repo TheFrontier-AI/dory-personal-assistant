@@ -148,11 +148,35 @@ def test_locale_file_is_valid(lang, full_catalog):
     assert set(data["_meta"]["source_hash"]) == set(strings)
 
 
+KNOWN_GAPS = Path(__file__).with_name("locale_gaps.json")  # the reviewed untranslated messages
+
+
+def _untranslated(lang) -> set[str]:
+    strings = _locale(lang)["strings"]
+    return {
+        k
+        for k, v in CATALOG.items()
+        if not i18n.has_thai(v["en"]) and not str(strings.get(k, "")).strip()
+    }
+
+
 @pytest.mark.parametrize("lang", EXTRA)
-def test_locale_coverage_is_at_least_95_percent(lang, full_catalog):
-    translatable = [k for k, v in CATALOG.items() if not i18n.has_thai(v["en"])]
-    have = sum(1 for k in translatable if k in _locale(lang)["strings"])
-    assert have / len(translatable) >= 0.95, (lang, have, len(translatable))
+def test_every_message_is_translated_or_a_reviewed_gap(lang, full_catalog):
+    """Message level: a new catalog key with no (or an empty) translation fails here by name;
+    translate it (scripts/dory_translate_catalog.py --only-missing) or review it into
+    locale_gaps.json."""
+    allowed = set(json.loads(KNOWN_GAPS.read_text(encoding="utf-8"))["keys"])
+    assert sorted(_untranslated(lang) - allowed) == [], lang
+
+
+def test_the_known_gaps_list_has_no_stale_entries(full_catalog):
+    """An entry that is no longer a translatable catalog key, or is translated in every
+    second-tier locale, must leave locale_gaps.json."""
+    keys = json.loads(KNOWN_GAPS.read_text(encoding="utf-8"))["keys"]
+    assert len(keys) == len(set(keys))
+    gone = [k for k in keys if k not in CATALOG or i18n.has_thai(CATALOG[k]["en"])]
+    still = set.union(*(_untranslated(lang) for lang in EXTRA))
+    assert gone == [] and sorted(set(keys) - still) == []
 
 
 def test_t_tiers_and_fallbacks():

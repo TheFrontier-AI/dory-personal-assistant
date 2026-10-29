@@ -16,6 +16,7 @@ import logging
 import math
 import re
 import secrets
+import threading
 import time
 import unicodedata
 import uuid
@@ -41,10 +42,10 @@ from fastapi import (
     WebSocketDisconnect,
 )
 from fastapi.responses import HTMLResponse, RedirectResponse, Response
-from pydantic import BaseModel, Field, field_validator
+from pydantic import BaseModel, ConfigDict, Field, field_validator, model_validator
 from starlette.concurrency import run_in_threadpool
 
-from dory import monitor
+from dory import monitor, travel_search
 from dory.actions import ActionQueue
 from dory.change_outbox import ChangeOutbox, record_org_edit
 from dory.connectors import (
@@ -108,7 +109,7 @@ from dory.orgs import (
 )
 from dory.people_directory import Observed, PeopleBook, Person, Seen
 from dory.sharing import SHARED_DOCS_CHANNEL, SHARED_DOCS_NAME, WEB_DOCS_CHANNEL
-from meeting_scribe import hub
+from meeting_scribe import hub, travel_api
 from meeting_scribe.config import get_settings
 from meeting_scribe.limits import TokenBucket
 
@@ -4311,6 +4312,9 @@ class ChatReply(BaseModel):
     answer: str
     workspace_id: str
     at: str
+    # `travel_search.travel_payload`: the queries + filters of the searches the page draws as cards
+    travel: dict | None = None
+    travel_fallback: bool = False  # the brain failed: the cards come from the typed-request parser
 
 
 class Turn(BaseModel):
@@ -4319,6 +4323,7 @@ class Turn(BaseModel):
     at: str
     workspace_id: str = ""
     via: str = ""  # "voice": said in a live call (typed turns leave it empty)
+    travel: dict | None = None  # the searches the page draws as cards under this answer
 
 
 def company_workspace(org: Org) -> Workspace | None:
@@ -4362,6 +4367,19 @@ def _slack_channel_ids(lib: Library, ws: Workspace) -> list[int]:
     ]
 
 
+# each web person's current trip (process memory, like the bot's), so "and a hotel there" or
+# "only non-stop" continues the last flight / hotel search across messages
+TRIPS = travel_search.Trips()
+
+
+def with_card_tools(tools: list, mine: list) -> tuple[list, list]:
+    """`tools` with exactly one `search_flights` / `search_hotels`, and the tools whose `.cards`
+    to read: the headless bot's own (its `spoken` set their `render`, next to its book_trip), else
+    `mine` (the web-only path: search, nothing books)."""
+    named = [f for f in tools if getattr(f, "__name__", "") in travel_search.CARD_TOOL_NAMES]
+    return (tools, named) if named else (tools + mine, mine)
+
+
 def answer_question(
     ctx: Ctx,
     orgs: OrgStore,
@@ -4376,15 +4394,26 @@ def answer_question(
     spoken: bool = False,
     voice_history: str = "",
     voice_call: str = "",
+    travel_out: list | None = None,
 ) -> str:
     """Blocking: Dory's text brain for one web question, scoped like the chat route (the org's
     workspace, the caller's memory rights, their profile, the web tools). Used by the chat route
     and by the live voice session (`spoken`: the voice register and round cap; `voice_history`:
     what the call heard and said so far, after the typed thread; `voice_call`: that call's id, whose
-    turns saved in the thread are left out because `voice_history` already carries them)."""
+    turns saved in the thread are left out because `voice_history` already carries them).
+    `travel_out`: a typed chat's list that receives the flight / hotel cards the brain's search
+    tools recorded; None (voice) = nothing is drawn, the tools tell the model to speak the results."""
     from dory.qa import MemoryTools
 
     s, store = hub.get_dory_runtime()
+    cards = travel_search.card_tools(
+        travel_search.CardCtx(
+            owner=f"web:{ctx.email}",
+            today=travel_api.get_today(),
+            trips=TRIPS,
+            render=travel_out is not None,
+        )
+    )
     is_exec = ctx.is_exec and ws.platform == "discord"
     allowed = chat_scope(lib, ctx.org, ws, ctx.is_exec)
     memory = MemoryTools(lib.memory, ws.memory_id, allowed, s) if allowed else None
@@ -4406,12 +4435,12 @@ def answer_question(
     # ONE Dory: the Discord bot's own agent assembly (every feature's tools, company playbook,
     # tone, web search), driven headless with web stand-ins. See dory.headless.
     kw = (
-        headless_kwargs(ctx, profile, ws, question, lang, memory)
+        headless_kwargs(ctx, profile, ws, question, lang, memory, spoken=spoken)
         if ws.platform == "discord"
         else None
     )
     if kw is not None:
-        kw["extra_tools"] = list(kw.get("extra_tools") or []) + tools
+        kw["extra_tools"], drawn = with_card_tools(list(kw.get("extra_tools") or []) + tools, cards)
         kw["profile"] = who + ("\n" + kw["profile"] if kw.get("profile") else "")
         ans = ask(
             s,
@@ -4424,11 +4453,14 @@ def answer_question(
             spoken=spoken,
             **kw,
         )
+        if travel_out is not None:
+            travel_out.extend(travel_search.tool_cards(drawn))
         return conform_language(ans.text, lang)
     company = ""
     if ws.platform == "discord":  # fallback: the company knowledge without the full bot
         company, more = company_knowledge(ctx, profile, ws, lib, guilds, question, lang)
         tools = tools + more
+    tools, drawn = with_card_tools(tools, cards)
     ans = ask(
         s,
         store,
@@ -4444,6 +4476,8 @@ def answer_question(
         memory=memory,
         spoken=spoken,
     )
+    if travel_out is not None:
+        travel_out.extend(travel_search.tool_cards(drawn))
     return conform_language(ans.text, lang)
 
 
@@ -4517,28 +4551,43 @@ def conform_language(text: str, lang: str) -> str:
         return text
 
 
+def web_person(ctx: Ctx, profile: UserProfile, ws: Workspace) -> tuple[Any, Any, Any, int]:
+    """The headless bot's stand-ins for this signed-in person in the company's workspace:
+    (guild, member, channel, person id). The same identity the chat's agent and the card
+    booking act as (their Discord id when verified, else one derived from the email)."""
+    from dory.headless import person_id, web_context
+
+    did = (profile.identity("discord") or Identity(platform="discord", external_id="")).external_id
+    uid = person_id(did, ctx.email)
+    guild, member, channel = web_context(
+        ws.memory_id,
+        ws.name,
+        uid=uid,
+        name=profile.name or ctx.email.split("@")[0],
+        admin=ctx.role in ("owner", "admin", "super"),
+        email=ctx.email,
+    )
+    return guild, member, channel, uid
+
+
 def headless_kwargs(
-    ctx: Ctx, profile: UserProfile, ws: Workspace, question: str, lang: str, memory: Any
+    ctx: Ctx,
+    profile: UserProfile,
+    ws: Workspace,
+    question: str,
+    lang: str,
+    memory: Any,
+    spoken: bool = False,
 ) -> dict | None:
-    """`SecretaryBot._agent_kwargs` for a web request, or None when the headless bot is off."""
-    from dory.headless import agent_kwargs_in_thread, person_id, web_context
+    """`SecretaryBot._agent_kwargs` for a web request, or None when the headless bot is off.
+    `spoken`: the Live voice call (the bot's search tools then speak their results, no cards)."""
+    from dory.headless import agent_kwargs_in_thread
 
     bot = get_bot()
     if bot is None:
         return None
     try:
-        did = (
-            profile.identity("discord") or Identity(platform="discord", external_id="")
-        ).external_id
-        uid = person_id(did, ctx.email)
-        guild, member, channel = web_context(
-            ws.memory_id,
-            ws.name,
-            uid=uid,
-            name=profile.name or ctx.email.split("@")[0],
-            admin=ctx.role in ("owner", "admin", "super"),
-            email=ctx.email,
-        )
+        guild, member, channel, uid = web_person(ctx, profile, ws)
         message = bot.room_message(guild, member, channel)
         kw = agent_kwargs_in_thread(
             bot,
@@ -4551,6 +4600,7 @@ def headless_kwargs(
             question=question,
             memory=memory,
             profile=None,
+            spoken=spoken,
         )
         kw["user_id"] = uid
         kw.pop("chat_actions", None)  # Discord-only actions (modes, DMs); the web has its own
@@ -4638,15 +4688,31 @@ async def chat(
             if block:
                 asked = question + "\n\n" + block
 
+    # flight / hotel searches: the brain calls its search_flights / search_hotels tools, which
+    # record the cards the page draws (travel_search.card_tools)
+    cards: list[dict] = []
+    fallback = False
     try:
         text = await run_in_threadpool(
-            answer_question, ctx, orgs, lib, ask, guilds, ws, asked, body.page
+            answer_question, ctx, orgs, lib, ask, guilds, ws, asked, body.page, travel_out=cards
         )
     except HTTPException:
         raise
     except Exception as exc:
-        logger.exception("center chat failed")
-        raise HTTPException(502, "Dory could not answer right now") from exc
+        trip = None if ids else travel_search.parse_request(question, travel_api.get_today())
+        if trip is None:
+            logger.exception("center chat failed")
+            raise HTTPException(502, "Dory could not answer right now") from exc
+        # the brain is down but the message reads as a trip: the cards still work (they call
+        # /api/travel, not the AI), with a line that says so; the page offers Retry
+        logger.exception("center chat failed; trip search read without the brain")
+        from dory.i18n import base_lang
+
+        lang = await run_in_threadpool(company_language, guilds, ws)
+        text, travel = travel_api.fallback_reply(trip, base_lang(lang))
+        fallback = True
+    else:
+        travel = travel_search.travel_payload(cards)
     at = stamp()
     await run_in_threadpool(
         orgs.append_chat,
@@ -4654,10 +4720,167 @@ async def chat(
         ctx.email,
         [
             {"role": "user", "text": question, "at": at, "workspace_id": ws.id},
-            {"role": "dory", "text": text, "at": stamp(), "workspace_id": ws.id},
+            {"role": "dory", "text": text, "at": stamp(), "workspace_id": ws.id}
+            | ({"travel": travel} if travel else {}),
         ],
     )
-    return ChatReply(answer=text, workspace_id=ws.id, at=at)
+    return ChatReply(
+        answer=text, workspace_id=ws.id, at=at, travel=travel, travel_fallback=fallback
+    )
+
+
+# ------------------------------------------------------------------ book straight from the travel cards
+CARD_QUOTE_TTL_S = 600.0
+_card_quotes: dict[tuple, float] = {}  # (org, email, refs..., purpose) -> expiry: quotes shown
+_card_quotes_lock = threading.Lock()
+BOOKED_LINE = {
+    "en": "Booked in the sandbox: {items}. References: {refs}. Total {total}. The receipts are filed "
+    "in the expense ledger under Travel.{reminder} This is a sandbox booking: no ticket is issued "
+    "and no money is charged.",
+    "th": "จองแบบทดลองแล้ว: {items} รหัสอ้างอิง: {refs} รวม {total} บันทึกใบเสร็จในบัญชีค่าใช้จ่าย "
+    "หมวดค่าเดินทางแล้ว{reminder} นี่คือการจองทดลอง: ไม่มีการออกตั๋วและไม่มีการเก็บเงินค่ะ",
+}
+REMINDER_LINE = {
+    "en": " I'll remind you to check in 24 hours before the flight.",
+    "th": " ดอรี่จะเตือนให้เช็กอินก่อนเที่ยวบิน 24 ชั่วโมง",
+}
+
+
+class CardBooking(BaseModel):
+    """What the person picked in the cards (booking_refs from /api/travel) and whether to book."""
+
+    model_config = ConfigDict(extra="forbid")
+    flight_ref: str = Field("", max_length=80)
+    return_ref: str = Field("", max_length=80)
+    room_ref: str = Field("", max_length=80)
+    purpose: str = Field("", max_length=200)
+    confirm: bool = False
+
+    @model_validator(mode="after")
+    def _picked(self):
+        if not (self.flight_ref.strip() or self.room_ref.strip()):
+            raise ValueError("pick a flight or a room")
+        if self.return_ref.strip() and not self.flight_ref.strip():
+            raise ValueError("a way back needs the outbound flight")
+        return self
+
+
+def card_quote(b: CardBooking, today) -> dict | None:
+    """The quote book_trip would show, priced from the catalogue the same way (trips.catalog_*),
+    WITHOUT touching book_trip's confirm gate: asking twice for the same quote never books.
+    None = a ref that no longer resolves."""
+    from dory import trips
+
+    f, r, h = (b.flight_ref.strip(), b.return_ref.strip(), b.room_ref.strip())
+    flight = trips.catalog_flight(f, r, today) if f else None
+    hotel = trips.catalog_hotel(h, today) if h else None
+    if (f and flight is None) or (h and hotel is None):
+        return None
+    totals: dict[str, float] = {}
+    for x in (flight, hotel):
+        if x is not None:
+            amt = x.price if isinstance(x, trips.FlightOffer) else x.total
+            totals[x.currency] = round(totals.get(x.currency, 0) + amt, 2)
+    return {
+        "flight": trips._view(flight) if flight else None,
+        "hotel": trips._view(hotel) if hotel else None,
+        "totals": [{"amount": v, "currency": k} for k, v in totals.items()],
+        "purpose": b.purpose.strip()[:200],
+    }
+
+
+def card_book_trip(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> Callable | None:
+    """This person's book_trip from the headless bot, built like the chat agent's tools (a NEW
+    request every call). None: no headless bot / not a Discord workspace / travel turned off."""
+    bot = get_bot()
+    if bot is None or ws.platform != "discord":
+        return None
+    guild, member, _, _ = web_person(ctx, orgs.user_profile(ctx.email), ws)
+    tools = bot._travel_tools(guild, member, company_language(guilds, ws), ctx.is_exec)
+    return next((f for f in tools if getattr(f, "__name__", "") == "book_trip"), None)
+
+
+def booked_line(quote: dict, res: dict, lang: str) -> str:
+    th = lang == "th"
+    items = []
+    if fl := quote.get("flight"):
+        items.append(f"{fl.get('carrier_name') or fl.get('carrier')} {' + '.join(fl['flights'])}")
+    if ho := quote.get("hotel"):
+        items.append(f"{ho['name']} ({ho['room']})")
+    refs = ", ".join(f"{k} {v}" for k, v in (res.get("references") or {}).items())
+    total = " + ".join(f"{t['amount']:,.0f} {t['currency']}" for t in res.get("totals") or [])
+    return BOOKED_LINE["th" if th else "en"].format(
+        items=", ".join(items),
+        refs=refs,
+        total=total,
+        reminder=REMINDER_LINE["th" if th else "en"] if res.get("checkin_reminder") else "",
+    )
+
+
+async def travel_book(
+    body: CardBooking,
+    ctx: Ctx = Depends(member_ctx),
+    orgs: OrgStore = Depends(get_orgs),
+    guilds=Depends(hub.get_guild_store),
+) -> dict:
+    """Book straight from the travel cards (no AI): `confirm=false` returns the quote and
+    remembers that this person saw it; `confirm=true` books it (sandbox: trips.SampleProvider,
+    receipts in the ledger, a check-in reminder) only when that same quote was shown to this
+    person in the last 10 minutes, else answers the quote again (`needs_confirmation`).
+    Errors in the travel API's one shape (`travel_api._TravelRoute`)."""
+    ws = company_workspace(ctx.org)
+    if ws is None or ws.status != "connected":
+        raise HTTPException(404, "not_found")
+    if not license_ok(ctx.org.license, datetime.now(UTC)) and not ctx.is_super:
+        raise HTTPException(402, "license")
+    if await run_in_threadpool(CHAT_LIMITER.take, orgs.docs, f"{ctx.org.id}:{ctx.email}:book"):
+        raise HTTPException(429, "rate_limited")
+    book = await run_in_threadpool(card_book_trip, ctx, orgs, guilds, ws)
+    if book is None:
+        bot_ok = get_bot() is not None and ws.platform == "discord"
+        raise HTTPException(409, "travel_off" if bot_ok else "needs_discord")
+    data = dict(travel_search.DATA_STATUS)
+    quote = card_quote(body, travel_api.get_today())
+    if quote is None:
+        return {"status": "expired", "reason": "that offer is unknown or in the past; search again",
+                "data": data}  # fmt: skip
+    key = (ctx.org.id, ctx.email.lower(), body.flight_ref.strip().upper(),
+           body.return_ref.strip().upper(), body.room_ref.strip().upper(), quote["purpose"])  # fmt: skip
+    now = time.monotonic()
+    with _card_quotes_lock:
+        for k in [k for k, exp in _card_quotes.items() if exp <= now]:
+            del _card_quotes[k]
+        shown = body.confirm and _card_quotes.pop(key, 0) > now  # consumed: one booking per quote
+        if not body.confirm:
+            _card_quotes[key] = now + CARD_QUOTE_TTL_S
+    if not shown:
+        return {"status": "needs_confirmation", "quote": quote, "data": data}
+    args = (body.flight_ref.strip(), body.room_ref.strip(), quote["purpose"], "",
+            body.return_ref.strip())  # fmt: skip
+    # the click IS the confirmation: book_trip's own gate wants a proposal, then a later request
+    res = await run_in_threadpool(book.clicked, *args)
+    if res.get("status") == "needs_confirmation":
+        again = await run_in_threadpool(card_book_trip, ctx, orgs, guilds, ws)
+        res = await run_in_threadpool(again.clicked, *args)
+    out = {**res, "data": data}
+    if res.get("status") == "booked":
+        from dory.i18n import base_lang
+
+        lang = base_lang(await run_in_threadpool(company_language, guilds, ws))
+        out["text"] = booked_line(quote, res, lang)
+        await run_in_threadpool(
+            orgs.append_chat, ctx.org.id, ctx.email,
+            [{"role": "dory", "text": out["text"], "at": stamp(), "workspace_id": ws.id}],
+        )  # fmt: skip
+    return out
+
+
+router.add_api_route(
+    "/orgs/{org_id}/travel/book",
+    travel_book,
+    methods=["POST"],
+    route_class_override=travel_api._TravelRoute,  # the travel API's one error shape
+)
 
 
 @router.get("/orgs/{org_id}/chat/history")

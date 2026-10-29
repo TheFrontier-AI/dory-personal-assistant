@@ -595,3 +595,16 @@ def test_live_waiting_sounds_on_by_default_without_a_toggle_and_operation_status
     enqueue = between("const enqueue = (buf) => {", "const stopPlayback")
     assert "S.thinking = false" not in enqueue
     assert "if (S.thinking && !playing && S.waitOn && !S.wait && !S.waitT) waitArm();" in call
+
+
+def test_travel_card_strings_exist_in_both_languages():
+    src = html()
+    th, en = src.split("\nen: {", 1)
+    keys = set(re.findall(r"\b(tv_[a-z0-9_]+):", src))
+    assert len(keys) > 100
+    for k in keys:
+        assert f"{k}:" in th and f"{k}:" in en.split("}};", 1)[0], k
+    # every literal key the cards look up ("tv_s_" and other prefixes are families, built in code)
+    used = set(re.findall(r'"(tv_[a-z0-9_]*[a-z0-9])"', src))
+    assert used <= keys, used - keys
+    assert 'fetch("/api/travel" + path' in src  # the public sample API, never the mock detour
