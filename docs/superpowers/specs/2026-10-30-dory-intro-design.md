@@ -12,6 +12,14 @@ feel what Dory is for (you ask once, she remembers, finds and follows up, you st
 them into the product at the moment of first success: the examples that open the chat. It should look and
 sound like a carefully directed launch moment, in Dory's own world, not a generic slideshow.
 
+**Idea (design-taste pass):** in this intro, *the things a team says once in chat* become *objects sinking
+into the deep that Dory's light lifts back to the surface*, where the last one turns into the person's first
+question. (Competitor test: a generic assistant has no deep, no light and no "said once" objects.)
+
+**The one live thing:** at the decision beat the person presses Accept, Edit or Decline themselves on a copy
+of Dory's real task card; any choice continues the story (Accept → chime; Edit / Decline → a one-line
+"You decide, every time."), and with no input for 4 seconds it continues on its own. It never blocks.
+
 ## Goals, non-goals, anti-goals
 
 - Goals: one rehearsed focal sequence; the brand's deep-to-surface story; a visible "Dory is working" state
@@ -40,7 +48,7 @@ underneath. Times are targets; motion tokens from `theme.css` (`--ease`, `--ease
 | 0.0–1.4 | Brand frame | Deep scope (Abyss → Deep), sparse marine snow. The round painted mark `dory-mark.webp` rises 24 px into the centre: frame 0 is already composed | low pad fades in |
 | 1.4–4.6 | Headline | "Ask once." then "Dory remembers." (Anuphan 700), word by word (480 ms entrances, 80 ms stagger). Small glass chips rise behind it: a chat bubble, a receipt, a task card (product icons, no 3D, no reef plate) | soft bubble pops on the chips |
 | 4.6–9.6 | Ask | Example label "Example · fictional names". A question bubble ("What did we agree with ABC?") lands; Dory's light turns on beside the label "Dory is working" and the label's second half cycles: "searching your chat" → "found it"; her answer bubble: "42,000 THB for the Q4 package" with a source chip "Ploy · #sales" | two-note ping on the light; tick on each label change |
-| 9.6–12.8 | You decide | A task card slides up: "Send the ABC deck · Ploy · due Fri" with Accept / Edit / Decline; the music dips; Accept is pressed (highlight + 160 ms press) and the card turns "Accepted" | quiet dip, then a warm chime |
+| 9.6–12.8 (+ up to 4 s waiting) | You decide | A task card slides up: "Send the ABC deck · Ploy · due Fri" with Accept / Edit / Decline, built as a fragment of the product's real card. The music dips and the card waits for the person (the live thing above); after 4 s it presses Accept itself (140 ms press) and turns "Accepted" | quiet dip, then a warm chime |
 | 12.8–15.0 | Surface | The deep gradient lifts upward like water draining off glass: the layer's background crossfades to the light Surface ground, the chips float to the top and the last one settles exactly on the first example in step 4's list; the layer fades and step 4's heading takes focus | swell that resolves and fades |
 
 Copy: only lines already approved for the film (`motion/dory-launch-film/02-screenplay.md` sign-off list:
@@ -62,9 +70,19 @@ English and Thai.
 
 - Look: the brand's deep scope (`[data-theme="deep"]` tokens) turning into the Surface theme; Foam / Mist
   type; Glow `#5FF2E0` only as Dory's working light beside its label; no Lantern accent (step 4's button
-  keeps the one call to action); round painted mark; product stroke icons; glass chips with soft shadows.
+  keeps the one call to action); round painted mark; product stroke icons.
+- House rules (design-taste skill): chips and bubbles are flat fills one tone step above the ground (no
+  glass, no blur, no shadows at rest); no eyebrow, pill badge or tiny uppercase label: the example notice
+  is a sentence-case line at 16 px or more ("Example with fictional names"); the headline is one face, one
+  colour, no styled accent word, two lines at most at 390 px; Anuphan display + IBM Plex Sans Thai only.
+  The task card and chat bubbles are product fragments (`data-ui`) and keep the product's own look.
+- Declared brand exceptions (passed to the inspector with `--allow`): the deep scope's Abyss → Deep
+  gradient and Dory's Glow are the brand's own devices (`theme.css`, CLAUDE.md), not decoration.
 - Motion: transforms and opacity only (GPU-friendly), Web Animations API driven by one small timeline
-  (skip = finish/cancel all), one camera-like move per beat, no flashes, nothing over 3 Hz.
+  (skip = finish/cancel all), one camera-like move per beat, no flashes, nothing over 3 Hz. Numbers
+  (taste skill's tested recipes, mapped onto the brand's `--ease`): headline lines rise 28 px over 800 ms,
+  expo out, 90 ms between lines; chips 600 ms ease-out, 70 ms apart; status label swap 240 ms; press
+  140 ms; the surfacing 1,200 ms in-out; anything leaving takes about 70 % of its entrance.
 - Sound: synthesized in the browser with the Web Audio API (no files, no licences): a filtered two-sine pad,
   the two-note ping (D6 → A6, the film's motif), short sine "pops", a filtered-noise tick, a three-note
   chime, a final swell. Master level well under speech level; context suspended when the tab is hidden.
@@ -88,6 +106,9 @@ English and Thai.
   (plays after step 3 and lands focused on step 4; Skip and Esc; reduced motion shows stills; plays once;
   sound toggle state; axe WCAG 2.2 AA on the layer at 320 px and desktop), and the existing e2e conftest
   marks the intro seen for tests that are not about it.
+- Taste gate: the design-taste skill's `lint.mjs` on the changed source and `inspect.mjs` on `/start` with
+  the intro's reduced-motion stills at 1440, 768 and 390 px (`--allow` for the two brand exceptions only),
+  then screenshots looked at and critiqued before review.
 
 ## Rollout
 
