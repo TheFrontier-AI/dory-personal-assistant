@@ -461,20 +461,88 @@ def test_answer_merges_a_split_sentence_and_reports_a_cancel(monkeypatch):
     asyncio.run(main())
 
 
-def test_a_reconnect_to_a_stopped_box_waits_for_speech_before_waking_it():
-    """After a first session, a silent room must not wake a stopped box: speech (or typed text)
-    marks somebody there; silence and quiet noise do not."""
+class _Sleeper:
+    """A waker whose box is asleep until `ensure_running` is called; records the reason."""
+
+    def __init__(self):
+        self.up, self.calls = False, []
+
+    async def healthy(self):
+        return self.up
+
+    async def ensure_running(self, *a, reason="", **k):
+        self.calls.append(reason)
+        self.up = True
+        return True
+
+
+def _asleep_voice(monkeypatch, **kw):
+    monkeypatch.setattr("dory.glm_voice.WAKE_POLL_S", 0.01)
+    events, w = [], _Sleeper()
 
     async def out(kind, payload):
-        pass
+        events.append(kind)
 
-    v = GlmVoice(_settings(), out=out, url="ws://x/voice", ask=lambda q, h: "", lang="en")
-    assert v._spoke is False
-    v.feed(b"\x00\x00" * 320)  # silence
-    v.feed(array("h", [20, -20] * 160).tobytes())  # a hiss under the voice threshold
-    assert v._spoke is False
-    v.feed(array("h", [3000, -3000] * 160).tobytes())
-    assert v._spoke is True
-    w = GlmVoice(_settings(), out=out, url="ws://x/voice", ask=lambda q, h: "", lang="en")
-    w.say("book a flight")
-    assert w._spoke is True
+    fake = FakeSocket([(lambda f: True, [json.dumps({"type": "ready"})])])
+
+    @contextlib.asynccontextmanager
+    async def connect():
+        yield fake
+
+    v = GlmVoice(_settings(), out=out, url="ws://x/voice", connect=connect, waker=w, **kw)
+    return v, w, events
+
+
+async def _until(pred, n=300):
+    for _ in range(n):
+        if pred():
+            return
+        await asyncio.sleep(0.01)
+    raise AssertionError("condition not reached")
+
+
+def test_a_sleeping_box_is_not_woken_by_occupancy_sound_or_retries_only_by_a_request(monkeypatch):
+    """G1-G3: a room resumed after a restart (wake_on_start False) waits; a loud voice only posts
+    ONE hint; an explicit request starts the box once and its reason is logged with the start."""
+    v, w, events = _asleep_voice(monkeypatch, wake_on_start=False)
+
+    async def main():
+        v.start()
+        await asyncio.sleep(0.05)
+        v.feed(b"\x00\x00" * 320)  # silence: nothing
+        v.feed(array("h", [20, -20] * 160).tobytes())  # a hiss under the voice threshold: nothing
+        await asyncio.sleep(0.05)
+        assert events == [] and w.calls == []
+        loud = array("h", [3000, -3000] * 160).tobytes()
+        v.feed(loud)
+        v.feed(loud)  # the hint is once per sleep
+        await _until(lambda: "asleep" in events)
+        await asyncio.sleep(0.1)
+        assert events == ["asleep"] and w.calls == []  # still asleep: a voice is not a request
+        v.request_wake("typed command by user 7")
+        await _until(lambda: "ready" in events)
+        assert events == ["asleep", "waking", "ready"]
+        assert w.calls == ["typed command by user 7"]  # started once, with its reason
+        await v.close()
+
+    asyncio.run(main())
+
+
+def test_a_wake_is_used_up_and_typed_text_is_a_request(monkeypatch):
+    v, w, events = _asleep_voice(monkeypatch, wake_on_start=True, wake_reason="web call")
+
+    async def main():
+        v.start()
+        await _until(lambda: "ready" in events)
+        assert w.calls == ["web call"]  # the call itself is the explicit request
+        v.request_wake("stale")  # typed during the call, then the box goes down
+        await asyncio.sleep(0.05)
+        await v.close()
+
+    asyncio.run(main())
+    assert v._may_wake is False  # the session ending spent it: it can never wake the box later
+    w2 = GlmVoice(
+        _settings(), out=lambda *a: None, url="ws://x/voice", ask=lambda q, h: "", lang="en"
+    )
+    w2.say("book a flight")
+    assert w2._may_wake is True and w2._wake_reason == "typed turn"

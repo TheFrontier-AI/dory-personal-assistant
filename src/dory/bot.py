@@ -72,6 +72,7 @@ from .extract import (
 from .fillers import FillerPool, FillerWriter, RecentLines, within
 from .freetime_bot import FreetimeMixin
 from .gate import GateLine, is_join_candidate
+from .gpu_lifecycle_bot import GpuLifecycleMixin
 from .guild_settings import (
     MAX_RETENTION_DAYS,
     MIN_RETENTION_DAYS,
@@ -407,6 +408,7 @@ class SecretaryBot(
     MapsMixin,
     SearchMixin,
     TravelMixin,
+    GpuLifecycleMixin,  # typed "wake up" + the idle stop of the GPU voice box
     MarketsMixin,
     ReminderMixin,
     ProjectsMixin,
@@ -989,6 +991,8 @@ class SecretaryBot(
         if called and await self._captions_default_command(message):
             return
         if called and await self._voice_talk_command(message):
+            return
+        if called and await self._wake_voice_command(message):
             return
         if called and await self._help_command(message):
             return
@@ -3598,6 +3602,7 @@ class SecretaryBot(
         await self._positions_due()
         await self._change_outbox_due()
         await self._travel_due()
+        await self._gpu_due()
         await self._markets_due()
         await self._contests_due()
 
