@@ -1146,7 +1146,8 @@ class TravelSearchMixin:
     async def _post_travel_cards(self, message, member, agent: dict, lang: str) -> None:
         """After the reply: one results message per search the brain ran (flights first), each
         an owner-bound session. A failure is logged by type and told in one short line."""
-        cards = tool_cards(agent.get("extra_tools") or [])
+        searches = ("flights", "hotels")  # a weather card rides in the same list (its own poster)
+        cards = [c for c in tool_cards(agent.get("extra_tools") or []) if c["kind"] in searches]
         if not cards:
             return  # no search ran (or it asked a question first: need_details)
         today = self._travel_today()

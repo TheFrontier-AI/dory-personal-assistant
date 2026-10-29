@@ -148,6 +148,17 @@ def get_today() -> date:
     return datetime.now(BANGKOK).date()
 
 
+@lru_cache
+def get_weather():
+    """The web's ONE forecast source (`dory.weather.make_weather_service` on the Dory settings:
+    Open-Meteo unless Google Maps is on; None when `DORY_WEATHER_PROVIDER=off`), kept for the
+    process so its 10-minute cache serves the chat tool and the card route. Tests override it."""
+    from dory.weather import make_weather_service
+    from meeting_scribe import hub
+
+    return make_weather_service(hub.get_dory_runtime()[0])
+
+
 # ----------------------------------------------------------------------------- bodies
 # extra fields are refused everywhere, the shared models included
 class _Body(BaseModel):
