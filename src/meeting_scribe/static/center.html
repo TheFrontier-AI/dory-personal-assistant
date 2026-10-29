@@ -2497,7 +2497,8 @@ function liveCall(wrap, addMsg, page) {
     [/\btasks?\b|todo|งาน/i, "live_op_tasks"], [/search|find|look up|หา|ค้น/i, "live_op_search"]];
   const opLabel = (q) => { for (const [re, k] of OPS) if (re.test(q)) return t(k); return ""; };
   const STATUS = { connecting: "live_connecting", idle: "live_muted", listening: "live_listening", thinking: "live_thinking", speaking: "live_speaking", ended: "live_ended" };
-  const status = () => { const v = V(); if (!v) return; v.tx.textContent = S.state === "thinking" && S.thinkQ ? (opLabel(S.thinkQ) || t("live_checking", { q: S.thinkQ })) : S.state === "connecting" && S.waking ? t("live_waking") : t(STATUS[S.state] || "live_listening"); };
+  const status = () => { const v = V(); if (!v) return; const s = S.state === "thinking" && S.thinkQ ? (opLabel(S.thinkQ) || t("live_checking", { q: S.thinkQ })) : S.state === "connecting" && S.waking ? t("live_waking") : t(STATUS[S.state] || "live_listening");
+    if (v.tx.textContent !== s) v.tx.textContent = s; }; // written only on change: it is a live region, and this runs every frame
   const setState = (s) => { const v = V(); if (!v) return; if (S.state !== s) { S.state = s; v.classList.remove("connecting", "idle", "listening", "thinking", "speaking", "ended"); v.classList.add(s); } status(); };
   const emote = (e, ms = 1200) => { const v = V(); if (!v) return; clearTimeout(S.emoT); v.classList.remove("happy", "sorry", "curious"); S.emo = e || ""; if (e) { v.classList.add(e); S.emoT = setTimeout(() => { v.classList.remove(e); S.emo = ""; }, ms); } };
   const afterSpeech = () => { const x = (S.lastSaid || S.said).trim(); if (!x || S.emo === "sorry") return; if (HAPPY_RE.test(x)) emote("happy"); else if (CURIOUS_RE.test(x)) emote("curious"); };
