@@ -220,7 +220,7 @@ class Features(BaseModel):
     private_channels: bool = True  # a private Dory channel per member (off keeps existing ones)
     approvals: bool = True  # request_approval & co: approval requests with Approve / Decline DMs
     places: bool = True  # remembers head office / branches / consented personal places
-    maps: bool = True  # travel time / routes / weather (also needs DORY_MAPS_ENABLED)
+    maps: bool = True  # weather (Open-Meteo), travel time / routes (those need DORY_MAPS_ENABLED)
     travel: bool = True  # currency conversion + flight status / prices / tracking
     search: bool = True  # search_everything + web_search + deep_research (the last two need `web`)
     markets: bool = (
