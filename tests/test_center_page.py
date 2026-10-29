@@ -576,9 +576,18 @@ def test_mock_google_link_keeps_every_identity_and_overview_edit_opens_the_peopl
 def test_live_waiting_sounds_toggle_off_by_default_and_operation_status():
     src = html()
     th, en = src.split("\nen: {", 1)
-    for key in ("live_wait", "live_wait_on", "live_wait_off", "live_op_flights", "live_op_hotels", "live_op_search"):
+    for key in (
+        "live_wait",
+        "live_wait_on",
+        "live_wait_off",
+        "live_op_flights",
+        "live_op_hotels",
+        "live_op_search",
+    ):
         assert f"{key}:" in th and f"{key}:" in en, key
-    assert 'localStorage.getItem("dory_wait_sound") === "1"' in src  # remembered, off unless saved on
+    assert (
+        'localStorage.getItem("dory_wait_sound") === "1"' in src
+    )  # remembered, off unless saved on
     assert "const WAIT_DELAY_MS = 2500" in src  # only a long turn gets the sound
     call = between("function liveCall(wrap, addMsg, page) {", "\n// The chat, in the panel")
     assert '"aria-pressed": String(!!waitPref)' in call and 'class: "rb wait"' in call
