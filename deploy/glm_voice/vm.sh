@@ -172,15 +172,17 @@ cmd_sa() {
 }
 
 cmd_idle_check() {
-  # One pass of the no-IAM idle stop (your own profile, this machine): remember when the voice server
-  # was last busy, and stop the VM after GLM_IDLE_MIN minutes without a call or past GLM_STOP_AT.
+  # One pass of the no-IAM idle stop (your own profile, this machine): remember when either voice
+  # server was last busy, and stop the VM after GLM_IDLE_MIN minutes without a call or past GLM_STOP_AT.
   local idle_min=${GLM_IDLE_MIN:-30} stop_at=${GLM_STOP_AT:-23:30} ip now last idle state
   state=$(vm_state)
   [ "$state" = "RUNNING" ] || { echo "$(date '+%F %T') VM is $state"; rm -f "$STATE/last_busy" "$STATE/up_since"; return 0; }
   ip=$(vm_ip); now=$(date +%s)
   [ -f "$STATE/up_since" ] || echo "$now" >"$STATE/up_since"
   [ -f "$STATE/last_busy" ] || echo "$now" >"$STATE/last_busy"
-  local health; health=$(curl -sf -m 5 "http://$ip:8765/health" || true)
+  # both voice servers count: GLM-4-Voice on 8765 and the cascade on 8766 (the demo's); polling
+  # only 8765 stopped the box in the middle of a cascade call on 29 Oct 2026
+  local health; health="$(curl -sf -m 5 "http://$ip:8765/health" || true)$(curl -sf -m 5 "http://$ip:8766/health" || true)"
   # no voice server yet = booting or installing (a fresh disk takes ~40 min): the idle clock starts
   # at its first answer, or after GLM_INSTALL_GRACE_MIN, so a stop never kills an install
   if [ -z "$health" ] && [ $(( (now - $(cat "$STATE/up_since")) / 60 )) -lt "${GLM_INSTALL_GRACE_MIN:-90}" ]; then
