@@ -10,6 +10,10 @@ once, bounded bodies (size, fields, lists, strings, page size) and ONE error sha
 `{"error": {"code", "message", "fields"?}, "data": DATA_STATUS}` with codes `invalid`,
 `past_date`, `too_far` (422), `not_found` (404), `too_large` (413), `rate_limited` (429 +
 Retry-After), `busy` (503 + Retry-After), `server_error` (500).
+
+`POST /weather` draws the chat's weather card from the ONE forecast source (`get_weather`): a real
+forecast, so its answers' `data` is `FORECAST_STATUS` instead (plus the source and credit on a
+card), and two more codes: `weather_off` / `weather_unavailable` (503).
 """
 
 from __future__ import annotations
@@ -20,7 +24,7 @@ import threading
 from collections.abc import AsyncIterator
 from datetime import date, datetime
 from functools import lru_cache
-from typing import Annotated
+from typing import Annotated, Literal
 from zoneinfo import ZoneInfo
 
 from fastapi import APIRouter, Depends, HTTPException, Request
@@ -31,6 +35,8 @@ from pydantic import BaseModel, ConfigDict, Field, StringConstraints
 
 from dory import travel_search as ts
 from dory.coo_store import SQLiteDocStore
+from dory.gmaps import MapsError
+from dory.weather import weather_card
 from meeting_scribe.config import get_settings
 from meeting_scribe.limits import TokenBucket
 
@@ -47,6 +53,8 @@ MESSAGES = {
     "rate_limited": "Too many requests. Try again in a moment.",
     "busy": "The travel demo is busy. Try again in a moment.",
     "server_error": "Something went wrong. Try again in a moment.",
+    "weather_off": "Weather forecasts are turned off.",
+    "weather_unavailable": "The forecast service is not answering. Try again in a moment.",
     # booking from the cards (/api/center/orgs/{org}/travel/book, signed in)
     "unauthorized": "Sign in again.",
     "license": "This company's licence is not active.",
@@ -58,11 +66,17 @@ _BY_STATUS = {401: "unauthorized", 402: "license", 403: "forbidden", 404: "not_f
               413: "too_large", 422: "invalid", 429: "rate_limited", 503: "busy"}  # fmt: skip
 
 
-def error(status: int, code: str, fields: list | None = None, headers=None) -> JSONResponse:
+FORECAST_STATUS = {"kind": "forecast", "estimate": True}  # /weather: a live forecast, not samples
+
+
+def error(
+    status: int, code: str, fields: list | None = None, headers=None, data: dict | None = None
+) -> JSONResponse:
     err: dict = {"code": code, "message": MESSAGES[code]}
     if fields:
         err["fields"] = fields
-    return JSONResponse({"error": err, "data": dict(ts.DATA_STATUS)}, status, headers=headers)
+    body = {"error": err, "data": dict(data or ts.DATA_STATUS)}
+    return JSONResponse(body, status, headers=headers)
 
 
 class _TravelRoute(APIRoute):
@@ -72,9 +86,10 @@ class _TravelRoute(APIRoute):
         handler = super().get_route_handler()
 
         async def run(request: Request):
+            data = FORECAST_STATUS if request.url.path.endswith("/weather") else None
             size = request.headers.get("content-length", "")
             if size.isdigit() and int(size) > MAX_BODY:
-                return error(413, "too_large")
+                return error(413, "too_large", data=data)
             try:
                 return await handler(request)
             except RequestValidationError as e:
@@ -82,14 +97,14 @@ class _TravelRoute(APIRoute):
                     {"field": ".".join(map(str, x["loc"][1:])) or "body", "message": x["msg"]}
                     for x in e.errors()
                 ]  # never the input itself
-                return error(422, "invalid", fields)
+                return error(422, "invalid", fields, data=data)
             except HTTPException as e:
                 known = isinstance(e.detail, str) and e.detail in MESSAGES
                 code = e.detail if known else _BY_STATUS.get(e.status_code)
-                return error(e.status_code, code or "server_error", headers=e.headers)
+                return error(e.status_code, code or "server_error", headers=e.headers, data=data)
             except Exception:
                 logger.exception("travel api failed")
-                return error(500, "server_error")
+                return error(500, "server_error", data=data)
 
         return run
 
@@ -212,6 +227,15 @@ class RoomReview(HotelRooms):
     room_id: str = Field(min_length=1, max_length=80)
 
 
+class WeatherIn(_Body):
+    # a label from the chat payload (user words through the model): the page shows it as text only
+    place: Annotated[str, StringConstraints(strip_whitespace=True, min_length=1, max_length=120)]
+    lat: float = Field(ge=-90, le=90, allow_inf_nan=False)
+    lng: float = Field(ge=-180, le=180, allow_inf_nan=False)
+    days: Literal[3, 5] = 3
+    lang: str = Field("en", pattern=r"^[a-z]{2,3}$")
+
+
 def _dates_ok(today: date, *days: date) -> None:
     if code := ts.date_problem(today, *days):
         raise HTTPException(422, code)
@@ -262,6 +286,22 @@ def rooms(body: HotelRooms, today: date = Depends(get_today)) -> dict:
 def room_review(body: RoomReview, today: date = Depends(get_today)) -> dict:
     _dates_ok(today, body.query.check_in, body.query.check_out)
     return _found(ts.room_review(body.query, body.hotel_id, body.room_id, today))
+
+
+@router.post("/weather")
+def weather(body: WeatherIn) -> dict:
+    """The chat's weather card, fresh. Coordinates rounded to 2 decimals (about 1 km) first, so
+    nearby cards share the forecast source's cache."""
+    if (svc := get_weather()) is None:
+        raise HTTPException(503, "weather_off")
+    try:
+        card = weather_card(svc, body.place, round(body.lat, 2), round(body.lng, 2), body.lang,
+                            body.days)  # fmt: skip
+    except MapsError as e:
+        logger.warning("weather card unavailable: %s", e.code)  # never the reason (raw error)
+        raise HTTPException(503, "weather_unavailable") from None
+    data = {**FORECAST_STATUS, "source": card["source"], "credit": card["credit"]}
+    return {"card": card, "data": data}
 
 
 @router.api_route("/{rest:path}", methods=["GET", "POST"], include_in_schema=False)

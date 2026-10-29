@@ -77,7 +77,8 @@ def norm_day(d: dict) -> dict:
     out["min_c"] = _g(d, "minTemperature", "degrees")
     out["feels_c"] = _g(d, "feelsLikeMaxTemperature", "degrees", default=a["feels_c"])
     dd = d.get("displayDate") or {}
-    out["date"] = f"{dd.get('year', 0):04d}-{dd.get('month', 0):02d}-{dd.get('day', 0):02d}"
+    y, m, day_n = dd.get("year"), dd.get("month"), dd.get("day")
+    out["date"] = f"{y:04d}-{m:02d}-{day_n:02d}" if y and m and day_n else ""  # "" = no date
     return out
 
 
@@ -456,7 +457,7 @@ def weather_card(service, label: str, lat: float, lng: float, lang: str, days: i
     and one tip. Raises MapsError when the service is down (the card shows its fallback)."""
     days = 5 if days >= 5 else 3
     cur = service.current(lat, lng, lang)
-    rows = service.days(lat, lng, lang, days)[:days]
+    rows = [d for d in service.days(lat, lng, lang, days) if d.get("date")][:days]
     keep = ("date", "condition", "icon", "temp_c", "min_c", "rain_pct", "rain_mm", "storm_pct")
     now_keys = ("condition", "icon", "temp_c", "feels_c", "rain_pct", "wind_kmh", "uv", "humidity")
     return {

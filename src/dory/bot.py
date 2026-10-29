@@ -202,6 +202,7 @@ from .travel_search_bot import TravelButton, TravelSearchMixin, TravelSelect
 from .videoad_bot import VideoAdMixin
 from .voice_pool import VoicePool
 from .votes_bot import VoteButton, VoteOfferButton, VotesMixin
+from .weather_bot import WeatherCardMixin
 from .wiki_bot import WikiMixin
 
 logger = logging.getLogger(__name__)
@@ -410,6 +411,7 @@ class SecretaryBot(
     SearchMixin,
     TravelMixin,
     TravelSearchMixin,  # /dory flights + /dory hotels cards (dory.travel_search_bot)
+    WeatherCardMixin,  # the weather card under a chat answer + /dory weather (dory.weather_bot)
     GpuLifecycleMixin,  # typed "wake up" + the idle stop of the GPU voice box
     MarketsMixin,
     ReminderMixin,
@@ -1966,6 +1968,7 @@ class SecretaryBot(
         if sent_ids:
             self._answers.add(message.channel.id, message.author.id, sent_ids)
         await self._post_travel_cards(message, member, agent, lang)  # what the brain searched
+        await self._post_weather_card(message, member, agent, lang)  # the weather it read
         lines = [
             receipt_note(r)
             for rid, _rx in getattr(ans, "receipts", ())

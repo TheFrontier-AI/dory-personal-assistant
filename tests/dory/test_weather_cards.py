@@ -241,3 +241,25 @@ def test_settings_default_and_the_key_is_never_shown():
     st = Settings(_env_file=None, openmeteo_api_key="secret-k")
     assert Settings(_env_file=None).weather_provider == "auto"
     assert "secret-k" not in repr(st)
+
+
+def test_a_google_day_without_a_date_is_left_off_the_card():
+    """Google's days come through `norm_day`; a row with no displayDate must not reach a card
+    (the platforms format each date)."""
+
+    class Google(WeatherService):
+        def __init__(self):
+            pass
+
+        def current(self, lat, lng, lang):
+            return {"condition": "Sunny", "temp_c": 30}
+
+        def days(self, lat, lng, lang, count=10):
+            from dory.weather import norm_day
+
+            ok = {"displayDate": {"year": 2026, "month": 10, "day": 30}, "maxTemperature":
+                  {"degrees": 31}, "daytimeForecast": {}, "nighttimeForecast": {}}  # fmt: skip
+            return [norm_day({"daytimeForecast": {}, "nighttimeForecast": {}}), norm_day(ok)]
+
+    card = weather_card(Google(), "Office", 13.7, 100.5, "en")
+    assert [d["date"] for d in card["days"]] == ["2026-10-30"]

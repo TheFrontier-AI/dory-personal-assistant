@@ -2794,7 +2794,8 @@ CATALOG: dict[str, dict[str, str]] = {
     # singular message (`...One`). Dates are whole-date messages filled from the weekday and month
     # names, so a translation can reorder them. Gregorian years, like the YYYY-MM-DD inputs.
     "cmd_dory": _bi(
-        "ค้นหาเที่ยวบินและโรงแรม (ราคาตัวอย่าง)", "Search flights and hotels (sample prices)"
+        "เที่ยวบิน โรงแรม (ราคาตัวอย่าง) และพยากรณ์อากาศ",
+        "Flights, hotels (sample prices) and the weather",
     ),
     "cmd_dory_flights": _bi("ค้นหาเที่ยวบิน", "Search flights"),
     "cmd_dory_hotels": _bi("ค้นหาโรงแรม", "Search hotels"),
@@ -2812,6 +2813,9 @@ CATALOG: dict[str, dict[str, str]] = {
     "cmd_dory_nights": _bi("จำนวนคืน", "Nights"),
     "cmd_dory_rooms": _bi("จำนวนห้อง", "Rooms"),
     "cmd_dory_guests": _bi("จำนวนผู้เข้าพัก", "Guests"),
+    "cmd_dory_weather": _bi("พยากรณ์อากาศ 3 หรือ 5 วัน", "3- or 5-day weather forecast"),
+    "cmd_dory_place": _bi("เมืองหรือสถานที่", "City or place"),
+    "cmd_dory_days": _bi("จำนวนวัน", "Days"),
     "discord.search.off": {
         "th": "ตอนนี้ปิดการค้นหาเที่ยวบินและโรงแรมในเซิร์ฟเวอร์นี้ไว้ค่ะ ให้แอดมินเปิดฟีเจอร์ Travel ก่อนนะคะ",
         "en": "Flight and hotel search is turned off on this server. An admin can turn on Travel.",
@@ -3221,5 +3225,73 @@ CATALOG: dict[str, dict[str, str]] = {
     "discord.error.guestsPerRoom": {
         "th": "ทุกห้องต้องมีผู้เข้าพักอย่างน้อย 1 คน",
         "en": "Every room needs at least one guest",
+    },
+    # The weather card (dory.weather_bot): under a chat answer and /dory weather. Numbers come
+    # pre-rounded; each reading ("Humidity 74%") is a standalone item of a "·" list. English
+    # conditions are the forecast's own words; every other language words them by icon key.
+    "discord.weather.heading": {"th": "สภาพอากาศ · {place}", "en": "Weather · {place}"},
+    "discord.weather.localTime": {
+        "th": "เวลาท้องถิ่น {day} · {time} น.",
+        "en": "Local time {day} · {time}",
+    },
+    "discord.weather.feelsLike": {"th": "รู้สึกเหมือน {temp}°C", "en": "Feels like {temp}°C"},
+    "discord.weather.humidity": {"th": "ความชื้น {pct}%", "en": "Humidity {pct}%"},
+    "discord.weather.wind": {"th": "ลม {speed} กม./ชม.", "en": "Wind {speed} km/h"},
+    "discord.weather.rainChance": {"th": "โอกาสฝน {pct}%", "en": "Rain {pct}%"},
+    "discord.weather.estimate": {"th": "พยากรณ์อากาศ · ค่าประมาณ", "en": "Forecast · estimate"},
+    "discord.weather.days": {"th": "{count} วัน", "en": "{count} days"},
+    "discord.weather.refresh": {"th": "รีเฟรช", "en": "Refresh"},
+    "discord.weather.off": {
+        "th": "ตอนนี้ปิดพยากรณ์อากาศในเซิร์ฟเวอร์นี้ไว้ค่ะ",
+        "en": "Weather forecasts are turned off on this server.",
+    },
+    "discord.weather.expired": {
+        "th": "พยากรณ์นี้เป็นของคนอื่นหรือหมดอายุแล้วค่ะ ดูของคุณเองได้ด้วย /dory weather",
+        "en": "This forecast belongs to someone else or has expired. Get your own with /dory weather.",
+    },
+    "discord.weather.notFound": {
+        "th": "หาสถานที่ชื่อ “{place}” ไม่เจอค่ะ ลองพิมพ์ชื่อเมือง เช่น Singapore",
+        "en": "I couldn't find a place called “{place}”. Try a city name, such as Singapore.",
+    },
+    "discord.weather.failed": {
+        "th": "ตอนนี้โหลดพยากรณ์อากาศไม่ได้ค่ะ ลองใหม่อีกครั้งด้วย /dory weather นะคะ",
+        "en": "I couldn't load the forecast right now. Try again in a moment with /dory weather.",
+    },
+    "discord.weather.refreshFailed": {
+        "th": "ตอนนี้อัปเดตพยากรณ์ไม่ได้ค่ะ การ์ดเดิมยังอยู่ ลองใหม่อีกครั้งในอีกสักครู่นะคะ",
+        "en": "I couldn't update the forecast right now. The card stays as it was; try again soon.",
+    },
+    "discord.weather.sky.sun": {"th": "ท้องฟ้าแจ่มใส", "en": "Clear"},
+    "discord.weather.sky.cloud-sun": {"th": "มีเมฆบางส่วน", "en": "Partly cloudy"},
+    "discord.weather.sky.cloud": {"th": "มีเมฆมาก", "en": "Cloudy"},
+    "discord.weather.sky.fog": {"th": "มีหมอก", "en": "Fog"},
+    "discord.weather.sky.drizzle": {"th": "ฝนปรอยๆ", "en": "Drizzle"},
+    "discord.weather.sky.rain": {"th": "ฝนตก", "en": "Rain"},
+    "discord.weather.sky.showers": {"th": "ฝนตกเป็นช่วงๆ", "en": "Showers"},
+    "discord.weather.sky.snow": {"th": "หิมะตก", "en": "Snow"},
+    "discord.weather.sky.storm": {"th": "พายุฝนฟ้าคะนอง", "en": "Thunderstorm"},
+    "discord.weather.tip.storm": {
+        "th": "{day} มีโอกาสเกิดพายุฝนฟ้าคะนอง วางแผนกิจกรรมในร่มและเผื่อเวลาเดินทางไว้นะคะ",
+        "en": "Thunderstorms are likely on {day}: plan indoor time and allow extra travel time.",
+    },
+    "discord.weather.tip.umbrella": {
+        "th": "{day} มีโอกาสฝนตก พกร่มไปด้วยนะคะ",
+        "en": "Rain is likely on {day}: pack an umbrella.",
+    },
+    "discord.weather.tip.heat": {
+        "th": "อากาศร้อนจัด ดื่มน้ำบ่อยๆ และทำกิจกรรมกลางแจ้งช่วงเช้าหรือเย็นนะคะ",
+        "en": "It will be hot: drink plenty of water and keep outdoor plans to morning or evening.",
+    },
+    "discord.weather.tip.sun": {
+        "th": "แดดแรง ทาครีมกันแดดและพกหมวกไปด้วยนะคะ",
+        "en": "The sun will be strong: bring sunscreen and a hat.",
+    },
+    "discord.weather.tip.jacket": {
+        "th": "อากาศเย็น พกเสื้อแจ็กเก็ตบางๆ ไปด้วยนะคะ",
+        "en": "It will be cool: pack a light jacket.",
+    },
+    "discord.weather.tip.pleasant": {
+        "th": "อากาศดี เหมาะกับการออกไปข้างนอกค่ะ",
+        "en": "Pleasant weather: a good time to be out.",
     },
 }
