@@ -33,6 +33,7 @@ from .live_voice import (
 )
 from .meeting import _connected, _stop_playback, is_hush, parse_wake
 from .naming import address_kind
+from .voice_ack import make_ack
 from .voice_latency import rms16
 from .web_live import TOOL_TIMEOUT_S
 
@@ -75,6 +76,7 @@ class GlmRoom:
             path="discord",
             lang=self.lang,
             on_heard=self._on_heard,
+            ack=make_ack(bot.llm, s.gate_model) if getattr(bot, "llm", None) is not None else None,
         )
 
     def start(self) -> None:

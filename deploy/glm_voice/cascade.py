@@ -113,14 +113,12 @@ class Engines:
     too). TTS: `kokoro` (hexgrad/Kokoro-82M, Apache-2.0, 24 kHz native) or `magpie`
     (nvidia/magpie_tts_multilingual_357m through NeMo, 22.05 kHz resampled to 24 kHz)."""
 
-    def __init__(self, asr: str = "parakeet", tts: str = "kokoro", voice: str = "af_heart,af_nicole",
-                 device: str = "cuda", speed: float = 0.95) -> None:  # fmt: skip
+    def __init__(self, asr: str = "parakeet", tts: str = "kokoro", voice: str = "af_bella,af_heart",
+                 device: str = "cuda", speed: float = 1.08) -> None:  # fmt: skip
         import numpy as np
 
         self.np, self.asr_kind, self.tts_kind, self.voice, self.device = np, asr, tts, voice, device
-        self.speed = (
-            speed  # Kokoro only; 0.9-0.95 is calm, under 0.85 drags (voice-warmth research)
-        )
+        self.speed = speed  # Kokoro only; 1.05-1.1 is lively, 0.9-0.95 calm, over 1.15 rushes
         t0 = time.monotonic()
         if asr == "parakeet":
             import nemo.collections.asr as nemo_asr
@@ -364,8 +362,8 @@ def main() -> None:
     ap.add_argument(
         "--tts", default=os.environ.get("CASCADE_TTS", "kokoro"), choices=("kokoro", "magpie")
     )
-    ap.add_argument("--voice", default=os.environ.get("CASCADE_VOICE", "af_heart,af_nicole"))
-    ap.add_argument("--speed", type=float, default=float(os.environ.get("CASCADE_SPEED", "0.95")))
+    ap.add_argument("--voice", default=os.environ.get("CASCADE_VOICE", "af_bella,af_heart"))
+    ap.add_argument("--speed", type=float, default=float(os.environ.get("CASCADE_SPEED", "1.08")))
     ap.add_argument(
         "--gap-ms", type=int, default=int(os.environ.get("CASCADE_SENTENCE_GAP_MS", "250"))
     )

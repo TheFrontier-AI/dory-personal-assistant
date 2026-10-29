@@ -290,7 +290,17 @@ def test_glm_voice_cascade_answers_what_the_server_heard_and_fills_only_when_slo
         yield fake
 
     async def main():
-        v = GlmVoice(_settings(), out=out, url="ws://x/voice", connect=connect, ask=ask, lang="en")
+        v = GlmVoice(
+            _settings(),
+            out=out,
+            url="ws://x/voice",
+            connect=connect,
+            ask=ask,
+            lang="en",
+            ack=lambda q, lang: (
+                f"Checking the {q.split()[-1]}."
+            ),  # request-specific, prepared early
+        )
         v.start()
         for _ in range(400):
             if ("interrupted", "") in events:
@@ -306,7 +316,11 @@ def test_glm_voice_cascade_answers_what_the_server_heard_and_fills_only_when_slo
         "text": "Two in policy. Take the 08:00?",
         "final": True,
     }  # fast: no filler
-    assert said[1]["final"] is False and said[1]["text"]  # slow: a filler line first
+    assert said[1] == {
+        "type": "say",
+        "text": "Checking the hotel.",
+        "final": False,
+    }  # slow: the ack
     assert said[2]["final"] is True
     assert asked[0] == ("book my trip", "")
     assert asked[1][0] == "and a hotel" and "Person: book my trip" in asked[1][1]
@@ -384,3 +398,35 @@ def test_spoken_form_reads_markdown_money_and_percent_as_words():
     assert spoken_form(
         "**Booked!** 🎉 THB 13,700 total, 12% off. [map](http://x)\nAnything else?"
     ) == ("Booked! 13,700 baht total, 12 percent off. map. Anything else?")
+
+
+def test_ack_line_prefers_the_prepared_line_and_falls_back(monkeypatch):
+    """The request-specific line wins when it is ready in time; a late, empty or failed one gives
+    a canned `ack_voice_*` line (never one of the last three); no ack function = canned."""
+    import dory.glm_voice as gv
+
+    monkeypatch.setattr(gv, "ACK_WAIT_S", 0.02)
+    canned = {gv.t(k, "en") for k in gv.ACKS}
+
+    async def out(kind, payload):
+        pass
+
+    v = GlmVoice(_settings(), out=out, url="ws://x/voice", ask=lambda q, h: "", lang="en")
+
+    async def main():
+        loop = asyncio.get_running_loop()
+        ready = loop.create_future()
+        ready.set_result(" Checking Friday flights. ")
+        assert await v._ack_line(ready) == "Checking Friday flights."
+        empty = loop.create_future()
+        empty.set_result("")
+        assert await v._ack_line(empty) in canned
+        failed = loop.create_future()
+        failed.set_exception(RuntimeError("model down"))
+        assert await v._ack_line(failed) in canned
+        late = loop.create_future()  # never resolves within ACK_WAIT_S
+        assert await v._ack_line(late) in canned
+        assert await v._ack_line(None) in canned
+        late.cancel()
+
+    asyncio.run(main())
