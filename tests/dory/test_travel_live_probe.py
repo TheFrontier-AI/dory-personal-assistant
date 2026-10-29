@@ -132,7 +132,7 @@ def wrap_tools(tools: list, calls: list) -> list:
 
         logged.__name__, logged.__doc__ = name, f.__doc__
         logged.__signature__ = __import__("inspect").signature(f)
-        for attr in ("cards", "on_confirm", "dory_group", "outbox"):
+        for attr in ("cards", "ctx", "on_confirm", "dory_group", "outbox"):
             if hasattr(f, attr):
                 setattr(logged, attr, getattr(f, attr))
         out.append(logged)
@@ -273,3 +273,54 @@ def teardown_module(module):
     print("\n" + METER.report())
     OUT.write_text(json.dumps({"rows": REPORT, "meter": METER.calls}, indent=1, default=str))
     print(f"report: {OUT}")
+
+
+RECOMMEND = [  # the way people ask for options, not "find" / "search"
+    "Recommend some hotels in Singapore for 3 nights from 2026-11-10 for 2 people.",
+    "Can you suggest flights from Bangkok to Singapore on 2026-11-10?",
+    "I'm going to Singapore on 2026-11-10 for 3 nights. Any hotel and flight suggestions?",
+]
+
+
+def test_web_recommendations_draw_cards(w, web, monkeypatch):  # noqa: F811
+    """Asking for suggestions must reach the card searches (PROBE_FULL=1: production's whole tool
+    assembly). Every tool the model calls is recorded, not only the travel ones."""
+    calls, _ = web
+    seen: list[str] = []
+    real = qa.ask
+
+    def ask(settings, store, question, **kw):
+        tools = wrap_tools(list(kw.get("extra_tools") or []), calls)
+        names = sorted(getattr(f, "__name__", "") for f in tools)
+        print(f"\n  offered {len(names)} tools; card tools offered:",
+              [n for n in names if n in travel_search.CARD_TOOL_NAMES])  # fmt: skip
+
+        def spy(f):
+            n = getattr(f, "__name__", "")
+            if n in travel_search.CARD_TOOL_NAMES or n == "book_trip":
+                return f
+
+            def g(*a, _f=f, _n=n, **k):
+                seen.append(_n)
+                return _f(*a, **k)
+
+            g.__name__, g.__doc__ = n, f.__doc__
+            g.__signature__ = __import__("inspect").signature(f)
+            for attr in ("cards", "ctx", "on_confirm", "dory_group", "outbox"):
+                if hasattr(f, attr):
+                    setattr(g, attr, getattr(f, attr))
+            return g
+
+        kw["extra_tools"] = [spy(f) for f in tools]
+        return real(live_settings(settings), store, question, **kw)
+
+    app.dependency_overrides[center.get_ask] = lambda: ask
+    for text in RECOMMEND:
+        seen.clear()
+        try:
+            body, got, _ = web_turn(w, calls, text)
+        except BudgetExceeded as e:
+            pytest.skip(f"budget: {e}")
+        travel = body.get("travel") or {}
+        record("web-reco", text, body.get("answer", ""), got,
+               {"other_tools": list(seen), "cards": [k for k, v in travel.items() if v]})  # fmt: skip

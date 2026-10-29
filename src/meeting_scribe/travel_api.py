@@ -329,7 +329,7 @@ def fallback_reply(req: ts.TripRequest, lang: str) -> tuple[str, dict]:
     from the message: one line in the company language (Thai or English) saying the search was
     read without the AI, and the `travel` payload (default filters) the page draws as cards."""
     th = lang == "th"
-    what, cards = [], []
+    what = []
     if f := req.flight:
         d = f.depart
         what.append(
@@ -339,8 +339,6 @@ def fallback_reply(req: ts.TripRequest, lang: str) -> tuple[str, dict]:
             else f"flights {_city(f.origin)} to {_city(f.destination)} on {d:%a} {d.day} {d:%b}, "
             f"{f.adults} traveller{'s' if f.adults > 1 else ''}"
         )
-        cards.append({"kind": "flights", "query": f.model_dump(mode="json"),
-                      "filters": ts.FlightFilters().model_dump(mode="json")})  # fmt: skip
     if h := req.hotel:
         d = h.check_in
         what.append(
@@ -349,7 +347,5 @@ def fallback_reply(req: ts.TripRequest, lang: str) -> tuple[str, dict]:
             else f"a hotel in {_city(h.city)} for {h.nights} night{'s' if h.nights > 1 else ''} "
             f"from {d:%a} {d.day} {d:%b}"
         )
-        cards.append({"kind": "hotels", "query": h.model_dump(mode="json"),
-                      "filters": ts.HotelFilters().model_dump(mode="json")})  # fmt: skip
     text = FALLBACK["th" if th else "en"].format(what=("; " if not th else " และ").join(what))
-    return text, ts.travel_payload(cards)
+    return text, ts.travel_payload(ts.request_cards(req))

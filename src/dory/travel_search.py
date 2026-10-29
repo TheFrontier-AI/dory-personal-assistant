@@ -846,6 +846,7 @@ class CardCtx:
     render: bool = True  # False = a voice turn: nothing is drawn, the result is spoken
     home: str = ""  # the person's home airport (profile): the departure when a request names none
     cards: list[dict] = field(default_factory=list)  # what the platform renders after the reply
+    searches: list[str] = field(default_factory=list)  # every call this turn, any status
 
 
 def place_code(text: str) -> str | None:
@@ -944,6 +945,7 @@ def card_tools(ctx: CardCtx) -> list:
             sort: best, cheapest, fastest or earliest; empty keeps the current order.
             clear_filters: true to drop the stops / time / airline / price filters.
         """
+        ctx.searches.append("flights")
         trip = ctx.trips.get(ctx.owner)
         prev, hotel = trip.flight, trip.hotel
         o = place_code(origin) if origin.strip() else (prev.origin if prev else None)
@@ -1063,6 +1065,7 @@ def card_tools(ctx: CardCtx) -> list:
             hotel_id: a hotel's id from an earlier result, to list its rooms; empty = search.
             clear_filters: true to drop the filters.
         """
+        ctx.searches.append("hotels")
         trip = ctx.trips.get(ctx.owner)
         prev, flight = trip.hotel, trip.flight
         c = place_code(city) if city.strip() else None
@@ -1171,6 +1174,7 @@ def card_tools(ctx: CardCtx) -> list:
         }
 
     search_flights.cards = search_hotels.cards = ctx.cards
+    search_flights.ctx = search_hotels.ctx = ctx  # read by `unsearched_cards`
     return [search_flights, search_hotels]
 
 
@@ -1187,6 +1191,32 @@ def tool_cards(tools: list) -> list[dict]:
         if isinstance(box, list) and named and not any(box is b for b in seen):
             seen.append(box)
     return [c for box in seen for c in box]
+
+
+def request_cards(req: TripRequest) -> list[dict]:
+    """The cards a typed trip request (`parse_request`) draws on its own: its queries with the
+    default filters, flights first."""
+    out = []
+    if req.flight:
+        out.append({"kind": "flights", "query": req.flight.model_dump(mode="json"),
+                    "filters": FlightFilters().model_dump(mode="json")})  # fmt: skip
+    if req.hotel:
+        out.append({"kind": "hotels", "query": req.hotel.model_dump(mode="json"),
+                    "filters": HotelFilters().model_dump(mode="json")})  # fmt: skip
+    return out
+
+
+def unsearched_cards(tools: list, text: str, today: date) -> list[dict]:
+    """Cards for a trip request the brain answered WITHOUT searching (it reused earlier results
+    in the chat, so nothing would be drawn): only when the card tools were offered for a typed
+    turn, neither was called (a call that asked a question keeps code out) and `parse_request`
+    reads the message."""
+    ctxs = [getattr(f, "ctx", None) for f in tools if getattr(f, "__name__", "") in CARD_TOOL_NAMES]
+    ctxs = [c for c in ctxs if isinstance(c, CardCtx)]
+    if not ctxs or any(c.searches or not c.render for c in ctxs):
+        return []
+    req = parse_request(text, today)
+    return request_cards(req) if req else []
 
 
 def travel_payload(cards: list[dict]) -> dict | None:
