@@ -459,3 +459,22 @@ def test_answer_merges_a_split_sentence_and_reports_a_cancel(monkeypatch):
         assert v._pending is None
 
     asyncio.run(main())
+
+
+def test_a_reconnect_to_a_stopped_box_waits_for_speech_before_waking_it():
+    """After a first session, a silent room must not wake a stopped box: speech (or typed text)
+    marks somebody there; silence and quiet noise do not."""
+
+    async def out(kind, payload):
+        pass
+
+    v = GlmVoice(_settings(), out=out, url="ws://x/voice", ask=lambda q, h: "", lang="en")
+    assert v._spoke is False
+    v.feed(b"\x00\x00" * 320)  # silence
+    v.feed(array("h", [20, -20] * 160).tobytes())  # a hiss under the voice threshold
+    assert v._spoke is False
+    v.feed(array("h", [3000, -3000] * 160).tobytes())
+    assert v._spoke is True
+    w = GlmVoice(_settings(), out=out, url="ws://x/voice", ask=lambda q, h: "", lang="en")
+    w.say("book a flight")
+    assert w._spoke is True
