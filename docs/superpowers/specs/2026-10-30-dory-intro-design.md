@@ -101,7 +101,7 @@ silent (no remembered sound setting).
 | ch3 line | Say it once, and it becomes a task with an owner. |
 | ch4 result / total | Filed: Taxi · 240 THB · Travel / Travel this month: 3,180 THB |
 | ch4 line | Snap a receipt. She files it. |
-| ch5 captions | "Remind me to send the ABC deck on Friday at 4 pm." / "Done. I'll remind you on Friday at 4 pm." |
+| ch5 captions (quotation marks are notation, not shown) | Remind me to send the ABC deck on Friday at 4 pm. / Done. I'll remind you on Friday at 4 pm. |
 | ch5 line | Or ask out loud. |
 | ch6 request | Find a flight for two from Bangkok to Singapore next Tuesday, and a hotel for two nights. |
 | ch6 labels | the product's own English `tv_*` strings (Sample itinerary · Sample price; Fictional property; Booked in the sandbox) |
@@ -110,7 +110,7 @@ silent (no remembered sound setting).
 | ch7 line | She only shares what your role allows. |
 
 Controls (dictionary, both languages): region label Meet Dory / รู้จักดอรี่ · Skip / ข้าม · Next / ถัดไป ·
-Pause / หยุดชั่วคราว · Play / เล่นต่อ · Sound on / เปิดเสียง · Sound off / ปิดเสียง.
+Pause / หยุดชั่วคราว · Play / เล่นต่อ · Sound / เสียง (one constant label with `aria-pressed`; ruling 3 of the build ledger).
 
 All numbers and names are fictional sample data inside the labelled example; no claim beyond the film's
 sign-off list (chapter 7 approved by the owner on 30 Oct).
