@@ -36,6 +36,16 @@ API_TIMEOUT_S = 60.0  # the SDK retries a failed token refresh for ever (a wrong
 # room "waking" with the lock held, 28 Oct 2026); a timeout counts as a failed call
 
 
+def error_reason(e: BaseException) -> str:
+    """Type, gRPC code and the start of the message (the SDK's RequestError carries `status`):
+    enough to act on from the log, never a secret. 29 Oct 2026: a start refused with
+    FAILED_PRECONDITION "preemption policy is closed" (spot cap blocked) logged only "RequestError"."""
+    status = getattr(e, "status", None)
+    code = getattr(getattr(status, "code", None), "name", "")
+    msg = str(getattr(status, "message", "") or "").replace("\n", " ")[:120]
+    return " ".join(part for part in (type(e).__name__, code, msg) if part)
+
+
 def health_url(voice_url: str) -> str:
     """ws(s)://host:port/voice -> http(s)://host:port/health."""
     u = urlsplit(voice_url)
@@ -137,7 +147,7 @@ class VmWaker:
             try:
                 state = await self.state()
             except Exception as e:
-                logger.warning("nebius vm: state failed: %s", type(e).__name__)
+                logger.warning("nebius vm: state failed: %s", error_reason(e))
                 state = ""
             booting = any(s in state for s in ("RUNNING", "STARTING"))
             if not booting and time.monotonic() - self._last_start >= START_COOLDOWN_S:
@@ -148,7 +158,7 @@ class VmWaker:
                 try:
                     await self.start()
                 except Exception as e:
-                    logger.warning("nebius vm: start failed: %s", type(e).__name__)
+                    logger.warning("nebius vm: start failed: %s", error_reason(e))
                     # another process's start aborts ours (OperationAborted, 28 Oct 2026: the web
                     # and the bot woke the box together) while the VM boots all the same
                     try:
