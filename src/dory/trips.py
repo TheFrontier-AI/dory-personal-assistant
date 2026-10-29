@@ -496,6 +496,30 @@ def is_confirmation(text: str | None) -> bool:
     return core
 
 
+# A wordier "go ahead and book both for the kickoff": a booking word, and nothing that makes the
+# message a question, a refusal or a change ("what did I book", "not yet", "yes but the cheaper one").
+_BOOK_CUE = re.compile(
+    r"\b(?:yes|yeah|yep|ok(?:ay)?|sure|confirm(?:ed)?|go ahead|proceed|do it|book(?: it| them| both| "
+    r"that| this| those| the)?)\b|ใช่|ตกลง|ยืนยัน|จอง|เอาเลย|ได้เลย|โอเค",
+    re.I,
+)
+_NOT_BOOK = re.compile(
+    r"\?|\b(?:no|not|don'?t|never|wait|hold|stop|cancel|but|instead|change|switch|what|which|when|"
+    r"where|who|why|how|did|does|was|were|is it|are they)\b|ไม่|ยกเลิก|รอก่อน|แต่|เปลี่ยน|อะไร|ไหม|มั้ย|"
+    r"หรือ|ยัง|กี่|เท่าไ|เมื่อไ|ที่ไหน|ใคร|ทำไม|ยังไง|อย่างไร",
+    re.I,
+)
+
+
+def asks_to_book(text: str | None) -> bool:
+    """The person's message asks to go ahead with the booking: a plain yes, or a booking request
+    that is not a question, a refusal or a change. Only such a message may complete a booking."""
+    s = (text or "").strip()
+    if is_confirmation(s):
+        return True
+    return 0 < len(s) <= 300 and bool(_BOOK_CUE.search(s)) and not _NOT_BOOK.search(s)
+
+
 class PendingQuotes:
     """The trip quote each person was shown last, so a plain yes in their very next message books it
     in code (`book_trip.on_confirm`): from text history alone the model once answered "Yes, confirm."
@@ -593,6 +617,9 @@ def traveller_for(ctx: TripsCtx) -> dict:
 def trips_tools(ctx: TripsCtx) -> list:
     today = ctx.now().date()
     prev_request = ctx.pending.turn(ctx.guild_id, ctx.asker_id, ctx.request_id)
+    # the person's own message this turn, recorded by `on_confirm` (qa.ask_async calls it before
+    # the model on every path); None = unknown, which never completes a booking
+    heard: dict[str, str | None] = {"text": None}
 
     def search_flights(origin: str, destination: str, depart_date: str, return_date: str = "",
                        adults: int = 1, cabin: str = "economy") -> dict:  # fmt: skip
@@ -729,8 +756,15 @@ def trips_tools(ctx: TripsCtx) -> list:
                 totals[x.currency] = round(totals.get(x.currency, 0) + amt, 2)
         quote = {"flight": _view(flight) if flight else None, "hotel": _view(hotel) if hotel else None,
                  "totals": [{"amount": v, "currency": k} for k, v in totals.items()], "purpose": why}  # fmt: skip
-        key = ("trip", ctx.guild_id, ctx.asker_id, fingerprint(fid, hid, why, aid))
-        if not ctx.state.confirm(key, ctx.request_id):
+        # what is confirmed: the items and the approval; the purpose is a label the model rewords
+        # between turns ("Client kickoff" / "client kickoff" made a confirmed quote ask again)
+        key = ("trip", ctx.guild_id, ctx.asker_id, fingerprint(fid, hid, aid))
+        # Only a message that asks to book completes it: a question asked while a quote waits
+        # ("what did I just book?") once made the model call book_trip again with the same args.
+        wants = asks_to_book(heard["text"])
+        if not wants:
+            ctx.state.propose(key, ctx.request_id)
+        if not (wants and ctx.state.confirm(key, ctx.request_id)):
             ctx.pending.put(ctx.guild_id, ctx.asker_id, ctx.request_id, {
                 "flight_offer_id": fid, "hotel_offer_id": hid, "purpose": why, "approval_id": aid})  # fmt: skip
             return {"status": "needs_confirmation", "quote": quote, "instruction": (
@@ -827,6 +861,7 @@ def trips_tools(ctx: TripsCtx) -> list:
     def on_confirm(question: str) -> str | None:
         """Called by `qa.ask_async` before the model: a plain yes right after a quote books it here
         and is answered from the stored trip. None = the model answers as usual."""
+        heard["text"] = question
         if not is_confirmation(question):
             return None
         args = ctx.pending.take(ctx.guild_id, ctx.asker_id, prev_request)

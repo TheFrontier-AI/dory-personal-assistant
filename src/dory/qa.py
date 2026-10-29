@@ -1463,6 +1463,47 @@ ROUNDS_EXHAUSTED = (
     "suggest who could decide or add it. If part of a request is not done, say which part in one line."
 )
 
+# An answer that says something was done while no tool ran in that turn: a travel profile "saved"
+# and a trip "Booked!" with nothing stored (28-29 Oct 2026). Verbs are the ones with a stored side
+# effect; "I've set out / updated the numbers / added up" are explanations, not claims.
+_DONE_EN = re.compile(
+    r"\bi(?:'ve| have)\s+(?:[a-z]+\s+){0,3}?(?:saved|stored|remembered|recorded|filed|booked|reserved|"
+    r"scheduled|noted|cancel+ed|set(?: up)? (?:a |the |your )?reminder|added (?:it |that |this |them )?"
+    r"to (?:your|the)\b)"
+    r"|^\s*(?:saved|booked|reserved|noted|all set)\s*[!✅]"
+    r"|\b(?:is|are|has been|have been)\s+(?:now\s+|all\s+)?(?:saved|booked|reserved|scheduled|"
+    r"recorded|stored)\b",
+    re.I | re.M,
+)
+_DONE_TH = re.compile(
+    r"(?:บันทึก|จอง)\S{0,6}?(?:แล้ว|เรียบร้อย)"
+    r"|(?:จด|จำ|นัด|ยกเลิก|อัปเดต|ตั้ง|เพิ่ม|ส่ง)\S{0,12}?(?:ให้|ไว้)\S{0,6}?(?:แล้ว|เรียบร้อย)"
+)
+_NOT_DONE = re.compile(
+    r"\b(?:not|no|nothing|none|never|cannot|once|if|when|after|as soon as|until|unless|before)\b"
+    r"|n't\b|ไม่|ยัง|ถ้า|หาก|เมื่อ|หลังจาก",
+    re.I,
+)
+_SENTENCE = re.compile(r"[^.!?\n]*(?:[.!?]+|\n|$)")
+CLAIM_CHECK = (
+    "Check: your answer says something was done (saved, booked, scheduled, noted...), but you called "
+    "no tool in this turn, so nothing was done. Call the tool that does it, or the tool that reads it "
+    "if it was done earlier, and answer from its result. If no tool can do it, say plainly that it "
+    "was not done. Answer the person again, in the same language."
+)
+
+
+def claims_done(text: str | None) -> str | None:
+    """The first sentence that says an action was carried out ("I've saved that", "Booked!",
+    "จองให้เรียบร้อยแล้วค่ะ"); questions, negations and conditions are not claims. None = no claim."""
+    for s in _SENTENCE.findall(text or ""):
+        if not s.strip() or s.rstrip().endswith("?") or _NOT_DONE.search(s):
+            continue
+        if _DONE_EN.search(s) or _DONE_TH.search(s):
+            return s.strip()
+    return None
+
+
 SECRETARY_PROMPT = (
     "\nงานเลขา (เครื่องมือ schedule_meeting, list_meetings, cancel_meeting, reschedule_meeting, meeting_attendance, "
     "make_report_pdf, draft_email, send_email ถ้ามีให้ใช้): "
@@ -2557,27 +2598,40 @@ async def ask_async(
     rounds, text = 0, ""
     first_call_s = last_call_s = 0.0
     tokens = dict.fromkeys(USAGE_FIELDS, 0)
-    async for event in runner.run_async(
-        user_id=adk_user,
-        session_id=session_id,
-        new_message=message,
-        run_config=RunConfig(max_llm_calls=max_rounds + 2),
-    ):
-        if event.usage_metadata is not None:
-            for name, attr in USAGE_FIELDS.items():
-                tokens[name] += getattr(event.usage_metadata, attr, None) or 0
-        if event.get_function_calls():
-            if on_tool_call is not None:
-                for fc in event.get_function_calls():
-                    with contextlib.suppress(Exception):  # a hook never breaks the answer
-                        on_tool_call(fc.name)
-            if model_calls > max_rounds:
-                continue  # a call after the cap is answered with an error, never run: not a round
-            rounds += 1
-            last_call_s = time.monotonic() - started
-            first_call_s = first_call_s or last_call_s
-        elif event.is_final_response() and event.content and event.content.parts:
-            text = "".join(p.text or "" for p in event.content.parts if not p.thought).strip()
+
+    async def run(new_message: types.Content) -> str:
+        nonlocal rounds, first_call_s, last_call_s
+        answer = ""
+        async for event in runner.run_async(
+            user_id=adk_user,
+            session_id=session_id,
+            new_message=new_message,
+            run_config=RunConfig(max_llm_calls=max_rounds + 2),
+        ):
+            if event.usage_metadata is not None:
+                for name, attr in USAGE_FIELDS.items():
+                    tokens[name] += getattr(event.usage_metadata, attr, None) or 0
+            if event.get_function_calls():
+                if on_tool_call is not None:
+                    for fc in event.get_function_calls():
+                        with contextlib.suppress(Exception):  # a hook never breaks the answer
+                            on_tool_call(fc.name)
+                if model_calls > max_rounds:
+                    continue  # a call after the cap is answered with an error, never run: not a round
+                rounds += 1
+                last_call_s = time.monotonic() - started
+                first_call_s = first_call_s or last_call_s
+            elif event.is_final_response() and event.content and event.content.parts:
+                answer = "".join(p.text or "" for p in event.content.parts if not p.thought).strip()
+        return answer
+
+    text = await run(message)
+    if tools and not interjection and rounds == 0 and claims_done(text):
+        # "done" with no tool in the turn is never true: one more try, told why; then the truth
+        logger.info("qa: an action was claimed without a tool call, asking again")
+        text = await run(types.Content(role="user", parts=[types.Part(text=CLAIM_CHECK)]))
+        if rounds == 0 and claims_done(text):
+            text = t("qa_claim_unbacked", resolve_lang(language, question))
     total_s = time.monotonic() - started
     if spoken:  # timing only, no content
         logger.info(
