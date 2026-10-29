@@ -104,13 +104,36 @@ def test_bad_refs_and_bodies(w, bot):  # noqa: F811
     assert book(w, status=422, flight_ref=OUT, extra=1)["error"]["code"] == "invalid"
 
 
+def test_a_web_only_company_books_from_the_cards_too(w, bot):  # noqa: F811
+    """A company with no Discord server (signed up on the website) books a hotel in the sandbox:
+    the trip and its receipt go to its web workspace's ledger; no check-in reminder is promised
+    (nothing could deliver it to a web-only person)."""
+    url = "/api/center/orgs/org_o/travel/book"
+    web = w.orgs.get("org_o").web_workspace()
+    before = {t["id"] for t in bot.docs.find(trips.TRIP_KIND, web.memory_id)}
+    q = w.client.post(url, json={"room_ref": ROOM, "purpose": "web offsite"}, headers=H["other"])
+    assert q.status_code == 200, q.text
+    assert q.json()["status"] == "needs_confirmation" and q.json()["quote"]["hotel"]["room"]
+    done = w.client.post(url, json={"room_ref": ROOM, "purpose": "web offsite", "confirm": True},
+                         headers=H["other"]).json()  # fmt: skip
+    assert done["status"] == "booked" and done["references"]["hotel"]
+    assert "remind" not in done["text"].lower()  # no reminder to promise on the web alone
+    (trip,) = [t for t in bot.docs.find(trips.TRIP_KIND, web.memory_id) if t["id"] not in before]
+    assert trip["purpose"] == "web offsite" and not trip.get("reminder_id")
+    assert [bot.store.get(i).total for i in trip["receipt_ids"]] == [25350]
+    flight = w.client.post(
+        url, json={"flight_ref": OUT, "confirm": True}, headers=H["other"]
+    ).json()
+    assert flight["status"] == "needs_confirmation"  # a flight books the same way (quote first)
+
+
 def test_who_may_book(w, bot, monkeypatch):  # noqa: F811
     r = w.client.post(URL, json={"flight_ref": OUT}, headers=H["stranger"])
     assert r.status_code in (403, 404) and r.json()["error"]["code"] in ("forbidden", "not_found")
     assert w.client.post(URL, json={"flight_ref": OUT}).status_code == 401
     monkeypatch.setattr(center, "get_bot", lambda: None)  # a web-only company: no ledger to book in
     err = book(w, status=409, flight_ref=OUT)
-    assert err["error"]["code"] == "needs_discord" and "Discord" in err["error"]["message"]
+    assert err["error"]["code"] == "booking_unavailable" and err["error"]["message"]
 
 
 def test_travel_turned_off_is_409(w, bot, monkeypatch):  # noqa: F811
