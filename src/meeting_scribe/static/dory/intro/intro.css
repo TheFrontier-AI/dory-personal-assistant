@@ -1,1 +1,11 @@
-/* Dory intro: the layer's styles arrive with the intro task. Page tokens come from ../theme.css. */
+/* Dory intro (the layer intro.js builds). Structure only so far: a modal layer over the whole viewport whose controls
+   stay on screen while the story between them scrolls. Page tokens come from ../theme.css. */
+#intro { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 16px; border: 0;
+  display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+#intro:not([open]) { display: none; }
+#intro-stage { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
+#intro-stage > * { margin: auto; display: grid; gap: 12px; max-width: 40rem; } /* auto margins centre it, yet it scrolls from the top */
+.intro-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
+#intro-dots { display: flex; gap: 6px; margin: 0 auto 0 0; padding: 0; list-style: none; }
+#intro-dots li { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .4; }
+#intro-dots [aria-current="step"] { opacity: 1; }
