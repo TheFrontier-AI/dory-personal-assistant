@@ -414,7 +414,15 @@ async def test_only_a_plain_yes_in_the_very_next_message_books(bot, world):
     assert tools(bot, world)["list_trips"]()["count"] == 0
 
 
-async def test_a_refused_booking_after_a_plain_yes_says_so(bot, world, monkeypatch):
+async def test_a_hotel_refused_after_the_flight_keeps_the_flight_booked_once(
+    bot, world, monkeypatch
+):
+    real, flights_bought = bot.trips_provider.book_flight, []
+
+    def count(offer, traveller):
+        flights_bought.append(offer.offer_id)
+        return real(offer, traveller)
+
     def refuse(offer, traveller):
         raise RuntimeError("hotel sold out")
 
@@ -422,10 +430,58 @@ async def test_a_refused_booking_after_a_plain_yes_says_so(bot, world, monkeypat
     fid = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"][0]["offer_id"]
     hid = tl["search_hotels"]("SIN", DEP, RET)["hotels"][3]["offer_id"]
     assert tl["book_trip"](fid, hid, "Lumen kickoff")["status"] == "needs_confirmation"
+    monkeypatch.setattr(bot.trips_provider, "book_flight", count)
     monkeypatch.setattr(bot.trips_provider, "book_hotel", refuse)
     text = tools(bot, world)["book_trip"].on_confirm("yes")
-    assert text.startswith("I couldn't book it") and "Booked before the error: flight " in text
-    assert tools(bot, world)["list_trips"]()["count"] == 0
+    # the booked flight is recorded: trip, receipt and check-in reminder (DEF-01: it was lost)
+    [trip] = bot.docs.find(trips.TRIP_KIND, GUILD)
+    assert list(trip["references"]) == ["flight"] and trip["hotel"] is None
+    assert len(trip["receipt_ids"]) == 1 and trip["reminder_id"]
+    assert trip["totals"] == [{"amount": 13700, "currency": "THB"}]
+    assert text.startswith("Only part of the trip is booked") and "NOT booked: the hotel" in text
+    assert trip["references"]["flight"] in text and "13,700.00 THB" in text and "SGD" not in text
+    # a retry of the same flight and hotel never buys the flight again
+    again = said(tools(bot, world))["book_trip"](fid, hid, "Lumen kickoff")
+    assert again["status"] == "already_booked" and again["already"] == ["flight"]
+    assert flights_bought == [fid] and len(bot.docs.find(trips.TRIP_KIND, GUILD)) == 1
+
+
+async def test_the_model_hears_what_is_booked_and_a_refused_flight_books_nothing(
+    bot, world, monkeypatch
+):
+    tried = []
+
+    def refuse(offer, traveller):
+        tried.append(offer.offer_id)
+        raise RuntimeError("refused")
+
+    tl = tools(bot, world)
+    flights = tl["search_flights"]("BKK", "SIN", DEP, RET)["flights"]
+    hotels = tl["search_hotels"]("SIN", DEP, RET)["hotels"]
+    f1, f2, h1, h2 = (
+        flights[0]["offer_id"],
+        flights[1]["offer_id"],
+        hotels[3]["offer_id"],
+        hotels[2]["offer_id"],
+    )
+    assert tl["book_trip"](f1, h1, "x")["status"] == "needs_confirmation"
+    monkeypatch.setattr(bot.trips_provider, "book_hotel", refuse)
+    res = said(tools(bot, world))["book_trip"](f1, h1, "x")
+    assert res["status"] == "partial" and res["not_booked"] == ["hotel"]
+    assert (
+        list(res["references"]) == ["flight"] and "Never say the whole trip" in res["instruction"]
+    )
+    # the flight itself is refused: nothing is booked, the hotel is not even tried
+    tl2 = tools(bot, world)
+    assert tl2["book_trip"](f2, h2, "y")["status"] == "needs_confirmation"
+    monkeypatch.setattr(bot.trips_provider, "book_flight", refuse)
+    tried.clear()
+    res = said(tools(bot, world))["book_trip"](f2, h2, "y")
+    assert res == {"status": "failed", "error": "the booking service refused"}
+    assert tried == [f2] and len(bot.docs.find(trips.TRIP_KIND, GUILD)) == 1
+    text = trips._confirm_reply(trips.TripsCtx(GUILD, STAFF, "Mint", False, "en", None, bot.docs,
+                                bot.store, bot.secretary_state, "r", bot.s.now), res)  # fmt: skip
+    assert text.startswith("I couldn't book it") and "nothing is booked" in text
 
 
 # ----------------------------------------------------------------------------- only a booking request books (DEF-03)
