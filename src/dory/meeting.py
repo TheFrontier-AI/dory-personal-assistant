@@ -80,6 +80,7 @@ TRANSCRIPT_MAX_LINES = 6000
 MEETING_MAX_S = 6 * 3600
 MAX_WARN_S = 600.0  # warn in the text chat this long before the cap
 RECONNECT_DELAYS = (2.0, 5.0, 10.0)
+RESUME_RETRY_S = 5.0  # a rejoin that finds nobody or no free body looks once more after this
 EMPTY_GRACE_S = 600.0  # no humans left: leave quietly after this long (meeting_empty_minutes)
 CONTEXT_WINDOW_S = 5 * 60
 CONTEXT_MAX_CHARS = 6000
@@ -1903,25 +1904,42 @@ class MeetingManager:
             async def on_end(session) -> None:
                 await self.bot.scheduler.on_voice_end(mid, session)
 
-        # The same body as before when it is still around, else any free one.
-        busy = self._busy_indexes(gid)
-        body = self.pool.body(rec.get("body_index", 0))
-        if body is None or not body.available or not body.in_guild(gid) or body.index in busy:
-            body = self._free_body(gid)
-        vc = None
-        if humans and body is not None:
+        def pick_body():  # the same body as before when it is still around, else any free one
+            busy = self._busy_indexes(gid)
+            b = self.pool.body(rec.get("body_index", 0))
+            if b is None or not b.available or not b.in_guild(gid) or b.index in busy:
+                b = self._free_body(gid)
+            return b
+
+        body, vc, why = pick_body(), None, ""
+        # Two looks: right after a restart a body may still be logging in (29 Oct 2026: two rooms
+        # were dropped without a word of why); the reason is always logged.
+        for attempt in range(2):
+            if attempt:
+                logger.info("rejoin in guild %s: %s; looking again", gid, why)
+                await asyncio.sleep(RESUME_RETRY_S)
+                humans, body = self._humans(channel), pick_body()
+            if not humans:
+                why = "nobody in the channel"
+                continue
+            if body is None:
+                why = "no free voice body"
+                continue
             self._joining.add(key)
             self._reserved.add((gid, body.index))
             try:
                 vc = await self._connect(body, channel)
                 self._note_join_result(key, True)
+                break
             except Exception:
                 logger.exception("could not rejoin voice channel %s", channel.id)
                 self._note_join_result(key, False)
+                why = "could not connect"
             finally:
                 self._joining.discard(key)
                 self._reserved.discard((gid, body.index))
         if vc is None:  # no people, no body, or could not connect: end it with what the log has
+            logger.warning("meeting in guild %s channel %s not resumed: %s", gid, channel.id, why)
             humans = []
         session = MeetingSession(
             guild_id=gid, voice_channel=channel, text_channel=channel, fallback_channel=text_ch,
@@ -1952,6 +1970,9 @@ class MeetingManager:
         except Exception:
             logger.warning("could not reload the logged meeting lines", exc_info=True)
         self.sessions[key] = session
+        if vc is None:
+            await self.end(key, "empty" if why == "nobody in the channel" else "disconnected")
+            return
         try:
             vc.listen(MeetingSink(session))
         except Exception:
