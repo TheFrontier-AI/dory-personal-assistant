@@ -227,10 +227,14 @@ def make_app(engines: Any, idle_shutdown_min: int = 0, max_calls: int = 4, gap_m
 
     @app.get("/health")
     async def health():
+        calls = max_calls - busy._value
         return {
             "ok": True,
             "busy": busy.locked(),
-            "calls": max_calls - busy._value,
+            "calls": calls,
+            # seconds since the last audio / typed turn / say / TTS chunk of an open call; the
+            # cloud idle stop (dory.nebius_vm.IdleWatch) reads it. None = no call open
+            "idle_s": round(time.monotonic() - last_active["at"], 1) if calls else None,
             "max_calls": max_calls,
             "mode": "cascade",
             "engines": getattr(engines, "name", "gpu"),
@@ -269,6 +273,7 @@ def make_app(engines: Any, idle_shutdown_min: int = 0, max_calls: int = 4, gap_m
                             lambda s=sentence: list(engines.synth(s))
                         ):
                             await ws.send_bytes(chunk)
+                            last_active["at"] = time.monotonic()  # playback in progress is activity
                     await ws.send_json({"type": "said", "text": text})
                     log.info(
                         "said chars=%d final=%s ms=%d",
@@ -305,6 +310,7 @@ def make_app(engines: Any, idle_shutdown_min: int = 0, max_calls: int = 4, gap_m
                     msg = await ws.receive()
                     if msg["type"] == "websocket.disconnect":
                         break
+                    last_active["at"] = time.monotonic()  # audio, a typed turn or a say = activity
                     data, text = msg.get("bytes"), msg.get("text")
                     act = None
                     if data:

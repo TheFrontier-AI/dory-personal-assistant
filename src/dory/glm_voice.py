@@ -68,6 +68,7 @@ def is_ack(text: str) -> bool:
 # the box is off, still booting, or not listening on that port: one code the pages can word
 DOWN_ERRORS = (ConnectionRefusedError, ConnectionResetError, TimeoutError, OSError)
 RETRY_S = 10.0  # between connection attempts while the box is off, booting or taken by another call
+WAKE_POLL_S = 1.0  # how often a sleeping box's wait looks for an explicit wake request
 RETRY_MAX = 180  # 30 min of trying, as long as the room or the call lives (`close` ends it sooner)
 
 
@@ -105,10 +106,14 @@ class GlmVoice(WebLive):
         path: str = "web",
         on_heard: Callable[[str], None] | None = None,
         ack: Callable[[str, str], str] | None = None,
+        wake_on_start: bool = True,
+        wake_reason: str = "call",
     ):
         """`ask(question, history)` is Dory's brain for a cascade server; `on_heard(text)`, when
         given (a Discord room), decides what to do with an utterance and calls `answer` / `speak`
-        itself; without it everything heard is answered (the web call, C3)."""
+        itself; without it everything heard is answered (the web call, C3). `wake_on_start`: the
+        person asked for this call (web button, "join"), so a stopped box may be started once; a
+        room resumed after a bot restart passes False. Every later wake needs `request_wake`."""
         super().__init__(settings, None, instruction="", ask=ask or (lambda q, h: ""), out=out)
         self.url, self.lang, self.on_heard, self.ack = url, lang, on_heard, ack
         self.transcript = Transcript()  # what this call heard and said, memory only (C9)
@@ -120,7 +125,9 @@ class GlmVoice(WebLive):
             self.timer = StageTimer(path)
         self.cascade = ask is not None  # a cascade server sends "heard": Dory's brain answers it
         self._answer: asyncio.Task | None = None
-        self._had_session, self._spoke = False, False  # a reconnect wakes the box only after speech
+        # the GPU box starts ONLY on an explicit request (G1/G2): one attempt per request
+        self._may_wake, self._wake_reason = wake_on_start, wake_reason
+        self._asleep, self._hint_due, self._hinted = False, False, False  # hint: once per sleep
         self._min_rms = float(getattr(settings, "name_min_rms", 250.0))
         self._pending: tuple[float, str, str, str] | None = (
             None  # started, question, speaker, history
@@ -148,23 +155,29 @@ class GlmVoice(WebLive):
             code = ""
             try:
                 if self.waker is not None and not await self.waker.healthy():
-                    # the box stopped itself while idle: wake it and tell the person why they wait.
-                    # A RECONNECT waits for somebody to speak or type first (a silent room must
-                    # not keep a stopped box cycling, 29 Oct 2026)
-                    while self._had_session and not self._spoke and not self._closing:
-                        await asyncio.sleep(1.0)
+                    # the box is asleep. It starts only for an EXPLICIT request (a call, a join,
+                    # "wake up", typed text); occupancy, reconnects, retries and sounds never wake it
+                    self._asleep = True
+                    while not self._may_wake and not self._closing:
+                        if self._hint_due:
+                            self._hint_due = False
+                            await self.out("asleep", "")
+                        await asyncio.sleep(WAKE_POLL_S)
+                    self._asleep = False
                     if self._closing:
                         return
+                    self._may_wake, self._hinted = False, False  # this request is used up
                     await self.out("waking", "")
-                    if not await self.waker.ensure_running():
+                    if not await self.waker.ensure_running(reason=self._wake_reason):
                         await self.out("error", "voice_server_down")
                         return
                 async with self._connect() as ws:
-                    self._ws, self._had_session, self._spoke = ws, True, False
+                    self._ws, self._may_wake = ws, False  # served: an old request never wakes later
                     sender = asyncio.create_task(self._send(ws))
                     try:
                         code = await self._receive(ws)
                     finally:
+                        self._may_wake = False  # a "wake up" typed during the call is spent too
                         sender.cancel()
                         self._cancel_answer()
                         await asyncio.gather(sender, return_exceptions=True)
@@ -248,13 +261,19 @@ class GlmVoice(WebLive):
         return ""
 
     # ---- cascade: the brain answers what the server heard
+    def request_wake(self, reason: str) -> None:
+        """An explicit request to Dory (a typed "wake up"): the next time the box is found asleep
+        it is started, once. `reason` goes to the log with the start."""
+        self._may_wake, self._wake_reason = True, reason
+
     def feed(self, pcm16k: bytes) -> None:
-        if not self._spoke and pcm16k and self._rms(pcm16k) >= self._min_rms:
-            self._spoke = True
+        # a voice while the box sleeps is NOT a request: say how to ask, once per sleep
+        if self._asleep and not self._hinted and pcm16k and self._rms(pcm16k) >= self._min_rms:
+            self._hinted = self._hint_due = True
         super().feed(pcm16k)
 
     def say(self, text: str) -> None:
-        self._spoke = True  # typed text counts as somebody there
+        self.request_wake("typed turn")  # text typed to Dory is an explicit request
         super().say(text)
 
     @staticmethod

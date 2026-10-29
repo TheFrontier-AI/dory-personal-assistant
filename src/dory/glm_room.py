@@ -49,7 +49,11 @@ def _company_lang(bot: Any, guild_id: int) -> str:
 
 
 class GlmRoom:
-    def __init__(self, bot: Any, session: Any, connect: Any = None, post: Any = None):
+    def __init__(
+        self, bot: Any, session: Any, connect: Any = None, post: Any = None, wake: bool = True
+    ):
+        """`wake`: somebody asked Dory into this room just now, so a stopped GPU box may be started
+        once; a session resumed after a bot restart passes False (G1: nothing automatic wakes it)."""
         self.bot, self.session, self.post = bot, session, post
         self.mixer = Mixer()
         self._source: LiveAudioSource | None = None
@@ -76,6 +80,8 @@ class GlmRoom:
             path="discord",
             lang=self.lang,
             on_heard=self._on_heard,
+            wake_on_start=wake,
+            wake_reason="room join",
             ack=make_ack(bot.llm, s.gate_model) if getattr(bot, "llm", None) is not None else None,
         )
 
@@ -146,6 +152,13 @@ class GlmRoom:
             if self.post is not None:
                 with contextlib.suppress(Exception):
                     await self.post(t("glm_waking", getattr(s, "lang", "en")))
+        elif kind == "asleep":  # somebody talks to a sleeping box: say how to wake it (once)
+            logger.info(
+                "glm room: voice server asleep, hint posted (guild %s)", getattr(s, "guild_id", "?")
+            )
+            if self.post is not None:
+                with contextlib.suppress(Exception):
+                    await self.post(t("glm_asleep", getattr(s, "lang", "en")))
         elif kind == "ready":
             logger.info("glm room: connected (guild %s)", getattr(s, "guild_id", "?"))
         elif kind == "error":
