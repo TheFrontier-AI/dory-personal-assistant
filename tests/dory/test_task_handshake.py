@@ -4,7 +4,7 @@ settings. Offline: fake Discord objects, SQLite doc store, no model."""
 
 import asyncio
 import json
-from datetime import timedelta
+from datetime import date, timedelta
 from pathlib import Path
 from types import SimpleNamespace
 
@@ -982,3 +982,40 @@ def test_add_task_is_a_voice_action_tool_and_the_prompt_mentions_it():
     assert "add_task" in ACTION_TOOL_NAMES
     assert "add_task" in qa.COO_PROMPT and "@Dory note the tasks above" in qa.COO_PROMPT
     assert "add_task" in H.HANDSHAKE_PROMPT
+
+
+# ------------------------------------------------------------------ QA: "me", someone else's task, the giver
+async def test_add_task_for_me_is_the_askers_own_task_and_they_can_list_it(hs, world):
+    fns = await add_tools(hs, world, asker=world.staff)
+    res = await asyncio.to_thread(fns["add_task"], "ต่ออายุพาสปอร์ต", "me", "2026-10-23")
+    saved = hs.tasks.get(GUILD, res["task"]["id"])
+    assert saved.assignee_id == STAFF and saved.confirm == "accepted" and res["unresolved"] == []
+    assert saved.assignee_name != "me"
+    mine = await asyncio.to_thread(fns["list_tasks"], "me")
+    assert [t["id"] for t in mine["tasks"]] == [saved.id]
+
+
+async def test_someone_elses_similar_task_is_never_returned_or_taken_over(hs, world):
+    boss = await add_tools(hs, world)
+    theirs = await asyncio.to_thread(
+        boss["add_task"], "วางแผนเดินสายแร็คเซิร์ฟเวอร์", "", "", "", "บันทึกส่วนตัวของบอส"
+    )
+    staff = await add_tools(hs, world, asker=world.staff)
+    mine = await asyncio.to_thread(staff["add_task"], "วางแผนเดินสายแร็คเซิร์ฟเวอร์", "me")
+    assert mine["task"]["id"] != theirs["task"]["id"] and "บันทึกส่วนตัว" not in str(mine)
+    kept = hs.tasks.get(GUILD, theirs["task"]["id"])
+    assert kept.assignee_id == 0 and kept.note == "บันทึกส่วนตัวของบอส"
+    again = await asyncio.to_thread(staff["add_task"], "วางแผนเดินสายแร็คเซิร์ฟเวอร์", "me")
+    assert again["task"]["id"] == mine["task"]["id"]  # one person's repeat is still one task
+
+
+def test_the_giver_sees_a_task_they_gave_without_any_channel_scope():
+    repo = TaskRepo(SQLiteDocStore(":memory:"))
+    task, _ = repo.add(Task(guild_id=GUILD, assignee_id=0, assigner_id=STAFF, title="งานไม่มีเจ้าของ",
+                            created_from="manual"))  # fmt: skip
+    tools_for = lambda who: CooTools(  # noqa: E731
+        guild_id=GUILD, asker_id=who, is_exec=False, scope=None, tasks=repo,
+        people={STAFF: "Somchai", INTERN: "Ploy"}, today=lambda: date(2026, 10, 14),
+    )  # fmt: skip
+    assert [t["id"] for t in tools_for(STAFF).list_tasks()["tasks"]] == [task.id]
+    assert tools_for(INTERN).list_tasks()["count"] == 0
