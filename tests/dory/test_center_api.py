@@ -3836,7 +3836,12 @@ def test_travel_preferences_are_saved_normalised_and_end_the_step(w):
 
 def test_a_bad_airport_or_currency_is_a_422_and_changes_nothing(w):
     put_travel(w, "stranger", home_airport="SIN", currency="THB")
-    for bad in ({"home_airport": "CNX"}, {"home_airport": "x" * 61}, {"currency": "dollars?!"}):
+    for bad in (
+        {"home_airport": "CNX"},
+        {"home_airport": "x" * 61},
+        {"currency": "dollars?!"},
+        {"currency": "abc"},  # three letters is not a currency
+    ):
         assert put_travel(w, "stranger", **bad).status_code == 422, bad
     v = my_view(w, "stranger")
     assert (v["home_airport"], v["currency"]) == ("SIN", "THB")
@@ -3897,3 +3902,32 @@ def test_dory_knows_the_travel_preferences_and_can_set_them(w, monkeypatch):
     assert w.orgs.user_profile("boss@example.com").title != "CTO"
     assert tools["update_my_profile"](home_airport="none")["travel"]["currency"] == "THB"
     assert w.orgs.user_profile("boss@example.com").home_airport == ""
+
+
+def test_every_listed_currency_is_accepted_and_nothing_else(w):
+    from dory import travel_search
+
+    for code in travel_search.CURRENCIES:
+        r = put_travel(w, "stranger", currency=code.lower())
+        assert r.status_code == 200 and r.json()["currency"] == code, code
+    assert "CHF" in travel_search.CURRENCIES  # a stored value is always one the page can show
+    assert put_travel(w, "stranger", currency="XYZ").status_code == 422
+
+
+def test_the_tool_saves_the_profile_and_the_travel_preferences_in_one_write(w, monkeypatch):
+    from dory.people_directory import PeopleBook
+
+    book = PeopleBook(w.docs)
+    monkeypatch.setattr(center, "get_people", lambda: book)
+    monkeypatch.setattr(center, "get_library", lambda: w.lib)
+    w.client.post("/api/center/orgs/org_t/chat", json={"message": "hi"}, headers=H["boss"])
+    tools = {getattr(t, "__name__", ""): t for t in w.asks[-1][1]["extra_tools"]}
+    calls = []
+    real = w.orgs.set_user_profile
+    monkeypatch.setattr(
+        w.orgs, "set_user_profile", lambda *a, **k: (calls.append(k), real(*a, **k))[1]
+    )
+    tools["update_my_profile"](title="CTO", home_airport="KUL", currency="chf")
+    assert len(calls) == 1  # one locked write for the whole edit
+    saved = w.orgs.user_profile("boss@example.com")
+    assert (saved.title, saved.home_airport, saved.currency) == ("CTO", "KUL", "CHF")

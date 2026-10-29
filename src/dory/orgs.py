@@ -735,6 +735,8 @@ class OrgStore:
         "last_name": SHORT_TEXT,
         "title": SHORT_TEXT,
         "department": SHORT_TEXT,
+        "home_airport": SHORT_TEXT,
+        "currency": SHORT_TEXT,
         "about": LONG_TEXT,
         "job_description": LONG_TEXT,
     }

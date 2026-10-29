@@ -662,9 +662,8 @@ def clean_travel_prefs(
     home_airport: str | None, currency: str | None
 ) -> tuple[str | None, str | None]:
     """The two travel preferences as stored: an airport the search catalogue knows (a code or a
-    city name), a 3-letter currency code (or a name like "baht"). None stays None, "" / "none"
-    clears. ValueError names what is wrong. shortcut: any 3-letter currency passes (no ISO list
-    here), the converter rejects a made-up one when it is used."""
+    city name) and a currency on `travel_search.CURRENCIES` (a code or a name like "baht"). None
+    stays None, "" / "none" clears. ValueError names what is wrong."""
     out: list[str | None] = []
     for raw, kind in ((home_airport, "airport"), (currency, "currency")):
         if raw is None:
@@ -681,9 +680,10 @@ def clean_travel_prefs(
             out.append(code)
         else:
             code = resolve_currency(raw)
-            if code is None:
+            if code not in travel_search.CURRENCIES:
                 raise ValueError(
-                    f"Unknown currency {raw.strip()[:40]!r}; use a code such as THB or USD"
+                    f"Unsupported currency {raw.strip()[:40]!r}; use one of "
+                    + ", ".join(travel_search.CURRENCIES)
                 )
             out.append(code)
     return out[0], out[1]
@@ -3074,6 +3074,8 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
             department=department or None,
             about=about or None,
             job_description=job_description or None,
+            home_airport=airport,
+            currency=ccy,
         )
         out: dict = {
             "status": "ok",
@@ -3085,8 +3087,6 @@ def web_tools(ctx: Ctx, orgs: OrgStore, guilds: Any, ws: Workspace) -> list:
                 "about": p.about,
             },
         }
-        if airport is not None or ccy is not None:
-            p = orgs.set_travel_prefs(email, airport, ccy)
         if p.home_airport or p.currency:
             out["travel"] = {"home_airport": p.home_airport, "currency": p.currency}
         if manager:

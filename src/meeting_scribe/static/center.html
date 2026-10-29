@@ -1314,7 +1314,7 @@ th: {
   not_linked_hint:"เชื่อมบัญชีแล้ว ดอรี่จะจำคุณได้ทุกที่", discord_hint:"ยืนยันด้วย Discord หรือใช้รหัสจากคำสั่ง /ลิงก์บัญชี",
   verify_discord:"ยืนยันด้วย Discord", have_code:"ฉันมีรหัสจากดอรี่", code_hint:"พิมพ์ /ลิงก์บัญชี ใน Discord แล้ววางรหัสที่ได้ที่นี่", type_id:"พิมพ์ไอดีเอง", type_id_hint:"ไอดีที่พิมพ์เองจะเป็น “ยังไม่ยืนยัน” จนกว่าแพลตฟอร์มจะยืนยันให้",
   id_label:"ไอดีผู้ใช้", name_label:"ชื่อในแพลตฟอร์ม", confirm_unlink:"ลบบัญชี {p} ออกจากโปรไฟล์ของคุณ?", id_linked:"เชื่อมบัญชีแล้ว", id_verified_ok:"ยืนยันบัญชี Discord แล้วค่ะ", id_err:"ยืนยันไม่สำเร็จ ({e})", verify_unavailable:"ยังไม่เปิดให้ยืนยันด้วย Discord ใช้รหัสจากดอรี่แทนได้ค่ะ",
-  tp_h:"ค่ากำหนดการเดินทาง", tp_p:"ไม่บังคับ ดอรี่จะใช้สนามบินต้นทางของคุณเมื่อค้นหาเที่ยวบินโดยไม่บอกต้นทาง และจำสกุลเงินที่คุณต้องการ ตอนนี้ราคาตัวอย่างเป็นเงินบาท", tp_airport:"สนามบินต้นทาง", tp_ccy:"สกุลเงินที่ต้องการ", tp_none:"ไม่ระบุ", tp_down:"ตอนนี้โหลดรายชื่อสนามบินไม่ได้",
+  tp_h:"การตั้งค่าการเดินทาง", tp_p:"ไม่บังคับ ดอรี่จะใช้สนามบินต้นทางของคุณเมื่อค้นหาเที่ยวบินโดยไม่บอกต้นทาง และจำสกุลเงินที่คุณต้องการ ตอนนี้ราคาตัวอย่างเป็นเงินบาท", tp_airport:"สนามบินต้นทาง", tp_ccy:"สกุลเงินที่ต้องการ", tp_none:"ไม่ระบุ", tp_down:"ตอนนี้โหลดรายชื่อสนามบินไม่ได้",
   acc_account:"บัญชี", prof_who:"ฉันคือใคร", prof_title:"ตำแหน่ง", prof_title_ph:"เช่น CTO, หัวหน้าฝ่ายขาย", prof_dept:"แผนก", prof_dept_ph:"เช่น วิศวกรรม, การขาย", prof_about:"สิ่งที่ฉันทำ", prof_about_ph:"หน้าที่และเรื่องที่คุณดูแล เพื่อให้ดอรี่รู้ว่าควรนำเรื่องอะไรมาหาคุณ",
   prof_boss:"ฉันรายงานต่อ", prof_boss_none:"ไม่มี (อยู่บนสุดของผัง)", prof_hint:"ดอรี่ใช้ข้อมูลนี้เพื่อรู้ว่าคุณเป็นใครและดูแลเรื่องอะไร จะบอกดอรี่ในแชทแทนก็ได้ค่ะ", prof_no_org:"เข้าร่วมองค์กรก่อน แล้วจึงเลือกหัวหน้าได้",
   mt_intro:"งานมาจากบันทึกการประชุมและแชทกับดอรี่ใน Discord และที่นี่ บอกดอรี่ว่า “เพิ่มงาน …” เพื่อสร้างงานใหม่ได้เลยค่ะ", mt_mine:"งานที่มอบหมายให้ฉัน", mt_dory:"งานที่ฉันสั่งดอรี่ไว้", mt_dory_p:"งานที่บริษัทสั่งให้ดอรี่ทำ (ผู้บริหารและผู้ดูแลเห็น)", mt_done_h:"เสร็จแล้ว", mt_done_n:"{n} งาน", mt_none_open:"ไม่มีงานค้างค่ะ",
@@ -1881,6 +1881,7 @@ function route(quiet) {
   const moved = cur !== id;
   if (cur === "chat" && id !== "chat" && chatPage.w) { chatPage.w.stop(); chatPage.w = null; }
   cur = id; renderNav();
+  if (id !== "chat") prefillOnce = ""; // an example from /start that did not land on the chat is dropped, not kept for later
   $("fab").hidden = id === "chat"; // the page is the chat
   if (id !== "chat" && !panel.open && panelWanted()) setTimeout(panelOpen, 0); // this tab had the panel open (reload, #/chat link)
   const nm = NAV.find((n) => n[0] === id);
@@ -3484,7 +3485,7 @@ VIEWS.chat = async (body, my) => {
   addEventListener("resize", fit); if (window.visualViewport) visualViewport.addEventListener("resize", fit); fit();
   fillDays(); new MutationObserver(fillDays).observe(w.msgs, { childList: true });
   liveLabel(); w.end();
-  const pre = takePrefill(); if (pre) w.prefill(pre);
+  const pre = prefillOnce; prefillOnce = ""; if (pre) w.prefill(pre);
   w.focus();
 };
 // An example request picked on /start arrives as text (sessionStorage: this tab, read once, ten minutes): the chat box is
@@ -3496,6 +3497,9 @@ function takePrefill() {
     return x && typeof x.q === "string" && Date.now() - Number(x.at) < 600000 ? x.q.slice(0, 2000) : "";
   } catch { return ""; }
 }
+// Read when the page loads, so an example the person never reached the chat with is gone with this page and cannot
+// turn up in the box later.
+let prefillOnce = takePrefill();
 const chatData = () => api(O("/chat/history")).catch(() => ({ turns: [] }));
 
 /* ---------- floating "Talk to Dory" panel (every page of the logged-in shell) ---------- */
@@ -4161,12 +4165,13 @@ async function verifyDiscord() {
     else if (!handleAuth(e)) toast(errText(e), "error");
   }
 }
-const TRAVEL_CCY = ["THB", "USD", "SGD", "EUR", "GBP", "JPY", "HKD", "MYR", "VND", "CNY", "KRW", "AUD"];
+const TRAVEL_CCY = ["THB", "USD", "EUR", "GBP", "JPY", "SGD", "HKD", "MYR", "VND", "CNY", "KRW", "AUD", "CAD", "CHF", "INR", "IDR", "PHP", "NZD", "TWD"]; // the server's travel_search.CURRENCIES (a test keeps them equal)
 VIEWS.account = async (body, my) => {
+  // the airports (public, bounded) load beside the members, so a slow list never holds the whole page
+  const airsP = fetch("/api/travel/airports", { signal: AbortSignal.timeout(4000) }).then((r) => (r.ok ? r.json() : null)).then((j) => (j && j.airports) || [], () => []);
   // the org's member list gives the "I report to" choices and my current manager (none without an org)
   let mem = null; if (orgId) { try { mem = items(await api(O("/members"))); } catch (e) { if (handleAuth(e)) return; mem = null; } }
-  let airs = []; // the airports the search catalogue knows (public); an empty list disables the select
-  try { const r = await fetch("/api/travel/airports"); if (r.ok) airs = (await r.json()).airports || []; } catch { /* the card says the list is missing */ }
+  const airs = await airsP; // the airports the search catalogue knows; an empty list disables the select and the card says so
   if (stale(my)) return; done(body);
   const myRow = mem && mem.find((m) => m.email === me.email);
   // (a) who I am: name, title, department, what I do, manager

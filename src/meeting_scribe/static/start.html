@@ -101,11 +101,11 @@
 <main>
   <div class="wrap layout">
     <div class="flow">
-    <div class="steps" id="steps" aria-hidden="true" hidden>
-      <span data-step="1" class="on"><i>1</i><em data-i18n="s1"></em></span>
-      <span data-step="2"><i>2</i><em data-i18n="s2"></em></span>
-      <span data-step="3"><i>3</i><em data-i18n="s3"></em></span>
-      <span data-step="4"><i>4</i><em data-i18n="s4"></em></span>
+    <div class="steps" id="steps" role="list" data-i18n-attr="aria-label:steps_aria" hidden>
+      <span role="listitem" data-step="1" class="on"><i>1</i><em data-i18n="s1"></em></span>
+      <span role="listitem" data-step="2"><i>2</i><em data-i18n="s2"></em></span>
+      <span role="listitem" data-step="3"><i>3</i><em data-i18n="s3"></em></span>
+      <span role="listitem" data-step="4"><i>4</i><em data-i18n="s4"></em></span>
     </div>
 
     <!-- step 1: welcome + Google sign-in -->
@@ -256,12 +256,12 @@
   "cta_unconfigured": {"th": "ยังไม่ได้ตั้งค่าลิงก์เชิญ (DORY_DISCORD_CLIENT_ID)", "en": "Invite link not configured (DORY_DISCORD_CLIENT_ID)"},
   "invite_soon": {"th": "ลิงก์เชิญดอรี่เข้า Discord จะเปิดให้ใช้เร็ว ๆ นี้ ระหว่างนี้เข้าศูนย์บัญชาการได้เลย แล้วกลับมาเชื่อม Discord ทีหลัง", "en": "The Discord invite link opens soon. You can go to the command center now and connect Discord later."},
   "c_later": {"th": "ข้ามขั้นนี้ได้ ทำทีหลังจากหน้า \"พื้นที่ทำงาน\" ในศูนย์ควบคุม", "en": "You can skip this and do it later from \"Workspaces\" in the center."},
-  "terms_agree": {"th": "การดำเนินการต่อถือว่าคุณยอมรับ<a href=\"/terms\" target=\"_blank\" rel=\"noopener\">ข้อกำหนดการใช้งาน</a>และ<a href=\"/privacy\" target=\"_blank\" rel=\"noopener\">นโยบายความเป็นส่วนตัว</a>", "en": "By continuing, you agree to the <a href=\"/terms\" target=\"_blank\" rel=\"noopener\">Terms</a> and the <a href=\"/privacy\" target=\"_blank\" rel=\"noopener\">Privacy Policy</a>."},
+  "terms_agree": {"th": "การดำเนินการต่อถือว่าคุณยอมรับ<a href=\"/terms\" target=\"_blank\" rel=\"noopener\">ข้อกำหนดการใช้งาน<span class=\"sr\"> (เปิดในแท็บใหม่)</span></a>และ<a href=\"/privacy\" target=\"_blank\" rel=\"noopener\">นโยบายความเป็นส่วนตัว<span class=\"sr\"> (เปิดในแท็บใหม่)</span></a>", "en": "By continuing, you agree to the <a href=\"/terms\" target=\"_blank\" rel=\"noopener\">Terms<span class=\"sr\"> (opens in a new tab)</span></a> and the <a href=\"/privacy\" target=\"_blank\" rel=\"noopener\">Privacy Policy<span class=\"sr\"> (opens in a new tab)</span></a>."},
   "have_account": {"th": "มีบัญชีอยู่แล้ว? <a href=\"/center\">เข้าสู่ระบบ</a>", "en": "Already have an account? <a href=\"/center\">Sign in</a>"},
   "signing_in": {"th": "กำลังเข้าสู่ระบบ…", "en": "Signing you in…"},
-  "ex_prefs": {"th": "ค่ากำหนดการเดินทาง", "en": "Travel preferences"},
+  "ex_prefs": {"th": "ตั้งค่าการเดินทาง", "en": "Set travel preferences"},
   "pref_h": {"th": "ยินดีต้อนรับสู่ดอรี่", "en": "Welcome to Dory"},
-  "pref_p": {"th": "ดอรี่เป็นผู้ช่วยของทีมคุณ ตัวเลือกสองข้อนี้ไม่บังคับ ช่วยให้การค้นหาการเดินทางตรงใจขึ้น และแก้ได้ทุกเมื่อที่ \"บัญชีของฉัน\"", "en": "Dory is your team's assistant. These two choices are optional; they make travel searches fit you, and you can change them any time in My account."},
+  "pref_p": {"th": "ดอรี่เป็นผู้ช่วยของทีมคุณ ตัวเลือกสองข้อนี้ไม่บังคับ ช่วยให้ค้นหาการเดินทางตรงใจขึ้น และแก้ได้ทุกเมื่อที่ \"โปรไฟล์ของฉัน\"", "en": "Dory is your team's assistant. Two optional choices make travel searches fit you; change them any time in My profile."},
   "pk1_t": {"th": "วางแผนการเดินทาง", "en": "Plan trips"},
   "pk1_d": {"th": "ค้นหาเที่ยวบินและโรงแรมในแชต (ช่วงเปิดตัวเป็นข้อมูลตัวอย่าง)", "en": "Search flights and hotels in the chat (sample data during launch)."},
   "pk2_t": {"th": "ให้งานเดินหน้า", "en": "Keep work moving"},
@@ -270,7 +270,7 @@
   "pk3_d": {"th": "ถามเรื่องไฟล์ที่อัปโหลด ดอรี่จะหาคำตอบให้", "en": "Ask about the files you upload and Dory finds the answer."},
   "pref_airport": {"th": "สนามบินต้นทาง (ไม่บังคับ)", "en": "Home airport (optional)"},
   "pref_airport_hint": {"th": "ดอรี่จะใช้เป็นต้นทางเมื่อคุณค้นหาเที่ยวบินโดยไม่บอกว่าไปจากไหน", "en": "Dory starts a flight search here when you don't say where from."},
-  "pref_airports_down": {"th": "โหลดรายชื่อสนามบินไม่ได้ ตั้งทีหลังได้ที่ \"บัญชีของฉัน\"", "en": "Couldn't load the airports. You can set this later in My account."},
+  "pref_airports_down": {"th": "โหลดรายชื่อสนามบินไม่ได้ ตั้งทีหลังได้ที่ \"โปรไฟล์ของฉัน\"", "en": "Couldn't load the airports. You can set this later in My profile."},
   "pref_none": {"th": "ไม่ระบุ", "en": "No preference"},
   "pref_ccy": {"th": "สกุลเงินที่ต้องการ (ไม่บังคับ)", "en": "Preferred currency (optional)"},
   "pref_ccy_hint": {"th": "ตอนนี้ราคาตัวอย่างเป็นเงินบาท ดอรี่จะไม่เดาอัตราแลกเปลี่ยน", "en": "Sample prices are in THB for now. Dory never guesses an exchange rate."},
@@ -280,13 +280,14 @@
   "pref_failed": {"th": "บันทึกไม่สำเร็จ (ข้อผิดพลาด {status}) ลองอีกครั้ง หรือข้ามไปก่อน", "en": "Couldn't save your preferences (error {status}). Try again, or skip for now."},
   "pref_check": {"th": "ตรวจสอบตัวเลือกแล้วลองอีกครั้ง", "en": "Check your choices and try again."},
   "go_h": {"th": "พร้อมแล้ว", "en": "You're all set"},
-  "go_p": {"th": "พิมพ์เป็นภาษาของคุณได้เลย เลือกตัวอย่างด้านล่างเพื่อเริ่ม หรือพิมพ์เองก็ได้", "en": "Ask in your own words. Pick an example to start from, or type your own."},
+  "go_p": {"th": "พิมพ์เป็นภาษาของคุณได้เลย เลือกตัวอย่างแล้วข้อความจะไปอยู่ในช่องแชตให้คุณแก้ไขและกดส่ง", "en": "Ask in your own words. Pick an example and it appears in the chat box for you to edit and send."},
   "try_flight": {"th": "หาเที่ยวบินไป{to}วันศุกร์หน้า", "en": "Find me a flight to {to} next Friday"},
   "try_flight_from": {"th": "หาเที่ยวบินจาก{from}ไป{to}วันศุกร์หน้า", "en": "Find me a flight from {from} to {to} next Friday"},
   "try_hotel": {"th": "ขอดูโรงแรมในสิงคโปร์ 2 คืน", "en": "Show me hotels in Singapore for two nights"},
   "try_day": {"th": "วันนี้ฉันต้องทำอะไรบ้าง", "en": "What do I need to get done today?"},
   "start_chat": {"th": "เริ่มคุยกับดอรี่", "en": "Start chatting with Dory"},
   "dc_sum": {"th": "เพิ่มดอรี่ใน Discord ของทีมด้วย (ไม่บังคับ)", "en": "Also add Dory to your team's Discord (optional)"},
+  "steps_aria": {"th": "ความคืบหน้าการสมัคร", "en": "Sign-up progress"},
   "foot_copy": {"th": "© 2026 The Frontier Company Limited", "en": "© 2026 The Frontier Company Limited"},
   "foot_home": {"th": "หน้าแรก", "en": "Home"}
 }
@@ -359,14 +360,14 @@ function resumeFlag(op) {
   return false;
 }
 // ---------- travel preferences (optional) ----------
-const CCY = ["THB", "USD", "SGD", "EUR", "GBP", "JPY", "HKD", "MYR", "VND", "CNY", "KRW", "AUD"];
+const CCY = ["THB", "USD", "EUR", "GBP", "JPY", "SGD", "HKD", "MYR", "VND", "CNY", "KRW", "AUD", "CAD", "CHF", "INR", "IDR", "PHP", "NZD", "TWD"]; // the server's travel_search.CURRENCIES (a test keeps them equal)
 const CITY_TH = { BKK: "กรุงเทพฯ", SIN: "สิงคโปร์", KUL: "กัวลาลัมเปอร์", SGN: "โฮจิมินห์ซิตี้", HKG: "ฮ่องกง", NRT: "โตเกียว" };
 let airports = null; // [{code, city}] once asked; [] when the list could not be loaded
 const prefs = { airport: "", ccy: "" }; // the selects' values, kept across a language switch
 const city = (a) => (lang === "th" && CITY_TH[a.code]) || a.city;
 async function loadAirports() {
   if (airports) return;
-  try { const r = await fetch("/api/travel/airports"); if (!r.ok) throw new Error(String(r.status)); airports = (await r.json()).airports || []; }
+  try { const r = await fetch("/api/travel/airports", { signal: AbortSignal.timeout(5000) }); if (!r.ok) throw new Error(String(r.status)); airports = (await r.json()).airports || []; }
   catch { airports = []; }
 }
 function ccyLabel(code) { try { return code + " · " + new Intl.DisplayNames([lang], { type: "currency" }).of(code); } catch { return code; } }
@@ -420,6 +421,7 @@ function show(step) {
   $("steps").hidden = n === 1; // the welcome screen names the steps in words; the bar shows from step 2
   for (const s of document.querySelectorAll("[data-step]")) {
     const k = Number(s.dataset.step); s.classList.toggle("on", k === n); s.classList.toggle("done", k < n);
+    if (k === n) s.setAttribute("aria-current", "step"); else s.removeAttribute("aria-current");
   }
   window.scrollTo({ top: 0 });
   $(step).querySelector("h1, h2").focus({ preventScroll: true }); // keyboard and screen-reader users land on the new step
@@ -475,7 +477,8 @@ async function signedIn(stored = false) {
 $("another").addEventListener("click", () => show("step2"));
 $("to-prefs").addEventListener("click", () => { note($("created-note"), null); show("step3"); });
 $("back3").addEventListener("click", () => show("step3"));
-// Save needs the answer (a failed save must not look saved); Skip never waits: the step is optional. A lost stamp
+// Save needs the answer (a failed save must not look saved); Skip never waits (keepalive: the request outlives a click on
+// "Start chatting" straight after it): the step is optional. A lost stamp
 // changes nothing the person sees: they stay a returning member, and the "Travel preferences" button reaches the step.
 $("pref-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
@@ -492,7 +495,7 @@ $("pref-form").addEventListener("submit", async (ev) => {
 });
 $("pref-skip").addEventListener("click", () => {
   resumeFlag("clear");
-  api("/me/travel", { method: "PUT", body: JSON.stringify({ skip: true }) }).then((m) => { me = m; }, () => {});
+  api("/me/travel", { method: "PUT", keepalive: true, body: JSON.stringify({ skip: true }) }).then((m) => { me = m; }, () => {});
   show("step4");
 });
 $("create").addEventListener("click", async () => {
