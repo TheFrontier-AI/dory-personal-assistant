@@ -369,11 +369,11 @@ async function loadAirports() {
   try { const r = await fetch("/api/travel/airports"); if (!r.ok) throw new Error(String(r.status)); airports = (await r.json()).airports || []; }
   catch { airports = []; }
 }
-function ccyName(code) { try { return new Intl.DisplayNames([lang], { type: "currency" }).of(code); } catch { return ""; } }
+function ccyLabel(code) { try { return code + " · " + new Intl.DisplayNames([lang], { type: "currency" }).of(code); } catch { return code; } }
 function drawPrefs() {
   const a = $("pref-airport"), c = $("pref-ccy"), none = () => new Option(t("pref_none"), "");
   a.replaceChildren(none(), ...(airports || []).map((x) => new Option(city(x) + " (" + x.code + ")", x.code)));
-  c.replaceChildren(none(), ...CCY.map((x) => new Option(x + " · " + ccyName(x), x)));
+  c.replaceChildren(none(), ...CCY.map((x) => new Option(ccyLabel(x), x)));
   a.value = prefs.airport; c.value = prefs.ccy;
   a.disabled = !!airports && !airports.length; // no list, no choice: the note says where to set it later
   const hint = $("pref-airport-hint"); hint.dataset.i18n = a.disabled ? "pref_airports_down" : "pref_airport_hint"; hint.textContent = t(hint.dataset.i18n);
@@ -475,8 +475,8 @@ async function signedIn(stored = false) {
 $("another").addEventListener("click", () => show("step2"));
 $("to-prefs").addEventListener("click", () => { note($("created-note"), null); show("step3"); });
 $("back3").addEventListener("click", () => show("step3"));
-// Save needs the answer (a failed save must not look saved); Skip never waits: the step is optional, and a lost stamp
-// only means the next visit may offer the step once more.
+// Save needs the answer (a failed save must not look saved); Skip never waits: the step is optional. A lost stamp
+// changes nothing the person sees: they stay a returning member, and the "Travel preferences" button reaches the step.
 $("pref-form").addEventListener("submit", async (ev) => {
   ev.preventDefault();
   const btn = $("pref-save");
