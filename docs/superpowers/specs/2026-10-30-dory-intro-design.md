@@ -69,7 +69,7 @@ Pause, Skip). Chapters 0–1 are the brand frame and the promise above; chapter 
 | 4 | Receipts | a drawn receipt photo → "Filed" → the month's travel total | Snap a receipt. She files it. |
 | 5 | Voice | the call stage: "I'm listening…" → her spoken answer as captions | Or ask out loud. |
 | 6 | Travel | one sentence → a flight card and a hotel card with the product's sample labels → "Booked in the sandbox" | Plan a trip in one sentence. |
-| 7 | Roles | the same spending question from Nok (owner) and Ploy (member): Nok gets the company total, Ploy gets her own receipts and a plain "company totals are for managers" | She only shares what your role allows. **(owner to tick)** |
+| 7 | Roles | the same spending question from Nok (owner) and Ploy (member): Nok gets the company total, Ploy gets her own receipts and a plain "company totals are for managers" | She only shares what your role allows. (owner approved 30 Oct) |
 | 8 | Surface | everything resolves and drains up into the light theme; the last bubble becomes step 4's first example | — |
 
 **English use cases only (owner, 30 Oct):** every example, headline and chapter line is English in both
@@ -113,7 +113,7 @@ Controls (dictionary, both languages): region label Meet Dory / รู้จั�
 Pause / หยุดชั่วคราว · Play / เล่นต่อ · Sound on / เปิดเสียง · Sound off / ปิดเสียง.
 
 All numbers and names are fictional sample data inside the labelled example; no claim beyond the film's
-sign-off list except chapter 7, which waits for the owner.
+sign-off list (chapter 7 approved by the owner on 30 Oct).
 
 ## Controls and states
 
