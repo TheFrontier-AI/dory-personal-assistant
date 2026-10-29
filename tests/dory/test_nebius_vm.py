@@ -31,6 +31,8 @@ def test_make_waker_needs_every_identity_setting():
     s.nebius_sa_private_key = "PEM"
     w = make_waker(s, "ws://x/voice")
     assert w is not None and w.vm_id == "vm" and w.health == "http://x/health"
+    assert make_waker(s, "ws://x/voice") is w  # one per process: lock + cooldown span every call
+    assert make_waker(s, "ws://y/voice") is not w
 
 
 def test_waker_starts_a_stopped_vm_once_and_waits_for_health(monkeypatch):
@@ -108,3 +110,32 @@ def test_waker_gives_up_when_the_api_hangs(monkeypatch):
     t0 = time.monotonic()
     assert asyncio.run(w.ensure_running(timeout_s=5)) is False
     assert time.monotonic() - t0 < 1
+
+
+def test_waker_keeps_waiting_when_another_process_started_the_vm(monkeypatch):
+    """Two processes wake the box together: Nebius aborts the earlier start (OperationAborted) and
+    the VM boots anyway. A VM already STARTING is not started again."""
+    monkeypatch.setattr(nebius_vm, "POLL_S", 0.01)
+
+    class Aborted(FakeApi):
+        async def start(self, vm_id):
+            self.starts += 1
+            self.state = "STARTING"
+            raise RuntimeError("OperationAborted")
+
+    def comes_up():
+        calls = {"n": 0}
+
+        async def http_get(url):  # down on the first look, up while we poll
+            calls["n"] += 1
+            return 503 if calls["n"] == 1 else 200
+
+        return http_get
+
+    api = Aborted("STOPPED")
+    w = VmWaker("vm-1", health="http://x/health", sdk=api, http_get=comes_up())
+    assert asyncio.run(w.ensure_running(timeout_s=1)) is True and api.starts == 1
+
+    api = Aborted("STARTING")
+    w = VmWaker("vm-1", health="http://x/health", sdk=api, http_get=comes_up())
+    assert asyncio.run(w.ensure_running(timeout_s=1)) is True and api.starts == 0
