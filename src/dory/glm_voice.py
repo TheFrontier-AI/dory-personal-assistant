@@ -40,6 +40,7 @@ FILLER_AFTER_S = 4.5  # plain turns answer in 3.5-4.2 s (29 Oct 2026; 3.5 still 
 # filler; a tool turn (9-11 s) gets one line (C8)
 ACK_WAIT_S = 1.0  # how long the request-specific line may still take once the filler is due
 FILLER_MEMORY = 3  # never the same canned line as the last three
+MERGE_S = 2.0  # a fragment this soon after the same speaker's pending question is one sentence (C5)
 HISTORY_WINDOW_S, HISTORY_MAX_CHARS = 180.0, 3000  # as LiveVoice._ask_dory (C9)
 PERSON, DORY = "Person", "Dory"
 _CUR = {"THB": "baht", "฿": "baht", "USD": "dollars", "$": "dollars", "EUR": "euros", "€": "euros"}
@@ -118,6 +119,9 @@ class GlmVoice(WebLive):
             self.timer = StageTimer(path)
         self.cascade = ask is not None  # a cascade server sends "heard": Dory's brain answers it
         self._answer: asyncio.Task | None = None
+        self._pending: tuple[float, str, str, str] | None = (
+            None  # started, question, speaker, history
+        )
         self._ws: Any = None
         self._connect = connect or (lambda: self._ws_connect(url, token))
         # scale-to-zero: with the Nebius identity settings, a stopped GPU box is started on demand
@@ -242,16 +246,25 @@ class GlmVoice(WebLive):
         else:
             super().greet(lang)
 
-    def answer(self, question: str, speaker: str = PERSON) -> None:
+    def answer(self, question: str, speaker: str = PERSON) -> bool:
         """Dory's brain answers this utterance (a bare "ok" is only answered when she just asked
-        something). Called by the room's gate or, on the web, for everything heard."""
+        something). Called by the room's gate or, on the web, for everything heard. A fragment
+        within MERGE_S of the same speaker's pending question is one sentence the ASR cut: asked
+        once, merged. True when a pending answer was cancelled instead (the person kept talking;
+        the room then wants her name again, C5)."""
         history = self.history()  # what came before this question
         self.transcript.add(datetime.now(UTC), speaker, question)
         if is_ack(question) and not self.last_said.rstrip().endswith("?"):
-            return
+            return False
+        pending = self._pending if self._answer is not None and not self._answer.done() else None
+        cancelled = pending is not None
+        if pending and pending[2] == speaker and time.monotonic() - pending[0] < MERGE_S:
+            question, history, cancelled = f"{pending[1]} {question}", pending[3], False
         self._cancel_answer()
         self.timer.mark("tool_call")
+        self._pending = (time.monotonic(), question, speaker, history)
         self._answer = asyncio.create_task(self._answer_turn(self._ws, question, history))
+        return cancelled
 
     def speak(self, text: str) -> None:
         """Say a line as it is (a greeting, "Yes?"), no brain."""
@@ -272,7 +285,7 @@ class GlmVoice(WebLive):
     def _cancel_answer(self) -> None:
         if self._answer is not None and not self._answer.done():
             self._answer.cancel()
-        self._answer = None
+        self._answer, self._pending = None, None
 
     async def _ack_line(self, ack_job: asyncio.Future | None) -> str:
         """The prepared request-specific line (waited for up to ACK_WAIT_S), else a canned one."""

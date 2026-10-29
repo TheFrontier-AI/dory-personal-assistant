@@ -430,3 +430,32 @@ def test_ack_line_prefers_the_prepared_line_and_falls_back(monkeypatch):
         late.cancel()
 
     asyncio.run(main())
+
+
+def test_answer_merges_a_split_sentence_and_reports_a_cancel(monkeypatch):
+    """Two fragments of one sentence within MERGE_S are asked once, merged, with the history from
+    before the first; an utterance that cancels an older pending answer reports it; another
+    speaker never merges."""
+    import dory.glm_voice as gv
+
+    async def out(kind, payload):
+        pass
+
+    v = GlmVoice(_settings(), out=out, url="ws://x/voice", ask=lambda q, h: "", lang="en")
+
+    async def main():
+        assert v.answer("Dory, book me a flight", "Mint") is False
+        first = v._pending
+        assert v.answer("to Singapore on Friday", "Mint") is False  # the same sentence, cut
+        assert v._pending[1] == "Dory, book me a flight to Singapore on Friday"
+        assert v._pending[3] == first[3]  # the history from before the first fragment
+        monkeypatch.setattr(gv, "MERGE_S", 0.0)
+        assert v.answer("and a hotel", "Mint") is True  # she never got to answer: cancelled
+        assert v._pending[1] == "and a hotel"
+        monkeypatch.setattr(gv, "MERGE_S", 2.0)
+        assert v.answer("I think Thursday", "Boom") is True  # another speaker: no merge
+        assert v._pending[1] == "I think Thursday" and v._pending[2] == "Boom"
+        v._cancel_answer()
+        assert v._pending is None
+
+    asyncio.run(main())

@@ -223,7 +223,8 @@ class GlmRoom:
         elif kind is None and not engaged:
             return
         self._engaged_until, self._caller = now + self.engaged_s, speaker
-        self.voice.answer(text, speaker=self._name_of(speaker))
+        if self.voice.answer(text, speaker=self._name_of(speaker)):
+            self._engaged_until = 0.0  # she never got to answer: the name again, please (C5)
 
     def _wake_policy(self) -> str:
         try:
