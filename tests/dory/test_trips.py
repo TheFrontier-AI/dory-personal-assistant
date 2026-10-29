@@ -489,3 +489,11 @@ async def test_a_call_with_no_message_heard_never_books(bot, world):
             == "needs_confirmation"
         )
     assert tools(bot, world)["list_trips"]()["count"] == 0
+
+
+async def test_hotel_results_and_the_quote_say_they_are_sandbox(bot, world):
+    tl = tools(bot, world)
+    hotels = tl["search_hotels"]("SIN", DEP, RET)
+    assert "sandbox" in hotels["note"]
+    quote = tl["book_trip"]("", hotels["hotels"][0]["offer_id"], "x")
+    assert quote["status"] == "needs_confirmation" and "sandbox quote" in quote["instruction"]

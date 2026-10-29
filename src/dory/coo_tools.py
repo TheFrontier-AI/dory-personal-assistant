@@ -77,7 +77,7 @@ class CooTools:
         }
 
     def _can_see(self, t: Task) -> bool:
-        if t.assignee_id == self.asker_id:
+        if self.asker_id in (t.assignee_id, t.assigner_id):  # the one doing it, or who gave it
             return True
         return self.scope is not None and task_visible(t, self.scope)
 
@@ -130,7 +130,11 @@ class CooTools:
         ids: list[int] = []
         unresolved: list[str] = []
         for part in split_who(assignee):
-            uid = match_person(part, self.people)
+            uid = (
+                self.asker_id
+                if part.strip().casefold() in ME_WORDS
+                else match_person(part, self.people)
+            )
             if uid and uid not in ids:
                 ids.append(uid)
             elif not uid:
@@ -142,7 +146,8 @@ class CooTools:
             task = Task(
                 guild_id=self.guild_id,
                 assignee_id=uid,
-                assignee_name=self.people.get(uid) or (assignee or "").strip()[:120],
+                assignee_name=self.people.get(uid)
+                or (giver if uid == self.asker_id else (assignee or "").strip()[:120]),
                 assigner_id=self.asker_id,
                 assigner_name=giver,
                 title=title,
@@ -308,8 +313,8 @@ def build_coo_tools(c: CooTools, calls: list | None = None) -> list:
 
         Args:
             title: what has to be done, short.
-            assignee: who does it: a name, @mention, or several joined by "and" / comma; empty if
-                nobody is named.
+            assignee: who does it: a name, @mention, or several joined by "and" / comma; "me"
+                when the asker takes it ("add a task for me"); empty if nobody is named.
             due: date such as 2026-10-30, "ศุกร์", "tomorrow", optional.
             project: part of a project name, optional.
             note: extra detail, optional.

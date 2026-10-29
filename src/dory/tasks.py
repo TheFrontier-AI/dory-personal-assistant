@@ -277,6 +277,11 @@ def no_deadline_due(tasks: list[Task], today: date, zone, working_days: int = 3)
 
 
 # ---------------------------------------------------------------- repository
+# Tasks a person adds on purpose (by hand, from an imported plan): they only de-duplicate against the
+# same giver's tasks. Summary tasks still merge across people so a later summary can name the owner.
+PERSON_MADE = ("manual", "plan")
+
+
 class TaskRepo:
     def __init__(self, docs: DocStore):
         self.docs = docs
@@ -331,6 +336,8 @@ class TaskRepo:
         """Store a task unless a similar one exists (any status: a finished item that a living
         summary still lists must not come back). Returns (task, created)."""
         for old in self.list(task.guild_id, status=None):
+            if task.created_from in PERSON_MADE and old.assigner_id != task.assigner_id:
+                continue  # someone else's similar task is never returned to them or re-assigned
             if (
                 old.assignee_id == task.assignee_id
                 or not old.assignee_id
