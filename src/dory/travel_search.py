@@ -1146,13 +1146,19 @@ def card_tools(ctx: CardCtx) -> list:
     return [search_flights, search_hotels]
 
 
+CARD_SOURCES = (*CARD_TOOL_NAMES, "weather")  # tools that record cards (weather: dory.weather)
+
+
 def tool_cards(tools: list) -> list[dict]:
-    """The cards the travel tools recorded for this reply (like `qa.tool_files`)."""
+    """The cards the travel and weather tools recorded for this reply (like `qa.tool_files`; the
+    two travel searches share one list, each list counts once)."""
+    seen: list[list] = []
     for f in tools:
         box = getattr(f, "cards", None)
-        if isinstance(box, list) and getattr(f, "__name__", "") in CARD_TOOL_NAMES:
-            return list(box)
-    return []
+        named = getattr(f, "__name__", "") in CARD_SOURCES
+        if isinstance(box, list) and named and not any(box is b for b in seen):
+            seen.append(box)
+    return [c for box in seen for c in box]
 
 
 def travel_payload(cards: list[dict]) -> dict | None:
@@ -1169,6 +1175,8 @@ def travel_payload(cards: list[dict]) -> dict | None:
         "return_flight_filters": (
             by["return_flights"]["filters"] if "return_flights" in by else None
         ),
+        # {place, lat, lng, days}: the page fetches the card itself (/api/travel/weather)
+        "weather": by.get("weather"),
     }
 
 
