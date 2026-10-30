@@ -11,8 +11,8 @@
   --intro-rise: 28px; --intro-line: 800ms; --intro-line-gap: 90ms; --intro-expo: cubic-bezier(.16, 1, .3, 1);
   --intro-chip: 600ms; --intro-chip-gap: 70ms; --intro-chip-rise: 16px; --intro-swap: 240ms; --intro-press: 140ms;
   --intro-surface: 1200ms; --intro-mark: 1200ms; --intro-fly: 700ms; --intro-fade: 240ms;
-  position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 16px; border: 0;
-  display: flex; flex-direction: column; gap: 16px; overflow: hidden; color: var(--color-text); font-family: var(--font);
+  position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: var(--space-4); border: 0;
+  display: flex; flex-direction: column; gap: var(--space-4); overflow: hidden; color: var(--color-text); font-family: var(--font);
   background: linear-gradient(var(--ocean-800), var(--ocean-950)); /* taste-skill-ignore: the deep scope's own ground */
 }
 /* the drawings, as masks so they take a token colour: the command center's own stroke icons (24 grid, 1.75 stroke), the
@@ -35,17 +35,21 @@
   -webkit-mask: var(--intro-snow) 0 0 / 480px 480px; mask: var(--intro-snow) 0 0 / 480px 480px; }
 
 /* ---------- the controls: their own deep fill, so they read on the deep and on the light ground at the end ---------- */
-.intro-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-#intro .intro-bar .btn { padding: 10px 18px; background: var(--ocean-900); color: var(--ocean-50); border-color: var(--ocean-500); }
+.intro-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: var(--space-2); }
+#intro .intro-bar .btn { padding: var(--space-3) var(--space-5); background: var(--ocean-900); color: var(--ocean-50); border-color: var(--ocean-500); }
 #intro .intro-bar .btn:hover { background: var(--ocean-800); border-color: var(--ocean-300); }
 #intro .intro-bar #intro-sound[aria-pressed="true"] { background: var(--ocean-50); color: var(--ocean-950); border-color: var(--ocean-50); }
-#intro-dots { display: flex; align-items: center; gap: 6px; margin: 0 auto 0 0; padding: 0; list-style: none; color: var(--ocean-300); }
+#intro-dots { display: flex; align-items: center; gap: var(--space-2); margin: 0 auto 0 0; padding: 0; list-style: none; color: var(--ocean-300); }
 #intro-dots li { position: relative; width: 8px; height: 8px; border-radius: 4px; background: currentColor; opacity: .5; }
 #intro-dots [aria-current="step"] { width: 20px; color: var(--ocean-50); opacity: 1; }
+/* on the Surface ground a mid tone that reads on both grounds while the deep drains away (4.6:1 on sand, 4:1 on abyss) */
+#intro[data-chapter="8"] #intro-dots, #intro[data-chapter="8"] #intro-dots [aria-current] { color: var(--ocean-500); }
 
 /* ---------- the stage: every chapter in one cell, so a leaving chapter fades over the arriving one ---------- */
-#intro-stage { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; }
-#intro-stage > * { grid-area: 1 / 1; margin: auto; width: min(100%, 40rem); display: grid; gap: 14px; } /* auto margins centre it, yet it scrolls from the top */
+/* the cell is the stage's own height, never the taller of two chapters: the arriving one does not move when the leaving
+   one hides (on a short screen it would jump) */
+#intro-stage { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; grid-template-rows: minmax(0, 1fr); }
+#intro-stage > * { grid-area: 1 / 1; margin: auto; width: min(100%, 40rem); display: grid; gap: var(--space-4); } /* auto margins centre it, yet a taller one scrolls from its top */
 #intro-stage > [data-leaving] { pointer-events: none; }
 
 /* ---------- the fragments ---------- */
@@ -53,15 +57,15 @@
 /* the example notice: a plain sentence at 16 px, never a pill */
 #intro [data-ui="notice"] { color: var(--color-text-muted); text-align: center; }
 /* a chapter's line: one face, one colour, each sentence on its own line */
-#intro [data-ui="line"] { margin-top: 8px; font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 3vw + 14px, 44px);
+#intro [data-ui="line"] { margin-top: var(--space-2); font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 3vw + 14px, 44px);
   line-height: 1.15; letter-spacing: -.01em; text-align: center; text-wrap: balance; }
 #intro [data-ui="line"] > span { display: block; }
-#intro [data-id="promise"] [data-ui="line"] { margin-top: 20px; font-size: clamp(34px, 6vw + 14px, 72px); line-height: 1.05; }
+#intro [data-id="promise"] [data-ui="line"] { margin-top: var(--space-5); font-size: clamp(34px, 6vw + 14px, 72px); line-height: 1.05; }
 /* the brand frame: Dory's round painted face */
 #intro [data-ui="mark"] { justify-self: center; width: clamp(112px, 20vw, 160px); aspect-ratio: 1; border-radius: 50%;
   background: var(--ocean-50) url("/static/dory/dory-mark.webp") center / cover; }
 /* the person's chat bubble (the product's own), the things the team said once included */
-#intro :is([data-ui="ask"], [data-ui="said"]) { justify-self: end; max-width: min(88%, 30rem); padding: 10px 16px;
+#intro :is([data-ui="ask"], [data-ui="said"]) { justify-self: end; max-width: min(88%, 30rem); padding: var(--space-3) var(--space-4);
   border-radius: 18px 18px 6px 18px; background: var(--bubble-user-bg); color: var(--bubble-user-text); }
 /* said once, here and there in the deep: the promise, and the surfacing that brings the same three back (offset plus
    width stays inside the column) */
@@ -70,7 +74,7 @@
 #intro :is([data-id="promise"], [data-id="surface"]) > :nth-child(2) { margin-right: 8%; }
 #intro :is([data-id="promise"], [data-id="surface"]) > :nth-child(3) { justify-self: start; margin-left: 12%; }
 /* Dory's answer: no bubble, her face beside it (the product's chat) */
-#intro [data-ui="answer"] { justify-self: start; display: flex; align-items: flex-start; gap: 10px; font-size: 17px; }
+#intro [data-ui="answer"] { justify-self: start; display: flex; align-items: flex-start; gap: var(--space-3); font-size: 17px; }
 #intro [data-ui="answer"]::before { content: ""; flex: none; width: 28px; height: 28px; border-radius: 50%;
   background: var(--ocean-50) url("/static/dory/dory-mark.webp") center / cover; }
 /* stroke icons in the text's colour */
@@ -78,45 +82,47 @@
 #intro[data-decision="accept"] [data-ui="result"]::before { content: ""; flex: none; width: 20px; height: 20px; background: currentColor;
   -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
 /* "Dory is working": her light beside the label; the label's second half gives way to "found it" in one cell */
-#intro [data-ui="status"] { justify-self: start; color: var(--color-text-muted); font-size: 15px; }
-#intro [data-ui="status"] .lantern { display: inline-block; width: 10px; height: 10px; margin: 0 10px 0 5px; border-radius: 50%;
+#intro [data-ui="status"] { justify-self: start; color: var(--color-text-muted); }
+#intro [data-ui="status"] .lantern { display: inline-block; width: 10px; height: 10px; margin: 0 var(--space-3) 0 var(--space-1); border-radius: 50%;
   background: var(--color-glow); vertical-align: 1px; }
 #intro [data-ui="swap"] { display: inline-grid; font-size: inherit; }
 #intro [data-ui="swap"] > * { grid-area: 1 / 1; font-size: inherit; }
 #intro [data-ui="found"] { color: var(--color-text); font-weight: 600; }
 /* the source Dory attaches: who said it, where */
-#intro [data-ui="source"] { --icon: var(--intro-chat); justify-self: start; display: flex; align-items: center; gap: 6px; margin-left: 38px;
-  padding: 4px 10px; border-radius: var(--radius-sm); background: var(--ocean-800); color: var(--color-text-muted); font-size: 14px; }
+#intro [data-ui="source"] { --icon: var(--intro-chat); justify-self: start; display: flex; align-items: center; gap: var(--space-2);
+  margin-left: calc(28px + var(--space-3)); /* under the answer's words, past her face */
+  padding: var(--space-1) var(--space-3); border-radius: var(--radius-sm); background: var(--ocean-800); color: var(--color-text-muted); font-size: 15px; }
 #intro [data-ui="source"]::before { width: 16px; height: 16px; }
 /* the task card, a fragment of the product's: what, who and when, its three answers in its lower half */
-#intro [data-ui="task"] { --icon: var(--intro-tasks); display: flex; align-items: flex-start; gap: 10px; padding: 16px 16px 10px;
+#intro [data-ui="task"] { --icon: var(--intro-tasks); display: flex; align-items: flex-start; gap: var(--space-3); padding: var(--space-4) var(--space-4) var(--space-3);
   border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--ocean-800); font-size: 17px; font-weight: 600; }
 #intro [data-ui="task"]::before { width: 22px; height: 22px; margin-top: 2px; color: var(--color-text-muted); }
-#intro [data-ui="choices"] { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -14px; padding: 6px 16px 16px 48px;
+#intro [data-ui="choices"] { display: flex; flex-wrap: wrap; gap: var(--space-2); margin-top: calc(-1 * var(--space-4)); /* the chapter's gap: one card */
+  padding: var(--space-2) var(--space-4) var(--space-4) var(--space-12);
   border-radius: 0 0 var(--radius-lg) var(--radius-lg); background: var(--ocean-800); }
-#intro [data-ui="choices"] .btn { padding: 10px 18px; }
+#intro [data-ui="choices"] .btn { padding: var(--space-3) var(--space-5); }
 /* Accept leads; once answered, the chosen one stays lit and the others step back */
 #intro[data-decision] [data-ui="choices"] .btn { background: transparent; color: var(--color-text-subtle); border-color: transparent; }
 #intro:not([data-decision]) #intro-accept, #intro[data-decision="accept"] #intro-accept, #intro[data-decision="edit"] #intro-edit,
 #intro[data-decision="decline"] #intro-decline { background: var(--ocean-50); color: var(--ocean-950); border-color: var(--ocean-50); }
-#intro [data-ui="result"] { display: flex; align-items: center; gap: 8px; min-height: 1.5em; font-weight: 600; } /* its row waits, so nothing moves when it fills */
+#intro [data-ui="result"] { display: flex; align-items: center; gap: var(--space-2); min-height: 1.5em; font-weight: 600; } /* its row waits, so nothing moves when it fills */
 #intro[data-decision="accept"] [data-ui="result"] { --icon: var(--intro-check); }
 /* a receipt photo, drawn: paper with a torn foot, its printed lines and its total */
-#intro [data-id="receipts"] { grid-template-columns: auto minmax(0, 1fr); column-gap: 24px; align-items: center; }
+#intro [data-id="receipts"] { grid-template-columns: auto minmax(0, 1fr); column-gap: var(--space-6); align-items: center; }
 #intro [data-id="receipts"] > :is([data-ui="notice"], [data-ui="line"]) { grid-column: 1 / -1; }
 #intro [data-ui="receipt"] { grid-row: span 2; position: relative; width: clamp(88px, 22vw, 116px); aspect-ratio: 4 / 5; rotate: -4deg;
   background: var(--sand-0); clip-path: polygon(0 0, 100% 0, 100% 100%, 90% 96%, 80% 100%, 70% 96%, 60% 100%, 50% 96%, 40% 100%, 30% 96%, 20% 100%, 10% 96%, 0 100%); }
 #intro [data-ui="receipt"]::before { content: ""; position: absolute; inset: 14% 14% 40%; background: var(--ink-400);
   -webkit-mask: var(--intro-lines) 0 0 / 100% 100%; mask: var(--intro-lines) 0 0 / 100% 100%; }
 #intro [data-ui="receipt"]::after { content: ""; position: absolute; left: 40%; right: 14%; bottom: 17%; height: 7px; border-radius: 4px; background: var(--ink-900); }
-#intro [data-ui="filed"] { --icon: var(--intro-check); align-self: end; display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+#intro [data-ui="filed"] { --icon: var(--intro-check); align-self: end; display: flex; align-items: center; gap: var(--space-2); padding: var(--space-3) var(--space-4);
   border-radius: var(--radius); background: var(--ocean-800); font-weight: 600; }
-#intro [data-ui="total"] { align-self: start; padding: 0 14px; color: var(--color-text-muted); font-size: 15px; }
+#intro [data-ui="total"] { align-self: start; padding: 0 var(--space-4); color: var(--color-text-muted); }
 /* the call stage: Dory's face in her light while she listens, then the words as captions */
-#intro [data-ui="call"] { justify-self: center; display: grid; justify-items: center; gap: 16px; color: var(--color-text-muted); }
+#intro [data-ui="call"] { justify-self: center; display: grid; justify-items: center; gap: var(--space-4); color: var(--color-text-muted); }
 #intro [data-ui="call"] .lantern { width: 88px; height: 88px; border-radius: 50%; background: var(--ocean-50) url("/static/dory/dory-mark.webp") center / cover; }
 #intro [data-id="voice"] :is([data-ui="ask"], [data-ui="answer"]) { justify-self: center; display: block; max-width: min(100%, 30rem);
-  padding: 10px 16px; border-radius: var(--radius-lg); text-align: center; font-size: 16px; }
+  padding: var(--space-3) var(--space-4); border-radius: var(--radius-lg); text-align: center; font-size: 16px; }
 #intro [data-id="voice"] [data-ui="ask"] { background: var(--ocean-800); color: var(--color-text); }
 #intro [data-id="voice"] [data-ui="answer"] { background: var(--ocean-700); }
 #intro [data-id="voice"] [data-ui="answer"]::before { content: none; }
@@ -124,16 +130,16 @@
 #intro [data-id="travel"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 #intro [data-id="travel"] > :not([data-ui="flight"], [data-ui="hotel"]) { grid-column: 1 / -1; }
 #intro :is([data-ui="flight"], [data-ui="hotel"]) { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center;
-  column-gap: 12px; padding: 14px; border-radius: var(--radius-lg); background: var(--ocean-800); color: var(--color-text-muted); font-size: 14px; font-weight: 600; }
+  column-gap: var(--space-3); padding: var(--space-4); border-radius: var(--radius-lg); background: var(--ocean-800); color: var(--color-text-muted); font-size: 15px; font-weight: 600; }
 #intro :is([data-ui="flight"], [data-ui="hotel"])::before { content: ""; width: 40px; height: 40px; border-radius: 50%; background: var(--ocean-700); }
-#intro :is([data-ui="flight"], [data-ui="hotel"])::after { content: ""; position: absolute; left: 24px; top: calc(50% - 10px); width: 20px; height: 20px;
+#intro :is([data-ui="flight"], [data-ui="hotel"])::after { content: ""; position: absolute; left: calc(var(--space-4) + 10px); /* the circle's centre */ top: calc(50% - 10px); width: 20px; height: 20px;
   background: var(--ocean-50); -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
 #intro [data-ui="flight"] { --icon: var(--intro-plane); }
 #intro [data-ui="hotel"] { --icon: var(--intro-building); }
-#intro [data-ui="booked"] { --icon: var(--intro-check); display: flex; align-items: center; gap: 8px; font-weight: 600; }
+#intro [data-ui="booked"] { --icon: var(--intro-check); display: flex; align-items: center; gap: var(--space-2); font-weight: 600; }
 /* the same question from two roles, side by side where there is room */
 @media (min-width: 600px) {
-  #intro [data-id="roles"] { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; align-items: start; }
+  #intro [data-id="roles"] { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: var(--space-6); align-items: start; }
   #intro [data-id="roles"] > :nth-child(1) { grid-area: 1 / 1 / 2 / -1; }
   #intro [data-id="roles"] > :nth-child(2) { grid-area: 2 / 1; }
   #intro [data-id="roles"] > :nth-child(3) { grid-area: 3 / 1; }
@@ -142,17 +148,24 @@
   #intro [data-id="roles"] > :nth-child(6) { grid-area: 4 / 1 / 5 / -1; }
 }
 @media (max-width: 599px) { #intro [data-id="travel"] { grid-template-columns: minmax(0, 1fr); } }
-/* a phone: the dots get their own row above the three buttons, and the answers stop indenting under the task */
+/* a phone: the dots get their own row above the three buttons, the answers stop indenting under the task, and the things
+   said keep the page's two margins equal (the stagger stays on the left) */
 @media (max-width: 420px) {
   #intro-dots { flex-basis: 100%; }
-  #intro [data-ui="choices"] { padding-left: 16px; }
+  #intro [data-ui="choices"] { padding-left: var(--space-4); }
+  #intro :is([data-id="promise"], [data-id="surface"]) > :nth-child(2) { margin-right: 0; }
 }
 /* a short landscape phone: less frame, more story */
 @media (max-height: 480px) {
-  #intro { gap: 8px; padding-block: 8px; }
+  #intro { gap: var(--space-2); padding-block: var(--space-2); }
   #intro [data-ui="line"] { font-size: 24px; }
   #intro [data-id="promise"] [data-ui="line"] { font-size: 32px; }
 }
+/* a tall tablet or a large screen: the story at a size that fills it (zoom, so it still lays out and scrolls; the hand-off's
+   flight keeps the same zoom, intro.js) */
+@media (min-width: 700px) and (min-height: 960px) { #intro-stage > * { zoom: 1.15; } }
+@media (min-width: 1100px) and (min-height: 760px) { #intro-stage > * { zoom: 1.25; } }
+@media (min-width: 1600px) and (min-height: 960px) { #intro-stage > * { zoom: 1.5; } }
 
 /* ---------- motion: every fragment arrives on its beat ---------- */
 #intro[data-mode="motion"] :where([data-id] > [data-ui]:not([data-ui="line"]), [data-ui="line"] > span) {
@@ -175,8 +188,9 @@
 /* the others float up and are gone before the layer fades (an exit: 70 % of a chip's entrance) */
 #intro[data-mode="motion"][data-handoff] [data-id="surface"] > [data-ui="said"] { animation: intro-float calc(var(--intro-chip) * .7) var(--ease-exit) forwards; }
 #intro [data-fly] { position: fixed; z-index: 1; margin: 0; animation: intro-fly var(--intro-fly) var(--ease) forwards; }
-/* the hand-off beat is 900 ms into the 2,200 ms chapter (intro.js): the flight and this fade end by 2,020 ms */
-#intro[data-handoff] { animation: intro-gone calc(var(--intro-chip) * .7) var(--ease-exit) var(--intro-fly) forwards; }
+/* the layer fades from 60 % of the flight, so the words dissolve into the example as they land; intro.js closes the layer
+   when this fade ends (this rule is the hand-off's only clock) */
+#intro[data-handoff] { animation: intro-gone calc(var(--intro-chip) * .7) var(--ease-exit) calc(var(--intro-fly) * .6) forwards; }
 
 /* ---------- stills: each chapter whole, cross-fading (opacity only); nothing slides, nothing loops ---------- */
 #intro[data-mode="stills"] * { transition: none; } /* not even the theme's button colour fades */
@@ -198,7 +212,8 @@
 @keyframes intro-leave { to { opacity: 0; transform: translateY(calc(-.5 * var(--intro-rise))); } }
 @keyframes intro-surface { from { opacity: 0; transform: translateY(24%); } to { opacity: 1; transform: none; } }
 @keyframes intro-float { to { opacity: 0; transform: translateY(calc(-3 * var(--intro-rise))); } }
-@keyframes intro-fly { to { transform: translate(var(--dx), var(--dy)); } }
+/* the chip dissolves over the second half of its flight: it becomes the example, its words never print over the example's */
+@keyframes intro-fly { 50% { opacity: 1; } to { opacity: 0; transform: translate(var(--dx), var(--dy)); } }
 @keyframes intro-snow { to { transform: translateY(480px); } }
 @keyframes intro-fade { from { opacity: 0; } }
 @keyframes intro-show { to { opacity: 1; } }
