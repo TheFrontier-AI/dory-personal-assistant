@@ -44,6 +44,9 @@
 #intro-dots [aria-current="step"] { width: 20px; color: var(--ocean-50); opacity: 1; }
 /* on the Surface ground a mid tone that reads on both grounds while the deep drains away (4.6:1 on sand, 4:1 on abyss) */
 #intro[data-chapter="8"] #intro-dots, #intro[data-chapter="8"] #intro-dots [aria-current] { color: var(--ocean-500); }
+/* and the keyboard's ring: the deep scope's Glow is 1.3:1 on sand, the Surface theme's own focus colour 6.3:1 (a token, so
+   the theme's forced-colours Highlight still wins) */
+#intro[data-chapter="8"] { --color-focus: var(--plankton-600); }
 
 /* ---------- the stage: every chapter in one cell, so a leaving chapter fades over the arriving one ---------- */
 /* the cell is the stage's own height, never the taller of two chapters: the arriving one does not move when the leaving
@@ -191,6 +194,7 @@
 /* the layer fades from 60 % of the flight, so the words dissolve into the example as they land; intro.js closes the layer
    when this fade ends (this rule is the hand-off's only clock) */
 #intro[data-handoff] { animation: intro-gone calc(var(--intro-chip) * .7) var(--ease-exit) calc(var(--intro-fly) * .6) forwards; }
+#intro[data-handoff="fade"] { animation-delay: 0s; } /* nothing flies: nothing to wait for */
 
 /* ---------- stills: each chapter whole, cross-fading (opacity only); nothing slides, nothing loops ---------- */
 #intro[data-mode="stills"] * { transition: none; } /* not even the theme's button colour fades */

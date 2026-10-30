@@ -58,6 +58,7 @@
   }
   const animates = () => typeof Element.prototype.animate === "function"; // no Web Animations API: straight to step 4
 
+  let played = false; // a real run ended in this tab: with storage blocked, "seen" is remembered here
   let run = null; // the open intro: { t, preview, done, mode, exact (zoomedRects), i, paused, decided, timer, due, left, after, audio (made by the first Sound press) }
   // an error ends the intro, never a stuck layer, and says what went wrong in the console
   const guard = (fn) => (...a) => { try { fn(...a); } catch (e) { console.error(e); finish(); } };
@@ -104,7 +105,10 @@
       if (c.id === "tasks") box.append(el("div", { "data-ui": "choices", style: beat(c.parts.at(-1)[2]) }, choice("accept", "Accept"),
         choice("edit", "Edit"), choice("decline", "Decline")), el("p", { "data-ui": "result", id: "intro-result" }));
       if (c.line) box.append(el("p", { "data-ui": "line", style: beat(c.lineAt) },
-        ...c.line.split(/(?<=\.) /).flatMap((s, k) => (k ? [" ", el("span", {}, s)] : [el("span", {}, s)]))));
+        ...c.line.split(". ").flatMap((s, k, all) => { // no lookbehind: Safari before 16.4 could not parse this file
+          const span = el("span", {}, k < all.length - 1 ? s + "." : s);
+          return k ? [" ", span] : [span];
+        })));
       return box;
     };
     // the story is English on a Thai page too: screen readers voice it as English (a Tab stop only while it scrolls: fit)
@@ -281,7 +285,7 @@
     clearTimeout(timer);
     removeEventListener("resize", refit);
     try { audio?.close(); } catch (e) { console.error(e); /* the layer still goes */ }
-    if (!preview) stored(SEEN_KEY, "seen");
+    if (!preview) { played = true; stored(SEEN_KEY, "seen"); }
     const layer = $("intro");
     if (layer) { if (layer.open) layer.close(); layer.remove(); }
     done();
@@ -289,7 +293,7 @@
 
   window.DoryIntro = {
     shouldPlay(opts) { // never throws: the travel step's submit handler would show its offline note
-      try { return !run && animates() && (!!opts?.preview || stored(SEEN_KEY) !== "seen"); } catch { return false; }
+      try { return !run && animates() && (!!opts?.preview || (!played && stored(SEEN_KEY) !== "seen")); } catch { return false; }
     },
     play(opts) { // never rejects: whatever happens, the layer goes and onDone runs
       return new Promise((resolve) => {

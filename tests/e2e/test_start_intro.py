@@ -187,6 +187,49 @@ def test_left_alone_it_ends_on_its_own_and_lands_on_step_4(page):
     assert seen_flag(page) == "seen"
 
 
+def test_a_returning_member_never_sees_it_from_travel_preferences(page):
+    """Spec: only a new organization reached from step 3 in this tab; the "existing" screen's way to the step is not."""
+    signup(page, me=person(orgs=True, onboarded=True))
+    page.get_by_role("button", name="Travel preferences").click()
+    page.get_by_role("button", name="Skip for now").click()
+    expect(step4_heading(page)).to_be_visible()
+    expect(page.locator("#intro")).to_have_count(0)
+
+
+def test_another_organization_from_the_existing_screen_does_not_play_it(page):
+    """Ruling 18: the person who creates a second organization is a returning member."""
+    signup(page, CREATED, me=person(orgs=True, onboarded=True))
+    page.get_by_role("button", name="Create another organization").click()
+    create_org(page)
+    page.get_by_role("button", name="Skip for now").click()
+    expect(step4_heading(page)).to_be_visible()
+    expect(page.locator("#intro")).to_have_count(0)
+
+
+def test_a_reload_back_to_an_unfinished_first_organization_still_plays_it(page):
+    """The organization was created in this tab (its only one) and the travel step never ended: still the first run."""
+    signup(
+        page,
+        me=person(orgs=True, onboarded=False),
+        init=" try { sessionStorage.setItem('dory_signup_prefs', '1'); } catch (e) {}",
+    )
+    expect(page.locator("#step3")).to_be_visible()
+    page.get_by_role("button", name="Skip for now").click()
+    expect(intro(page)).to_be_visible()
+
+
+def test_with_storage_blocked_it_still_plays_only_once_in_the_tab(page):
+    page.add_init_script(BLOCK_STORAGE_AT_STEP_4)
+    to_the_intro(page)
+    expect(intro(page)).to_be_visible()
+    control(page, "Skip").click()
+    expect(page.locator("#intro")).to_have_count(0)
+    page.locator("#back3").click()  # step 4's Back, then the travel step ends again
+    page.get_by_role("button", name="Skip for now").click()
+    expect(step4_heading(page)).to_be_visible()
+    expect(page.locator("#intro")).to_have_count(0)
+
+
 def test_escape_skips(page):
     to_the_intro(page)
     page.clock.run_for(6000)  # mid-story
@@ -442,7 +485,7 @@ def test_a_missing_intro_script_never_breaks_step_4(page, errors):
 
 
 # ------------------------------------------------------------------ the look and the motion
-@pytest.mark.parametrize("chapter", [0, 3, 7])
+@pytest.mark.parametrize("chapter", [0, 3, 7, 8])
 @pytest.mark.parametrize(
     "size",
     [(320, 900), (1280, 900), (320, 480), (568, 320)],
@@ -483,9 +526,14 @@ def test_stills_mode_has_no_movement(page, reduce, saved):
         moving = page.evaluate(NEXT_THEN_MOVING)
         assert moving, f"chapter {chapter} cross-fades in"
         assert all(set(props) <= {"opacity"} for props in moving), (chapter, moving)
-    page.clock.run_for(1000)  # chapter 8's hand-off: in stills the layer only fades away
-    expect(intro(page)).to_have_attribute("data-handoff", "fade")
-    expect(page.locator("#intro [data-fly]")).to_have_count(0)
+    # chapter 8's hand-off: in stills the layer only fades away (with the OS setting the theme shortens that fade to
+    # nothing, so the layer may be gone by the time the clock stops: the hand-off is recorded as it happens)
+    page.evaluate(
+        "window.__handoff = []; new MutationObserver((m) => m.forEach((r) => __handoff.push(r.target.dataset.handoff)))"
+        ".observe(document.getElementById('intro'), { attributeFilter: ['data-handoff'] })"
+    )
+    page.clock.run_for(1000)
+    assert page.evaluate("__handoff") == ["fade"]  # "fade": nothing flies
     assert all(set(props) <= {"opacity"} for props in page.evaluate(MOVING))
 
 
@@ -577,7 +625,12 @@ def _luminance(rgb):
     return 0.2126 * r + 0.7152 * g + 0.0722 * b
 
 
-def test_the_current_dot_reads_on_the_surface_ground(page):
+def _contrast(a, b):
+    hi, lo = sorted((_luminance(a), _luminance(b)), reverse=True)
+    return (hi + 0.05) / (lo + 0.05)
+
+
+def test_the_current_dot_and_the_focus_ring_read_on_the_surface_ground(page):
     page.goto(PREVIEW)
     next_times(page, 8)
     dot, opacity = page.locator("#intro-dots [aria-current]").evaluate(
@@ -586,8 +639,15 @@ def test_the_current_dot_reads_on_the_surface_ground(page):
     ground = page.locator("#intro").evaluate(
         "(e) => getComputedStyle(e, '::before').backgroundColor"
     )
-    hi, lo = sorted((_luminance(dot), _luminance(ground)), reverse=True)
-    assert opacity == "1" and (hi + 0.05) / (lo + 0.05) >= 3, (dot, ground)  # WCAG 1.4.11
+    assert opacity == "1" and _contrast(dot, ground) >= 3, (dot, ground)  # WCAG 1.4.11
+    # the keyboard's ring too: the deep scope's Glow would vanish on the light ground
+    page.keyboard.press("Shift+Tab")
+    page.keyboard.press("Tab")
+    ring = page.evaluate(
+        "(() => { const e = document.activeElement; return e.matches(':focus-visible')"
+        " && getComputedStyle(e).outlineColor; })()"
+    )
+    assert ring and _contrast(ring, ground) >= 3, (ring, ground)
 
 
 # Older WebKit (bugs 77998, 185034): rects inside a zoomed box come back before the zoom, divided by it
