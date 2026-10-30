@@ -10,7 +10,10 @@
 <link rel="icon" type="image/png" href="/static/dory/favicon.png">
 <link rel="apple-touch-icon" href="/static/dory/apple-touch-icon.png">
 <link rel="stylesheet" href="/static/dory/theme.css">
+<link rel="stylesheet" href="/static/dory/intro/intro.css">
 <script src="https://accounts.google.com/gsi/client?hl=en" async defer></script>
+<script src="/static/dory/intro/intro-audio.js" defer></script>
+<script src="/static/dory/intro/intro.js" defer></script>
 <style>
   /* Page-specific rules only: tokens, base, .nav/.logo/.mark, .btn, forms and notices come from theme.css. */
   body { min-height: 100vh; display: flex; flex-direction: column; }
@@ -288,6 +291,12 @@
   "start_chat": {"th": "เริ่มคุยกับดอรี่", "en": "Start chatting with Dory"},
   "dc_sum": {"th": "เพิ่มดอรี่ใน Discord ของทีมด้วย (ไม่บังคับ)", "en": "Also add Dory to your team's Discord (optional)"},
   "steps_aria": {"th": "ความคืบหน้าการสมัคร", "en": "Sign-up progress"},
+  "intro_label": {"th": "รู้จักดอรี่", "en": "Meet Dory"},
+  "intro_skip": {"th": "ข้าม", "en": "Skip"},
+  "intro_next": {"th": "ถัดไป", "en": "Next"},
+  "intro_pause": {"th": "หยุดชั่วคราว", "en": "Pause"},
+  "intro_play": {"th": "เล่นต่อ", "en": "Play"},
+  "intro_sound": {"th": "เสียง", "en": "Sound"},
   "foot_copy": {"th": "© 2026 The Frontier Company Limited", "en": "© 2026 The Frontier Company Limited"},
   "foot_home": {"th": "หน้าแรก", "en": "Home"}
 }
@@ -321,6 +330,7 @@ function applyStatic() {
   if (!$("step1").hidden) renderGoogleButton();
   if (!$("step3").hidden) drawPrefs();
   if (!$("step4").hidden) drawTries();
+  if (window.DoryIntro) DoryIntro.relabel(); // the intro's controls follow the language; absent until its deferred script has run
 }
 function setLang(l, { remember = true } = {}) {
   if (!SUPPORTED.includes(l)) return; lang = l; readLang("set", l); applyStatic();
@@ -348,6 +358,10 @@ const CLIENT_ID = "__HUB_GOOGLE_CLIENT_ID__";
 const DISCORD_LOGIN = "__DISCORD_LOGIN__" === "1";
 const API = "/api/center";
 let token = "", gsiReady = false, me = null;
+// The first-time intro is for a person's FIRST organization, reached through the travel step in this tab: set when
+// it is created (or a reload returns to its unfinished step), cleared by the "existing" screen's Travel preferences.
+// A tab variable, not storage: with storage blocked the intro still plays.
+let firstOrg = false;
 // Set when the organization is created, cleared when the travel step ends: a reload or a Discord round trip in the
 // SAME tab then returns to that step instead of the "you already have an organization" screen.
 const RESUME_KEY = "dory_signup_prefs";
@@ -472,10 +486,17 @@ async function signedIn(stored = false) {
   $("who").textContent = $("who").title = me.email; $("who").hidden = false;
   // no organization yet -> name it; one created in this tab but the travel step not finished -> back to that step;
   // everyone else is a returning member (a person who skipped or saved is never offered the step again)
-  show(!me.orgs.length ? "step2" : !me.onboarded && resumeFlag("get") ? "step3" : "existing");
+  const step = !me.orgs.length ? "step2" : !me.onboarded && resumeFlag("get") ? "step3" : "existing";
+  firstOrg = step === "step3" && me.orgs.length === 1; // its only organization: a second one is a returning member's
+  show(step);
+}
+// step 4 is drawn first (show("step4") at both ends of the travel step); the intro then plays over it and gives the
+// focus back to its heading
+function playIntro() {
+  if (firstOrg && window.DoryIntro && DoryIntro.shouldPlay({ preview: false })) DoryIntro.play({ t, preview: false, onDone: () => $("step4").querySelector("h1, h2").focus() });
 }
 $("another").addEventListener("click", () => show("step2"));
-$("to-prefs").addEventListener("click", () => { note($("created-note"), null); show("step3"); });
+$("to-prefs").addEventListener("click", () => { firstOrg = false; note($("created-note"), null); show("step3"); });
 $("back3").addEventListener("click", () => show("step3"));
 // Save needs the answer (a failed save must not look saved); Skip never waits (keepalive: the request outlives a click on
 // "Start chatting" straight after it): the step is optional. A lost stamp
@@ -488,7 +509,7 @@ $("pref-form").addEventListener("submit", async (ev) => {
   const body = { currency: prefs.ccy }; if (!$("pref-airport").disabled) body.home_airport = prefs.airport;
   try {
     me = await api("/me/travel", { method: "PUT", body: JSON.stringify(body) });
-    resumeFlag("clear"); show("step4");
+    resumeFlag("clear"); show("step4"); playIntro();
   } catch (e) {
     note($("pref-error"), () => !e.status ? t("o_offline") : e.status === 422 ? t("pref_check") : e.status === 429 ? rateText(e) : t("pref_failed", { status: e.status }));
   } finally { pending(btn, null); }
@@ -496,7 +517,7 @@ $("pref-form").addEventListener("submit", async (ev) => {
 $("pref-skip").addEventListener("click", () => {
   resumeFlag("clear");
   api("/me/travel", { method: "PUT", keepalive: true, body: JSON.stringify({ skip: true }) }).then((m) => { me = m; }, () => {});
-  show("step4");
+  show("step4"); playIntro();
 });
 $("create").addEventListener("click", async () => {
   const btn = $("create"), field = $("org-name"), name = field.value.trim();
@@ -509,6 +530,7 @@ $("create").addEventListener("click", async () => {
     // A retry after a lost answer is safe: the server returns the same organization for a repeat within 10 minutes.
     const org = await api("/orgs", { method: "POST", body: JSON.stringify({ name }) });
     note($("created-note"), () => t("created", { name: org.name || name, plan: t("pl_" + (org.license && org.license.plan || "trial")) }));
+    firstOrg = !(me.orgs || []).length; // Ruling 18: "Create another organization" is a returning member's
     resumeFlag("set"); me.orgs = [...(me.orgs || []), org];
     show("step3");
   } catch (e) {
@@ -567,6 +589,11 @@ $("discord-signup").addEventListener("click", () => {
 });
 // Back from Discord through the back-forward cache: the button is ready again.
 addEventListener("pageshow", (e) => { if (e.persisted) pending($("discord-signup"), null); });
+// /start?intro=1 replays the intro for review: no account is touched and nothing is saved. The deferred intro scripts run
+// after this one but before DOMContentLoaded, so the call waits for that event.
+if (new URLSearchParams(location.search).get("intro") === "1") addEventListener("DOMContentLoaded", () => {
+  if (window.DoryIntro && DoryIntro.shouldPlay({ preview: true })) DoryIntro.play({ t, preview: true, onDone: () => {} });
+});
 if (session("get")) { token = session("get"); signedIn(!fromDiscord); } // already signed in on another page: skip the Google step
 </script>
 </body>

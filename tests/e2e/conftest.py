@@ -50,7 +50,12 @@ def block_external(page) -> None:
 
 
 @pytest.fixture(autouse=True)
-def english_ui(page) -> None:
+def english_ui(page, request) -> None:
     """The UI language is deterministic: the page's saved choice (one key for every Dory page) is
-    English before any navigation."""
-    page.add_init_script("try { localStorage.setItem('dory-language', 'en'); } catch (e) {}")
+    English before any navigation. The /start intro counts as seen, except in tests marked `intro`:
+    their browser starts empty, so it plays once and, written as seen, stays so across a reload
+    (an init script that sets or clears the flag would run again on every load)."""
+    keys = "localStorage.setItem('dory-language', 'en');"
+    if not request.node.get_closest_marker("intro"):
+        keys += " localStorage.setItem('dory-intro', 'seen');"
+    page.add_init_script("try { " + keys + " } catch (e) {}")
