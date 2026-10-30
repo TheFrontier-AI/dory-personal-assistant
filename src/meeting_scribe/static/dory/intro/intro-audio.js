@@ -81,6 +81,7 @@
       pop(at) {
         const o = ctx.createOscillator(), g = envelope(at, 0.5, 0.006, 0.12), f = 480 + 70 * (pops++ % 3);
         o.frequency.value = f;
+        o.frequency.setValueAtTime(f, at); // the rise starts with the pop, not when it was scheduled
         o.frequency.exponentialRampToValueAtTime(f * 1.8, at + 0.06);
         o.connect(g).connect(bus);
         voice(o, at, at + 0.15);
