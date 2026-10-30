@@ -532,3 +532,240 @@ def test_example_notice_is_readable(page):
             "(e) => [parseFloat(getComputedStyle(e).fontSize), getComputedStyle(e).textTransform]"
         )
         assert size >= 16 and case == "none", (chapter, size, case)
+
+
+# ------------------------------------------------------------------ the sound
+# The synth is Web Audio, which cannot be heard here, so the page's AudioContext is wrapped: it counts constructions
+# and suspend / resume calls, and records every sound source (what it plays at, when it starts on the audio clock,
+# how often it was told to stop) and every gain target (what the music is set to).
+AUDIO_SPY = """(() => {
+  const Real = window.AudioContext || window.webkitAudioContext;
+  const spy = window.spy = { contexts: 0, suspend: 0, resume: 0, sources: [], targets: [] };
+  const watch = (ctx, node, kind) => {
+    const rec = { kind, freq: node.frequency ? node.frequency.value : 0, delay: null, stops: 0, last: null };
+    spy.sources.push(rec);
+    const start = node.start.bind(node), stop = node.stop.bind(node);
+    node.start = (at = 0) => { rec.freq = node.frequency ? node.frequency.value : 0; rec.delay = at - ctx.currentTime; return start(at); };
+    node.stop = (at) => { rec.stops += 1; rec.last = at - ctx.currentTime; return stop(at); };
+    return node;
+  };
+  window.AudioContext = class extends Real {
+    constructor(...a) { super(...a); spy.contexts += 1; window.audioContext = this; }
+    suspend() { spy.suspend += 1; return super.suspend(); }
+    resume() { spy.resume += 1; return super.resume(); }
+    createOscillator() { return watch(this, super.createOscillator(), 'tone'); }
+    createBufferSource() { return watch(this, super.createBufferSource(), 'noise'); }
+    createGain() {
+      const g = super.createGain(), set = g.gain.setTargetAtTime.bind(g.gain);
+      g.gain.setTargetAtTime = (v, t, c) => { spy.targets.push(v); return set(v, t, c); };
+      return g;
+    }
+  };
+  delete window.webkitAudioContext;
+})();"""
+# the tab goes hidden (true) or comes back (false), as the browser tells the page
+HIDE_TAB = """(h) => {
+  Object.defineProperty(document, 'hidden', { configurable: true, get: () => h });
+  document.dispatchEvent(new Event('visibilitychange'));
+}"""
+HZ = {"D5": 587.33, "F#5": 739.99, "A5": 880.0, "D6": 1174.66, "A6": 1760.0}
+
+
+@pytest.fixture
+def spy(page):
+    page.add_init_script(AUDIO_SPY)
+    return lambda: page.evaluate("JSON.parse(JSON.stringify(window.spy))")
+
+
+def tones(spy_now, *notes):
+    """How many sound sources play at these notes (half a hertz either way)."""
+    return sum(
+        1
+        for s in spy_now["sources"]
+        if s["kind"] == "tone" and any(abs(s["freq"] - HZ[n]) < 0.5 for n in notes)
+    )
+
+
+def sound_on(page):
+    control(page, "Sound").click()
+    expect(control(page, "Sound")).to_have_attribute("aria-pressed", "true")
+
+
+def test_sound_starts_off_and_no_audio_context_exists(page, spy):
+    page.goto(PREVIEW)
+    expect(control(page, "Sound")).to_have_attribute("aria-pressed", "false")
+    page.clock.run_for(10_000)  # past the ping, the pops and the tick
+    now = spy()
+    assert now["contexts"] == 0 and now["sources"] == [], now
+
+
+def test_sound_toggle_creates_one_context_and_mutes(page, spy, errors, logged):
+    page.goto(PREVIEW)
+    sound_on(page)
+    # the name stays "Sound": the state is aria-pressed (ruling 3)
+    page.wait_for_function("window.spy.sources.length >= 2")
+    now = spy()
+    assert now["contexts"] == 1
+    pad = [s for s in now["sources"] if s["stops"] == 0]
+    assert len(pad) == 2, now  # a two-sine pad, running until it is muted
+    control(page, "Sound").click()
+    expect(control(page, "Sound")).to_have_attribute("aria-pressed", "false")
+    now = spy()
+    assert now["contexts"] == 1 and all(s["stops"] >= 1 for s in now["sources"]), now
+    sound_on(page)  # and on again: the same context, a new pad
+    now = spy()
+    assert now["contexts"] == 1
+    assert len([s for s in now["sources"] if s["stops"] == 0]) == 2, now
+    assert errors == [] and logged == []
+
+
+def test_sound_suspends_when_the_tab_is_hidden(page, spy):
+    page.goto(PREVIEW)
+    sound_on(page)
+    before = spy()
+    page.evaluate(HIDE_TAB, True)
+    after = spy()
+    assert after["suspend"] == before["suspend"] + 1, (before, after)
+    page.evaluate(HIDE_TAB, False)
+    assert spy()["resume"] == after["resume"] + 1
+
+
+def context_is(page, state):
+    page.wait_for_function(f"window.audioContext && window.audioContext.state === '{state}'")
+
+
+def test_sound_follows_pause_and_a_hidden_tab_does_not_override_it(page, spy):
+    page.goto(PREVIEW)
+    sound_on(page)
+    context_is(page, "running")  # the real context, started from the click
+    base = spy()
+    page.locator("#intro-pause").click()
+    context_is(page, "suspended")
+    held = spy()
+    assert held["suspend"] == base["suspend"] + 1
+    page.evaluate(HIDE_TAB, True)
+    page.evaluate(HIDE_TAB, False)  # the tab is back, but the person paused: still held
+    assert spy()["resume"] == held["resume"]
+    context_is(page, "suspended")
+    page.locator("#intro-pause").click()
+    assert spy()["resume"] == held["resume"] + 1
+    context_is(page, "running")
+
+
+def test_sound_switched_on_while_paused_starts_held(page, spy):
+    page.goto(PREVIEW)
+    page.locator("#intro-pause").click()
+    sound_on(page)
+    context_is(page, "suspended")  # the story is paused: so is the sound
+    page.locator("#intro-pause").click()
+    context_is(page, "running")
+
+
+def test_skip_stops_every_voice_at_once(page, spy):
+    page.goto(PREVIEW)
+    sound_on(page)
+    next_times(page, 2)  # the ping is queued
+    control(page, "Skip").click()
+    expect(page.locator("#intro")).to_have_count(0)
+    now = spy()
+    assert now["sources"] and all(s["stops"] >= 1 for s in now["sources"]), now
+    page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
+    assert spy()["suspend"] == now["suspend"]  # nothing listens any more
+
+
+def test_cues_fire_only_while_sound_is_on_and_only_from_then_on(page, spy):
+    page.goto(PREVIEW)
+    next_times(page, 2)  # the answer chapter: its ping and tick pass with the sound off
+    page.clock.run_for(1000)
+    assert spy()["sources"] == []
+    sound_on(page)  # on mid-chapter: the pad and future cues only
+    now = spy()
+    assert len(now["sources"]) == 2 and tones(now, "D6", "A6") == 0, now
+    next_times(page, 3)  # receipts, voice: "I'm listening…" lights Dory
+    now = spy()
+    assert tones(now, "D6") == 1 and tones(now, "A6") == 1, now
+
+
+def test_the_ping_and_the_tick_land_on_the_story_beats(page, spy):
+    page.goto(PREVIEW)
+    sound_on(page)
+    next_times(page, 2)
+    now = spy()
+    ping = sorted(s["delay"] for s in now["sources"] if abs(s["freq"] - HZ["D6"]) < 0.5)
+    assert len(ping) == 1 and 0.8 <= ping[0] <= 0.9, now  # Dory's light, 0.8 s into the chapter
+    low = [s["delay"] for s in now["sources"] if abs(s["freq"] - HZ["A6"]) < 0.5]
+    assert len(low) == 1 and low[0] > ping[0], now  # the second note of the two
+    noise = [s["delay"] for s in now["sources"] if s["kind"] == "noise"]
+    assert len(noise) == 1 and 2.0 <= noise[0] <= 2.1, now  # the label swaps to "found it"
+
+
+def test_a_skipped_chapters_cues_do_not_sound_in_the_next(page, spy):
+    page.goto(PREVIEW)
+    sound_on(page)
+    next_times(page, 2)
+    tick = [s for s in spy()["sources"] if s["kind"] == "noise"]
+    assert len(tick) == 1 and tick[0]["last"] > 2, tick  # due 2 s into the answer chapter
+    next_times(page, 1)  # Next leaves that chapter first
+    tick = [s for s in spy()["sources"] if s["kind"] == "noise"]
+    assert len(tick) == 1 and tick[0]["last"] < 0.05, (
+        tick
+    )  # so its tick is called off, not left for the next one
+
+
+def test_the_music_dips_for_the_decision_and_the_chime_follows_accept(page, spy):
+    page.goto(PREVIEW)
+    sound_on(page)
+    pad_level = spy()["targets"][0]
+    next_times(page, 3)  # the card waits
+    assert spy()["targets"][-1] == pytest.approx(pad_level * 10 ** (-9 / 20))  # nine decibels down
+    assert tones(spy(), "D5", "F#5", "A5") == 0  # no chime before the answer
+    page.clock.run_for(4100)  # Dory presses Accept herself
+    now = spy()
+    assert tones(now, "D5") == 1 and tones(now, "F#5") == 1 and tones(now, "A5") == 1, now
+    assert now["targets"][-1] == pytest.approx(pad_level)  # and the music comes back
+
+
+def test_declining_brings_the_music_back_with_no_chime(page, spy):
+    page.goto(PREVIEW)
+    sound_on(page)
+    pad_level = spy()["targets"][0]
+    next_times(page, 3)
+    control(page, "Decline").click()
+    assert tones(spy(), "D5", "F#5", "A5") == 0
+    page.clock.run_for(2300)  # the next chapter
+    expect(intro(page)).to_have_attribute("data-chapter", "4")
+    assert spy()["targets"][-1] == pytest.approx(pad_level)
+
+
+def test_turning_sound_on_during_the_decision_starts_the_pad_dipped(page, spy):
+    page.goto(PREVIEW)
+    next_times(page, 3)
+    sound_on(page)
+    pad_level = spy()["targets"][0]
+    assert spy()["targets"][-1] == pytest.approx(pad_level * 10 ** (-9 / 20))
+
+
+def test_the_swell_sounds_at_the_surface(page, spy, errors, logged):
+    page.goto(PREVIEW)
+    sound_on(page)
+    next_times(page, 8)
+    now = spy()
+    swell = [s for s in now["sources"] if s["kind"] == "tone" and 250 < s["freq"] < 750]
+    assert len(swell) >= 3, now  # a chord, not a note
+    page.clock.run_for(2300)
+    expect(page.locator("#intro")).to_have_count(
+        0
+    )  # and it ends with the story, nothing left playing
+    assert all(s["stops"] >= 1 for s in spy()["sources"])  # the pad was stopped with it
+    assert errors == [] and logged == []
+
+
+def test_without_web_audio_the_intro_plays_silently(page, errors, logged):
+    page.add_init_script("delete window.AudioContext; delete window.webkitAudioContext;")
+    page.goto(PREVIEW)
+    expect(intro(page)).to_be_visible()
+    expect(page.locator("#intro-sound")).to_be_hidden()  # nothing to switch on
+    expect(control(page, "Skip")).to_be_visible()
+    page.clock.run_for(STORY_MS)
+    expect(page.locator("#intro")).to_have_count(0)  # it still plays to the end
+    assert errors == [] and logged == []

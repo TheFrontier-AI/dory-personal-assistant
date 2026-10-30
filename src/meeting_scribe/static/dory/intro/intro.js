@@ -15,11 +15,11 @@
   // after the decision); line: its line on screen, rising at lineAt ms; live: the example in words, read by the polite
   // live region before the line; parts: the example's fragments [data-ui, text, enters at ms] (no time: its place in
   // the list times the chip stagger; no text: a drawing, hidden from screen readers); handoff: when the last chip leaves
-  // for step 4's first example.
+  // for step 4's first example; cues: [ms, sound] pairs, the beat each sound lands on (intro-audio.js; only with the sound on).
   const CHAPTERS = [
     { id: "brand", ms: 1400, line: "", live: "", parts: [["mark", ""]] },
-    { id: "promise", ms: 3200, line: "Ask once. Dory remembers.", lineAt: 600, live: "", parts: SAID },
-    { id: "answers", ms: 5000, line: "She answers with the source.", lineAt: 3100,
+    { id: "promise", ms: 3200, line: "Ask once. Dory remembers.", lineAt: 600, live: "", parts: SAID, cues: [[0, "pop"], [70, "pop"], [140, "pop"]] },
+    { id: "answers", ms: 5000, line: "She answers with the source.", lineAt: 3100, cues: [[800, "ping"], [2000, "tick"]],
       live: "Example with fictional names. What price did we agree with ABC? 42,000 THB for the Q4 package. Ploy confirmed it in #sales.",
       parts: [NOTE, ["ask", "What price did we agree with ABC?", 200], ["status", "Dory is working · searching your chat", 800], ["found", "found it", 2000],
         ["answer", "42,000 THB for the Q4 package. Ploy confirmed it in #sales.", 2400], ["source", "Ploy · #sales", 2700]] },
@@ -27,7 +27,7 @@
       parts: [NOTE, ["task", "Send the ABC deck · Ploy · due Fri", 200]] },
     { id: "receipts", ms: 4400, line: "Snap a receipt. She files it.", lineAt: 2100, live: "Filed: Taxi · 240 THB · Travel. Travel this month: 3,180 THB.",
       parts: [NOTE, ["receipt", "", 200], ["filed", "Filed: Taxi · 240 THB · Travel", 1100], ["total", "Travel this month: 3,180 THB", 1600]] },
-    { id: "voice", ms: 4400, line: "Or ask out loud.", lineAt: 2200,
+    { id: "voice", ms: 4400, line: "Or ask out loud.", lineAt: 2200, cues: [[200, "ping"]],
       live: "Remind me to send the ABC deck on Friday at 4 pm. Done. I'll remind you on Friday at 4 pm.",
       parts: [NOTE, ["call", "I'm listening…", 200], ["ask", "Remind me to send the ABC deck on Friday at 4 pm.", 900], ["answer", "Done. I'll remind you on Friday at 4 pm.", 1600]] },
     { id: "travel", ms: 5000, line: "Plan a trip in one sentence.", lineAt: 2700,
@@ -38,7 +38,7 @@
       live: "Nok: How much did we spend this month? 48,200 THB across 31 receipts. Ploy: How much did we spend this month? Your receipts this month: 3,180 THB. Company totals are for managers.",
       parts: [NOTE, ["ask", "Nok: How much did we spend this month?", 200], ["answer", "48,200 THB across 31 receipts.", 800],
         ["ask", "Ploy: How much did we spend this month?", 1300], ["answer", "Your receipts this month: 3,180 THB. Company totals are for managers.", 1900]] },
-    { id: "surface", ms: 2200, handoff: 900, line: "", live: "", parts: SAID },
+    { id: "surface", ms: 2200, handoff: 900, line: "", live: "", parts: SAID, cues: [[0, "swell"]] },
   ];
   const DECIDE = CHAPTERS.findIndex((c) => c.id === "tasks");
   const RESULT = { accept: "Accepted", edit: "You decide, every time.", decline: "You decide, every time." };
@@ -56,9 +56,10 @@
   }
   const animates = () => typeof Element.prototype.animate === "function"; // no Web Animations API: straight to step 4
 
-  let run = null; // the open intro: { t, preview, done, mode, i, paused, decided, timer, due, left, after }
+  let run = null; // the open intro: { t, preview, done, mode, i, paused, decided, timer, due, left, after, audio (made by the first Sound press) }
   // an error ends the intro, never a stuck layer, and says what went wrong in the console
-  const guard = (fn) => (...a) => { try { fn(...a); } catch (e) { console.error(e); finish(); } };
+  const fail = (e) => { console.error(e); finish(); };
+  const guard = (fn) => (...a) => { try { fn(...a); } catch (e) { fail(e); } };
   const beat = (at, k = 0) => `--k:${k}` + (at === undefined ? "" : `;--at:${at}ms`); // intro.css starts each fragment on it
 
   // One example fragment. Dory's light (theme.css .lantern) sits beside the working label and the call; the working
@@ -102,7 +103,8 @@
       el("p", { id: "intro-live", class: "sr", "aria-live": "polite", lang: "en" }),
       // the chapter dots are a numbered list, so "current step" reaches screen readers in either page language
       el("div", { class: "intro-bar" }, el("ol", { id: "intro-dots" }, ...CHAPTERS.map((_, k) => el("li", {}, el("span", { class: "sr" }, String(k + 1))))),
-        button("intro-sound", KEYS.sound, { "aria-pressed": "false" }), // every run starts silent
+        // every run starts silent; with no Web Audio there is nothing to switch on, and the story plays without sound
+        button("intro-sound", KEYS.sound, { "aria-pressed": "false", ...(window.DoryIntroAudio?.supported ? {} : { hidden: "" }) }),
         button("intro-pause", KEYS.pause), button("intro-next", KEYS.next)));
     // a chapter that leaves stays on screen until its fade ends (intro.css), then hides
     stage.addEventListener("animationend", guard((e) => {
@@ -154,6 +156,11 @@
     run.i = n;
     $("intro").dataset.chapter = n;
     $("intro-live").textContent = [c.live, c.line].filter(Boolean).join(" ");
+    if (run.audio) { // a chapter's sounds are scheduled when it starts; the last chapter's unplayed ones go
+      run.audio.clear();
+      run.audio.cue(n === DECIDE ? "dip" : "lift");
+      for (const [ms, sound] of c.cues || []) run.audio.cue(sound, ms / 1000);
+    }
     if (n === DECIDE) wait(DECISION_WAIT_MS, () => decide("accept"));
     else if (c.handoff) wait(c.handoff, () => { handoff($("tries")?.querySelector("a")); wait(c.ms - c.handoff, () => go(n + 1)); });
     else wait(c.ms, () => go(n + 1));
@@ -184,6 +191,7 @@
   function decide(kind) {
     if (run.decided || run.i !== DECIDE) return;
     run.decided = true;
+    if (kind === "accept") run.audio?.cue("chime");
     $("intro").dataset.decision = kind; // intro.css presses the chosen button (140 ms) as the result shows, never before it
     for (const b of $("intro").querySelectorAll("[data-decide]")) b.setAttribute("aria-disabled", "true");
     $("intro-result").textContent = $("intro-live").textContent = RESULT[kind];
@@ -196,6 +204,7 @@
     label();
     if (run.paused) { clearTimeout(run.timer); run.left = Math.max(0, run.due - Date.now()); }
     else wait(run.left, run.after);
+    run.audio?.[run.paused ? "suspend" : "resume"](); // the sound holds too
     // what moves holds too (only what is running: play() would rewind a finished one), except a chapter on its way out;
     // anything that starts while paused still plays, so Next brings its chapter in whole
     for (const a of $("intro").getAnimations({ subtree: true })) {
@@ -204,15 +213,24 @@
     }
   }
 
+  // The first press makes the audio (inside the click, as browsers require); the context stays for the rest of the run.
   function toggleSound(b) {
-    b.setAttribute("aria-pressed", String(b.getAttribute("aria-pressed") !== "true"));
+    const on = b.getAttribute("aria-pressed") !== "true";
+    b.setAttribute("aria-pressed", String(on));
+    if (!run.audio) { // a pause that began before the first press holds this sound too
+      run.audio = window.DoryIntroAudio.create();
+      if (run.paused) run.audio.suspend();
+    }
+    run.audio.setOn(on).catch(fail);
+    if (on && run.i === DECIDE && !run.decided) run.audio.cue("dip"); // turned on while the card waits: the music starts low
   }
 
   function finish() {
     if (!run) return;
-    const { done, preview, timer } = run;
+    const { done, preview, timer, audio } = run;
     run = null;
     clearTimeout(timer);
+    try { audio?.close(); } catch (e) { console.error(e); /* the layer still goes */ }
     if (!preview) stored(SEEN_KEY, "seen");
     const layer = $("intro");
     if (layer) { if (layer.open) layer.close(); layer.remove(); }
