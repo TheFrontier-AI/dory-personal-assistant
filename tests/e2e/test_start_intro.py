@@ -9,20 +9,44 @@ holds the page's clock and moves it by hand."""
 import datetime
 
 import pytest
+from axe_playwright_python.sync_playwright import Axe
 from playwright.sync_api import expect
 
-from .test_start_signup import CREATED, create_org, person, signup
+from .test_start_signup import CREATED, WCAG, create_org, person, signup
 
 pytestmark = [pytest.mark.e2e, pytest.mark.intro]
 
 T0 = datetime.datetime(2026, 10, 30, 9, 0, tzinfo=datetime.UTC)
 PREVIEW = "/start?intro=1"
 STORY_MS = 40_000  # every chapter with the full decision wait is about 36 s
-# the intro's own animations (the theme and the page run their own, reduced ones)
-INTRO_ANIMATIONS = (
-    "document.getAnimations().filter((a) => a.effect && a.effect.target"
-    " && a.effect.target.closest('#intro')).length"
+# The intro's own animations (the theme and the page run their own, reduced ones). They run on the browser's real
+# clock, not the page's held one: a test that needs them finished waits for them (settle).
+OWN = "a.effect && a.effect.target && a.effect.target.closest('#intro')"
+# what each running animation inside the intro changes: a transition by its property, an animation by its keyframes
+MOVING = f"""() => document.getAnimations().filter((a) => {OWN}).map((a) => a.transitionProperty
+  ? [a.transitionProperty]
+  : a.effect.getKeyframes().flatMap((k) => Object.keys(k).filter((p) => !['offset', 'computedOffset', 'easing',
+    'composite'].includes(p))))"""
+SETTLED = f"""() => document.getAnimations().every((a) => !({OWN}) || a.playState !== 'running'
+  || a.effect.getTiming().iterations === Infinity)"""
+# Next pressed in the page itself, so the cross-fade it starts is measured before the browser's clock moves on
+NEXT_THEN_MOVING = (
+    f"() => {{ document.getElementById('intro-next').click(); return ({MOVING})(); }}"
 )
+# every chapter's line on screen, and what the live region reads (chapter 8 has neither: it hands over to step 4)
+COPY = {
+    1: ("Ask once. Dory remembers.", "Ask once. Dory remembers."),
+    2: ("She answers with the source.", "Ploy confirmed it in #sales."),
+    3: ("Say it once, and it becomes a task with an owner.", "Send the ABC deck · Ploy · due Fri."),
+    4: ("Snap a receipt. She files it.", "Travel this month: 3,180 THB."),
+    5: ("Or ask out loud.", "Done. I'll remind you on Friday at 4 pm."),
+    6: (
+        "Plan a trip in one sentence.",
+        "Fictional property · Sample rating and reviews. Booked in the sandbox.",
+    ),
+    7: ("She only shares what your role allows.", "Company totals are for managers."),
+    8: ("Who's going to Singapore next week?", ""),
+}
 # Sign-in keeps its session in storage, so storage is blocked from the moment step 4 is drawn: every read and write
 # the intro makes then throws, as in a browser that blocks site data.
 BLOCK_STORAGE_AT_STEP_4 = """(() => {
@@ -48,6 +72,24 @@ def errors(page):
     seen = []
     page.on("pageerror", lambda e: seen.append(str(e)))
     return seen
+
+
+@pytest.fixture
+def logged(page):
+    """Errors the intro caught and logged: it ends itself on one, so a test would not notice it otherwise."""
+    seen = []
+    page.on(
+        "console",
+        lambda m: (
+            m.type == "error" and "/intro/" in m.location.get("url", "") and seen.append(m.text)
+        ),
+    )
+    return seen
+
+
+def settle(page):
+    """Waits until every one-off animation inside the intro has played (the snow and Dory's light loop on)."""
+    page.wait_for_function(SETTLED)
 
 
 def intro(page, name="Meet Dory"):
@@ -152,6 +194,9 @@ def test_next_steps_chapters_and_dots_follow(page):
     dots = page.locator("#intro-dots > li")
     expect(dots).to_have_count(9)
     expect(dots.first).to_have_attribute("aria-current", "step")
+    # the dots are a list assistive technology reaches, numbered, so "current step" means something
+    expect(intro(page).get_by_role("list").get_by_role("listitem")).to_have_count(9)
+    expect(dots.nth(4)).to_have_text("5")
     next_times(page, 2)
     expect(intro(page)).to_have_attribute("data-chapter", "2")
     expect(dots.nth(2)).to_have_attribute("aria-current", "step")
@@ -163,6 +208,40 @@ def test_next_steps_chapters_and_dots_follow(page):
     expect(shown.get_by_text("What price did we agree with ABC?")).to_be_visible()
     expect(shown.get_by_text("She answers with the source.")).to_be_visible()
     expect(live(page)).to_contain_text("42,000 THB for the Q4 package.")
+
+
+@pytest.mark.parametrize("chapter", sorted(COPY))
+def test_every_chapter_shows_its_line_and_reads_its_example(page, chapter):
+    line, said = COPY[chapter]
+    page.goto(PREVIEW)
+    next_times(page, chapter)
+    expect(intro(page)).to_have_attribute("data-chapter", str(chapter))
+    expect(
+        stage(page).locator(f":scope > :nth-child({chapter + 1})").get_by_text(line)
+    ).to_be_visible()
+    if said:
+        expect(live(page)).to_contain_text(said)
+    else:
+        expect(live(page)).to_have_text("")
+
+
+def test_pause_holds_what_moves_and_next_still_brings_the_next_chapter(page):
+    page.goto(PREVIEW)
+    next_times(page, 2)  # the answer chapter builds itself over about four seconds
+    expect(stage(page).locator(":scope > :not([hidden])")).to_have_count(
+        1
+    )  # the chapter before has faded out
+    page.locator("#intro-pause").click()
+    held = f"document.getAnimations().filter((a) => {OWN}).map((a) => a.playState)"
+    states = page.evaluate(held)
+    # the marine snow, Dory's light and the beats all hold
+    assert states and "running" not in states, states
+    control(page, "Next").click()  # the next chapter still comes in while the story waits
+    expect(intro(page)).to_have_attribute("data-chapter", "3")
+    settle(page)
+    expect(page.locator("#intro-accept")).to_be_visible()
+    page.locator("#intro-pause").click()
+    assert "running" in page.evaluate(held)  # and Play lets everything move again
 
 
 def test_pause_holds_the_story_and_play_goes_on(page):
@@ -231,7 +310,8 @@ def test_stills_keep_the_timeline_and_close_at_the_end(page, reduce, saved):
     expect(stage(page).get_by_text("Accepted", exact=True)).to_have_count(0)
     page.clock.run_for(200)  # it waits at most four seconds here too
     expect(stage(page).get_by_text("Accepted", exact=True)).to_be_visible()
-    assert page.evaluate(INTRO_ANIMATIONS) == 0  # nothing moves
+    # nothing moves: whatever still animates only fades (Ruling 8: stills cross-fade, opacity only)
+    assert all(set(props) <= {"opacity"} for props in page.evaluate(MOVING))
     page.clock.run_for(STORY_MS)
     expect(page.locator("#intro")).to_have_count(0)  # it closes by itself
     expect(step4_heading(page)).to_be_focused()  # and hands over to step 4
@@ -322,7 +402,7 @@ def test_without_web_animations_it_goes_straight_to_step_4(page, errors):
     assert errors == []
 
 
-def test_the_api_never_throws_or_rejects(page, errors):
+def test_the_api_never_throws_or_rejects(page, errors, logged):
     """start.html calls these inside its own handlers: a throw there would show the travel step's offline note."""
     page.goto("/start")
     got = page.evaluate(
@@ -335,6 +415,7 @@ def test_the_api_never_throws_or_rejects(page, errors):
     )
     assert got == [True, True, None, 1, False]
     assert errors == []
+    assert len(logged) == 1  # but what went wrong is in the console, not swallowed
 
 
 def test_a_missing_intro_script_never_breaks_step_4(page, errors):
@@ -346,3 +427,98 @@ def test_a_missing_intro_script_never_breaks_step_4(page, errors):
     page.get_by_role("button", name="ไทย").click()
     expect(page.locator("#step4 h2")).to_have_text("พร้อมแล้ว")
     assert errors == []
+
+
+# ------------------------------------------------------------------ the look and the motion
+@pytest.mark.parametrize("chapter", [0, 3, 7])
+@pytest.mark.parametrize("width", [320, 1280])
+def test_axe_finds_no_wcag_aa_violations_in_the_intro(page, width, chapter):
+    page.set_viewport_size({"width": width, "height": 900})
+    page.goto(PREVIEW)
+    next_times(page, chapter)
+    expect(intro(page)).to_have_attribute("data-chapter", str(chapter))
+    settle(page)  # every fragment in, none caught half faded
+    control(page, "Pause").click()  # the story holds still for the scan...
+    page.clock.resume()  # ...while axe-core's own timers run (on the held clock the scan would never end)
+    res = Axe().run(page, options=WCAG)
+    assert res.violations_count == 0, res.generate_report()
+
+
+def test_stills_mode_has_no_movement(page):
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(PREVIEW)
+    expect(intro(page)).to_have_attribute("data-mode", "stills")
+    for chapter in range(1, 9):
+        moving = page.evaluate(NEXT_THEN_MOVING)
+        assert moving, f"chapter {chapter} cross-fades in"
+        assert all(set(props) <= {"opacity"} for props in moving), (chapter, moving)
+    page.clock.run_for(1000)  # chapter 8's hand-off: in stills the layer only fades away
+    expect(intro(page)).to_have_attribute("data-handoff", "fade")
+    expect(page.locator("#intro [data-fly]")).to_have_count(0)
+    assert all(set(props) <= {"opacity"} for props in page.evaluate(MOVING))
+
+
+def test_small_landscape_fits_and_closes(page, logged):
+    page.set_viewport_size({"width": 568, "height": 320})
+    to_the_intro(page)
+    for chapter in range(9):
+        if chapter:
+            control(page, "Next").click()
+        expect(intro(page)).to_have_attribute("data-chapter", str(chapter))
+        sideways = page.evaluate(
+            "[document.documentElement.scrollWidth, ...['intro-stage', 'intro'].map((id) => {"
+            " const e = document.getElementById(id); return e.scrollWidth - e.clientWidth; })]"
+        )
+        assert sideways[0] <= 568 and sideways[1:] == [0, 0], (chapter, sideways)
+        expect(control(page, "Skip")).to_be_in_viewport()
+    page.clock.run_for(
+        1000
+    )  # step 4's first example is below the fold: no chip flies, the layer fades
+    expect(intro(page)).to_have_attribute("data-handoff", "fade")
+    page.clock.run_for(2000)
+    expect(page.locator("#intro")).to_have_count(0)
+    expect(step4_heading(page)).to_be_focused()
+    assert logged == []
+
+
+@pytest.mark.parametrize("size", [(1280, 900), (390, 844)], ids=["desktop", "phone"])
+def test_the_last_chip_lands_on_the_first_example(page, logged, size):
+    page.set_viewport_size(dict(zip(("width", "height"), size, strict=True)))
+    to_the_intro(page)
+    next_times(page, 8)
+    expect(intro(page)).to_have_attribute("data-chapter", "8")
+    # step 4 has risen into place underneath (in a real run it had the whole story to do so)
+    page.wait_for_function(SETTLED.replace(f"!({OWN}) || ", ""))
+    page.clock.run_for(1000)  # the hand-off beat
+    expect(intro(page)).to_have_attribute("data-handoff", "land")
+    fly = page.locator("#intro [data-fly]")
+    # the last thing said, lifted out of the stage
+    expect(fly).to_have_text("Who's going to Singapore next week?")
+    settle(page)
+    # its words now sit on the first example's first line, starting where the example's words start
+    words = "(e) => { const r = document.createRange(); r.selectNodeContents(e); const b = r.getClientRects()[0];"
+    words += " return [b.left, b.top + b.height / 2]; }"
+    landed, example = fly.evaluate(words), page.locator("#tries a").first.evaluate(words)
+    assert abs(landed[0] - example[0]) <= 1.5 and abs(landed[1] - example[1]) <= 1.5, (
+        landed,
+        example,
+    )
+    page.clock.run_for(1500)
+    expect(page.locator("#intro")).to_have_count(0)
+    expect(step4_heading(page)).to_be_focused()
+    page.locator("#tries a").first.click(trial=True)
+    assert logged == []
+
+
+def test_example_notice_is_readable(page):
+    page.goto(PREVIEW)
+    next_times(page, 1)
+    for chapter in range(2, 8):
+        control(page, "Next").click()
+        notice = stage(page).locator(f":scope > :nth-child({chapter + 1}) [data-ui=notice]")
+        expect(notice).to_have_text("Example with fictional names")
+        expect(notice).to_be_visible()
+        size, case = notice.evaluate(
+            "(e) => [parseFloat(getComputedStyle(e).fontSize), getComputedStyle(e).textTransform]"
+        )
+        assert size >= 16 and case == "none", (chapter, size, case)

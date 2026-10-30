@@ -1,6 +1,8 @@
 /* Dory intro: the first-time story over /start's last step (about 40 s, once per browser, skippable). start.html draws
    step 4, then calls play(): the layer is a modal <dialog>, so the page behind it is inert, and onDone hands the focus
-   back when it closes. Beats run on setTimeout (the tests drive them with a fake clock); the look is intro.css's. */
+   back when it closes. Chapters run on setTimeout (the tests drive them with a fake clock). This file says WHEN (each
+   fragment's beat, as --at) and lands the last chip on step 4's first example; how things look and move is intro.css's
+   (CSS animations, which play on the browser's own clock and stop with Pause). */
 (() => {
   "use strict";
   // the controls' dictionary keys in start.html (Thai + English); the story itself is English only
@@ -10,31 +12,33 @@
   const NOTE = ["notice", "Example with fictional names"];
   const SAID = [["said", "I'll send the deck Friday."], ["said", "ABC confirmed 42,000 THB for Q4."], ["said", "Who's going to Singapore next week?"]];
   // The spec's copy deck, English in both page languages. ms: how long a chapter plays on its own (the decision chapter:
-  // after the decision); line: its line on screen; live: the example in words, read by the polite live region before
-  // the line; parts: the example's fragments [data-ui, text] (no text: a drawing, hidden from screen readers).
+  // after the decision); line: its line on screen, rising at lineAt ms; live: the example in words, read by the polite
+  // live region before the line; parts: the example's fragments [data-ui, text, enters at ms] (no time: its place in
+  // the list times the chip stagger; no text: a drawing, hidden from screen readers); handoff: when the last chip leaves
+  // for step 4's first example.
   const CHAPTERS = [
     { id: "brand", ms: 1400, line: "", live: "", parts: [["mark", ""]] },
-    { id: "promise", ms: 3200, line: "Ask once. Dory remembers.", live: "", parts: SAID },
-    { id: "answers", ms: 5000, line: "She answers with the source.",
+    { id: "promise", ms: 3200, line: "Ask once. Dory remembers.", lineAt: 600, live: "", parts: SAID },
+    { id: "answers", ms: 5000, line: "She answers with the source.", lineAt: 3100,
       live: "Example with fictional names. What price did we agree with ABC? 42,000 THB for the Q4 package. Ploy confirmed it in #sales.",
-      parts: [NOTE, ["ask", "What price did we agree with ABC?"], ["status", "Dory is working · searching your chat"], ["found", "found it"],
-        ["answer", "42,000 THB for the Q4 package. Ploy confirmed it in #sales."], ["source", "Ploy · #sales"]] },
-    { id: "tasks", ms: 1600, line: "Say it once, and it becomes a task with an owner.", live: "Send the ABC deck · Ploy · due Fri.",
-      parts: [NOTE, ["task", "Send the ABC deck · Ploy · due Fri"]] },
-    { id: "receipts", ms: 4400, line: "Snap a receipt. She files it.", live: "Filed: Taxi · 240 THB · Travel. Travel this month: 3,180 THB.",
-      parts: [NOTE, ["receipt", ""], ["filed", "Filed: Taxi · 240 THB · Travel"], ["total", "Travel this month: 3,180 THB"]] },
-    { id: "voice", ms: 4400, line: "Or ask out loud.",
+      parts: [NOTE, ["ask", "What price did we agree with ABC?", 200], ["status", "Dory is working · searching your chat", 800], ["found", "found it", 2000],
+        ["answer", "42,000 THB for the Q4 package. Ploy confirmed it in #sales.", 2400], ["source", "Ploy · #sales", 2700]] },
+    { id: "tasks", ms: 1600, line: "Say it once, and it becomes a task with an owner.", lineAt: 900, live: "Send the ABC deck · Ploy · due Fri.",
+      parts: [NOTE, ["task", "Send the ABC deck · Ploy · due Fri", 200]] },
+    { id: "receipts", ms: 4400, line: "Snap a receipt. She files it.", lineAt: 2100, live: "Filed: Taxi · 240 THB · Travel. Travel this month: 3,180 THB.",
+      parts: [NOTE, ["receipt", "", 200], ["filed", "Filed: Taxi · 240 THB · Travel", 1100], ["total", "Travel this month: 3,180 THB", 1600]] },
+    { id: "voice", ms: 4400, line: "Or ask out loud.", lineAt: 2200,
       live: "Remind me to send the ABC deck on Friday at 4 pm. Done. I'll remind you on Friday at 4 pm.",
-      parts: [NOTE, ["call", "I'm listening…"], ["ask", "Remind me to send the ABC deck on Friday at 4 pm."], ["answer", "Done. I'll remind you on Friday at 4 pm."]] },
-    { id: "travel", ms: 5000, line: "Plan a trip in one sentence.",
-      live: "Find a flight for two from Bangkok to Singapore next Tuesday, and a hotel for two nights. Sample itinerary · Sample price. Fictional property. Booked in the sandbox.",
-      parts: [NOTE, ["ask", "Find a flight for two from Bangkok to Singapore next Tuesday, and a hotel for two nights."],
-        ["flight", "Sample itinerary · Sample price"], ["hotel", "Fictional property"], ["booked", "Booked in the sandbox"]] },
-    { id: "roles", ms: 5000, line: "She only shares what your role allows.",
+      parts: [NOTE, ["call", "I'm listening…", 200], ["ask", "Remind me to send the ABC deck on Friday at 4 pm.", 900], ["answer", "Done. I'll remind you on Friday at 4 pm.", 1600]] },
+    { id: "travel", ms: 5000, line: "Plan a trip in one sentence.", lineAt: 2700,
+      live: "Find a flight for two from Bangkok to Singapore next Tuesday, and a hotel for two nights. Sample itinerary · Sample price. Fictional property · Sample rating and reviews. Booked in the sandbox.",
+      parts: [NOTE, ["ask", "Find a flight for two from Bangkok to Singapore next Tuesday, and a hotel for two nights.", 200],
+        ["flight", "Sample itinerary · Sample price", 1100], ["hotel", "Fictional property · Sample rating and reviews", 1170], ["booked", "Booked in the sandbox", 2100]] },
+    { id: "roles", ms: 5000, line: "She only shares what your role allows.", lineAt: 2500,
       live: "Nok: How much did we spend this month? 48,200 THB across 31 receipts. Ploy: How much did we spend this month? Your receipts this month: 3,180 THB. Company totals are for managers.",
-      parts: [NOTE, ["ask", "Nok: How much did we spend this month?"], ["answer", "48,200 THB across 31 receipts."],
-        ["ask", "Ploy: How much did we spend this month?"], ["answer", "Your receipts this month: 3,180 THB. Company totals are for managers."]] },
-    { id: "surface", ms: 2200, line: "", live: "", parts: SAID },
+      parts: [NOTE, ["ask", "Nok: How much did we spend this month?", 200], ["answer", "48,200 THB across 31 receipts.", 800],
+        ["ask", "Ploy: How much did we spend this month?", 1300], ["answer", "Your receipts this month: 3,180 THB. Company totals are for managers.", 1900]] },
+    { id: "surface", ms: 2200, handoff: 900, line: "", live: "", parts: SAID },
   ];
   const DECIDE = CHAPTERS.findIndex((c) => c.id === "tasks");
   const RESULT = { accept: "Accepted", edit: "You decide, every time.", decline: "You decide, every time." };
@@ -53,26 +57,57 @@
   const animates = () => typeof Element.prototype.animate === "function"; // no Web Animations API: straight to step 4
 
   let run = null; // the open intro: { t, preview, done, mode, i, paused, decided, timer, due, left, after }
-  const guard = (fn) => (...a) => { try { fn(...a); } catch { finish(); } }; // an error ends the intro, never a stuck layer
+  // an error ends the intro, never a stuck layer, and says what went wrong in the console
+  const guard = (fn) => (...a) => { try { fn(...a); } catch (e) { console.error(e); finish(); } };
+  const beat = (at, k = 0) => `--k:${k}` + (at === undefined ? "" : `;--at:${at}ms`); // intro.css starts each fragment on it
+
+  // One example fragment. Dory's light (theme.css .lantern) sits beside the working label and the call; the working
+  // label's second half and the fragment after it ("found it") share one cell, so the one gives way to the other.
+  function fragment(box, [ui, text, at], k) {
+    const style = beat(at, k), light = () => el("span", { class: "lantern pulse", "aria-hidden": "true" });
+    if (!text) return box.append(el("div", { "data-ui": ui, "aria-hidden": "true", style }));
+    if (ui === "found") {
+      const swap = box.querySelector("[data-ui=swap]");
+      swap.setAttribute("style", style);
+      return swap.append(el("span", { "data-ui": ui }, text));
+    }
+    const [label, doing] = text.split(" · ");
+    const kids = ui === "status" ? [light(), label + " · ", el("span", { "data-ui": "swap" }, el("span", { "data-ui": "doing" }, doing))]
+      : ui === "call" ? [light(), text] : [text];
+    box.append(el("p", { "data-ui": ui, style }, ...kids));
+  }
 
   function build() {
     const button = (id, key, attrs) => el("button", { type: "button", class: "btn ghost", id, "data-key": key, ...attrs });
     const choice = (kind, text) => el("button", { type: "button", class: "btn ghost", id: "intro-" + kind, "data-decide": kind }, text);
-    const scene = (c) => el("div", { "data-id": c.id, hidden: "" },
-      ...c.parts.map(([ui, text]) => (text ? el("p", { "data-ui": ui }, text) : el("div", { "data-ui": ui, "aria-hidden": "true" }))),
-      ...(c.id === "tasks" ? [el("div", { "data-ui": "choices" }, choice("accept", "Accept"), choice("edit", "Edit"), choice("decline", "Decline")),
-        el("p", { "data-ui": "result", id: "intro-result" })] : []),
-      ...(c.line ? [el("p", { "data-ui": "line" }, c.line)] : []));
+    // a chapter: its fragments, the decision's answers in the task card's lower half, then its line, one span per
+    // sentence so the sentences rise one after the other
+    const scene = (c) => {
+      const box = el("div", { "data-id": c.id, hidden: "" });
+      c.parts.forEach((p, k) => fragment(box, p, k));
+      if (c.id === "tasks") box.append(el("div", { "data-ui": "choices", style: beat(c.parts.at(-1)[2]) }, choice("accept", "Accept"),
+        choice("edit", "Edit"), choice("decline", "Decline")), el("p", { "data-ui": "result", id: "intro-result" }));
+      if (c.line) box.append(el("p", { "data-ui": "line", style: beat(c.lineAt) },
+        ...c.line.split(/(?<=\.) /).flatMap((s, k) => (k ? [" ", el("span", {}, s)] : [el("span", {}, s)]))));
+      return box;
+    };
+    // the story is English on a Thai page too: screen readers voice it as English. It scrolls on a short screen, so the
+    // keyboard can reach it too.
+    const stage = el("div", { id: "intro-stage", lang: "en", tabindex: "0", role: "region", "aria-labelledby": "intro-title" }, ...CHAPTERS.map(scene));
     const layer = el("dialog", { id: "intro", role: "dialog", "aria-modal": "true", "aria-labelledby": "intro-title", "data-theme": "deep",
       "data-mode": run.mode, "data-chapter": "0" },
       el("h2", { id: "intro-title", class: "sr", "data-key": KEYS.title }),
       el("div", { class: "intro-bar" }, button("intro-skip", KEYS.skip)),
-      // the story is English on a Thai page too: screen readers voice it as English
-      el("div", { id: "intro-stage", lang: "en" }, ...CHAPTERS.map(scene)),
+      stage,
       el("p", { id: "intro-live", class: "sr", "aria-live": "polite", lang: "en" }),
-      el("div", { class: "intro-bar" }, el("ol", { id: "intro-dots", "aria-hidden": "true" }, ...CHAPTERS.map(() => el("li"))),
+      // the chapter dots are a numbered list, so "current step" reaches screen readers in either page language
+      el("div", { class: "intro-bar" }, el("ol", { id: "intro-dots" }, ...CHAPTERS.map((_, k) => el("li", {}, el("span", { class: "sr" }, String(k + 1))))),
         button("intro-sound", KEYS.sound, { "aria-pressed": "false" }), // every run starts silent
         button("intro-pause", KEYS.pause), button("intro-next", KEYS.next)));
+    // a chapter that leaves stays on screen until its fade ends (intro.css), then hides
+    stage.addEventListener("animationend", guard((e) => {
+      if (e.target.hasAttribute("data-leaving")) { e.target.hidden = true; e.target.removeAttribute("data-leaving"); }
+    }));
     const actions = { "intro-skip": finish, "intro-next": () => go(run.i + 1), "intro-pause": togglePause, "intro-sound": toggleSound };
     layer.addEventListener("click", guard((e) => {
       const b = e.target.closest("button");
@@ -106,21 +141,50 @@
 
   function go(n) {
     if (n >= CHAPTERS.length) return finish();
-    const c = CHAPTERS[n], stage = $("intro-stage");
-    if (stage.contains(document.activeElement)) $("intro-next").focus(); // a hidden button would drop the focus
-    [...stage.children].forEach((s, k) => { s.hidden = k !== n; });
+    const c = CHAPTERS[n], stage = $("intro-stage"), was = stage.children[run.i], focused = document.activeElement;
+    if (focused !== stage && stage.contains(focused)) $("intro-next").focus(); // a hidden button would drop the focus
+    // the chapter that was on screen fades out over the new one, then hides; only the new one is live
+    [...stage.children].forEach((s, k) => {
+      const leaving = s === was && k !== n;
+      s.hidden = k !== n && !leaving;
+      s.inert = k !== n;
+      s.toggleAttribute("data-leaving", leaving);
+    });
     [...$("intro-dots").children].forEach((d, k) => (k === n ? d.setAttribute("aria-current", "step") : d.removeAttribute("aria-current")));
     run.i = n;
     $("intro").dataset.chapter = n;
     $("intro-live").textContent = [c.live, c.line].filter(Boolean).join(" ");
     if (n === DECIDE) wait(DECISION_WAIT_MS, () => decide("accept"));
+    else if (c.handoff) wait(c.handoff, () => { handoff($("tries")?.querySelector("a")); wait(c.ms - c.handoff, () => go(n + 1)); });
     else wait(c.ms, () => go(n + 1));
+  }
+
+  // The surfacing's last beat: the last thing said lands on step 4's first example, its words on the example's first
+  // line (lifted out of the scrolling stage onto the layer, so nothing clips it); then the layer fades (intro.css) and
+  // the real example is underneath. In stills, or with no example on screen (the preview, a short landscape phone),
+  // the layer only fades.
+  function handoff(target) {
+    const layer = $("intro"), chip = [...layer.querySelectorAll("[data-id=surface] [data-ui=said]")].pop();
+    const words = (e) => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects()[0]; };
+    chip.getAnimations().forEach((a) => a.finish()); // measured where it rests, not partway in
+    const box = target && target.getBoundingClientRect(), from = words(chip), to = target && words(target);
+    const lands = run.mode === "motion" && !!(from && to) && box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth;
+    if (lands) {
+      const at = chip.getBoundingClientRect(), fly = chip.cloneNode(true);
+      fly.setAttribute("aria-hidden", "true");
+      fly.setAttribute("style", `left:${at.left}px;top:${at.top}px;width:${at.width}px;--dx:${to.left - from.left}px;`
+        + `--dy:${to.top + to.height / 2 - from.top - from.height / 2}px`);
+      fly.toggleAttribute("data-fly", true);
+      layer.append(fly);
+      chip.style.visibility = "hidden";
+    }
+    layer.dataset.handoff = lands ? "land" : "fade";
   }
 
   function decide(kind) {
     if (run.decided || run.i !== DECIDE) return;
     run.decided = true;
-    $("intro").dataset.decision = kind;
+    $("intro").dataset.decision = kind; // intro.css presses the chosen button (140 ms) as the result shows, never before it
     for (const b of $("intro").querySelectorAll("[data-decide]")) b.setAttribute("aria-disabled", "true");
     $("intro-result").textContent = $("intro-live").textContent = RESULT[kind];
     wait(CHAPTERS[DECIDE].ms, () => go(DECIDE + 1));
@@ -132,6 +196,12 @@
     label();
     if (run.paused) { clearTimeout(run.timer); run.left = Math.max(0, run.due - Date.now()); }
     else wait(run.left, run.after);
+    // what moves holds too (only what is running: play() would rewind a finished one), except a chapter on its way out;
+    // anything that starts while paused still plays, so Next brings its chapter in whole
+    for (const a of $("intro").getAnimations({ subtree: true })) {
+      if (run.paused && a.playState === "running" && !a.effect.target.hasAttribute("data-leaving")) a.pause();
+      else if (!run.paused && a.playState === "paused") a.play();
+    }
   }
 
   function toggleSound(b) {
@@ -167,11 +237,11 @@
           $("intro").showModal();
           $("intro-skip").focus();
           go(0);
-        } catch { finish(); }
+        } catch (e) { console.error(e); finish(); }
       });
     },
     relabel() { // start.html calls it after a language switch: only the controls follow the language
-      try { if (run) label(); } catch { /* the controls keep their labels */ }
+      try { if (run) label(); } catch (e) { console.error(e); /* the controls keep their labels */ }
     },
   };
 })();

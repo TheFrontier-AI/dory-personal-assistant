@@ -1,12 +1,205 @@
-/* Dory intro (the layer intro.js builds). Structure only so far: a modal layer over the whole viewport whose controls
-   stay on screen while the story between them scrolls. Page tokens come from ../theme.css. */
-#intro { position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 16px; border: 0;
-  display: flex; flex-direction: column; gap: 16px; overflow: hidden; }
+/* Dory intro, "from the deep to the surface": the layer intro.js builds over /start's last step. The story plays in the
+   deep scope (Abyss to Deep, sparse marine snow) and surfaces at the end into the light Surface ground that step 4 sits
+   on. The example fragments ([data-ui]) keep the product's own shapes (the person's chat bubble, Dory's unboxed answer
+   with her face, the task card, the call stage, the travel cards) in deep-scope fills one tone step above the ground:
+   flat, no glass, no resting shadow. intro.js says when (each fragment's --at, else --k chip steps; the chapter timer);
+   this file says how things look and move: transforms and opacity only, exits about 70 % of their entrance. Stills
+   (data-mode="stills": reduced motion, or the homepage's saved Pause) show each chapter whole and only cross-fade.
+   Tokens from ../theme.css; the deep gradient and Dory's glow are the spec's two declared brand exceptions. */
+#intro {
+  /* the motion numbers (spec "Look, motion, sound") */
+  --intro-rise: 28px; --intro-line: 800ms; --intro-line-gap: 90ms; --intro-expo: cubic-bezier(.16, 1, .3, 1);
+  --intro-chip: 600ms; --intro-chip-gap: 70ms; --intro-chip-rise: 16px; --intro-swap: 240ms; --intro-press: 140ms;
+  --intro-surface: 1200ms; --intro-mark: 1200ms; --intro-fly: 700ms; --intro-fade: 240ms;
+  position: fixed; inset: 0; width: 100%; height: 100%; max-width: none; max-height: none; margin: 0; padding: 16px; border: 0;
+  display: flex; flex-direction: column; gap: 16px; overflow: hidden; color: var(--color-text); font-family: var(--font);
+  background: linear-gradient(var(--ocean-800), var(--ocean-950)); /* taste-skill-ignore: the deep scope's own ground */
+}
+/* the drawings, as masks so they take a token colour: the command center's own stroke icons (24 grid, 1.75 stroke), the
+   travel cards' aircraft, a receipt's printed lines and the marine snow */
+#intro {
+  --intro-check: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='m5 12.5 4.5 4.5L19 7.5'/></svg>");
+  --intro-tasks: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><rect x='3.5' y='3.5' width='17' height='17' rx='3'/><path d='m8 12.2 2.8 2.8L16 9.5'/></svg>");
+  --intro-chat: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M20.5 12a8.5 8.5 0 0 1-12.3 7.6L3.5 21l1.4-4.6A8.5 8.5 0 1 1 20.5 12z'/></svg>");
+  --intro-building: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24' fill='none' stroke='black' stroke-width='1.75' stroke-linecap='round' stroke-linejoin='round'><path d='M5 21V5a2 2 0 0 1 2-2h7a2 2 0 0 1 2 2v16'/><path d='M16 9h2a2 2 0 0 1 2 2v10M3 21h18M9 7h3M9 11h3M9 15h3'/></svg>");
+  --intro-plane: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 24 24'><path d='M21 16v-2l-8-5V3.5a1.5 1.5 0 0 0-3 0V9l-8 5v2l8-2.5V19l-2 1.5V22l3.5-1 3.5 1v-1.5L13 19v-5.5z'/></svg>");
+  --intro-lines: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 72 60' preserveAspectRatio='none'><rect x='16' width='40' height='7' rx='3.5'/><rect y='20' width='60' height='4' rx='2'/><rect y='31' width='44' height='4' rx='2'/><rect y='42' width='54' height='4' rx='2'/><rect y='53' width='32' height='4' rx='2'/></svg>");
+  --intro-snow: url("data:image/svg+xml,<svg xmlns='http://www.w3.org/2000/svg' width='480' height='480'><circle cx='31' cy='47' r='1.4'/><circle cx='118' cy='12' r='.8'/><circle cx='203' cy='88' r='1.1'/><circle cx='296' cy='31' r='1.6'/><circle cx='402' cy='64' r='.9'/><circle cx='452' cy='141' r='1.3'/><circle cx='377' cy='196' r='.7'/><circle cx='259' cy='173' r='1.2'/><circle cx='148' cy='152' r='1.7'/><circle cx='64' cy='233' r='.9'/><circle cx='21' cy='348' r='1.2'/><circle cx='133' cy='301' r='1'/><circle cx='241' cy='329' r='.8'/><circle cx='322' cy='268' r='1.5'/><circle cx='437' cy='309' r='1.1'/><circle cx='351' cy='401' r='1.3'/><circle cx='219' cy='452' r='1'/><circle cx='97' cy='416' r='1.4'/></svg>");
+}
 #intro:not([open]) { display: none; }
-#intro[data-mode="stills"] * { transition: none; } /* stills: nothing moves, not even the theme's button colour fades */
-#intro-stage { flex: 1; min-height: 0; overflow-y: auto; display: flex; flex-direction: column; }
-#intro-stage > * { margin: auto; display: grid; gap: 12px; max-width: 40rem; } /* auto margins centre it, yet it scrolls from the top */
+#intro::backdrop { background: none; } /* the last fade shows step 4 itself, untinted */
+/* under the story: the Surface ground it surfaces into (::before) and marine snow sinking through the deep (::after) */
+#intro::before, #intro::after { content: ""; position: absolute; inset: 0; z-index: -1; pointer-events: none; }
+#intro::before { background: var(--sand-50); opacity: 0; }
+#intro::after { top: -480px; background: var(--ocean-300); opacity: .35; animation: intro-snow 90s linear infinite;
+  -webkit-mask: var(--intro-snow) 0 0 / 480px 480px; mask: var(--intro-snow) 0 0 / 480px 480px; }
+
+/* ---------- the controls: their own deep fill, so they read on the deep and on the light ground at the end ---------- */
 .intro-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: flex-end; gap: 8px; }
-#intro-dots { display: flex; gap: 6px; margin: 0 auto 0 0; padding: 0; list-style: none; }
-#intro-dots li { width: 8px; height: 8px; border-radius: 50%; background: currentColor; opacity: .4; }
-#intro-dots [aria-current="step"] { opacity: 1; }
+#intro .intro-bar .btn { padding: 10px 18px; background: var(--ocean-900); color: var(--ocean-50); border-color: var(--ocean-500); }
+#intro .intro-bar .btn:hover { background: var(--ocean-800); border-color: var(--ocean-300); }
+#intro .intro-bar #intro-sound[aria-pressed="true"] { background: var(--ocean-50); color: var(--ocean-950); border-color: var(--ocean-50); }
+#intro-dots { display: flex; align-items: center; gap: 6px; margin: 0 auto 0 0; padding: 0; list-style: none; color: var(--ocean-300); }
+#intro-dots li { position: relative; width: 8px; height: 8px; border-radius: 4px; background: currentColor; opacity: .5; }
+#intro-dots [aria-current="step"] { width: 20px; color: var(--ocean-50); opacity: 1; }
+
+/* ---------- the stage: every chapter in one cell, so a leaving chapter fades over the arriving one ---------- */
+#intro-stage { flex: 1; min-height: 0; overflow-y: auto; overscroll-behavior: contain; display: grid; }
+#intro-stage > * { grid-area: 1 / 1; margin: auto; width: min(100%, 40rem); display: grid; gap: 14px; } /* auto margins centre it, yet it scrolls from the top */
+#intro-stage > [data-leaving] { pointer-events: none; }
+
+/* ---------- the fragments ---------- */
+#intro [data-ui] { margin: 0; min-width: 0; font-size: 16px; line-height: 1.5; overflow-wrap: anywhere; }
+/* the example notice: a plain sentence at 16 px, never a pill */
+#intro [data-ui="notice"] { color: var(--color-text-muted); text-align: center; }
+/* a chapter's line: one face, one colour, each sentence on its own line */
+#intro [data-ui="line"] { margin-top: 8px; font-family: var(--font-display); font-weight: 700; font-size: clamp(26px, 3vw + 14px, 44px);
+  line-height: 1.15; letter-spacing: -.01em; text-align: center; text-wrap: balance; }
+#intro [data-ui="line"] > span { display: block; }
+#intro [data-id="promise"] [data-ui="line"] { margin-top: 20px; font-size: clamp(34px, 6vw + 14px, 72px); line-height: 1.05; }
+/* the brand frame: Dory's round painted face */
+#intro [data-ui="mark"] { justify-self: center; width: clamp(112px, 20vw, 160px); aspect-ratio: 1; border-radius: 50%;
+  background: var(--ocean-50) url("/static/dory/dory-mark.webp") center / cover; }
+/* the person's chat bubble (the product's own), the things the team said once included */
+#intro :is([data-ui="ask"], [data-ui="said"]) { justify-self: end; max-width: min(88%, 30rem); padding: 10px 16px;
+  border-radius: 18px 18px 6px 18px; background: var(--bubble-user-bg); color: var(--bubble-user-text); }
+/* said once, here and there in the deep: the promise, and the surfacing that brings the same three back (offset plus
+   width stays inside the column) */
+#intro :is([data-id="promise"], [data-id="surface"]) > [data-ui="said"] { max-width: min(80%, 26rem); }
+#intro :is([data-id="promise"], [data-id="surface"]) > :nth-child(1) { justify-self: start; }
+#intro :is([data-id="promise"], [data-id="surface"]) > :nth-child(2) { margin-right: 8%; }
+#intro :is([data-id="promise"], [data-id="surface"]) > :nth-child(3) { justify-self: start; margin-left: 12%; }
+/* Dory's answer: no bubble, her face beside it (the product's chat) */
+#intro [data-ui="answer"] { justify-self: start; display: flex; align-items: flex-start; gap: 10px; font-size: 17px; }
+#intro [data-ui="answer"]::before { content: ""; flex: none; width: 28px; height: 28px; border-radius: 50%;
+  background: var(--ocean-50) url("/static/dory/dory-mark.webp") center / cover; }
+/* stroke icons in the text's colour */
+#intro :is([data-ui="task"], [data-ui="source"], [data-ui="filed"], [data-ui="booked"])::before,
+#intro[data-decision="accept"] [data-ui="result"]::before { content: ""; flex: none; width: 20px; height: 20px; background: currentColor;
+  -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+/* "Dory is working": her light beside the label; the label's second half gives way to "found it" in one cell */
+#intro [data-ui="status"] { justify-self: start; color: var(--color-text-muted); font-size: 15px; }
+#intro [data-ui="status"] .lantern { display: inline-block; width: 10px; height: 10px; margin: 0 10px 0 5px; border-radius: 50%;
+  background: var(--color-glow); vertical-align: 1px; }
+#intro [data-ui="swap"] { display: inline-grid; font-size: inherit; }
+#intro [data-ui="swap"] > * { grid-area: 1 / 1; font-size: inherit; }
+#intro [data-ui="found"] { color: var(--color-text); font-weight: 600; }
+/* the source Dory attaches: who said it, where */
+#intro [data-ui="source"] { --icon: var(--intro-chat); justify-self: start; display: flex; align-items: center; gap: 6px; margin-left: 38px;
+  padding: 4px 10px; border-radius: var(--radius-sm); background: var(--ocean-800); color: var(--color-text-muted); font-size: 14px; }
+#intro [data-ui="source"]::before { width: 16px; height: 16px; }
+/* the task card, a fragment of the product's: what, who and when, its three answers in its lower half */
+#intro [data-ui="task"] { --icon: var(--intro-tasks); display: flex; align-items: flex-start; gap: 10px; padding: 16px 16px 10px;
+  border-radius: var(--radius-lg) var(--radius-lg) 0 0; background: var(--ocean-800); font-size: 17px; font-weight: 600; }
+#intro [data-ui="task"]::before { width: 22px; height: 22px; margin-top: 2px; color: var(--color-text-muted); }
+#intro [data-ui="choices"] { display: flex; flex-wrap: wrap; gap: 8px; margin-top: -14px; padding: 6px 16px 16px 48px;
+  border-radius: 0 0 var(--radius-lg) var(--radius-lg); background: var(--ocean-800); }
+#intro [data-ui="choices"] .btn { padding: 10px 18px; }
+/* Accept leads; once answered, the chosen one stays lit and the others step back */
+#intro[data-decision] [data-ui="choices"] .btn { background: transparent; color: var(--color-text-subtle); border-color: transparent; }
+#intro:not([data-decision]) #intro-accept, #intro[data-decision="accept"] #intro-accept, #intro[data-decision="edit"] #intro-edit,
+#intro[data-decision="decline"] #intro-decline { background: var(--ocean-50); color: var(--ocean-950); border-color: var(--ocean-50); }
+#intro [data-ui="result"] { display: flex; align-items: center; gap: 8px; min-height: 1.5em; font-weight: 600; } /* its row waits, so nothing moves when it fills */
+#intro[data-decision="accept"] [data-ui="result"] { --icon: var(--intro-check); }
+/* a receipt photo, drawn: paper with a torn foot, its printed lines and its total */
+#intro [data-id="receipts"] { grid-template-columns: auto minmax(0, 1fr); column-gap: 24px; align-items: center; }
+#intro [data-id="receipts"] > :is([data-ui="notice"], [data-ui="line"]) { grid-column: 1 / -1; }
+#intro [data-ui="receipt"] { grid-row: span 2; position: relative; width: clamp(88px, 22vw, 116px); aspect-ratio: 4 / 5; rotate: -4deg;
+  background: var(--sand-0); clip-path: polygon(0 0, 100% 0, 100% 100%, 90% 96%, 80% 100%, 70% 96%, 60% 100%, 50% 96%, 40% 100%, 30% 96%, 20% 100%, 10% 96%, 0 100%); }
+#intro [data-ui="receipt"]::before { content: ""; position: absolute; inset: 14% 14% 40%; background: var(--ink-400);
+  -webkit-mask: var(--intro-lines) 0 0 / 100% 100%; mask: var(--intro-lines) 0 0 / 100% 100%; }
+#intro [data-ui="receipt"]::after { content: ""; position: absolute; left: 40%; right: 14%; bottom: 17%; height: 7px; border-radius: 4px; background: var(--ink-900); }
+#intro [data-ui="filed"] { --icon: var(--intro-check); align-self: end; display: flex; align-items: center; gap: 8px; padding: 12px 14px;
+  border-radius: var(--radius); background: var(--ocean-800); font-weight: 600; }
+#intro [data-ui="total"] { align-self: start; padding: 0 14px; color: var(--color-text-muted); font-size: 15px; }
+/* the call stage: Dory's face in her light while she listens, then the words as captions */
+#intro [data-ui="call"] { justify-self: center; display: grid; justify-items: center; gap: 16px; color: var(--color-text-muted); }
+#intro [data-ui="call"] .lantern { width: 88px; height: 88px; border-radius: 50%; background: var(--ocean-50) url("/static/dory/dory-mark.webp") center / cover; }
+#intro [data-id="voice"] :is([data-ui="ask"], [data-ui="answer"]) { justify-self: center; display: block; max-width: min(100%, 30rem);
+  padding: 10px 16px; border-radius: var(--radius-lg); text-align: center; font-size: 16px; }
+#intro [data-id="voice"] [data-ui="ask"] { background: var(--ocean-800); color: var(--color-text); }
+#intro [data-id="voice"] [data-ui="answer"] { background: var(--ocean-700); }
+#intro [data-id="voice"] [data-ui="answer"]::before { content: none; }
+/* the travel cards: the product's sample flight and fictional hotel, with its own sample labels */
+#intro [data-id="travel"] { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+#intro [data-id="travel"] > :not([data-ui="flight"], [data-ui="hotel"]) { grid-column: 1 / -1; }
+#intro :is([data-ui="flight"], [data-ui="hotel"]) { position: relative; display: grid; grid-template-columns: 40px minmax(0, 1fr); align-items: center;
+  column-gap: 12px; padding: 14px; border-radius: var(--radius-lg); background: var(--ocean-800); color: var(--color-text-muted); font-size: 14px; font-weight: 600; }
+#intro :is([data-ui="flight"], [data-ui="hotel"])::before { content: ""; width: 40px; height: 40px; border-radius: 50%; background: var(--ocean-700); }
+#intro :is([data-ui="flight"], [data-ui="hotel"])::after { content: ""; position: absolute; left: 24px; top: calc(50% - 10px); width: 20px; height: 20px;
+  background: var(--ocean-50); -webkit-mask: var(--icon) center / contain no-repeat; mask: var(--icon) center / contain no-repeat; }
+#intro [data-ui="flight"] { --icon: var(--intro-plane); }
+#intro [data-ui="hotel"] { --icon: var(--intro-building); }
+#intro [data-ui="booked"] { --icon: var(--intro-check); display: flex; align-items: center; gap: 8px; font-weight: 600; }
+/* the same question from two roles, side by side where there is room */
+@media (min-width: 600px) {
+  #intro [data-id="roles"] { grid-template-columns: repeat(2, minmax(0, 1fr)); column-gap: 24px; align-items: start; }
+  #intro [data-id="roles"] > :nth-child(1) { grid-area: 1 / 1 / 2 / -1; }
+  #intro [data-id="roles"] > :nth-child(2) { grid-area: 2 / 1; }
+  #intro [data-id="roles"] > :nth-child(3) { grid-area: 3 / 1; }
+  #intro [data-id="roles"] > :nth-child(4) { grid-area: 2 / 2; }
+  #intro [data-id="roles"] > :nth-child(5) { grid-area: 3 / 2; }
+  #intro [data-id="roles"] > :nth-child(6) { grid-area: 4 / 1 / 5 / -1; }
+}
+@media (max-width: 599px) { #intro [data-id="travel"] { grid-template-columns: minmax(0, 1fr); } }
+/* a phone: the dots get their own row above the three buttons, and the answers stop indenting under the task */
+@media (max-width: 420px) {
+  #intro-dots { flex-basis: 100%; }
+  #intro [data-ui="choices"] { padding-left: 16px; }
+}
+/* a short landscape phone: less frame, more story */
+@media (max-height: 480px) {
+  #intro { gap: 8px; padding-block: 8px; }
+  #intro [data-ui="line"] { font-size: 24px; }
+  #intro [data-id="promise"] [data-ui="line"] { font-size: 32px; }
+}
+
+/* ---------- motion: every fragment arrives on its beat ---------- */
+#intro[data-mode="motion"] :where([data-id] > [data-ui]:not([data-ui="line"]), [data-ui="line"] > span) {
+  animation: intro-in var(--intro-chip) var(--ease) backwards; animation-delay: var(--at, calc(var(--k, 0) * var(--intro-chip-gap))); }
+#intro[data-mode="motion"] [data-ui="line"] > span { animation-name: intro-line; animation-duration: var(--intro-line); animation-timing-function: var(--intro-expo); }
+#intro[data-mode="motion"] [data-ui="line"] > span + span { animation-delay: calc(var(--at) + var(--intro-line-gap)); }
+#intro[data-mode="motion"] [data-id="promise"] > [data-ui="said"] { animation-name: intro-sink; } /* the things said sink into the deep */
+#intro[data-mode="motion"] [data-ui="mark"] { animation: intro-mark var(--intro-mark) var(--ease) backwards; } /* frame 0 is already composed */
+#intro[data-mode="motion"] [data-ui="doing"] { animation: intro-out calc(var(--intro-swap) * .7) var(--ease-exit) var(--at) forwards; }
+#intro[data-mode="motion"] [data-ui="found"] { animation: intro-swap var(--intro-swap) var(--ease) var(--at) backwards; }
+#intro[data-mode="motion"] [data-ui="result"] { animation: none; }
+#intro[data-mode="motion"][data-decision] [data-ui="result"] { animation: intro-in var(--intro-chip) var(--ease) backwards; } /* it rises the moment it has words */
+#intro[data-mode="motion"][data-decision="accept"] #intro-accept, #intro[data-mode="motion"][data-decision="edit"] #intro-edit,
+#intro[data-mode="motion"][data-decision="decline"] #intro-decline { animation: intro-press var(--intro-press) var(--ease); }
+#intro[data-mode="motion"] [data-id][data-leaving] { animation: intro-leave calc(var(--intro-chip) * .7) var(--ease-exit) forwards; }
+
+/* ---------- the surfacing: the deep lifts into the light ground, the chips float up, the last one lands ---------- */
+#intro[data-chapter="8"]::before { animation: intro-surface var(--intro-surface) var(--ease-in-out) forwards; }
+#intro[data-chapter="8"]::after { animation: intro-snow 90s linear infinite, intro-gone var(--intro-surface) var(--ease-in-out) forwards; }
+/* the others float up and are gone before the layer fades (an exit: 70 % of a chip's entrance) */
+#intro[data-mode="motion"][data-handoff] [data-id="surface"] > [data-ui="said"] { animation: intro-float calc(var(--intro-chip) * .7) var(--ease-exit) forwards; }
+#intro [data-fly] { position: fixed; z-index: 1; margin: 0; animation: intro-fly var(--intro-fly) var(--ease) forwards; }
+/* the hand-off beat is 900 ms into the 2,200 ms chapter (intro.js): the flight and this fade end by 2,020 ms */
+#intro[data-handoff] { animation: intro-gone calc(var(--intro-chip) * .7) var(--ease-exit) var(--intro-fly) forwards; }
+
+/* ---------- stills: each chapter whole, cross-fading (opacity only); nothing slides, nothing loops ---------- */
+#intro[data-mode="stills"] * { transition: none; } /* not even the theme's button colour fades */
+#intro[data-mode="stills"]::after, #intro[data-mode="stills"] .lantern::before { animation: none; }
+#intro[data-mode="stills"] [data-id] { animation: intro-fade var(--intro-fade) linear; }
+#intro[data-mode="stills"] [data-id][data-leaving] { animation: intro-gone var(--intro-fade) linear forwards; }
+#intro[data-mode="stills"] [data-ui="doing"] { visibility: hidden; } /* the working label shows its outcome, "found it" */
+#intro[data-mode="stills"][data-chapter="8"]::before { animation: intro-show var(--intro-fade) linear forwards; }
+#intro[data-mode="stills"][data-chapter="8"]::after { animation: intro-gone var(--intro-fade) linear forwards; }
+#intro[data-mode="stills"][data-handoff] { animation-duration: var(--intro-fade); animation-timing-function: linear; }
+
+@keyframes intro-in { from { opacity: 0; transform: translateY(var(--intro-chip-rise)); } }
+@keyframes intro-line { from { opacity: 0; transform: translateY(var(--intro-rise)); } }
+@keyframes intro-sink { from { opacity: 0; transform: translateY(calc(-1 * var(--intro-chip-rise))); } }
+@keyframes intro-mark { from { transform: translateY(24px); } }
+@keyframes intro-swap { from { opacity: 0; transform: translateY(8px); visibility: hidden; } }
+@keyframes intro-out { to { opacity: 0; transform: translateY(-8px); visibility: hidden; } }
+@keyframes intro-press { 50% { transform: scale(.96); } }
+@keyframes intro-leave { to { opacity: 0; transform: translateY(calc(-.5 * var(--intro-rise))); } }
+@keyframes intro-surface { from { opacity: 0; transform: translateY(24%); } to { opacity: 1; transform: none; } }
+@keyframes intro-float { to { opacity: 0; transform: translateY(calc(-3 * var(--intro-rise))); } }
+@keyframes intro-fly { to { transform: translate(var(--dx), var(--dy)); } }
+@keyframes intro-snow { to { transform: translateY(480px); } }
+@keyframes intro-fade { from { opacity: 0; } }
+@keyframes intro-show { to { opacity: 1; } }
+@keyframes intro-gone { to { opacity: 0; } }
