@@ -58,7 +58,7 @@
   }
   const animates = () => typeof Element.prototype.animate === "function"; // no Web Animations API: straight to step 4
 
-  let run = null; // the open intro: { t, preview, done, mode, i, paused, decided, timer, due, left, after, audio (made by the first Sound press) }
+  let run = null; // the open intro: { t, preview, done, mode, exact (zoomedRects), i, paused, decided, timer, due, left, after, audio (made by the first Sound press) }
   // an error ends the intro, never a stuck layer, and says what went wrong in the console
   const guard = (fn) => (...a) => { try { fn(...a); } catch (e) { console.error(e); finish(); } };
   // Sound is optional, so a sound error never ends the story: it is logged, the audio is closed and its control goes
@@ -142,12 +142,24 @@
   // The stage is a Tab stop only while its chapter is taller than it, so the keyboard can scroll it (axe:
   // scrollable-region-focusable); it never keeps the focus once it fits.
   function fit() {
-    const stage = $("intro-stage");
-    if (stage.children[run.i].getBoundingClientRect().height > stage.clientHeight) return stage.setAttribute("tabindex", "0");
+    const stage = $("intro-stage"), chapter = stage.children[run.i], z = run.exact ? 1 : +getComputedStyle(chapter).zoom || 1;
+    if (chapter.getBoundingClientRect().height * z > stage.clientHeight) return stage.setAttribute("tabindex", "0");
     if (document.activeElement === stage) $("intro-next").focus();
     stage.removeAttribute("tabindex");
   }
   const refit = guard(() => run && fit());
+
+  // Rects inside a zoomed box (intro.css zooms the chapters on large screens): Chromium and Firefox give them after the
+  // zoom, in viewport pixels; older WebKit gives them before it (WebKit bugs 77998, 185034). There the hand-off only
+  // fades and fit() applies the zoom itself.
+  function zoomedRects() {
+    if (!CSS.supports("zoom", "2")) return true; // no zoom anywhere, so nothing to correct
+    const box = el("div", { style: "zoom:2;position:absolute;visibility:hidden" }, el("div", { style: "width:100px" }));
+    document.body.append(box);
+    const w = box.firstChild.getBoundingClientRect().width;
+    box.remove();
+    return w > 150;
+  }
 
   function label() {
     for (const e of $("intro").querySelectorAll("[data-key]")) e.textContent = run.t(e.dataset.key);
@@ -199,14 +211,15 @@
 
   // The surfacing's last beat: the last thing said lands on step 4's first example, its words on the example's first
   // line (lifted out of the scrolling stage onto the layer, so nothing clips it); then the layer fades (intro.css) and
-  // the real example is underneath. In stills, or with no example on screen (the preview, a short landscape phone),
-  // the layer only fades. Returns how long that fade plays: the layer closes when it ends.
+  // the real example is underneath. In stills, with no example on screen (the preview, a short landscape phone), or
+  // where rects ignore the zoom (zoomedRects), the layer only fades. Returns how long that fade plays: the layer closes
+  // when it ends.
   function handoff(target) {
     const layer = $("intro"), chip = [...layer.querySelectorAll("[data-id=surface] [data-ui=said]")].pop();
     const words = (e) => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects()[0]; };
     chip.getAnimations().forEach((a) => a.finish()); // measured where it rests, not partway in
     const box = target && target.getBoundingClientRect(), from = words(chip), to = target && words(target);
-    const lands = run.mode === "motion" && !!(from && to) && box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth;
+    const lands = run.exact && run.mode === "motion" && !!(from && to) && box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth;
     if (lands) {
       // the stage's zoom on a large screen (intro.css) goes with the chip, so its lengths are given unzoomed
       const at = chip.getBoundingClientRect(), fly = chip.cloneNode(true), z = +getComputedStyle(chip.parentElement).zoom || 1;
@@ -287,6 +300,7 @@
         try {
           // either one means stills: the OS setting wins over a "dory-motion" of "on" saved on the homepage
           run.mode = matchMedia("(prefers-reduced-motion: reduce)").matches || stored("dory-motion") === "off" ? "stills" : "motion";
+          run.exact = zoomedRects();
           document.body.append(build());
           label();
           $("intro").showModal();

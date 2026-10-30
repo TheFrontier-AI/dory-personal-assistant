@@ -590,6 +590,39 @@ def test_the_current_dot_reads_on_the_surface_ground(page):
     assert opacity == "1" and (hi + 0.05) / (lo + 0.05) >= 3, (dot, ground)  # WCAG 1.4.11
 
 
+# Older WebKit (bugs 77998, 185034): rects inside a zoomed box come back before the zoom, divided by it
+LEGACY_ZOOM_RECTS = """(() => {
+  const real = Element.prototype.getBoundingClientRect;
+  Element.prototype.getBoundingClientRect = function () {
+    const r = real.call(this);
+    let z = 1;
+    for (let e = this; e; e = e.parentElement) z *= parseFloat(getComputedStyle(e).zoom) || 1;
+    return z === 1 ? r : new DOMRect(r.x / z, r.y / z, r.width / z, r.height / z);
+  };
+})();"""
+
+
+def test_where_rects_ignore_the_zoom_the_stage_still_scrolls_and_the_hand_off_fades(page, logged):
+    page.add_init_script(LEGACY_ZOOM_RECTS)
+    page.set_viewport_size({"width": 1280, "height": 900})  # the chapters are zoomed 1.25 here
+    to_the_intro(page)
+    # the roles chapter, 650 px unzoomed, 812 px zoomed: taller than the 748 px stage only once zoomed
+    page.add_style_tag(content="#intro [data-id=roles] { padding-bottom: 320px; }")
+    next_times(page, 7)
+    expect(stage(page)).to_have_attribute("tabindex", "0")  # the keyboard can still scroll it
+    control(page, "Next").click()
+    page.wait_for_function(settled(only_intro=False))
+    page.clock.run_for(
+        1000
+    )  # the hand-off beat: no flight on rects it cannot trust, the layer only fades
+    expect(intro(page)).to_have_attribute("data-handoff", "fade")
+    expect(page.locator("#intro [data-fly]")).to_have_count(0)
+    page.clock.run_for(1500)
+    expect(page.locator("#intro")).to_have_count(0)
+    expect(step4_heading(page)).to_be_focused()
+    assert logged == []
+
+
 @pytest.mark.parametrize("size", [(1280, 900), (390, 844)], ids=["desktop", "phone"])
 def test_the_last_chip_lands_on_the_first_example(page, logged, size):
     page.set_viewport_size(dict(zip(("width", "height"), size, strict=True)))
@@ -978,9 +1011,9 @@ def test_a_refused_pause_hold_drops_the_sound_and_keeps_the_pause(page, errors, 
     assert len(logged) == 1 and "suspend blocked" in logged[0], logged
 
 
-def test_what_an_ended_run_leaves_behind_never_touches_the_next_one(page, errors, logged):
-    """A run's queued dialog close event and an audio error that arrives after it ended are its own: the next run plays
-    on with its Sound button (the error is logged)."""
+def test_a_late_audio_error_leaves_the_next_run_alone(page, errors, logged):
+    """An audio error that arrives after its run ended is its own: the next run plays on with its Sound button (the
+    error is logged)."""
     page.add_init_script(
         BREAK_AUDIO
         % "resume() { return new Promise((_, no) => setTimeout(() => no(new Error('late resume')), 1000)); }"
@@ -998,3 +1031,20 @@ def test_what_an_ended_run_leaves_behind_never_touches_the_next_one(page, errors
     expect(intro(page)).to_have_attribute("data-chapter", "0")
     assert errors == []
     assert len(logged) == 1 and "late resume" in logged[0], logged
+
+
+def test_a_run_started_as_the_last_one_ends_plays_on(page, errors):
+    """The dialog's close event is queued: the one the first run's own end causes arrives after the next run began
+    (here, from the first run's onDone) and must not end it."""
+    page.goto("/start")
+    page.evaluate(
+        "() => { DoryIntro.play({ t, preview: true,"
+        " onDone: () => DoryIntro.play({ t, preview: true, onDone() {} }) }); }"
+    )
+    control(page, "Skip").click()
+    page.wait_for_timeout(
+        200
+    )  # the queued close event has been delivered (real time; it is not a timer)
+    expect(page.locator("#intro")).to_have_count(1)
+    expect(intro(page)).to_have_attribute("data-chapter", "0")
+    assert errors == []
