@@ -58,8 +58,20 @@
 
   let run = null; // the open intro: { t, preview, done, mode, i, paused, decided, timer, due, left, after, audio (made by the first Sound press) }
   // an error ends the intro, never a stuck layer, and says what went wrong in the console
-  const fail = (e) => { console.error(e); finish(); };
-  const guard = (fn) => (...a) => { try { fn(...a); } catch (e) { fail(e); } };
+  const guard = (fn) => (...a) => { try { fn(...a); } catch (e) { console.error(e); finish(); } };
+  // Sound is optional, so a sound error never ends the story: it is logged, the audio is closed and its control goes
+  // (as when there is no Web Audio), and the intro plays on silently.
+  function noSound(e) {
+    console.error(e);
+    if (!run) return;
+    const { audio } = run, b = $("intro-sound");
+    run.audio = null;
+    try { audio?.close(); } catch (err) { console.error(err); }
+    if (document.activeElement === b) $("intro-next").focus(); // a hidden button would drop the focus
+    b.setAttribute("aria-pressed", "false");
+    b.hidden = true;
+  }
+  const sound = (fn) => { try { if (run.audio) fn(run.audio); } catch (e) { noSound(e); } };
   const beat = (at, k = 0) => `--k:${k}` + (at === undefined ? "" : `;--at:${at}ms`); // intro.css starts each fragment on it
 
   // One example fragment. Dory's light (theme.css .lantern) sits beside the working label and the call; the working
@@ -156,11 +168,11 @@
     run.i = n;
     $("intro").dataset.chapter = n;
     $("intro-live").textContent = [c.live, c.line].filter(Boolean).join(" ");
-    if (run.audio) { // a chapter's sounds are scheduled when it starts; the last chapter's unplayed ones go
-      run.audio.clear();
-      run.audio.cue(n === DECIDE ? "dip" : "lift");
-      for (const [ms, sound] of c.cues || []) run.audio.cue(sound, ms / 1000);
-    }
+    sound((a) => { // a chapter's sounds are scheduled when it starts; the last chapter's unplayed ones go
+      a.clear();
+      a.cue(n === DECIDE ? "dip" : "lift");
+      for (const [ms, name] of c.cues || []) a.cue(name, ms / 1000);
+    });
     if (n === DECIDE) wait(DECISION_WAIT_MS, () => decide("accept"));
     else if (c.handoff) wait(c.handoff, () => { handoff($("tries")?.querySelector("a")); wait(c.ms - c.handoff, () => go(n + 1)); });
     else wait(c.ms, () => go(n + 1));
@@ -191,7 +203,7 @@
   function decide(kind) {
     if (run.decided || run.i !== DECIDE) return;
     run.decided = true;
-    if (kind === "accept") run.audio?.cue("chime");
+    if (kind === "accept") sound((a) => a.cue("chime"));
     $("intro").dataset.decision = kind; // intro.css presses the chosen button (140 ms) as the result shows, never before it
     for (const b of $("intro").querySelectorAll("[data-decide]")) b.setAttribute("aria-disabled", "true");
     $("intro-result").textContent = $("intro-live").textContent = RESULT[kind];
@@ -204,7 +216,7 @@
     label();
     if (run.paused) { clearTimeout(run.timer); run.left = Math.max(0, run.due - Date.now()); }
     else wait(run.left, run.after);
-    run.audio?.[run.paused ? "suspend" : "resume"](); // the sound holds too
+    sound((a) => a[run.paused ? "suspend" : "resume"]()); // the sound holds too
     // what moves holds too (only what is running: play() would rewind a finished one), except a chapter on its way out;
     // anything that starts while paused still plays, so Next brings its chapter in whole
     for (const a of $("intro").getAnimations({ subtree: true })) {
@@ -217,12 +229,14 @@
   function toggleSound(b) {
     const on = b.getAttribute("aria-pressed") !== "true";
     b.setAttribute("aria-pressed", String(on));
-    if (!run.audio) { // a pause that began before the first press holds this sound too
-      run.audio = window.DoryIntroAudio.create();
-      if (run.paused) run.audio.suspend();
-    }
-    run.audio.setOn(on).catch(fail);
-    if (on && run.i === DECIDE && !run.decided) run.audio.cue("dip"); // turned on while the card waits: the music starts low
+    try {
+      if (!run.audio) { // a pause that began before the first press holds this sound too
+        run.audio = window.DoryIntroAudio.create(noSound);
+        if (run.paused) run.audio.suspend();
+      }
+      run.audio.setOn(on).catch(noSound);
+      if (on && run.i === DECIDE && !run.decided) run.audio.cue("dip"); // turned on while the card waits: the music starts low
+    } catch (e) { noSound(e); }
   }
 
   function finish() {

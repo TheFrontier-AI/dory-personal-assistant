@@ -769,3 +769,59 @@ def test_without_web_audio_the_intro_plays_silently(page, errors, logged):
     page.clock.run_for(STORY_MS)
     expect(page.locator("#intro")).to_have_count(0)  # it still plays to the end
     assert errors == [] and logged == []
+
+
+# Sound is optional: whatever goes wrong on the audio path is logged, the audio is closed and its control goes, and the
+# story plays on. The context is wrapped so that one call fails: (what fails, the error, the chapter it shows up in and
+# how long that chapter plays; the noise tick is first asked for in the answer chapter).
+BREAK_AUDIO = """(() => {
+  const Real = window.AudioContext;
+  window.AudioContext = class extends Real {
+    %s
+  };
+})();"""
+BROKEN = [
+    ("resume() { return Promise.reject(new Error('resume blocked')); }", "resume blocked", 0, 1500),
+    ("createOscillator() { throw new Error('no oscillators'); }", "no oscillators", 0, 1500),
+    ("createBufferSource() { throw new Error('no noise'); }", "no noise", 2, 5100),
+]
+
+
+@pytest.mark.parametrize(
+    ("fault", "text", "chapter", "ms"), BROKEN, ids=["resume", "oscillator", "noise tick"]
+)
+def test_an_audio_failure_never_ends_the_intro(page, errors, logged, fault, text, chapter, ms):
+    page.add_init_script(BREAK_AUDIO % fault)
+    page.goto(PREVIEW)
+    control(page, "Sound").click()
+    next_times(page, chapter)
+    sound = page.locator("#intro-sound")
+    expect(sound).to_be_hidden()  # as with no Web Audio
+    expect(sound).to_have_attribute("aria-pressed", "false")
+    expect(intro(page)).to_have_attribute("data-chapter", str(chapter))  # still open...
+    page.clock.run_for(ms)
+    expect(intro(page)).to_have_attribute("data-chapter", str(chapter + 1))  # ...and advancing
+    control(page, "Next").click()
+    expect(intro(page)).to_have_attribute("data-chapter", str(chapter + 2))
+    assert errors == []
+    assert len(logged) == 1 and text in logged[0], logged
+    page.clock.run_for(STORY_MS)
+    expect(page.locator("#intro")).to_have_count(0)  # to the end, silently
+
+
+def test_a_refused_pause_hold_drops_the_sound_and_keeps_the_pause(page, errors, logged):
+    page.add_init_script(
+        BREAK_AUDIO % "suspend() { return Promise.reject(new Error('suspend blocked')); }"
+    )
+    page.goto(PREVIEW)
+    control(page, "Sound").click()
+    page.locator("#intro-pause").click()
+    expect(page.locator("#intro-sound")).to_be_hidden()
+    expect(page.locator("#intro-pause")).to_have_text("Play")  # the story is paused all the same
+    page.clock.run_for(5000)
+    expect(intro(page)).to_have_attribute("data-chapter", "0")
+    page.locator("#intro-pause").click()
+    page.clock.run_for(1500)
+    expect(intro(page)).to_have_attribute("data-chapter", "1")
+    assert errors == []
+    assert len(logged) == 1 and "suspend blocked" in logged[0], logged

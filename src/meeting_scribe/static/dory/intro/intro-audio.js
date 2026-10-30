@@ -10,13 +10,14 @@
   const [D3, A3, D4, A4, D5, E5, FS5, A5, D6, A6] = [50, 57, 62, 69, 74, 76, 78, 81, 86, 93].map(hz);
   const MASTER = db(-18), PAD = 0.12, DIP = PAD * db(-9);
 
-  function create() {
+  // onError hears what goes wrong after create() returns (a suspend or resume the browser refuses)
+  function create(onError = console.error) {
     let ctx = null, master = null, bus = null, padGain = null, noise = null;
     let on = false, paused = false, hidden = !!document.hidden, pops = 0;
     const voices = new Map(); // every sound source alive -> when it starts (audio clock)
 
     // the context runs unless the person paused the story or the tab is hidden
-    const hold = () => { if (ctx) Promise.resolve(paused || hidden ? ctx.suspend() : ctx.resume()).catch(console.error); };
+    const hold = () => { if (ctx) Promise.resolve(paused || hidden ? ctx.suspend() : ctx.resume()).catch(onError); };
     const onVisible = () => { hidden = !!document.hidden; hold(); };
 
     function voice(src, at, end) {
