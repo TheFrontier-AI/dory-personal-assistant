@@ -444,8 +444,18 @@ def test_axe_finds_no_wcag_aa_violations_in_the_intro(page, width, chapter):
     assert res.violations_count == 0, res.generate_report()
 
 
-def test_stills_mode_has_no_movement(page):
-    page.emulate_media(reduced_motion="reduce")
+@pytest.mark.parametrize(
+    ("reduce", "saved"),
+    [(True, None), (False, "off"), (True, "on")],
+    ids=["reduced motion", "homepage pause", "reduced motion beats the homepage's motion on"],
+)
+def test_stills_mode_has_no_movement(page, reduce, saved):
+    """The homepage's Pause is the case that matters most: without the OS setting the theme does not shorten
+    anything, so the 240 ms cross-fades really run and a stray slide would show."""
+    if reduce:
+        page.emulate_media(reduced_motion="reduce")
+    if saved:
+        page.add_init_script(f"localStorage.setItem('dory-motion', '{saved}');")
     page.goto(PREVIEW)
     expect(intro(page)).to_have_attribute("data-mode", "stills")
     for chapter in range(1, 9):
