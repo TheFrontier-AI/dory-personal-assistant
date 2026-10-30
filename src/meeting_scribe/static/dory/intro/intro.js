@@ -9,13 +9,15 @@
   const KEYS = { title: "intro_label", skip: "intro_skip", next: "intro_next", pause: "intro_pause", play: "intro_play", sound: "intro_sound" };
   const SEEN_KEY = "dory-intro";
   const DECISION_WAIT_MS = 4000; // the live decision never blocks: with no answer, Dory accepts
+  const LEAVE_MS = 1000; // longer than any chapter's exit fade (intro.css): a fail-safe if its animationend never comes
   const NOTE = ["notice", "Example with fictional names"];
   const SAID = [["said", "I'll send the deck Friday."], ["said", "ABC confirmed 42,000 THB for Q4."], ["said", "Who's going to Singapore next week?"]];
   // The spec's copy deck, English in both page languages. ms: how long a chapter plays on its own (the decision chapter:
   // after the decision); line: its line on screen, rising at lineAt ms; live: the example in words, read by the polite
   // live region before the line; parts: the example's fragments [data-ui, text, enters at ms] (no time: its place in
-  // the list times the chip stagger; no text: a drawing, hidden from screen readers); handoff: when the last chip leaves
-  // for step 4's first example; cues: [ms, sound] pairs, the beat each sound lands on (intro-audio.js; only with the sound on).
+  // the list times the chip stagger; no text: a drawing, hidden from screen readers); handoff: the chapter ends with the
+  // hand-off (the last chip leaves for step 4's first example at ms, and the layer closes when its fade, intro.css, has
+  // played); cues: [ms, sound] pairs, the beat each sound lands on (intro-audio.js; only with the sound on).
   const CHAPTERS = [
     { id: "brand", ms: 1400, line: "", live: "", parts: [["mark", ""]] },
     { id: "promise", ms: 3200, line: "Ask once. Dory remembers.", lineAt: 600, live: "", parts: SAID, cues: [[0, "pop"], [70, "pop"], [140, "pop"]] },
@@ -38,7 +40,7 @@
       live: "Nok: How much did we spend this month? 48,200 THB across 31 receipts. Ploy: How much did we spend this month? Your receipts this month: 3,180 THB. Company totals are for managers.",
       parts: [NOTE, ["ask", "Nok: How much did we spend this month?", 200], ["answer", "48,200 THB across 31 receipts.", 800],
         ["ask", "Ploy: How much did we spend this month?", 1300], ["answer", "Your receipts this month: 3,180 THB. Company totals are for managers.", 1900]] },
-    { id: "surface", ms: 2200, handoff: 900, line: "", live: "", parts: SAID, cues: [[0, "swell"]] },
+    { id: "surface", ms: 900, handoff: true, line: "", live: "", parts: SAID, cues: [[0, "swell"]] },
   ];
   const DECIDE = CHAPTERS.findIndex((c) => c.id === "tasks");
   const RESULT = { accept: "Accepted", edit: "You decide, every time.", decline: "You decide, every time." };
@@ -61,9 +63,10 @@
   const guard = (fn) => (...a) => { try { fn(...a); } catch (e) { console.error(e); finish(); } };
   // Sound is optional, so a sound error never ends the story: it is logged, the audio is closed and its control goes
   // (as when there is no Web Audio), and the intro plays on silently.
-  function noSound(e) {
+  // r is the run whose audio failed: an error that arrives after its run ended leaves the next run alone.
+  function noSound(e, r = run) {
     console.error(e);
-    if (!run) return;
+    if (!r || r !== run) return;
     const { audio } = run, b = $("intro-sound");
     run.audio = null;
     try { audio?.close(); } catch (err) { console.error(err); }
@@ -104,24 +107,22 @@
         ...c.line.split(/(?<=\.) /).flatMap((s, k) => (k ? [" ", el("span", {}, s)] : [el("span", {}, s)]))));
       return box;
     };
-    // the story is English on a Thai page too: screen readers voice it as English. It scrolls on a short screen, so the
-    // keyboard can reach it too.
-    const stage = el("div", { id: "intro-stage", lang: "en", tabindex: "0", role: "region", "aria-labelledby": "intro-title" }, ...CHAPTERS.map(scene));
+    // the story is English on a Thai page too: screen readers voice it as English (a Tab stop only while it scrolls: fit)
+    const stage = el("div", { id: "intro-stage", lang: "en", role: "region", "aria-labelledby": "intro-title" }, ...CHAPTERS.map(scene));
     const layer = el("dialog", { id: "intro", role: "dialog", "aria-modal": "true", "aria-labelledby": "intro-title", "data-theme": "deep",
       "data-mode": run.mode, "data-chapter": "0" },
       el("h2", { id: "intro-title", class: "sr", "data-key": KEYS.title }),
       el("div", { class: "intro-bar" }, button("intro-skip", KEYS.skip)),
       stage,
       el("p", { id: "intro-live", class: "sr", "aria-live": "polite", lang: "en" }),
-      // the chapter dots are a numbered list, so "current step" reaches screen readers in either page language
-      el("div", { class: "intro-bar" }, el("ol", { id: "intro-dots" }, ...CHAPTERS.map((_, k) => el("li", {}, el("span", { class: "sr" }, String(k + 1))))),
+      // the chapter dots are a numbered list, so "current step" reaches screen readers in either page language (role=list:
+      // Safari drops a list's role when its bullets are off; named after the story, no new words)
+      el("div", { class: "intro-bar" }, el("ol", { id: "intro-dots", role: "list", "aria-labelledby": "intro-title" }, ...CHAPTERS.map((_, k) => el("li", {}, el("span", { class: "sr" }, String(k + 1))))),
         // every run starts silent; with no Web Audio there is nothing to switch on, and the story plays without sound
         button("intro-sound", KEYS.sound, { "aria-pressed": "false", ...(window.DoryIntroAudio?.supported ? {} : { hidden: "" }) }),
         button("intro-pause", KEYS.pause), button("intro-next", KEYS.next)));
     // a chapter that leaves stays on screen until its fade ends (intro.css), then hides
-    stage.addEventListener("animationend", guard((e) => {
-      if (e.target.hasAttribute("data-leaving")) { e.target.hidden = true; e.target.removeAttribute("data-leaving"); }
-    }));
+    stage.addEventListener("animationend", guard((e) => leave(e.target)));
     const actions = { "intro-skip": finish, "intro-next": () => go(run.i + 1), "intro-pause": togglePause, "intro-sound": toggleSound };
     layer.addEventListener("click", guard((e) => {
       const b = e.target.closest("button");
@@ -129,9 +130,24 @@
       else if (b && b.dataset.decide) decide(b.dataset.decide);
     }));
     layer.addEventListener("keydown", guard(wrapTab));
-    layer.addEventListener("close", guard(finish)); // Esc closes a modal dialog
+    // Esc closes a modal dialog; the close event is queued, so the one finish() itself causes can arrive after the next
+    // run began: only this run ends on it
+    const mine = run;
+    layer.addEventListener("close", guard(() => { if (run === mine) finish(); }));
     return layer;
   }
+
+  const leave = (s) => { if (s.hasAttribute("data-leaving")) { s.hidden = true; s.removeAttribute("data-leaving"); } };
+
+  // The stage is a Tab stop only while its chapter is taller than it, so the keyboard can scroll it (axe:
+  // scrollable-region-focusable); it never keeps the focus once it fits.
+  function fit() {
+    const stage = $("intro-stage");
+    if (stage.children[run.i].getBoundingClientRect().height > stage.clientHeight) return stage.setAttribute("tabindex", "0");
+    if (document.activeElement === stage) $("intro-next").focus();
+    stage.removeAttribute("tabindex");
+  }
+  const refit = guard(() => run && fit());
 
   function label() {
     for (const e of $("intro").querySelectorAll("[data-key]")) e.textContent = run.t(e.dataset.key);
@@ -164,9 +180,12 @@
       s.inert = k !== n;
       s.toggleAttribute("data-leaving", leaving);
     });
+    if (was !== stage.children[n]) setTimeout(guard(() => leave(was)), LEAVE_MS);
+    stage.scrollTop = 0; // every chapter starts at its top
     [...$("intro-dots").children].forEach((d, k) => (k === n ? d.setAttribute("aria-current", "step") : d.removeAttribute("aria-current")));
     run.i = n;
     $("intro").dataset.chapter = n;
+    fit();
     $("intro-live").textContent = [c.live, c.line].filter(Boolean).join(" ");
     sound((a) => { // a chapter's sounds are scheduled when it starts; the last chapter's unplayed ones go
       a.clear();
@@ -174,14 +193,14 @@
       for (const [ms, name] of c.cues || []) a.cue(name, ms / 1000);
     });
     if (n === DECIDE) wait(DECISION_WAIT_MS, () => decide("accept"));
-    else if (c.handoff) wait(c.handoff, () => { handoff($("tries")?.querySelector("a")); wait(c.ms - c.handoff, () => go(n + 1)); });
+    else if (c.handoff) wait(c.ms, () => wait(handoff($("tries")?.querySelector("a")), () => go(n + 1)));
     else wait(c.ms, () => go(n + 1));
   }
 
   // The surfacing's last beat: the last thing said lands on step 4's first example, its words on the example's first
   // line (lifted out of the scrolling stage onto the layer, so nothing clips it); then the layer fades (intro.css) and
   // the real example is underneath. In stills, or with no example on screen (the preview, a short landscape phone),
-  // the layer only fades.
+  // the layer only fades. Returns how long that fade plays: the layer closes when it ends.
   function handoff(target) {
     const layer = $("intro"), chip = [...layer.querySelectorAll("[data-id=surface] [data-ui=said]")].pop();
     const words = (e) => { const r = document.createRange(); r.selectNodeContents(e); return r.getClientRects()[0]; };
@@ -189,15 +208,18 @@
     const box = target && target.getBoundingClientRect(), from = words(chip), to = target && words(target);
     const lands = run.mode === "motion" && !!(from && to) && box.top >= 0 && box.left >= 0 && box.bottom <= innerHeight && box.right <= innerWidth;
     if (lands) {
-      const at = chip.getBoundingClientRect(), fly = chip.cloneNode(true);
+      // the stage's zoom on a large screen (intro.css) goes with the chip, so its lengths are given unzoomed
+      const at = chip.getBoundingClientRect(), fly = chip.cloneNode(true), z = +getComputedStyle(chip.parentElement).zoom || 1;
       fly.setAttribute("aria-hidden", "true");
-      fly.setAttribute("style", `left:${at.left}px;top:${at.top}px;width:${at.width}px;--dx:${to.left - from.left}px;`
-        + `--dy:${to.top + to.height / 2 - from.top - from.height / 2}px`);
+      fly.setAttribute("style", `zoom:${z};left:${at.left / z}px;top:${at.top / z}px;width:${at.width / z}px;--dx:${(to.left - from.left) / z}px;`
+        + `--dy:${(to.top + to.height / 2 - from.top - from.height / 2) / z}px`);
       fly.toggleAttribute("data-fly", true);
       layer.append(fly);
       chip.style.visibility = "hidden";
     }
     layer.dataset.handoff = lands ? "land" : "fade";
+    const fade = layer.getAnimations().find((a) => a.animationName === "intro-gone" && !a.effect.pseudoElement);
+    return fade ? fade.effect.getComputedTiming().endTime : 0;
   }
 
   function decide(kind) {
@@ -227,14 +249,14 @@
 
   // The first press makes the audio (inside the click, as browsers require); the context stays for the rest of the run.
   function toggleSound(b) {
-    const on = b.getAttribute("aria-pressed") !== "true";
+    const on = b.getAttribute("aria-pressed") !== "true", r = run, failed = (e) => noSound(e, r);
     b.setAttribute("aria-pressed", String(on));
     try {
       if (!run.audio) { // a pause that began before the first press holds this sound too
-        run.audio = window.DoryIntroAudio.create(noSound);
+        run.audio = window.DoryIntroAudio.create(failed);
         if (run.paused) run.audio.suspend();
       }
-      run.audio.setOn(on).catch(noSound);
+      run.audio.setOn(on).catch(failed);
       if (on && run.i === DECIDE && !run.decided) run.audio.cue("dip"); // turned on while the card waits: the music starts low
     } catch (e) { noSound(e); }
   }
@@ -244,6 +266,7 @@
     const { done, preview, timer, audio } = run;
     run = null;
     clearTimeout(timer);
+    removeEventListener("resize", refit);
     try { audio?.close(); } catch (e) { console.error(e); /* the layer still goes */ }
     if (!preview) stored(SEEN_KEY, "seen");
     const layer = $("intro");
@@ -267,6 +290,7 @@
           document.body.append(build());
           label();
           $("intro").showModal();
+          addEventListener("resize", refit);
           $("intro-skip").focus();
           go(0);
         } catch (e) { console.error(e); finish(); }
