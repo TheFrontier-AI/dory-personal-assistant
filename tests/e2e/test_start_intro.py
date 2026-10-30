@@ -27,8 +27,16 @@ MOVING = f"""() => document.getAnimations().filter((a) => {OWN}).map((a) => a.tr
   ? [a.transitionProperty]
   : a.effect.getKeyframes().flatMap((k) => Object.keys(k).filter((p) => !['offset', 'computedOffset', 'easing',
     'composite'].includes(p))))"""
-SETTLED = f"""() => document.getAnimations().every((a) => !({OWN}) || a.playState !== 'running'
+
+
+def settled(only_intro=True):
+    """True once every one-off animation has played: the intro's own, or the whole page's (step 4 rising underneath)."""
+    keep = f"!({OWN}) || " if only_intro else ""
+    return f"""() => document.getAnimations().every((a) => {keep}a.playState !== 'running'
   || a.effect.getTiming().iterations === Infinity)"""
+
+
+SETTLED = settled()
 # Next pressed in the page itself, so the cross-fade it starts is measured before the browser's clock moves on
 NEXT_THEN_MOVING = (
     f"() => {{ document.getElementById('intro-next').click(); return ({MOVING})(); }}"
@@ -194,8 +202,12 @@ def test_next_steps_chapters_and_dots_follow(page):
     dots = page.locator("#intro-dots > li")
     expect(dots).to_have_count(9)
     expect(dots.first).to_have_attribute("aria-current", "step")
-    # the dots are a list assistive technology reaches, numbered, so "current step" means something
-    expect(intro(page).get_by_role("list").get_by_role("listitem")).to_have_count(9)
+    # the dots are a list assistive technology reaches (role=list: Safari drops it with the bullets off), named after
+    # the story and numbered, so "current step" means something
+    expect(intro(page).get_by_role("list", name="Meet Dory").get_by_role("listitem")).to_have_count(
+        9
+    )
+    expect(page.locator("#intro-dots")).to_have_attribute("role", "list")
     expect(dots.nth(4)).to_have_text("5")
     next_times(page, 2)
     expect(intro(page)).to_have_attribute("data-chapter", "2")
@@ -431,9 +443,18 @@ def test_a_missing_intro_script_never_breaks_step_4(page, errors):
 
 # ------------------------------------------------------------------ the look and the motion
 @pytest.mark.parametrize("chapter", [0, 3, 7])
-@pytest.mark.parametrize("width", [320, 1280])
-def test_axe_finds_no_wcag_aa_violations_in_the_intro(page, width, chapter):
-    page.set_viewport_size({"width": width, "height": 900})
+@pytest.mark.parametrize(
+    "size",
+    [(320, 900), (1280, 900), (320, 480), (568, 320)],
+    ids=[
+        "phone",
+        "desktop",
+        "small phone",
+        "landscape phone",
+    ],  # the last two scroll: scrollable-region-focusable
+)
+def test_axe_finds_no_wcag_aa_violations_in_the_intro(page, size, chapter):
+    page.set_viewport_size(dict(zip(("width", "height"), size, strict=True)))
     page.goto(PREVIEW)
     next_times(page, chapter)
     expect(intro(page)).to_have_attribute("data-chapter", str(chapter))
@@ -491,6 +512,84 @@ def test_small_landscape_fits_and_closes(page, logged):
     assert logged == []
 
 
+# where the chapter on screen sits in the stage, whether it is taller than the stage, and the stage's tabindex
+STAGE_FIT = """() => { const s = document.getElementById('intro-stage'),
+  c = s.children[+document.getElementById('intro').dataset.chapter], b = c.getBoundingClientRect();
+  return [b.top - s.getBoundingClientRect().top, b.height > s.clientHeight, s.getAttribute('tabindex')]; }"""
+
+
+@pytest.mark.parametrize(
+    "size", [(568, 320), (320, 480), (1280, 900)], ids=["landscape phone", "small phone", "desktop"]
+)
+def test_a_chapter_keeps_its_place_and_the_stage_is_a_tab_stop_only_when_it_scrolls(page, size):
+    page.set_viewport_size(dict(zip(("width", "height"), size, strict=True)))
+    page.goto(PREVIEW)
+    tall = []
+    for chapter in range(1, 9):
+        arrived = page.evaluate(
+            f"() => {{ document.getElementById('intro-next').click(); return ({STAGE_FIT})(); }}"
+        )
+        page.wait_for_function("() => !document.querySelector('#intro-stage > [data-leaving]')")
+        now = page.evaluate(STAGE_FIT)
+        # the chapter does not jump when the one before it hides (on a short screen the taller one set the row)
+        assert abs(arrived[0] - now[0]) <= 1, (chapter, arrived, now)
+        assert now[0] >= 0, (chapter, now)  # a taller chapter scrolls from its top
+        # the keyboard can reach the stage only when there is something to scroll
+        assert now[2] == ("0" if now[1] else None), (chapter, now)
+        tall.append(now[1])
+    assert any(tall) == (size[1] < 900), tall
+
+
+def test_a_leaving_chapter_hides_even_when_its_fade_never_ends(page):
+    page.goto(PREVIEW)
+    page.add_style_tag(content="#intro [data-id][data-leaving] { animation: none !important; }")
+    control(page, "Next").click()
+    shown = stage(page).locator(":scope > :not([hidden])")
+    expect(shown).to_have_count(2)  # no fade, so no animationend
+    page.clock.run_for(1000)  # the fail-safe
+    expect(shown).to_have_count(1)
+    expect(intro(page)).to_have_attribute("data-chapter", "1")
+
+
+def test_the_layer_closes_when_its_own_fade_ends(page):
+    """intro.css is the hand-off's only clock: the layer goes when its fade has played, not on a second timer."""
+    page.goto(PREVIEW)
+    next_times(page, 8)
+    page.clock.run_for(900)  # the hand-off beat
+    expect(intro(page)).to_have_attribute("data-handoff", "fade")
+    ms = page.evaluate(
+        "document.getElementById('intro').getAnimations().find((a) => a.animationName === 'intro-gone'"
+        " && !a.effect.pseudoElement).effect.getComputedTiming().endTime"
+    )
+    assert 0 < ms < 1300, ms
+    page.clock.run_for(round(ms) - 50)
+    expect(page.locator("#intro")).to_have_count(1)
+    page.clock.run_for(100)
+    expect(page.locator("#intro")).to_have_count(0)
+
+
+def _luminance(rgb):
+    def lin(c):
+        c /= 255
+        return c / 12.92 if c <= 0.04045 else ((c + 0.055) / 1.055) ** 2.4
+
+    r, g, b = (lin(int(v)) for v in rgb.split("(")[1].split(")")[0].split(",")[:3])
+    return 0.2126 * r + 0.7152 * g + 0.0722 * b
+
+
+def test_the_current_dot_reads_on_the_surface_ground(page):
+    page.goto(PREVIEW)
+    next_times(page, 8)
+    dot, opacity = page.locator("#intro-dots [aria-current]").evaluate(
+        "(e) => [getComputedStyle(e).backgroundColor, getComputedStyle(e).opacity]"
+    )
+    ground = page.locator("#intro").evaluate(
+        "(e) => getComputedStyle(e, '::before').backgroundColor"
+    )
+    hi, lo = sorted((_luminance(dot), _luminance(ground)), reverse=True)
+    assert opacity == "1" and (hi + 0.05) / (lo + 0.05) >= 3, (dot, ground)  # WCAG 1.4.11
+
+
 @pytest.mark.parametrize("size", [(1280, 900), (390, 844)], ids=["desktop", "phone"])
 def test_the_last_chip_lands_on_the_first_example(page, logged, size):
     page.set_viewport_size(dict(zip(("width", "height"), size, strict=True)))
@@ -498,7 +597,7 @@ def test_the_last_chip_lands_on_the_first_example(page, logged, size):
     next_times(page, 8)
     expect(intro(page)).to_have_attribute("data-chapter", "8")
     # step 4 has risen into place underneath (in a real run it had the whole story to do so)
-    page.wait_for_function(SETTLED.replace(f"!({OWN}) || ", ""))
+    page.wait_for_function(settled(only_intro=False))
     page.clock.run_for(1000)  # the hand-off beat
     expect(intro(page)).to_have_attribute("data-handoff", "land")
     fly = page.locator("#intro [data-fly]")
@@ -606,12 +705,17 @@ def test_sound_toggle_creates_one_context_and_mutes(page, spy, errors, logged):
     page.wait_for_function("window.spy.sources.length >= 2")
     now = spy()
     assert now["contexts"] == 1
-    pad = [s for s in now["sources"] if s["stops"] == 0]
-    assert len(pad) == 2, now  # a two-sine pad, running until it is muted
+    pad = [k for k, s in enumerate(now["sources"]) if s["stops"] == 0]
+    assert len(pad) == 2, (
+        now
+    )  # a two-sine pad, running until it is muted (every other sound has an end of its own)
     control(page, "Sound").click()
     expect(control(page, "Sound")).to_have_attribute("aria-pressed", "false")
     now = spy()
-    assert now["contexts"] == 1 and all(s["stops"] >= 1 for s in now["sources"]), now
+    assert now["contexts"] == 1 and now["targets"][-1] == 0, (
+        now
+    )  # the mix fades to silence at once...
+    assert all(now["sources"][k]["stops"] >= 1 for k in pad), now  # ...and the pad is stopped
     sound_on(page)  # and on again: the same context, a new pad
     now = spy()
     assert now["contexts"] == 1
@@ -665,10 +769,15 @@ def test_skip_stops_every_voice_at_once(page, spy):
     page.goto(PREVIEW)
     sound_on(page)
     next_times(page, 2)  # the ping is queued
+    pad = [k for k, s in enumerate(spy()["sources"]) if s["stops"] == 0]
+    assert len(pad) == 2  # only the pad has no end of its own
     control(page, "Skip").click()
     expect(page.locator("#intro")).to_have_count(0)
     now = spy()
-    assert now["sources"] and all(s["stops"] >= 1 for s in now["sources"]), now
+    assert now["targets"][-1] == 0, now  # the mix fades to silence at once
+    assert all(now["sources"][k]["stops"] >= 1 for k in pad), now
+    page.clock.run_for(200)  # after the fade the context itself goes
+    context_is(page, "closed")
     page.evaluate("document.dispatchEvent(new Event('visibilitychange'))")
     assert spy()["suspend"] == now["suspend"]  # nothing listens any more
 
@@ -678,10 +787,16 @@ def test_cues_fire_only_while_sound_is_on_and_only_from_then_on(page, spy):
     next_times(page, 2)  # the answer chapter: its ping and tick pass with the sound off
     page.clock.run_for(1000)
     assert spy()["sources"] == []
-    sound_on(page)  # on mid-chapter: the pad and future cues only
+    sound_on(
+        page
+    )  # on mid-chapter (ruling 13): the pad starts, this chapter's cues still to come are dropped...
     now = spy()
     assert len(now["sources"]) == 2 and tones(now, "D6", "A6") == 0, now
-    next_times(page, 3)  # receipts, voice: "I'm listening…" lights Dory
+    page.clock.run_for(1500)  # past the tick due 2 s into the chapter
+    assert [s for s in spy()["sources"] if s["kind"] == "noise"] == []
+    next_times(
+        page, 3
+    )  # ...and the next chapters' cues play: receipts, voice: "I'm listening…" lights Dory
     now = spy()
     assert tones(now, "D6") == 1 and tones(now, "A6") == 1, now
 
@@ -697,6 +812,37 @@ def test_the_ping_and_the_tick_land_on_the_story_beats(page, spy):
     assert len(low) == 1 and low[0] > ping[0], now  # the second note of the two
     noise = [s["delay"] for s in now["sources"] if s["kind"] == "noise"]
     assert len(noise) == 1 and 2.0 <= noise[0] <= 2.1, now  # the label swaps to "found it"
+
+
+def test_the_things_said_pop_in_with_the_sound_on(page, spy):
+    page.goto(PREVIEW)
+    sound_on(page)
+    page.clock.run_for(1400)  # the brand frame ends: the promise's three chips rise 70 ms apart
+    expect(intro(page)).to_have_attribute("data-chapter", "1")
+    now = spy()
+    pops = sorted(
+        (s["delay"], s["freq"])
+        for s in now["sources"]
+        if s["kind"] == "tone" and 400 < s["freq"] < 700
+    )
+    assert [round(f) for _, f in pops] == [480, 550, 620], (
+        now
+    )  # three soft pops, each a little higher
+    assert [d - pops[0][0] for d, _ in pops] == pytest.approx([0, 0.07, 0.14], abs=0.006), pops
+
+
+def test_in_stills_the_sound_keeps_the_story_beats(page, spy):
+    """Ruling 14: stills keep the motion timeline, so a cue lands on its still's cross-fade."""
+    page.emulate_media(reduced_motion="reduce")
+    page.goto(PREVIEW)
+    expect(intro(page)).to_have_attribute("data-mode", "stills")
+    sound_on(page)
+    next_times(page, 2)
+    now = spy()
+    ping = [s["delay"] for s in now["sources"] if abs(s["freq"] - HZ["D6"]) < 0.5]
+    assert len(ping) == 1 and 0.8 <= ping[0] <= 0.9, now  # the same beat as in motion
+    noise = [s["delay"] for s in now["sources"] if s["kind"] == "noise"]
+    assert len(noise) == 1 and 2.0 <= noise[0] <= 2.1, now
 
 
 def test_a_skipped_chapters_cues_do_not_sound_in_the_next(page, spy):
@@ -748,6 +894,7 @@ def test_turning_sound_on_during_the_decision_starts_the_pad_dipped(page, spy):
 def test_the_swell_sounds_at_the_surface(page, spy, errors, logged):
     page.goto(PREVIEW)
     sound_on(page)
+    pad = [k for k, s in enumerate(spy()["sources"]) if s["stops"] == 0]
     next_times(page, 8)
     now = spy()
     swell = [s for s in now["sources"] if s["kind"] == "tone" and 250 < s["freq"] < 750]
@@ -756,7 +903,11 @@ def test_the_swell_sounds_at_the_surface(page, spy, errors, logged):
     expect(page.locator("#intro")).to_have_count(
         0
     )  # and it ends with the story, nothing left playing
-    assert all(s["stops"] >= 1 for s in spy()["sources"])  # the pad was stopped with it
+    now = spy()
+    assert len(pad) == 2 and all(now["sources"][k]["stops"] >= 1 for k in pad), (
+        now
+    )  # the pad stops with it
+    context_is(page, "closed")  # and the context goes (150 ms after the end, inside the run above)
     assert errors == [] and logged == []
 
 
@@ -825,3 +976,25 @@ def test_a_refused_pause_hold_drops_the_sound_and_keeps_the_pause(page, errors, 
     expect(intro(page)).to_have_attribute("data-chapter", "1")
     assert errors == []
     assert len(logged) == 1 and "suspend blocked" in logged[0], logged
+
+
+def test_what_an_ended_run_leaves_behind_never_touches_the_next_one(page, errors, logged):
+    """A run's queued dialog close event and an audio error that arrives after it ended are its own: the next run plays
+    on with its Sound button (the error is logged)."""
+    page.add_init_script(
+        BREAK_AUDIO
+        % "resume() { return new Promise((_, no) => setTimeout(() => no(new Error('late resume')), 1000)); }"
+    )
+    page.goto(PREVIEW)
+    control(page, "Sound").click()  # its resume answers a second later
+    control(page, "Skip").click()
+    expect(page.locator("#intro")).to_have_count(0)
+    page.evaluate(
+        "() => { DoryIntro.play({ t, preview: true, onDone: () => {} }); }"
+    )  # the next run
+    expect(control(page, "Sound")).to_be_visible()
+    page.clock.run_for(1000)  # the first run's audio fails now
+    expect(control(page, "Sound")).to_be_visible()
+    expect(intro(page)).to_have_attribute("data-chapter", "0")
+    assert errors == []
+    assert len(logged) == 1 and "late resume" in logged[0], logged
